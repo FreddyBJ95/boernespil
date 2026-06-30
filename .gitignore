@@ -1,1 +1,5 @@
 .DS_Store
+
+# Lokale test-værktøjer (ikke en del af siden)
+_server.js
+_test.html

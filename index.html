@@ -2,18 +2,28 @@
 <html lang="da">
 <head>
   <meta charset="UTF-8">
-  <!-- Vigtigt for tablets: gør siden touch-venlig og forhindrer zoom ved dobbelt-tap -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Spil for ungerne 🎈</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- Svævende pynt i baggrunden -->
+  <div class="pynt">
+    <span style="top:8%;  animation-duration:38s; animation-delay:-4s;  font-size:70px">☁️</span>
+    <span style="top:20%; animation-duration:55s; animation-delay:-20s; font-size:48px">☁️</span>
+    <span style="top:5%;  animation-duration:30s; animation-delay:-10s;">☀️</span>
+    <span style="top:38%; animation-duration:60s; animation-delay:-30s; font-size:40px">🎈</span>
+    <span style="top:70%; animation-duration:45s; animation-delay:-12s;">🦋</span>
+    <span style="top:82%; animation-duration:50s; animation-delay:-25s; font-size:44px">🌈</span>
+    <span style="top:60%; animation-duration:40s; animation-delay:-6s;  font-size:36px">⭐</span>
+  </div>
+
   <header>
-    <h1>🎈 Vælg et spil 🎈</h1>
+    <h1>Vælg et spil!</h1>
+    <p class="undertekst">🎈 Tryk på et kort for at lege 🎈</p>
   </header>
 
-  <!-- Hvert <a> her er en knap til et spil. For at tilføje et nyt spil:
-       kopier én "spil-kort"-blok og ret link, emoji og navn. -->
+  <!-- Hvert <a> er en knap til et spil. Tilføj et nyt spil ved at kopiere én blok. -->
   <main class="spil-gitter">
 
     <a class="spil-kort" href="spil/tryk-paa-dyret/" style="--farve:#ffd166">

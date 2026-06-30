@@ -6,53 +6,103 @@ body {
   margin: 0;
   min-height: 100vh;
   font-family: "Comic Sans MS", "Chalkboard", system-ui, sans-serif;
-  background: linear-gradient(160deg, #caf0f8, #ade8f4);
-  /* Forhindrer at man kommer til at markere tekst med fingeren */
+  /* Animeret himmel der langsomt skifter farve */
+  background: linear-gradient(160deg, #a0e9ff, #caf0f8, #bdb2ff, #ffc8dd);
+  background-size: 100% 300%;
+  animation: himmel 18s ease-in-out infinite;
+  overflow-x: hidden;
   -webkit-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
-
-header { text-align: center; padding: 24px 16px 8px; }
-
-h1 {
-  font-size: clamp(28px, 6vw, 56px);
-  color: #03045e;
-  margin: 0;
+@keyframes himmel {
+  0%, 100% { background-position: 50% 0%; }
+  50%      { background-position: 50% 100%; }
 }
 
-/* Gitter af spil-knapper — tilpasser sig automatisk skærmstørrelsen */
+/* Svævende pynt i baggrunden (skyer, sol, stjerner) */
+.pynt {
+  position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0;
+}
+.pynt span {
+  position: absolute;
+  font-size: 54px;
+  opacity: 0.9;
+  animation: svæv linear infinite;
+}
+@keyframes svæv {
+  from { transform: translateX(-15vw); }
+  to   { transform: translateX(115vw); }
+}
+
+header { position: relative; z-index: 1; text-align: center; padding: 30px 16px 6px; }
+
+h1 {
+  font-size: clamp(32px, 7vw, 64px);
+  margin: 0;
+  /* Regnbue-tekst der glider */
+  background: linear-gradient(90deg, #ff595e, #ffca3a, #8ac926, #1982c4, #6a4c93, #ff595e);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: regnbuetekst 6s linear infinite, hop 2.5s ease-in-out infinite;
+  filter: drop-shadow(2px 3px 0 rgba(0,0,0,0.15));
+}
+@keyframes regnbuetekst { to { background-position: 200% center; } }
+@keyframes hop { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+
+.undertekst { text-align: center; color: #03045e; font-size: clamp(16px,3vw,22px); margin: 4px 0 8px; position: relative; z-index: 1; }
+
+/* Gitter af spil-knapper */
 .spil-gitter {
+  position: relative; z-index: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 24px;
   padding: 24px;
-  max-width: 900px;
+  max-width: 920px;
   margin: 0 auto;
 }
 
 /* Et spil-kort (en knap) */
 .spil-kort {
   --farve: #ffd166;
+  position: relative;
   background: var(--farve);
-  border-radius: 28px;
+  border-radius: 32px;
   aspect-ratio: 1 / 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
   text-decoration: none;
   color: #03045e;
-  box-shadow: 0 8px 0 rgba(0,0,0,0.15);
-  transition: transform 0.1s ease;
+  border: 5px solid rgba(255,255,255,0.7);
+  box-shadow: 0 10px 0 rgba(0,0,0,0.15), 0 14px 24px rgba(0,0,0,0.18);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  animation: vrik 6s ease-in-out infinite;
+}
+/* Hvert kort vrikker lidt forskudt, så de ikke er ens */
+.spil-kort:nth-child(2) { animation-delay: .8s; }
+.spil-kort:nth-child(3) { animation-delay: 1.6s; }
+.spil-kort:nth-child(4) { animation-delay: 2.4s; }
+@keyframes vrik {
+  0%, 100% { transform: rotate(0deg); }
+  25%      { transform: rotate(-1.5deg); }
+  75%      { transform: rotate(1.5deg); }
 }
 
-/* Lille "tryk-følelse" når man rører kortet */
-.spil-kort:active { transform: translateY(4px); box-shadow: 0 4px 0 rgba(0,0,0,0.15); }
+.spil-kort:hover { transform: translateY(-4px) scale(1.03); }
+.spil-kort:active {
+  transform: translateY(6px) scale(0.98);
+  box-shadow: 0 4px 0 rgba(0,0,0,0.15), 0 6px 12px rgba(0,0,0,0.18);
+}
 
-.spil-kort .ikon { font-size: clamp(60px, 14vw, 110px); }
-.spil-kort .navn { font-size: clamp(20px, 4vw, 28px); font-weight: bold; }
-
-/* Kort til spil der endnu ikke er lavet */
-.spil-kort.kommer { opacity: 0.5; box-shadow: none; }
+.spil-kort .ikon {
+  font-size: clamp(64px, 15vw, 120px);
+  line-height: 1;
+  filter: drop-shadow(0 4px 3px rgba(0,0,0,0.2));
+}
+.spil-kort .navn { font-size: clamp(20px, 4vw, 30px); font-weight: bold; }
