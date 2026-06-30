@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Husk farverne 🎵</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      font-family: "Comic Sans MS", "Chalkboard", system-ui, sans-serif;
+      background: linear-gradient(160deg, #cdb4db, #bde0fe);
+      -webkit-user-select: none; user-select: none;
+      -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+      display: flex; flex-direction: column; min-height: 100vh;
+    }
+    .top { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; }
+    .tilbage {
+      font-size: 26px; text-decoration: none; background: #fff; border-radius: 50%;
+      width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.15);
+    }
+    .point { font-size: 28px; font-weight: bold; color: #5a189a; }
+    h2 { text-align: center; color: #5a189a; font-size: clamp(20px,4.5vw,28px); margin: 6px; min-height: 34px; }
+
+    .plade {
+      flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+      padding: 18px; max-width: 460px; width: 100%; margin: 0 auto; align-content: center;
+    }
+    .pad {
+      aspect-ratio: 1 / 1; border-radius: 24px; opacity: 0.55;
+      transition: opacity 0.1s, transform 0.1s; box-shadow: 0 6px 0 rgba(0,0,0,0.18);
+    }
+    .pad.lys { opacity: 1; transform: scale(1.05); }
+    #groen { background: #06d6a0; }
+    #roed  { background: #ef476f; }
+    #gul   { background: #ffd166; }
+    #blaa  { background: #118ab2; }
+
+    .start {
+      display: block; margin: 0 auto 18px; font-size: 26px; font-family: inherit;
+      padding: 14px 30px; border: none; border-radius: 20px;
+      background: #5a189a; color: #fff; box-shadow: 0 6px 0 rgba(0,0,0,0.25);
+    }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <a class="tilbage" href="../../">🏠</a>
+    <div class="point">Runde: <span id="pointtal">0</span></div>
+    <div style="width:50px"></div>
+  </div>
+
+  <h2 id="besked">Tryk på Start</h2>
+  <div class="plade">
+    <div class="pad" id="groen" data-i="0"></div>
+    <div class="pad" id="roed"  data-i="1"></div>
+    <div class="pad" id="gul"   data-i="2"></div>
+    <div class="pad" id="blaa"  data-i="3"></div>
+  </div>
+  <button class="start" id="startKnap">▶️ Start</button>
+
+  <script src="../../effekter.js"></script>
+  <script>
+    // ===== Husk farverne (Simon) =====
+    const pads = [...document.querySelectorAll(".pad")];
+    const toner = [330, 392, 494, 587];   // en tone pr. farve
+    const beskedEl = document.getElementById("besked");
+    const pointEl = document.getElementById("pointtal");
+    let sekvens = [], spillerTrin = 0, kanTrykke = false;
+
+    function tone(i) {
+      const a = Effekter.audio(), o = a.createOscillator(), g = a.createGain();
+      o.connect(g); g.connect(a.destination);
+      o.type = "sine"; o.frequency.value = toner[i];
+      g.gain.setValueAtTime(0.3, a.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.4);
+      o.start(); o.stop(a.currentTime + 0.4);
+    }
+    function blink(i) {
+      pads[i].classList.add("lys");
+      tone(i);
+      setTimeout(() => pads[i].classList.remove("lys"), 350);
+    }
+
+    function visSekvens() {
+      kanTrykke = false;
+      beskedEl.textContent = "Se godt efter... 👀";
+      let n = 0;
+      const t = setInterval(() => {
+        blink(sekvens[n]);
+        n++;
+        if (n >= sekvens.length) {
+          clearInterval(t);
+          setTimeout(() => { kanTrykke = true; spillerTrin = 0; beskedEl.textContent = "Din tur! 👆"; }, 600);
+        }
+      }, 700);
+    }
+
+    function nyRunde() {
+      sekvens.push(Math.floor(Math.random() * 4));
+      pointEl.textContent = sekvens.length;
+      setTimeout(visSekvens, 700);
+    }
+
+    function start() {
+      sekvens = []; spillerTrin = 0;
+      pointEl.textContent = 0;
+      nyRunde();
+    }
+
+    pads.forEach(p => p.addEventListener("pointerdown", e => {
+      e.preventDefault();
+      if (!kanTrykke) return;
+      const i = +p.dataset.i;
+      blink(i);
+      if (i === sekvens[spillerTrin]) {
+        spillerTrin++;
+        if (spillerTrin === sekvens.length) {
+          // Runden klaret!
+          kanTrykke = false;
+          Effekter.konfetti(window.innerWidth/2, window.innerHeight/2, { antal: 30 });
+          Effekter.ding();
+          if (sekvens.length % 3 === 0) { Effekter.fanfare(); Effekter.stjerner(window.innerWidth/2, window.innerHeight*0.5, {antal:16}); }
+          beskedEl.textContent = "Flot! 🎉";
+          nyRunde();
+        }
+      } else {
+        // Forkert — start forfra
+        kanTrykke = false;
+        Effekter.fejl();
+        beskedEl.textContent = "Ups! Prøv igen 🔁";
+        setTimeout(start, 1200);
+      }
+    }));
+
+    document.getElementById("startKnap").addEventListener("pointerdown", e => { e.preventDefault(); Effekter.audio(); start(); });
+  </script>
+</body>
+</html>

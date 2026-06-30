@@ -85,11 +85,8 @@ h1 {
   animation: vrik 6s ease-in-out infinite;
 }
 /* Hvert kort vrikker lidt forskudt, så de ikke er ens */
-.spil-kort:nth-child(2) { animation-delay: .8s; }
-.spil-kort:nth-child(3) { animation-delay: 1.6s; }
-.spil-kort:nth-child(4) { animation-delay: 2.4s; }
-.spil-kort:nth-child(5) { animation-delay: 3.2s; }
-.spil-kort:nth-child(6) { animation-delay: 4.0s; }
+.spil-kort:nth-child(3n+2) { animation-delay: .8s; }
+.spil-kort:nth-child(3n+3) { animation-delay: 1.6s; }
 @keyframes vrik {
   0%, 100% { transform: rotate(0deg); }
   25%      { transform: rotate(-1.5deg); }

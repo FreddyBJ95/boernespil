@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Spil for ungerne 🎈</title>
   <link rel="stylesheet" href="style.css">
+
+  <!-- PWA: gør siden installerbar som app -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#a0e9ff">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Børnespil">
 </head>
 <body>
   <!-- Svævende pynt i baggrunden -->
@@ -56,6 +64,43 @@
       <span class="navn">Fang frugten</span>
     </a>
 
+    <a class="spil-kort" href="spil/muldvarp/" style="--farve:#b7e4c7">
+      <span class="ikon">🔨</span>
+      <span class="navn">Slå muldvarpen</span>
+    </a>
+
+    <a class="spil-kort" href="spil/tael/" style="--farve:#ffd6a5">
+      <span class="ikon">🔢</span>
+      <span class="navn">Tæl dyrene</span>
+    </a>
+
+    <a class="spil-kort" href="spil/simon/" style="--farve:#cdb4db">
+      <span class="ikon">🎵</span>
+      <span class="navn">Husk farverne</span>
+    </a>
+
+    <a class="spil-kort" href="spil/piano/" style="--farve:#ffafcc">
+      <span class="ikon">🎹</span>
+      <span class="navn">Dyre-piano</span>
+    </a>
+
+    <a class="spil-kort" href="spil/undvig/" style="--farve:#a2d2ff">
+      <span class="ikon">🚀</span>
+      <span class="navn">Undvig stenene</span>
+    </a>
+
+    <a class="spil-kort" href="spil/puslespil/" style="--farve:#caffbf">
+      <span class="ikon">🧩</span>
+      <span class="navn">Skydepuslespil</span>
+    </a>
+
   </main>
+
+  <!-- Registrér service worker (offline + installerbar) -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+    }
+  </script>
 </body>
 </html>

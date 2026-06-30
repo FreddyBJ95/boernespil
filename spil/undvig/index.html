@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Undvig stenene 🚀</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; }
+    body {
+      font-family: "Comic Sans MS", "Chalkboard", system-ui, sans-serif;
+      background: linear-gradient(180deg, #03045e, #0077b6, #00b4d8);
+      -webkit-user-select: none; user-select: none;
+      -webkit-tap-highlight-color: transparent; touch-action: none;
+    }
+    .top {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+      display: flex; align-items: center; justify-content: space-between; padding: 12px 16px;
+    }
+    .tilbage {
+      font-size: 26px; text-decoration: none; background: #fff; border-radius: 50%;
+      width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.15);
+    }
+    .point { font-size: 30px; font-weight: bold; color: #fff; }
+
+    #bane { position: fixed; inset: 0; overflow: hidden; }
+    .sten { position: absolute; font-size: 48px; will-change: transform; }
+    #raket { position: absolute; font-size: 60px; bottom: 24px; will-change: left; }
+
+    #slut {
+      position: fixed; inset: 0; display: none;
+      flex-direction: column; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.6); color: #fff; z-index: 20; text-align: center;
+    }
+    #slut h2 { font-size: 44px; margin: 0 0 10px; }
+    #slut p { font-size: 26px; margin: 0 0 20px; }
+    #slut button {
+      font-size: 28px; padding: 16px 30px; border: none; border-radius: 20px;
+      background: #ffd166; color: #03045e; box-shadow: 0 6px 0 rgba(0,0,0,0.3);
+    }
+    #hint { position: fixed; bottom: 100px; left:0; right:0; text-align:center; color:#fff; font-size:20px; z-index:10; transition:opacity .5s; }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <a class="tilbage" href="../../">🏠</a>
+    <div class="point">⭐ <span id="pointtal">0</span></div>
+    <div style="width:50px"></div>
+  </div>
+
+  <div id="bane"><div id="raket">🚀</div></div>
+  <div id="hint">👆 Træk raketten til siden</div>
+
+  <div id="slut">
+    <h2>Av, en sten! 💥</h2>
+    <p>Du klarede <span id="slutpoint">0</span> point</p>
+    <button onclick="start()">Spil igen 🔄</button>
+  </div>
+
+  <script src="../../effekter.js"></script>
+  <script>
+    // ===== Undvig stenene =====
+    const stenTyper = ["☄️","🪨","👾","🛸","⚡"];
+    const bane = document.getElementById("bane");
+    const raket = document.getElementById("raket");
+    const pointEl = document.getElementById("pointtal");
+    const slutEl = document.getElementById("slut");
+    const hintEl = document.getElementById("hint");
+
+    let point, sten, spawnTimer, spawnInterval, fald, raketX, sidste, kører, naesteFest;
+
+    function start() {
+      document.querySelectorAll(".sten").forEach(s => s.remove());
+      point = 0; sten = []; spawnTimer = 0; spawnInterval = 0.9; fald = 220;
+      pointEl.textContent = 0;
+      raketX = window.innerWidth / 2;
+      naesteFest = 10;
+      slutEl.style.display = "none";
+      hintEl.style.opacity = "1";
+      kører = true; sidste = performance.now();
+      requestAnimationFrame(loop);
+    }
+
+    function flytRaket(x) {
+      const halv = raket.offsetWidth / 2;
+      raketX = Math.max(halv, Math.min(window.innerWidth - halv, x));
+      raket.style.left = (raketX - halv) + "px";
+    }
+    bane.addEventListener("pointerdown", e => { Effekter.audio(); hintEl.style.opacity="0"; flytRaket(e.clientX); });
+    bane.addEventListener("pointermove", e => flytRaket(e.clientX));
+
+    function spawn() {
+      const el = document.createElement("div");
+      el.className = "sten";
+      el.textContent = stenTyper[Math.floor(Math.random() * stenTyper.length)];
+      const x = 20 + Math.random() * (window.innerWidth - 80);
+      const s = { el, x, y: -60 };
+      el.style.left = x + "px"; el.style.top = "-60px";
+      bane.appendChild(el); sten.push(s);
+    }
+
+    function slutSpil() {
+      kører = false;
+      Effekter.fejl();
+      Effekter.konfetti(raketX, window.innerHeight - 60, { antal: 30, farver: ["#ff595e","#ffca3a","#ff7b00"] });
+      document.getElementById("slutpoint").textContent = point;
+      slutEl.style.display = "flex";
+    }
+
+    function loop(nu) {
+      if (!kører) return;
+      const dt = Math.min((nu - sidste) / 1000, 0.05); sidste = nu;
+
+      spawnTimer += dt;
+      if (spawnTimer >= spawnInterval) {
+        spawnTimer = 0; spawn();
+        spawnInterval = Math.max(0.4, spawnInterval * 0.985);
+        fald = Math.min(520, fald + 6);
+      }
+
+      const raketTop = window.innerHeight - raket.offsetHeight - 24;
+      const halv = raket.offsetWidth / 2;
+
+      for (const s of sten) {
+        if (s.væk) continue;
+        s.y += fald * dt;
+        s.el.style.top = s.y + "px";
+        // Ramt raketten?
+        if (s.y + 40 >= raketTop && s.y <= raketTop + 50 && Math.abs((s.x + 24) - raketX) < halv + 6) {
+          slutSpil(); return;
+        }
+        // Forbi bunden = point
+        if (s.y > window.innerHeight + 20) {
+          s.væk = true; s.el.remove();
+          point++; pointEl.textContent = point;
+          if (point >= naesteFest) {
+            naesteFest += 10;
+            Effekter.fanfare();
+            Effekter.stjerner(window.innerWidth/2, window.innerHeight/2, { antal: 16 });
+            Effekter.flash("#ffffff");
+          }
+        }
+      }
+      sten = sten.filter(s => !s.væk);
+      requestAnimationFrame(loop);
+    }
+
+    window.addEventListener("resize", () => flytRaket(raketX));
+    start();
+  </script>
+</body>
+</html>

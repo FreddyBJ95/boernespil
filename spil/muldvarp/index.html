@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Slå muldvarpen 🔨</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      font-family: "Comic Sans MS", "Chalkboard", system-ui, sans-serif;
+      background: linear-gradient(160deg, #d8f3dc, #b7e4c7);
+      -webkit-user-select: none; user-select: none;
+      -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+      display: flex; flex-direction: column; min-height: 100vh;
+    }
+    .top { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; }
+    .tilbage {
+      font-size: 26px; text-decoration: none; background: #fff; border-radius: 50%;
+      width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.15);
+    }
+    .point { font-size: 30px; font-weight: bold; color: #1b4332; }
+
+    .marker {
+      flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px;
+      padding: 18px; max-width: 560px; width: 100%; margin: 0 auto; align-content: center;
+    }
+    .hul {
+      aspect-ratio: 1 / 1; background: #74563f;
+      border-radius: 50%; position: relative; overflow: hidden;
+      box-shadow: inset 0 12px 18px rgba(0,0,0,0.4);
+    }
+    .dyr {
+      position: absolute; left: 0; right: 0; bottom: -100%;
+      font-size: clamp(44px, 11vw, 80px); text-align: center;
+      transition: bottom 0.15s ease;
+    }
+    .hul.oppe .dyr { bottom: 6%; }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <a class="tilbage" href="../../">🏠</a>
+    <div class="point">🔨 <span id="pointtal">0</span></div>
+    <div style="width:50px"></div>
+  </div>
+
+  <div class="marker" id="marker"></div>
+
+  <script src="../../effekter.js"></script>
+  <script>
+    // ===== Slå muldvarpen =====
+    const marker = document.getElementById("marker");
+    const pointEl = document.getElementById("pointtal");
+    let point = 0, ventetid = 1100;
+    const huller = [];
+
+    for (let i = 0; i < 9; i++) {
+      const h = document.createElement("div");
+      h.className = "hul";
+      h.innerHTML = `<div class="dyr">🐹</div>`;
+      h.addEventListener("pointerdown", e => { e.preventDefault(); slå(h); });
+      marker.appendChild(h);
+      huller.push(h);
+    }
+
+    function slå(h) {
+      if (!h.classList.contains("oppe")) return;
+      h.classList.remove("oppe");
+      point++; pointEl.textContent = point;
+      const r = h.getBoundingClientRect();
+      Effekter.konfetti(r.left + r.width/2, r.top + r.height/2, { antal: 22 });
+      Effekter.ding();
+      Effekter.tekstPop(r.left + r.width/2, r.top + r.height/2, "💥");
+      if (point % 10 === 0) {
+        Effekter.fanfare();
+        Effekter.stjerner(window.innerWidth/2, window.innerHeight/2, { antal: 18 });
+        Effekter.flash("#ffffff");
+      }
+    }
+
+    function dukOp() {
+      const ledige = huller.filter(h => !h.classList.contains("oppe"));
+      if (ledige.length) {
+        const h = ledige[Math.floor(Math.random() * ledige.length)];
+        // skift mellem muldvarp og pindsvin for sjov
+        h.querySelector(".dyr").textContent = Math.random() < 0.5 ? "🐹" : "🦔";
+        h.classList.add("oppe");
+        setTimeout(() => h.classList.remove("oppe"), ventetid * 0.8);
+      }
+      ventetid = Math.max(550, ventetid * 0.99);   // bliver lidt hurtigere
+      setTimeout(dukOp, ventetid);
+    }
+    dukOp();
+  </script>
+</body>
+</html>

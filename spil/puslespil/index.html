@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Skydepuslespil 🧩</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      font-family: "Comic Sans MS", "Chalkboard", system-ui, sans-serif;
+      background: linear-gradient(160deg, #a2d2ff, #cdb4db);
+      -webkit-user-select: none; user-select: none;
+      -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+      display: flex; flex-direction: column; min-height: 100vh;
+    }
+    .top { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; }
+    .tilbage {
+      font-size: 26px; text-decoration: none; background: #fff; border-radius: 50%;
+      width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.15);
+    }
+    .point { font-size: 26px; font-weight: bold; color: #3a0ca3; }
+    h2 { text-align: center; color: #3a0ca3; margin: 6px; font-size: clamp(18px,4vw,24px); }
+
+    .braet {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+      width: min(90vw, 420px); aspect-ratio: 1/1; margin: 10px auto; padding: 10px;
+      background: rgba(255,255,255,0.4); border-radius: 20px;
+    }
+    .brik {
+      border-radius: 16px; display: flex; align-items: center; justify-content: center;
+      font-size: clamp(40px, 12vw, 70px); font-weight: bold; color: #fff;
+      box-shadow: 0 5px 0 rgba(0,0,0,0.18); transition: transform 0.08s;
+    }
+    .brik.tom { background: transparent !important; box-shadow: none; }
+    .brik:not(.tom):active { transform: scale(0.95); }
+
+    .knap {
+      display: block; margin: 4px auto 18px; font-size: 22px; font-family: inherit;
+      padding: 12px 26px; border: none; border-radius: 18px;
+      background: #3a0ca3; color: #fff; box-shadow: 0 5px 0 rgba(0,0,0,0.25);
+    }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <a class="tilbage" href="../../">🏠</a>
+    <div class="point">Træk: <span id="pointtal">0</span></div>
+    <div style="width:50px"></div>
+  </div>
+
+  <h2 id="besked">Skub tallene i rækkefølge 1-8</h2>
+  <div class="braet" id="braet"></div>
+  <button class="knap" id="bland">🔀 Bland igen</button>
+
+  <script src="../../effekter.js"></script>
+  <script>
+    // ===== Skydepuslespil (8-puzzle) =====
+    const braet = document.getElementById("braet");
+    const pointEl = document.getElementById("pointtal");
+    const beskedEl = document.getElementById("besked");
+    const FARVER = ["#ef476f","#f7b801","#06d6a0","#118ab2","#8338ec","#fb8500","#3a86ff","#ff70a6"];
+    let felter, traek, vundet;
+
+    function tegn() {
+      braet.innerHTML = "";
+      felter.forEach((v, idx) => {
+        const b = document.createElement("div");
+        b.className = "brik" + (v === 0 ? " tom" : "");
+        if (v !== 0) { b.textContent = v; b.style.background = FARVER[v - 1]; }
+        b.addEventListener("pointerdown", e => { e.preventDefault(); flyt(idx); });
+        braet.appendChild(b);
+      });
+    }
+
+    function nabofelter(i) {
+      const r = Math.floor(i / 3), c = i % 3, n = [];
+      if (r > 0) n.push(i - 3);
+      if (r < 2) n.push(i + 3);
+      if (c > 0) n.push(i - 1);
+      if (c < 2) n.push(i + 1);
+      return n;
+    }
+
+    function flyt(i) {
+      if (vundet || felter[i] === 0) return;
+      const tom = felter.indexOf(0);
+      if (!nabofelter(i).includes(tom)) return;
+      [felter[i], felter[tom]] = [felter[tom], felter[i]];
+      traek++; pointEl.textContent = traek;
+      tegn();
+      tjekVundet();
+    }
+
+    function tjekVundet() {
+      const ok = felter.slice(0, 8).every((v, i) => v === i + 1) && felter[8] === 0;
+      if (ok) {
+        vundet = true;
+        beskedEl.textContent = "Du klarede det! 🎉";
+        Effekter.fanfare();
+        let n = 0;
+        const fest = setInterval(() => {
+          Effekter.konfetti(Math.random() * window.innerWidth, -10, { antal: 16 });
+          if (++n >= 8) clearInterval(fest);
+        }, 220);
+      }
+    }
+
+    function bland() {
+      // Start fra løst og lav mange tilfældige lovlige træk → altid løsbart
+      felter = [1,2,3,4,5,6,7,8,0];
+      for (let k = 0; k < 200; k++) {
+        const tom = felter.indexOf(0);
+        const n = nabofelter(tom);
+        const v = n[Math.floor(Math.random() * n.length)];
+        [felter[tom], felter[v]] = [felter[v], felter[tom]];
+      }
+      traek = 0; vundet = false;
+      pointEl.textContent = 0;
+      beskedEl.textContent = "Skub tallene i rækkefølge 1-8";
+      tegn();
+    }
+
+    document.getElementById("bland").addEventListener("pointerdown", e => { e.preventDefault(); Effekter.audio(); bland(); });
+    bland();
+  </script>
+</body>
+</html>

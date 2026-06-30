@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Tæl dyrene 🔢</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      font-family: "Comic Sans MS", "Chalkboard", system-ui, sans-serif;
+      background: linear-gradient(160deg, #fff1e6, #ffd6a5);
+      -webkit-user-select: none; user-select: none;
+      -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+      display: flex; flex-direction: column; min-height: 100vh;
+    }
+    .top { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; }
+    .tilbage {
+      font-size: 26px; text-decoration: none; background: #fff; border-radius: 50%;
+      width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.15);
+    }
+    .point { font-size: 28px; font-weight: bold; color: #9a5b00; }
+
+    h2 { text-align: center; color: #9a5b00; font-size: clamp(22px,5vw,32px); margin: 4px; }
+    .dyr-felt {
+      flex: 1; display: flex; flex-wrap: wrap; align-content: center; justify-content: center;
+      gap: 10px; padding: 12px; max-width: 600px; margin: 0 auto;
+    }
+    .dyr-felt span { font-size: clamp(46px, 12vw, 84px); animation: hop 1.4s ease-in-out infinite; }
+    @keyframes hop { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+
+    .knapper { display: flex; justify-content: center; gap: 16px; padding: 18px; flex-wrap: wrap; }
+    .tal {
+      width: 84px; height: 84px; border: none; border-radius: 22px;
+      font-size: 44px; font-weight: bold; font-family: inherit;
+      background: #ff9e6d; color: #fff; box-shadow: 0 6px 0 rgba(0,0,0,0.18);
+    }
+    .tal:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,0.18); }
+    .tal.forkert { animation: ryst 0.4s; }
+    @keyframes ryst { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <a class="tilbage" href="../../">🏠</a>
+    <div class="point">⭐ <span id="pointtal">0</span></div>
+    <div style="width:50px"></div>
+  </div>
+
+  <h2>Hvor mange dyr er der?</h2>
+  <div class="dyr-felt" id="felt"></div>
+  <div class="knapper" id="knapper"></div>
+
+  <script src="../../effekter.js"></script>
+  <script>
+    // ===== Tæl dyrene =====
+    const dyr = ["🐶","🐱","🐰","🐸","🐥","🐭","🦊","🐢","🐝","🐠"];
+    const feltEl = document.getElementById("felt");
+    const knapperEl = document.getElementById("knapper");
+    const pointEl = document.getElementById("pointtal");
+    let point = 0, rigtigt = 0;
+
+    function nyOpgave() {
+      feltEl.innerHTML = "";
+      knapperEl.innerHTML = "";
+      rigtigt = 1 + Math.floor(Math.random() * 5);          // 1-5 dyr
+      const valgtDyr = dyr[Math.floor(Math.random() * dyr.length)];
+      for (let i = 0; i < rigtigt; i++) {
+        const s = document.createElement("span");
+        s.textContent = valgtDyr;
+        s.style.animationDelay = (i * 0.15) + "s";
+        feltEl.appendChild(s);
+      }
+      // Lav 3 svarmuligheder inkl. det rigtige
+      const svar = new Set([rigtigt]);
+      while (svar.size < 3) svar.add(1 + Math.floor(Math.random() * 5));
+      [...svar].sort(() => Math.random() - 0.5).forEach(n => {
+        const b = document.createElement("button");
+        b.className = "tal"; b.textContent = n;
+        b.addEventListener("pointerdown", e => { e.preventDefault(); svarKlik(n, b); });
+        knapperEl.appendChild(b);
+      });
+    }
+
+    function svarKlik(n, b) {
+      if (n === rigtigt) {
+        point++; pointEl.textContent = point;
+        const r = b.getBoundingClientRect();
+        Effekter.konfetti(r.left + r.width/2, r.top, { antal: 26 });
+        Effekter.ding();
+        Effekter.tekstPop(window.innerWidth/2, window.innerHeight/2, "🎉");
+        if (point % 5 === 0) { Effekter.fanfare(); Effekter.stjerner(window.innerWidth/2, window.innerHeight/2, {antal:16}); }
+        setTimeout(nyOpgave, 700);
+      } else {
+        Effekter.fejl();
+        b.classList.add("forkert");
+        setTimeout(() => b.classList.remove("forkert"), 400);
+      }
+    }
+
+    nyOpgave();
+  </script>
+</body>
+</html>
