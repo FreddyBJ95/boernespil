@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Find par 🧠</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      font-family: "Comic Sans MS", "Chalkboard", system-ui, sans-serif;
+      background: linear-gradient(160deg, #ffd6a5, #fdffb6);
+      -webkit-user-select: none; user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      display: flex; flex-direction: column; min-height: 100vh;
+    }
+    .top {
+      display: flex; align-items: center; justify-content: space-between; padding: 12px 16px;
+    }
+    .tilbage {
+      font-size: 26px; text-decoration: none; background: #fff; border-radius: 50%;
+      width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.15);
+    }
+    .point { font-size: 26px; font-weight: bold; color: #6a3500; }
+
+    /* Spillebræt: 4 kolonner */
+    .braet {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      padding: 12px;
+      max-width: 560px; width: 100%;
+      margin: 0 auto;
+      align-content: center;
+    }
+
+    .kort { aspect-ratio: 1 / 1; perspective: 600px; }
+    .indre {
+      position: relative; width: 100%; height: 100%;
+      transition: transform 0.4s;
+      transform-style: preserve-3d;
+    }
+    .kort.vendt .indre, .kort.fundet .indre { transform: rotateY(180deg); }
+    .forside, .bagside {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 18px;
+      -webkit-backface-visibility: hidden; backface-visibility: hidden;
+      box-shadow: 0 5px 0 rgba(0,0,0,0.15);
+    }
+    /* Bagside = det man ser først (spørgsmålstegn) */
+    .bagside { background: #ff7b00; color: #fff; font-size: 44px; }
+    /* Forside = dyret */
+    .forside {
+      background: #fff; transform: rotateY(180deg);
+      font-size: clamp(36px, 9vw, 64px);
+    }
+    .kort.fundet .forside { background: #caffbf; }
+
+    /* Vinder-besked */
+    #vundet {
+      position: fixed; inset: 0; display: none;
+      flex-direction: column; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.55); color: #fff; z-index: 20; text-align: center;
+    }
+    #vundet h2 { font-size: 46px; margin: 0 0 20px; }
+    #vundet button {
+      font-size: 28px; padding: 16px 30px; border: none; border-radius: 20px;
+      background: #ffd166; color: #6a3500; box-shadow: 0 6px 0 rgba(0,0,0,0.3);
+    }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <a class="tilbage" href="../../">🏠</a>
+    <div class="point">Par fundet: <span id="fundet">0</span>/6</div>
+    <div style="width:50px"></div>
+  </div>
+
+  <div class="braet" id="braet"></div>
+
+  <div id="vundet">
+    <h2>Du fandt dem alle! 🎉</h2>
+    <button onclick="nytSpil()">Spil igen 🔄</button>
+  </div>
+
+  <script>
+    // ===== Find par =====
+    const dyrPulje = ["🐶","🐱","🦊","🐰","🐻","🐼","🐸","🦁","🐵","🐷","🐮","🐔"];
+    const braet = document.getElementById("braet");
+    const fundetEl = document.getElementById("fundet");
+    const vundetEl = document.getElementById("vundet");
+
+    let første = null, låst = false, antalFundet = 0;
+
+    let lyd;
+    function tone(frekvens, længde) {
+      if (!lyd) lyd = new (window.AudioContext || window.webkitAudioContext)();
+      const o = lyd.createOscillator(), g = lyd.createGain();
+      o.connect(g); g.connect(lyd.destination);
+      o.type = "sine"; o.frequency.value = frekvens;
+      g.gain.setValueAtTime(0.25, lyd.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, lyd.currentTime + længde);
+      o.start(); o.stop(lyd.currentTime + længde);
+    }
+
+    function bland(a) {
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function nytSpil() {
+      braet.innerHTML = "";
+      første = null; låst = false; antalFundet = 0;
+      fundetEl.textContent = 0;
+      vundetEl.style.display = "none";
+
+      // Vælg 6 dyr, lav par, og bland
+      const valgte = bland([...dyrPulje]).slice(0, 6);
+      const kortDyr = bland([...valgte, ...valgte]);
+
+      kortDyr.forEach(dyr => {
+        const kort = document.createElement("div");
+        kort.className = "kort";
+        kort.dataset.dyr = dyr;
+        kort.innerHTML = `
+          <div class="indre">
+            <div class="bagside">?</div>
+            <div class="forside">${dyr}</div>
+          </div>`;
+        kort.addEventListener("pointerdown", () => vend(kort));
+        braet.appendChild(kort);
+      });
+    }
+
+    function vend(kort) {
+      if (låst) return;
+      if (kort.classList.contains("vendt") || kort.classList.contains("fundet")) return;
+
+      kort.classList.add("vendt");
+      tone(600, 0.1);
+
+      if (!første) { første = kort; return; }
+
+      // Vi har nu to vendte kort
+      if (første.dataset.dyr === kort.dataset.dyr) {
+        // Par fundet!
+        første.classList.add("fundet");
+        kort.classList.add("fundet");
+        første = null;
+        antalFundet++;
+        fundetEl.textContent = antalFundet;
+        tone(900, 0.18);
+        if (antalFundet === 6) setTimeout(() => vundetEl.style.display = "flex", 500);
+      } else {
+        // Ikke par — vend tilbage efter et øjeblik
+        låst = true;
+        const a = første, b = kort; første = null;
+        setTimeout(() => {
+          a.classList.remove("vendt");
+          b.classList.remove("vendt");
+          låst = false;
+        }, 900);
+      }
+    }
+
+    nytSpil();
+  </script>
+</body>
+</html>
