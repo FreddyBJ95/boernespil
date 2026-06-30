@@ -55,6 +55,7 @@
 
   <div id="himmel"></div>
 
+  <script src="../../effekter.js"></script>
   <script>
     // ===== Pop ballonerne =====
     const himmel = document.getElementById("himmel");
@@ -84,7 +85,7 @@
       const hue = Math.floor(Math.random() * 360);
       el.style.setProperty("--h", hue);
       const b = {
-        el,
+        el, hue,
         x: 20 + Math.random() * (window.innerWidth - 120),
         y: window.innerHeight + 40,
         fart: 90 + Math.random() * 120,          // px pr. sekund opad
@@ -103,6 +104,16 @@
       b.død = true;
       point++; pointEl.textContent = point;
       popLyd();
+      // Konfetti-eksplosion i ballonens farve
+      Effekter.konfetti(b.x + 38, b.y + 46, {
+        antal: 24,
+        farver: [`hsl(${b.hue},85%,60%)`, `hsl(${b.hue},90%,75%)`, "#ffffff"]
+      });
+      if (point % 10 === 0) {                   // stor fest hvert 10. pop
+        Effekter.fanfare();
+        Effekter.stjerner(window.innerWidth / 2, window.innerHeight / 2, { antal: 18 });
+        Effekter.flash("#ffffff");
+      }
       b.el.classList.add("pop");
       setTimeout(() => b.el.remove(), 150);
     }

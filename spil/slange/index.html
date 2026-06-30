@@ -9,61 +9,27 @@
     html, body { margin: 0; height: 100%; overflow: hidden; }
     body {
       font-family: "Comic Sans MS", "Chalkboard", system-ui, sans-serif;
-      background: linear-gradient(160deg, #caffbf, #9bf6ff);
+      background: radial-gradient(circle at 50% 40%, #d8f3dc, #95d5b2);
       -webkit-user-select: none; user-select: none;
       -webkit-tap-highlight-color: transparent;
       touch-action: none;
-      display: flex; flex-direction: column; align-items: center;
     }
     .top {
-      width: 100%; display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 16px;
+      position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+      display: flex; align-items: center; justify-content: space-between; padding: 12px 16px;
     }
     .tilbage {
       font-size: 26px; text-decoration: none; background: #fff; border-radius: 50%;
       width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;
       box-shadow: 0 4px 0 rgba(0,0,0,0.15);
     }
-    .point { font-size: 30px; font-weight: bold; color: #03045e; }
-
-    canvas {
-      background: #fffef7;
-      border-radius: 20px;
-      box-shadow: 0 8px 0 rgba(0,0,0,0.12);
-      touch-action: none;
+    .point { font-size: 32px; font-weight: bold; color: #1b4332; }
+    #hint {
+      position: fixed; bottom: 24px; left: 0; right: 0; text-align: center;
+      font-size: 20px; color: #1b4332; z-index: 10; opacity: 0.85;
+      transition: opacity 0.5s;
     }
-
-    /* Styrepind med fire knapper */
-    .pad {
-      margin-top: 12px;
-      display: grid;
-      grid-template-columns: 70px 70px 70px;
-      grid-template-rows: 70px 70px 70px;
-      gap: 8px;
-      justify-content: center;
-    }
-    .pad button {
-      font-size: 32px; border: none; border-radius: 18px;
-      background: #ffd166; color: #03045e;
-      box-shadow: 0 4px 0 rgba(0,0,0,0.18);
-    }
-    .pad button:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.18); }
-    .op    { grid-column: 2; grid-row: 1; }
-    .ven   { grid-column: 1; grid-row: 2; }
-    .hoj   { grid-column: 3; grid-row: 2; }
-    .ned   { grid-column: 2; grid-row: 3; }
-
-    /* "Spil igen"-besked */
-    #igen {
-      position: fixed; inset: 0; display: none;
-      flex-direction: column; align-items: center; justify-content: center;
-      background: rgba(0,0,0,0.55); color: #fff; z-index: 20;
-    }
-    #igen h2 { font-size: 44px; margin: 0 0 20px; }
-    #igen button {
-      font-size: 30px; padding: 16px 32px; border: none; border-radius: 20px;
-      background: #ffd166; color: #03045e; box-shadow: 0 6px 0 rgba(0,0,0,0.3);
-    }
+    canvas { position: fixed; inset: 0; display: block; }
   </style>
 </head>
 <body>
@@ -74,147 +40,151 @@
   </div>
 
   <canvas id="board"></canvas>
+  <div id="hint">👆 Hold fingeren på skærmen og før slangen rundt</div>
 
-  <div class="pad">
-    <button class="op"  data-dir="op">⬆️</button>
-    <button class="ven" data-dir="ven">⬅️</button>
-    <button class="hoj" data-dir="hoj">➡️</button>
-    <button class="ned" data-dir="ned">⬇️</button>
-  </div>
-
-  <div id="igen">
-    <h2>Ups! 🙈</h2>
-    <button onclick="start()">Spil igen 🔄</button>
-  </div>
-
+  <script src="../../effekter.js"></script>
   <script>
-    // ===== Fjollet Slange =====
-    const COLS = 16, ROWS = 16;
+    // ===== Fjollet Slange — følger fingeren =====
     const canvas = document.getElementById("board");
     const ctx = canvas.getContext("2d");
     const pointEl = document.getElementById("pointtal");
-    const igenEl = document.getElementById("igen");
-    const madEmojis = ["🍎","🍌","🍓","🍕","🍦","🍩","🧀","🍪","🍇","🌭"];
+    const hintEl = document.getElementById("hint");
+    const madEmojis = ["🍎","🍌","🍓","🍕","🍦","🍩","🧀","🍪","🍇","🌭","🍉","🍔"];
 
-    let cell, snake, dir, nextDir, mad, point, kører, tickTid;
-
-    // Tilpas brættet til skærmen (kvadratisk)
-    function tilpasStørrelse() {
-      const maks = Math.min(window.innerWidth - 24, window.innerHeight - 280);
-      cell = Math.floor(Math.max(maks, 200) / COLS);
-      canvas.width = cell * COLS;
-      canvas.height = cell * ROWS;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let W, H;
+    function tilpas() {
+      W = window.innerWidth; H = window.innerHeight;
+      canvas.width = W * dpr; canvas.height = H * dpr;
+      canvas.style.width = W + "px"; canvas.style.height = H + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
+    tilpas();
+    window.addEventListener("resize", tilpas);
+
+    // Slangens tilstand
+    const FART = 220, DREJ = 5.5, AFSTAND = 20, R = 16, SPIS = 46;
+    let hoved, vinkel, maal, sti, maalSeg, point, følger, mad;
 
     function nyMad() {
-      while (true) {
-        const x = Math.floor(Math.random() * COLS);
-        const y = Math.floor(Math.random() * ROWS);
-        if (!snake.some(s => s.x === x && s.y === y)) {
-          mad = { x, y, emoji: madEmojis[Math.floor(Math.random() * madEmojis.length)] };
-          return;
+      mad = {
+        x: 60 + Math.random() * (W - 120),
+        y: 110 + Math.random() * (H - 200),
+        emoji: madEmojis[Math.floor(Math.random() * madEmojis.length)]
+      };
+    }
+
+    function nulstil() {
+      hoved = { x: W / 2, y: H / 2 };
+      vinkel = -Math.PI / 2;
+      maal = { x: W / 2, y: H / 2 - 100 };
+      sti = [];
+      for (let i = 0; i < 400; i++) sti.push({ x: hoved.x, y: hoved.y });
+      maalSeg = 7; point = 0; følger = false;
+      pointEl.textContent = 0;
+      nyMad();
+    }
+    nulstil();
+
+    // Fingeren styrer
+    function sætMaal(e) { maal = { x: e.clientX, y: e.clientY }; følger = true; hintEl.style.opacity = "0"; }
+    canvas.addEventListener("pointerdown", e => { Effekter.audio(); sætMaal(e); });
+    canvas.addEventListener("pointermove", sætMaal);
+    canvas.addEventListener("pointerup", () => { følger = false; });
+    canvas.addEventListener("pointerleave", () => { følger = false; });
+
+    // Find segment-punkter ved at gå baglæns langs stien i faste afstande
+    function segmenter(antal, afstand) {
+      const segs = [{ x: hoved.x, y: hoved.y }];
+      let brug = afstand, akk = 0;
+      for (let i = 1; i < sti.length && segs.length < antal; i++) {
+        const dx = sti[i].x - sti[i-1].x, dy = sti[i].y - sti[i-1].y;
+        const d = Math.hypot(dx, dy);
+        akk += d;
+        while (akk >= brug && segs.length < antal) {
+          const over = akk - brug;
+          const t = d > 0 ? (d - over) / d : 0;
+          segs.push({ x: sti[i-1].x + dx * t, y: sti[i-1].y + dy * t });
+          brug += afstand;
         }
       }
+      while (segs.length < antal) segs.push(segs[segs.length - 1]);
+      return segs;
     }
 
-    // Lyde lavet med Web Audio (ingen filer)
-    let lyd;
-    function tone(frekvens, type, længde) {
-      if (!lyd) lyd = new (window.AudioContext || window.webkitAudioContext)();
-      const o = lyd.createOscillator(), g = lyd.createGain();
-      o.connect(g); g.connect(lyd.destination);
-      o.type = type; o.frequency.value = frekvens;
-      g.gain.setValueAtTime(0.25, lyd.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, lyd.currentTime + længde);
-      o.start(); o.stop(lyd.currentTime + længde);
-    }
-    function spisLyd() { tone(400 + Math.random() * 500, "square", 0.15); }
-    function dødLyd()  { tone(200, "sawtooth", 0.4); }
+    let sidste = performance.now();
+    function loop(nu) {
+      const dt = Math.min((nu - sidste) / 1000, 0.05);
+      sidste = nu;
 
-    function start() {
-      tilpasStørrelse();
-      snake = [{x:8,y:8},{x:7,y:8},{x:6,y:8}];
-      dir = {x:1,y:0}; nextDir = {x:1,y:0};
-      point = 0; pointEl.textContent = 0;
-      nyMad();
-      igenEl.style.display = "none";
-      kører = true;
-      clearInterval(tickTid);
-      tickTid = setInterval(tick, 180);
-      tegn();
-    }
+      // Hvis ingen finger: bliv ved at glide ligeud
+      if (!følger) maal = { x: hoved.x + Math.cos(vinkel) * 300, y: hoved.y + Math.sin(vinkel) * 300 };
 
-    function tick() {
-      if (!kører) return;
-      dir = nextDir;
-      // Hoved flytter — og går gennem væggene (fjollet!)
-      const hoved = {
-        x: (snake[0].x + dir.x + COLS) % COLS,
-        y: (snake[0].y + dir.y + ROWS) % ROWS
-      };
-      // Ramt sig selv?
-      if (snake.some(s => s.x === hoved.x && s.y === hoved.y)) {
-        kører = false; clearInterval(tickTid); dødLyd();
-        igenEl.style.display = "flex";
-        return;
+      // Drej blødt mod fingeren
+      const ønsket = Math.atan2(maal.y - hoved.y, maal.x - hoved.x);
+      let forskel = ((ønsket - vinkel + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+      const maksDrej = DREJ * dt;
+      vinkel += Math.max(-maksDrej, Math.min(maksDrej, forskel));
+
+      // Flyt fremad
+      hoved.x += Math.cos(vinkel) * FART * dt;
+      hoved.y += Math.sin(vinkel) * FART * dt;
+      hoved.x = Math.max(R, Math.min(W - R, hoved.x));
+      hoved.y = Math.max(R, Math.min(H - R, hoved.y));
+
+      sti.unshift({ x: hoved.x, y: hoved.y });
+      if (sti.length > 3000) sti.length = 3000;
+
+      // Spis mad?
+      if (Math.hypot(hoved.x - mad.x, hoved.y - mad.y) < SPIS) {
+        point++; pointEl.textContent = point;
+        maalSeg += 4;
+        Effekter.konfetti(mad.x, mad.y, { antal: 30 });
+        Effekter.ding();
+        Effekter.tekstPop(mad.x, mad.y, "😋");
+        if (point % 5 === 0) {                       // STOR fest hvert 5. point
+          Effekter.fanfare();
+          Effekter.stjerner(W / 2, H / 2, { antal: 18 });
+          Effekter.flash("#ffffff");
+        }
+        nyMad();
       }
-      snake.unshift(hoved);
-      if (hoved.x === mad.x && hoved.y === mad.y) {
-        point++; pointEl.textContent = point; spisLyd(); nyMad();
-      } else {
-        snake.pop();
-      }
+
       tegn();
+      requestAnimationFrame(loop);
     }
 
     function tegn() {
-      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.clearRect(0, 0, W, H);
+
       // Mad
-      ctx.font = cell + "px serif";
+      ctx.font = "40px serif";
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(mad.emoji, mad.x*cell + cell/2, mad.y*cell + cell/2);
-      // Slange (regnbue-farver)
-      snake.forEach((s, i) => {
-        ctx.fillStyle = `hsl(${(i*25) % 360}, 90%, 55%)`;
-        const r = cell * 0.42;
+      ctx.fillText(mad.emoji, mad.x, mad.y);
+
+      // Slange (tegn halen først, hovedet sidst)
+      const segs = segmenter(maalSeg, AFSTAND);
+      for (let i = segs.length - 1; i >= 0; i--) {
+        ctx.fillStyle = `hsl(${(i * 22) % 360}, 85%, 55%)`;
         ctx.beginPath();
-        ctx.arc(s.x*cell + cell/2, s.y*cell + cell/2, r, 0, Math.PI*2);
+        ctx.arc(segs[i].x, segs[i].y, R, 0, Math.PI * 2);
         ctx.fill();
-      });
+      }
+
       // Googly-øjne på hovedet
-      const h = snake[0];
-      const cx = h.x*cell + cell/2, cy = h.y*cell + cell/2;
-      for (const dx of [-1, 1]) {
+      const fx = Math.cos(vinkel), fy = Math.sin(vinkel);
+      const px = Math.cos(vinkel + Math.PI/2), py = Math.sin(vinkel + Math.PI/2);
+      for (const side of [-1, 1]) {
+        const ex = hoved.x + fx * R * 0.3 + px * side * R * 0.5;
+        const ey = hoved.y + fy * R * 0.3 + py * side * R * 0.5;
         ctx.fillStyle = "#fff";
-        ctx.beginPath(); ctx.arc(cx + dx*cell*0.18, cy - cell*0.12, cell*0.14, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(ex, ey, R * 0.46, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle = "#000";
-        ctx.beginPath(); ctx.arc(cx + dx*cell*0.18 + dir.x*2, cy - cell*0.12 + dir.y*2, cell*0.07, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(ex + fx * R * 0.18, ey + fy * R * 0.18, R * 0.22, 0, Math.PI*2); ctx.fill();
       }
     }
 
-    // ----- Styring -----
-    function sætRetning(navn) {
-      const r = { op:{x:0,y:-1}, ned:{x:0,y:1}, ven:{x:-1,y:0}, hoj:{x:1,y:0} }[navn];
-      // Må ikke vende 180 grader direkte
-      if (r.x === -dir.x && r.y === -dir.y) return;
-      nextDir = r;
-    }
-    document.querySelectorAll(".pad button").forEach(b =>
-      b.addEventListener("pointerdown", e => { e.preventDefault(); sætRetning(b.dataset.dir); })
-    );
-
-    // Swipe på brættet
-    let startX, startY;
-    canvas.addEventListener("pointerdown", e => { startX = e.clientX; startY = e.clientY; });
-    canvas.addEventListener("pointerup", e => {
-      const dx = e.clientX - startX, dy = e.clientY - startY;
-      if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
-      if (Math.abs(dx) > Math.abs(dy)) sætRetning(dx > 0 ? "hoj" : "ven");
-      else sætRetning(dy > 0 ? "ned" : "op");
-    });
-
-    window.addEventListener("resize", () => { tilpasStørrelse(); tegn(); });
-    start();
+    requestAnimationFrame(loop);
   </script>
 </body>
 </html>

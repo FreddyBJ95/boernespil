@@ -87,6 +87,7 @@
     <button onclick="nytSpil()">Spil igen 🔄</button>
   </div>
 
+  <script src="../../effekter.js"></script>
   <script>
     // ===== Find par =====
     const dyrPulje = ["🐶","🐱","🦊","🐰","🐻","🐼","🐸","🦁","🐵","🐷","🐮","🐔"];
@@ -153,11 +154,18 @@
         // Par fundet!
         første.classList.add("fundet");
         kort.classList.add("fundet");
-        første = null;
         antalFundet++;
         fundetEl.textContent = antalFundet;
         tone(900, 0.18);
-        if (antalFundet === 6) setTimeout(() => vundetEl.style.display = "flex", 500);
+        // Konfetti på begge fundne kort
+        [første, kort].forEach(k => {
+          const r = k.getBoundingClientRect();
+          Effekter.konfetti(r.left + r.width/2, r.top + r.height/2, { antal: 18 });
+        });
+        Effekter.ding();
+        Effekter.tekstPop(kort.getBoundingClientRect().left + 30, kort.getBoundingClientRect().top, "🎉");
+        første = null;
+        if (antalFundet === 6) vind();
       } else {
         // Ikke par — vend tilbage efter et øjeblik
         låst = true;
@@ -168,6 +176,18 @@
           låst = false;
         }, 900);
       }
+    }
+
+    function vind() {
+      // STOR fest: konfetti-regn + fanfare + stjerner
+      Effekter.fanfare();
+      let n = 0;
+      const fest = setInterval(() => {
+        Effekter.konfetti(Math.random() * window.innerWidth, -10, { antal: 16 });
+        Effekter.stjerner(Math.random() * window.innerWidth, window.innerHeight * 0.6, { antal: 6 });
+        if (++n >= 8) clearInterval(fest);
+      }, 250);
+      setTimeout(() => vundetEl.style.display = "flex", 700);
     }
 
     nytSpil();

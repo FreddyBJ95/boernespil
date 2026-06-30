@@ -52,6 +52,7 @@
     <div id="dyr">🐮</div>
   </div>
 
+  <script src="../../effekter.js"></script>
   <script>
     // ===== Tryk på dyret — simpelt spil til 3-6 år =====
 
@@ -90,9 +91,19 @@
     // Når barnet rører dyret: lyd, point, og dyret flytter sig.
     function ramt(e) {
       e.preventDefault();
+      const r = dyrEl.getBoundingClientRect();
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
       point++;
       pointEl.textContent = point;
-      pling();
+      // Store effekter når man rammer
+      Effekter.konfetti(cx, cy, { antal: 28 });
+      Effekter.ding();
+      Effekter.tekstPop(cx, cy, "⭐");
+      if (point % 5 === 0) {                    // ekstra fest hvert 5. point
+        Effekter.fanfare();
+        Effekter.stjerner(window.innerWidth / 2, window.innerHeight / 2, { antal: 18 });
+        Effekter.flash("#fffbe0");
+      }
       dyrEl.classList.add("tryk");
       setTimeout(() => dyrEl.classList.remove("tryk"), 120);
       nytDyr();

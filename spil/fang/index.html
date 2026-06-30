@@ -60,6 +60,7 @@
     <button onclick="start()">Spil igen 🔄</button>
   </div>
 
+  <script src="../../effekter.js"></script>
   <script>
     // ===== Fang frugten =====
     const frugtTyper = ["🍎","🍌","🍓","🍐","🍊","🍇","🍉","🍑","🥝","🍒"];
@@ -157,6 +158,12 @@
           if (Math.abs((f.x + 26) - kurvX) < halv + 10) {
             f.fanget = true; f.el.remove();
             point++; pointEl.textContent = point; fangLyd();
+            Effekter.konfetti(f.x + 26, kurvTop, { antal: 18 });
+            if (point % 10 === 0) {                 // stor fest hvert 10. frugt
+              Effekter.fanfare();
+              Effekter.stjerner(window.innerWidth / 2, window.innerHeight / 2, { antal: 18 });
+              Effekter.flash("#ffffff");
+            }
             continue;
           }
         }
