@@ -1,0 +1,58 @@
+/* ===== Forsidens udseende ===== */
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Comic Sans MS", "Chalkboard", system-ui, sans-serif;
+  background: linear-gradient(160deg, #caf0f8, #ade8f4);
+  /* Forhindrer at man kommer til at markere tekst med fingeren */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+header { text-align: center; padding: 24px 16px 8px; }
+
+h1 {
+  font-size: clamp(28px, 6vw, 56px);
+  color: #03045e;
+  margin: 0;
+}
+
+/* Gitter af spil-knapper — tilpasser sig automatisk skærmstørrelsen */
+.spil-gitter {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 20px;
+  padding: 24px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* Et spil-kort (en knap) */
+.spil-kort {
+  --farve: #ffd166;
+  background: var(--farve);
+  border-radius: 28px;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-decoration: none;
+  color: #03045e;
+  box-shadow: 0 8px 0 rgba(0,0,0,0.15);
+  transition: transform 0.1s ease;
+}
+
+/* Lille "tryk-følelse" når man rører kortet */
+.spil-kort:active { transform: translateY(4px); box-shadow: 0 4px 0 rgba(0,0,0,0.15); }
+
+.spil-kort .ikon { font-size: clamp(60px, 14vw, 110px); }
+.spil-kort .navn { font-size: clamp(20px, 4vw, 28px); font-weight: bold; }
+
+/* Kort til spil der endnu ikke er lavet */
+.spil-kort.kommer { opacity: 0.5; box-shadow: none; }
