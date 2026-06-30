@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Fjollet Slange 🐍</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; }
+    body {
+      font-family: "Comic Sans MS", "Chalkboard", system-ui, sans-serif;
+      background: linear-gradient(160deg, #caffbf, #9bf6ff);
+      -webkit-user-select: none; user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .top {
+      width: 100%; display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 16px;
+    }
+    .tilbage {
+      font-size: 26px; text-decoration: none; background: #fff; border-radius: 50%;
+      width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.15);
+    }
+    .point { font-size: 30px; font-weight: bold; color: #03045e; }
+
+    canvas {
+      background: #fffef7;
+      border-radius: 20px;
+      box-shadow: 0 8px 0 rgba(0,0,0,0.12);
+      touch-action: none;
+    }
+
+    /* Styrepind med fire knapper */
+    .pad {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: 70px 70px 70px;
+      grid-template-rows: 70px 70px 70px;
+      gap: 8px;
+      justify-content: center;
+    }
+    .pad button {
+      font-size: 32px; border: none; border-radius: 18px;
+      background: #ffd166; color: #03045e;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.18);
+    }
+    .pad button:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.18); }
+    .op    { grid-column: 2; grid-row: 1; }
+    .ven   { grid-column: 1; grid-row: 2; }
+    .hoj   { grid-column: 3; grid-row: 2; }
+    .ned   { grid-column: 2; grid-row: 3; }
+
+    /* "Spil igen"-besked */
+    #igen {
+      position: fixed; inset: 0; display: none;
+      flex-direction: column; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.55); color: #fff; z-index: 20;
+    }
+    #igen h2 { font-size: 44px; margin: 0 0 20px; }
+    #igen button {
+      font-size: 30px; padding: 16px 32px; border: none; border-radius: 20px;
+      background: #ffd166; color: #03045e; box-shadow: 0 6px 0 rgba(0,0,0,0.3);
+    }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <a class="tilbage" href="../../">🏠</a>
+    <div class="point">🍎 <span id="pointtal">0</span></div>
+    <div style="width:50px"></div>
+  </div>
+
+  <canvas id="board"></canvas>
+
+  <div class="pad">
+    <button class="op"  data-dir="op">⬆️</button>
+    <button class="ven" data-dir="ven">⬅️</button>
+    <button class="hoj" data-dir="hoj">➡️</button>
+    <button class="ned" data-dir="ned">⬇️</button>
+  </div>
+
+  <div id="igen">
+    <h2>Ups! 🙈</h2>
+    <button onclick="start()">Spil igen 🔄</button>
+  </div>
+
+  <script>
+    // ===== Fjollet Slange =====
+    const COLS = 16, ROWS = 16;
+    const canvas = document.getElementById("board");
+    const ctx = canvas.getContext("2d");
+    const pointEl = document.getElementById("pointtal");
+    const igenEl = document.getElementById("igen");
+    const madEmojis = ["🍎","🍌","🍓","🍕","🍦","🍩","🧀","🍪","🍇","🌭"];
+
+    let cell, snake, dir, nextDir, mad, point, kører, tickTid;
+
+    // Tilpas brættet til skærmen (kvadratisk)
+    function tilpasStørrelse() {
+      const maks = Math.min(window.innerWidth - 24, window.innerHeight - 280);
+      cell = Math.floor(Math.max(maks, 200) / COLS);
+      canvas.width = cell * COLS;
+      canvas.height = cell * ROWS;
+    }
+
+    function nyMad() {
+      while (true) {
+        const x = Math.floor(Math.random() * COLS);
+        const y = Math.floor(Math.random() * ROWS);
+        if (!snake.some(s => s.x === x && s.y === y)) {
+          mad = { x, y, emoji: madEmojis[Math.floor(Math.random() * madEmojis.length)] };
+          return;
+        }
+      }
+    }
+
+    // Lyde lavet med Web Audio (ingen filer)
+    let lyd;
+    function tone(frekvens, type, længde) {
+      if (!lyd) lyd = new (window.AudioContext || window.webkitAudioContext)();
+      const o = lyd.createOscillator(), g = lyd.createGain();
+      o.connect(g); g.connect(lyd.destination);
+      o.type = type; o.frequency.value = frekvens;
+      g.gain.setValueAtTime(0.25, lyd.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, lyd.currentTime + længde);
+      o.start(); o.stop(lyd.currentTime + længde);
+    }
+    function spisLyd() { tone(400 + Math.random() * 500, "square", 0.15); }
+    function dødLyd()  { tone(200, "sawtooth", 0.4); }
+
+    function start() {
+      tilpasStørrelse();
+      snake = [{x:8,y:8},{x:7,y:8},{x:6,y:8}];
+      dir = {x:1,y:0}; nextDir = {x:1,y:0};
+      point = 0; pointEl.textContent = 0;
+      nyMad();
+      igenEl.style.display = "none";
+      kører = true;
+      clearInterval(tickTid);
+      tickTid = setInterval(tick, 180);
+      tegn();
+    }
+
+    function tick() {
+      if (!kører) return;
+      dir = nextDir;
+      // Hoved flytter — og går gennem væggene (fjollet!)
+      const hoved = {
+        x: (snake[0].x + dir.x + COLS) % COLS,
+        y: (snake[0].y + dir.y + ROWS) % ROWS
+      };
+      // Ramt sig selv?
+      if (snake.some(s => s.x === hoved.x && s.y === hoved.y)) {
+        kører = false; clearInterval(tickTid); dødLyd();
+        igenEl.style.display = "flex";
+        return;
+      }
+      snake.unshift(hoved);
+      if (hoved.x === mad.x && hoved.y === mad.y) {
+        point++; pointEl.textContent = point; spisLyd(); nyMad();
+      } else {
+        snake.pop();
+      }
+      tegn();
+    }
+
+    function tegn() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      // Mad
+      ctx.font = cell + "px serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(mad.emoji, mad.x*cell + cell/2, mad.y*cell + cell/2);
+      // Slange (regnbue-farver)
+      snake.forEach((s, i) => {
+        ctx.fillStyle = `hsl(${(i*25) % 360}, 90%, 55%)`;
+        const r = cell * 0.42;
+        ctx.beginPath();
+        ctx.arc(s.x*cell + cell/2, s.y*cell + cell/2, r, 0, Math.PI*2);
+        ctx.fill();
+      });
+      // Googly-øjne på hovedet
+      const h = snake[0];
+      const cx = h.x*cell + cell/2, cy = h.y*cell + cell/2;
+      for (const dx of [-1, 1]) {
+        ctx.fillStyle = "#fff";
+        ctx.beginPath(); ctx.arc(cx + dx*cell*0.18, cy - cell*0.12, cell*0.14, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "#000";
+        ctx.beginPath(); ctx.arc(cx + dx*cell*0.18 + dir.x*2, cy - cell*0.12 + dir.y*2, cell*0.07, 0, Math.PI*2); ctx.fill();
+      }
+    }
+
+    // ----- Styring -----
+    function sætRetning(navn) {
+      const r = { op:{x:0,y:-1}, ned:{x:0,y:1}, ven:{x:-1,y:0}, hoj:{x:1,y:0} }[navn];
+      // Må ikke vende 180 grader direkte
+      if (r.x === -dir.x && r.y === -dir.y) return;
+      nextDir = r;
+    }
+    document.querySelectorAll(".pad button").forEach(b =>
+      b.addEventListener("pointerdown", e => { e.preventDefault(); sætRetning(b.dataset.dir); })
+    );
+
+    // Swipe på brættet
+    let startX, startY;
+    canvas.addEventListener("pointerdown", e => { startX = e.clientX; startY = e.clientY; });
+    canvas.addEventListener("pointerup", e => {
+      const dx = e.clientX - startX, dy = e.clientY - startY;
+      if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
+      if (Math.abs(dx) > Math.abs(dy)) sætRetning(dx > 0 ? "hoj" : "ven");
+      else sætRetning(dy > 0 ? "ned" : "op");
+    });
+
+    window.addEventListener("resize", () => { tilpasStørrelse(); tegn(); });
+    start();
+  </script>
+</body>
+</html>

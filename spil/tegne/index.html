@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Tegn! 🎨</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; }
+    body {
+      font-family: "Comic Sans MS", "Chalkboard", system-ui, sans-serif;
+      -webkit-user-select: none; user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+      display: flex; flex-direction: column;
+      background: #f1f1f1;
+    }
+
+    /* Værktøjslinje med farver og knapper */
+    .værktøj {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+      padding: 8px 12px; background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .tilbage {
+      font-size: 24px; text-decoration: none; background: #eee; border-radius: 50%;
+      width: 46px; height: 46px; min-width: 46px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .farve {
+      width: 46px; height: 46px; border-radius: 50%;
+      border: 4px solid transparent;
+    }
+    .farve.valgt { border-color: #333; transform: scale(1.1); }
+    .knap {
+      font-size: 24px; width: 46px; height: 46px; border-radius: 14px;
+      border: none; background: #eee;
+    }
+    .knap.valgt { background: #ffd166; }
+
+    canvas { flex: 1; background: #fff; touch-action: none; display: block; }
+  </style>
+</head>
+<body>
+  <div class="værktøj" id="vt">
+    <a class="tilbage" href="../../">🏠</a>
+    <!-- Farverne fyldes ind af scriptet -->
+    <button class="knap" id="regnbue" title="Regnbue">🌈</button>
+    <button class="knap" id="visk" title="Viskelæder">🩹</button>
+    <button class="knap" id="lille" title="Tynd">🖊️</button>
+    <button class="knap valgt" id="stor" title="Tyk">🖌️</button>
+    <button class="knap" id="ryd" title="Ryd alt">🗑️</button>
+  </div>
+
+  <canvas id="lærred"></canvas>
+
+  <script>
+    // ===== Simpelt tegneprogram til små fingre =====
+    const farver = ["#000000","#e63946","#f77f00","#ffd000","#2a9d8f",
+                    "#0077b6","#7209b7","#ff70a6","#964b00","#ffffff"];
+    const vt = document.getElementById("vt");
+    const canvas = document.getElementById("lærred");
+    const ctx = canvas.getContext("2d");
+
+    let valgtFarve = "#000000";
+    let regnbue = false;
+    let regnbueVinkel = 0;
+    let størrelse = 18;   // tyk som standard
+    let tegner = false;
+
+    // Lav farveknapperne og indsæt dem efter hjem-knappen
+    const hjem = vt.firstElementChild;
+    farver.forEach((f, i) => {
+      const b = document.createElement("button");
+      b.className = "farve" + (i === 0 ? " valgt" : "");
+      b.style.background = f;
+      if (f === "#ffffff") b.style.boxShadow = "inset 0 0 0 1px #ccc";
+      b.addEventListener("pointerdown", () => {
+        regnbue = false;
+        document.getElementById("regnbue").classList.remove("valgt");
+        document.getElementById("visk").classList.remove("valgt");
+        valgtFarve = f;
+        document.querySelectorAll(".farve").forEach(x => x.classList.remove("valgt"));
+        b.classList.add("valgt");
+      });
+      hjem.after(b);
+    });
+
+    // Tilpas lærredet til vinduet (uden at slette tegningen ved første opstart)
+    function tilpas() {
+      const data = canvas.width ? ctx.getImageData(0,0,canvas.width,canvas.height) : null;
+      canvas.width = canvas.clientWidth;
+      canvas.height = canvas.clientHeight;
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.lineCap = "round"; ctx.lineJoin = "round";
+      if (data) ctx.putImageData(data, 0, 0);
+    }
+
+    let sidsteX, sidsteY;
+    function pos(e) {
+      const r = canvas.getBoundingClientRect();
+      return { x: e.clientX - r.left, y: e.clientY - r.top };
+    }
+    function startStreg(e) {
+      tegner = true;
+      const p = pos(e); sidsteX = p.x; sidsteY = p.y;
+      tegnTil(e); // en prik hvis man bare tapper
+    }
+    function tegnTil(e) {
+      if (!tegner) return;
+      const p = pos(e);
+      ctx.strokeStyle = regnbue
+        ? `hsl(${regnbueVinkel = (regnbueVinkel + 8) % 360}, 90%, 55%)`
+        : valgtFarve;
+      ctx.lineWidth = størrelse;
+      ctx.beginPath();
+      ctx.moveTo(sidsteX, sidsteY);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+      sidsteX = p.x; sidsteY = p.y;
+    }
+    function stopStreg() { tegner = false; }
+
+    canvas.addEventListener("pointerdown", startStreg);
+    canvas.addEventListener("pointermove", tegnTil);
+    canvas.addEventListener("pointerup", stopStreg);
+    canvas.addEventListener("pointerleave", stopStreg);
+
+    // Knapper
+    document.getElementById("regnbue").addEventListener("pointerdown", () => {
+      regnbue = true;
+      document.getElementById("regnbue").classList.add("valgt");
+      document.getElementById("visk").classList.remove("valgt");
+      document.querySelectorAll(".farve").forEach(x => x.classList.remove("valgt"));
+    });
+    document.getElementById("visk").addEventListener("pointerdown", () => {
+      regnbue = false; valgtFarve = "#ffffff";
+      document.getElementById("visk").classList.add("valgt");
+      document.getElementById("regnbue").classList.remove("valgt");
+      document.querySelectorAll(".farve").forEach(x => x.classList.remove("valgt"));
+    });
+    function vælgStr(navn, px) {
+      størrelse = px;
+      document.getElementById("lille").classList.toggle("valgt", navn === "lille");
+      document.getElementById("stor").classList.toggle("valgt", navn === "stor");
+    }
+    document.getElementById("lille").addEventListener("pointerdown", () => vælgStr("lille", 8));
+    document.getElementById("stor").addEventListener("pointerdown", () => vælgStr("stor", 18));
+    document.getElementById("ryd").addEventListener("pointerdown", () => {
+      ctx.fillStyle = "#fff"; ctx.fillRect(0,0,canvas.width,canvas.height);
+    });
+
+    window.addEventListener("resize", tilpas);
+    tilpas();
+  </script>
+</body>
+</html>
