@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Skibidi Toilet 🚽</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; }
+    body {
+      font-family: ui-rounded, "SF Pro Rounded", "Baloo 2", system-ui, sans-serif;
+      background: radial-gradient(circle at 50% 30%, #4a0e4e, #1a1a2e 70%);
+      color: #fff;
+      -webkit-user-select: none; user-select: none;
+      -webkit-tap-highlight-color: transparent; touch-action: none;
+    }
+    .top {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+      display: flex; align-items: center; justify-content: space-between; padding: 12px 16px;
+    }
+    .tilbage {
+      font-size: 26px; text-decoration: none; background: rgba(255,255,255,0.9); border-radius: 50%;
+      width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+    }
+    .point { font-size: 30px; font-weight: 800; color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,.5); }
+    .combo {
+      position: fixed; top: 64px; left: 0; right: 0; text-align: center; z-index: 10;
+      font-size: 22px; font-weight: 800; color: #ffd23f; text-shadow: 0 2px 8px rgba(0,0,0,.5);
+      transition: transform .1s; min-height: 28px;
+    }
+
+    #bane { position: fixed; inset: 0; }
+    .ting {
+      position: absolute; width: 92px; height: 92px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 72px; transform: scale(0); transition: transform .15s cubic-bezier(.2,1.4,.5,1);
+      filter: drop-shadow(0 6px 10px rgba(0,0,0,.5));
+    }
+    .ting.vis { transform: scale(1); }
+    .ting.væk { transform: scale(0); }
+    .ting.wobble { animation: wob .5s ease-in-out infinite; }
+    @keyframes wob { 0%,100%{rotate:-6deg} 50%{rotate:6deg} }
+
+    #start, #slut {
+      position: fixed; inset: 0; display: flex; z-index: 20;
+      flex-direction: column; align-items: center; justify-content: center; text-align: center;
+      background: rgba(10,5,25,0.75); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+      padding: 20px;
+    }
+    #slut { display: none; }
+    .titel { font-size: clamp(34px, 9vw, 58px); font-weight: 900; margin: 0 0 6px;
+      background: linear-gradient(90deg,#ff477e,#ffd23f,#22e3c3); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .undertitel { font-size: 20px; opacity: .85; margin: 0 0 24px; max-width: 320px; }
+    .knap {
+      font-size: 26px; font-weight: 800; font-family: inherit; padding: 16px 36px; border: none;
+      border-radius: 22px; background: linear-gradient(180deg,#ff477e,#b15bff); color: #fff;
+      box-shadow: 0 10px 24px rgba(177,91,255,.5); cursor: pointer;
+    }
+    .knap:active { transform: translateY(3px); }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <a class="tilbage" href="../../">🏠</a>
+    <div class="point">🚽 <span id="pointtal">0</span></div>
+    <div style="width:50px"></div>
+  </div>
+  <div class="combo" id="combo"></div>
+
+  <div id="bane"></div>
+
+  <div id="start">
+    <h1 class="titel">SKIBIDI<br>TOILET</h1>
+    <p class="undertitel">Tryk på toiletterne 🚽 så hurtigt du kan!<br>Men pas på kameramændene 🎥</p>
+    <button class="knap" onclick="start()">▶️ SKIBIDI START</button>
+  </div>
+
+  <div id="slut">
+    <h1 class="titel">SKIBIDI!</h1>
+    <p class="undertitel">Du fik <span id="slutpoint">0</span> point 🚽</p>
+    <button class="knap" onclick="start()">🔄 Igen</button>
+  </div>
+
+  <script src="../../effekter.js"></script>
+  <script>
+    // ===== Skibidi Toilet =====
+    const bane = document.getElementById("bane");
+    const pointEl = document.getElementById("pointtal");
+    const comboEl = document.getElementById("combo");
+    const startEl = document.getElementById("start");
+    const slutEl = document.getElementById("slut");
+    const raabSet = ["SKIBIDI!", "BOP BOP!", "YES YES!", "DOP DOP!", "SKIBIDI DOP!"];
+
+    let point, combo, ventetid, kører, spawnTid;
+
+    function start() {
+      point = 0; combo = 0; ventetid = 1000; kører = true;
+      pointEl.textContent = 0; comboEl.textContent = "";
+      bane.querySelectorAll(".ting").forEach(t => t.remove());
+      startEl.style.display = "none";
+      slutEl.style.display = "none";
+      Effekter.audio();
+      planlæg();
+    }
+
+    function slut() {
+      kører = false;
+      clearTimeout(spawnTid);
+      bane.querySelectorAll(".ting").forEach(t => t.remove());
+      document.getElementById("slutpoint").textContent = point;
+      slutEl.style.display = "flex";
+    }
+
+    function visCombo() {
+      comboEl.textContent = combo > 1 ? "🔥 " + combo + " i træk!" : "";
+      comboEl.style.transform = "scale(1.3)";
+      setTimeout(() => comboEl.style.transform = "scale(1)", 100);
+    }
+
+    function spawn() {
+      const erKamera = Math.random() < 0.22;          // ca. hver 5. er en kameramand
+      const el = document.createElement("div");
+      el.className = "ting wobble";
+      el.textContent = erKamera ? "🎥" : "🚽";
+      const x = 20 + Math.random() * (window.innerWidth - 132);
+      const y = 110 + Math.random() * (window.innerHeight - 240);
+      el.style.left = x + "px"; el.style.top = y + "px";
+
+      let ramt = false;
+      el.addEventListener("pointerdown", e => {
+        e.preventDefault();
+        if (ramt || !kører) return;
+        ramt = true;
+        const cx = x + 46, cy = y + 46;
+        if (erKamera) {
+          // Av — kameramand!
+          combo = 0;
+          Effekter.fejl();
+          Effekter.flash("#ff0040");
+          slut();
+        } else {
+          point++; combo++;
+          pointEl.textContent = point;
+          Effekter.skibidi();
+          Effekter.konfetti(cx, cy, { antal: 26 });
+          Effekter.tekstPop(cx, cy, raabSet[Math.floor(Math.random() * raabSet.length)], { s: 46 });
+          visCombo();
+          if (combo > 0 && combo % 10 === 0) Effekter.fest(cx, cy, { farve: "#b15bff" });
+        }
+        el.classList.add("væk");
+        setTimeout(() => el.remove(), 160);
+      });
+
+      bane.appendChild(el);
+      requestAnimationFrame(() => el.classList.add("vis"));
+
+      // forsvinder selv efter et stykke tid
+      setTimeout(() => {
+        if (!el.parentNode) return;
+        el.classList.remove("vis"); el.classList.add("væk");
+        setTimeout(() => el.remove(), 200);
+      }, ventetid * 1.1);
+    }
+
+    function planlæg() {
+      if (!kører) return;
+      spawn();
+      ventetid = Math.max(520, ventetid * 0.97);     // bliver hurtigere
+      spawnTid = setTimeout(planlæg, ventetid * 0.75);
+    }
+  </script>
+</body>
+</html>

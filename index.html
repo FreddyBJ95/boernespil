@@ -8,90 +8,65 @@
 
   <!-- PWA: gør siden installerbar som app -->
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#a0e9ff">
+  <meta name="theme-color" content="#2a1a5e">
   <link rel="apple-touch-icon" href="icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Børnespil">
 </head>
 <body>
-  <!-- Svævende pynt i baggrunden -->
-  <div class="pynt">
-    <span style="top:8%;  animation-duration:38s; animation-delay:-4s;  font-size:70px">☁️</span>
-    <span style="top:20%; animation-duration:55s; animation-delay:-20s; font-size:48px">☁️</span>
-    <span style="top:5%;  animation-duration:30s; animation-delay:-10s;">☀️</span>
-    <span style="top:38%; animation-duration:60s; animation-delay:-30s; font-size:40px">🎈</span>
-    <span style="top:70%; animation-duration:45s; animation-delay:-12s;">🦋</span>
-    <span style="top:82%; animation-duration:50s; animation-delay:-25s; font-size:44px">🌈</span>
-    <span style="top:60%; animation-duration:40s; animation-delay:-6s;  font-size:36px">⭐</span>
-  </div>
+  <!-- Aurora-baggrund + svævende lys-kugler -->
+  <div class="pynt"></div>
+  <div class="orb" style="width:200px;height:200px;background:#ff6ec7;left:8%;top:30%;animation-duration:13s"></div>
+  <div class="orb" style="width:160px;height:160px;background:#4cc9f0;right:10%;top:18%;animation-duration:17s"></div>
+  <div class="orb" style="width:220px;height:220px;background:#b15bff;left:55%;top:70%;animation-duration:15s"></div>
 
   <header>
-    <h1>Vælg et spil!</h1>
-    <p class="undertekst">🎈 Tryk på et kort for at lege 🎈</p>
+    <h1>Spil for ungerne</h1>
+    <p class="undertekst">✨ Tryk på et kort og leg ✨</p>
   </header>
 
   <!-- Hvert <a> er en knap til et spil. Tilføj et nyt spil ved at kopiere én blok. -->
   <main class="spil-gitter">
 
     <a class="spil-kort" href="spil/tryk-paa-dyret/" style="--farve:#ffd166">
-      <span class="ikon">🐮</span>
-      <span class="navn">Tryk på dyret</span>
+      <span class="ikon">🐮</span><span class="navn">Tryk på dyret</span>
     </a>
-
-    <a class="spil-kort" href="spil/slange/" style="--farve:#caffbf">
-      <span class="ikon">🐍</span>
-      <span class="navn">Fjollet Slange</span>
+    <a class="spil-kort" href="spil/slange/" style="--farve:#80ed99">
+      <span class="ikon">🐍</span><span class="navn">Fjollet Slange</span>
     </a>
-
-    <a class="spil-kort" href="spil/tegne/" style="--farve:#ffadad">
-      <span class="ikon">🎨</span>
-      <span class="navn">Tegn!</span>
+    <a class="spil-kort" href="spil/tegne/" style="--farve:#ff8fab">
+      <span class="ikon">🎨</span><span class="navn">Tegn!</span>
     </a>
-
-    <a class="spil-kort" href="spil/balloner/" style="--farve:#a0c4ff">
-      <span class="ikon">🎈</span>
-      <span class="navn">Pop ballonerne</span>
+    <a class="spil-kort" href="spil/balloner/" style="--farve:#4cc9f0">
+      <span class="ikon">🎈</span><span class="navn">Pop ballonerne</span>
     </a>
-
-    <a class="spil-kort" href="spil/find-par/" style="--farve:#ffd6a5">
-      <span class="ikon">🧠</span>
-      <span class="navn">Find par</span>
+    <a class="spil-kort" href="spil/find-par/" style="--farve:#ffb703">
+      <span class="ikon">🧠</span><span class="navn">Find par</span>
     </a>
-
-    <a class="spil-kort" href="spil/fang/" style="--farve:#bdb2ff">
-      <span class="ikon">🧺</span>
-      <span class="navn">Fang frugten</span>
+    <a class="spil-kort" href="spil/fang/" style="--farve:#b15bff">
+      <span class="ikon">🧺</span><span class="navn">Fang frugten</span>
     </a>
-
-    <a class="spil-kort" href="spil/muldvarp/" style="--farve:#b7e4c7">
-      <span class="ikon">🔨</span>
-      <span class="navn">Slå muldvarpen</span>
+    <a class="spil-kort" href="spil/muldvarp/" style="--farve:#52b788">
+      <span class="ikon">🔨</span><span class="navn">Slå muldvarpen</span>
     </a>
-
-    <a class="spil-kort" href="spil/tael/" style="--farve:#ffd6a5">
-      <span class="ikon">🔢</span>
-      <span class="navn">Tæl dyrene</span>
+    <a class="spil-kort" href="spil/tael/" style="--farve:#ff9e6d">
+      <span class="ikon">🔢</span><span class="navn">Tæl dyrene</span>
     </a>
-
-    <a class="spil-kort" href="spil/simon/" style="--farve:#cdb4db">
-      <span class="ikon">🎵</span>
-      <span class="navn">Husk farverne</span>
+    <a class="spil-kort" href="spil/simon/" style="--farve:#c77dff">
+      <span class="ikon">🎵</span><span class="navn">Husk farverne</span>
     </a>
-
-    <a class="spil-kort" href="spil/piano/" style="--farve:#ffafcc">
-      <span class="ikon">🎹</span>
-      <span class="navn">Dyre-piano</span>
+    <a class="spil-kort" href="spil/piano/" style="--farve:#ff70a6">
+      <span class="ikon">🎹</span><span class="navn">Dyre-piano</span>
     </a>
-
-    <a class="spil-kort" href="spil/undvig/" style="--farve:#a2d2ff">
-      <span class="ikon">🚀</span>
-      <span class="navn">Undvig stenene</span>
+    <a class="spil-kort" href="spil/undvig/" style="--farve:#48cae4">
+      <span class="ikon">🚀</span><span class="navn">Undvig stenene</span>
     </a>
-
-    <a class="spil-kort" href="spil/puslespil/" style="--farve:#caffbf">
-      <span class="ikon">🧩</span>
-      <span class="navn">Skydepuslespil</span>
+    <a class="spil-kort" href="spil/puslespil/" style="--farve:#90e0a0">
+      <span class="ikon">🧩</span><span class="navn">Skydepuslespil</span>
+    </a>
+    <a class="spil-kort" href="spil/skibidi/" style="--farve:#ff477e">
+      <span class="ikon">🚽</span><span class="navn">Skibidi Toilet</span>
     </a>
 
   </main>

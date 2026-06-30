@@ -1,107 +1,110 @@
-/* ===== Forsidens udseende ===== */
+/* ===== Moderne forside ===== */
 
+:root {
+  --skrift: ui-rounded, "SF Pro Rounded", "Baloo 2", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: "Comic Sans MS", "Chalkboard", system-ui, sans-serif;
-  /* Animeret himmel der langsomt skifter farve */
-  background: linear-gradient(160deg, #a0e9ff, #caf0f8, #bdb2ff, #ffc8dd);
-  background-size: 100% 300%;
-  animation: himmel 18s ease-in-out infinite;
+  font-family: var(--skrift);
+  color: #1a1033;
+  background: #0f0a24;
   overflow-x: hidden;
-  -webkit-user-select: none;
-  user-select: none;
+  -webkit-user-select: none; user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
-@keyframes himmel {
-  0%, 100% { background-position: 50% 0%; }
-  50%      { background-position: 50% 100%; }
-}
 
-/* Svævende pynt i baggrunden (skyer, sol, stjerner) */
+/* Aurora-baggrund: bløde farveskyer der langsomt bevæger sig */
 .pynt {
-  position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0;
+  position: fixed; inset: -20%; z-index: 0; overflow: hidden; pointer-events: none;
+  background:
+    radial-gradient(40% 40% at 20% 25%, #ff6ec7aa, transparent 70%),
+    radial-gradient(45% 45% at 80% 20%, #4cc9f0aa, transparent 70%),
+    radial-gradient(50% 50% at 70% 80%, #b15bffaa, transparent 70%),
+    radial-gradient(45% 45% at 25% 85%, #ffd23faa, transparent 70%),
+    linear-gradient(160deg, #1b1245, #2a1a5e);
+  filter: saturate(125%);
+  animation: drift 24s ease-in-out infinite alternate;
 }
-.pynt span {
-  position: absolute;
-  font-size: 54px;
-  opacity: 0.9;
-  animation: svæv linear infinite;
+@keyframes drift {
+  0%   { transform: scale(1) translate(0, 0); }
+  100% { transform: scale(1.15) translate(-3%, 2%); }
 }
-@keyframes svæv {
-  from { transform: translateX(-15vw); }
-  to   { transform: translateX(115vw); }
-}
+/* Et par svævende lys-kugler ovenpå for dybde */
+.orb { position: fixed; border-radius: 50%; z-index: 0; pointer-events: none;
+  filter: blur(30px); opacity: .5; mix-blend-mode: screen; animation: svaev linear infinite; }
+@keyframes svaev { from { transform: translateY(8vh); } to { transform: translateY(-8vh); } }
 
-header { position: relative; z-index: 1; text-align: center; padding: 30px 16px 6px; }
+header { position: relative; z-index: 1; text-align: center; padding: 40px 16px 10px; }
 
 h1 {
-  font-size: clamp(32px, 7vw, 64px);
+  font-size: clamp(36px, 8vw, 72px);
+  font-weight: 900;
+  letter-spacing: -1px;
   margin: 0;
-  /* Regnbue-tekst der glider */
-  background: linear-gradient(90deg, #ff595e, #ffca3a, #8ac926, #1982c4, #6a4c93, #ff595e);
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: regnbuetekst 6s linear infinite, hop 2.5s ease-in-out infinite;
-  filter: drop-shadow(2px 3px 0 rgba(0,0,0,0.15));
+  background: linear-gradient(92deg, #ffffff, #ffe0f5 40%, #c9f3ff 70%, #ffffff);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 4px 16px rgba(0,0,0,0.35));
+  animation: aande 4s ease-in-out infinite;
 }
-@keyframes regnbuetekst { to { background-position: 200% center; } }
-@keyframes hop { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes aande { 0%,100% { transform: scale(1); } 50% { transform: scale(1.03); } }
 
-.undertekst { text-align: center; color: #03045e; font-size: clamp(16px,3vw,22px); margin: 4px 0 8px; position: relative; z-index: 1; }
+.undertekst {
+  position: relative; z-index: 1; text-align: center; margin: 8px 0 4px;
+  color: rgba(255,255,255,0.82); font-size: clamp(15px, 3vw, 20px); font-weight: 600;
+}
 
-/* Gitter af spil-knapper */
+/* Gitter af spil-kort */
 .spil-gitter {
   position: relative; z-index: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 24px;
-  padding: 24px;
-  max-width: 920px;
-  margin: 0 auto;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 18px;
+  padding: 22px;
+  max-width: 960px; margin: 0 auto;
 }
 
-/* Et spil-kort (en knap) */
+/* Frosted-glas-kort */
 .spil-kort {
   --farve: #ffd166;
   position: relative;
-  background: var(--farve);
-  border-radius: 32px;
-  aspect-ratio: 1 / 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  text-decoration: none;
-  color: #03045e;
-  border: 5px solid rgba(255,255,255,0.7);
-  box-shadow: 0 10px 0 rgba(0,0,0,0.15), 0 14px 24px rgba(0,0,0,0.18);
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
-  animation: vrik 6s ease-in-out infinite;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  padding: 22px 12px;
+  text-decoration: none; color: #fff;
+  border-radius: 26px;
+  background: linear-gradient(160deg, rgba(255,255,255,0.22), rgba(255,255,255,0.07));
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border: 1px solid rgba(255,255,255,0.35);
+  box-shadow: 0 14px 34px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.45);
+  transition: transform .18s cubic-bezier(.2,1,.3,1), box-shadow .18s;
+  overflow: hidden;
 }
-/* Hvert kort vrikker lidt forskudt, så de ikke er ens */
-.spil-kort:nth-child(3n+2) { animation-delay: .8s; }
-.spil-kort:nth-child(3n+3) { animation-delay: 1.6s; }
-@keyframes vrik {
-  0%, 100% { transform: rotate(0deg); }
-  25%      { transform: rotate(-1.5deg); }
-  75%      { transform: rotate(1.5deg); }
+/* Farvet glød øverst i kortet */
+.spil-kort::before {
+  content: ""; position: absolute; top: -40%; left: 50%; transform: translateX(-50%);
+  width: 140%; height: 80%;
+  background: radial-gradient(closest-side, var(--farve), transparent 75%);
+  opacity: .5; pointer-events: none;
 }
+.spil-kort:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 20px 40px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.5); }
+.spil-kort:active { transform: translateY(2px) scale(0.98); }
 
-.spil-kort:hover { transform: translateY(-4px) scale(1.03); }
-.spil-kort:active {
-  transform: translateY(6px) scale(0.98);
-  box-shadow: 0 4px 0 rgba(0,0,0,0.15), 0 6px 12px rgba(0,0,0,0.18);
+/* Emoji i en farvet "chip" */
+.ikon {
+  position: relative; z-index: 1;
+  width: 86px; height: 86px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 50px; border-radius: 24px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--farve) 85%, white), var(--farve));
+  box-shadow: 0 10px 20px rgba(0,0,0,0.28), inset 0 2px 4px rgba(255,255,255,0.6);
+  filter: drop-shadow(0 2px 2px rgba(0,0,0,0.15));
 }
-
-.spil-kort .ikon {
-  font-size: clamp(64px, 15vw, 120px);
-  line-height: 1;
-  filter: drop-shadow(0 4px 3px rgba(0,0,0,0.2));
+.spil-kort .navn {
+  position: relative; z-index: 1;
+  font-size: clamp(16px, 3.4vw, 21px); font-weight: 800;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.4);
+  text-align: center;
 }
-.spil-kort .navn { font-size: clamp(20px, 4vw, 30px); font-weight: bold; }
