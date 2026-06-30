@@ -95,7 +95,7 @@
     let point, combo, ventetid, kører, spawnTid;
 
     function start() {
-      point = 0; combo = 0; ventetid = 1000; kører = true;
+      point = 0; combo = 0; ventetid = 1800; kører = true;
       pointEl.textContent = 0; comboEl.textContent = "";
       bane.querySelectorAll(".ting").forEach(t => t.remove());
       startEl.style.display = "none";
@@ -160,14 +160,14 @@
         if (!el.parentNode) return;
         el.classList.remove("vis"); el.classList.add("væk");
         setTimeout(() => el.remove(), 200);
-      }, ventetid * 1.1);
+      }, ventetid * 1.6);   // toilettet bliver stående længere
     }
 
     function planlæg() {
       if (!kører) return;
       spawn();
-      ventetid = Math.max(520, ventetid * 0.97);     // bliver hurtigere
-      spawnTid = setTimeout(planlæg, ventetid * 0.75);
+      ventetid = Math.max(1000, ventetid * 0.99);    // bliver KUN lidt hurtigere
+      spawnTid = setTimeout(planlæg, ventetid);       // mere tid mellem toiletter
     }
   </script>
 </body>

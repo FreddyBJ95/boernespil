@@ -53,7 +53,7 @@
     // ===== Slå muldvarpen =====
     const marker = document.getElementById("marker");
     const pointEl = document.getElementById("pointtal");
-    let point = 0, ventetid = 1100;
+    let point = 0, ventetid = 1600;
     const huller = [];
 
     for (let i = 0; i < 9; i++) {
@@ -87,9 +87,9 @@
         // skift mellem muldvarp og pindsvin for sjov
         h.querySelector(".dyr").textContent = Math.random() < 0.5 ? "🐹" : "🦔";
         h.classList.add("oppe");
-        setTimeout(() => h.classList.remove("oppe"), ventetid * 0.8);
+        setTimeout(() => h.classList.remove("oppe"), ventetid * 0.95);
       }
-      ventetid = Math.max(550, ventetid * 0.99);   // bliver lidt hurtigere
+      ventetid = Math.max(950, ventetid * 0.995);   // bliver KUN lidt hurtigere
       setTimeout(dukOp, ventetid);
     }
     dukOp();
