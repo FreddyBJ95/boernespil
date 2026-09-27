@@ -195,9 +195,9 @@
     .i-gang.skydebane .point { display: block; }
     .point.pop { animation: pointPop .35s ease-out; }
     @keyframes pointPop { 40% { transform: scale(1.35); } }
-    #udKnap { position: fixed; right: 18px; bottom: calc(var(--s) + 40px); z-index: 7; display: none; min-width: 0; }
+    #udKnap { position: fixed; right: 12px; top: 70px; z-index: 7; display: none; min-width: 0; }
     .i-kampvogn #udKnap { display: block; }
-    .i-kampvogn .hopknapper, .i-kampvogn .hotbar, .i-kampvogn .ting-navn { display: none !important; }
+    .i-kampvogn #flyKnap, .i-kampvogn #nedKnap, .i-kampvogn .hotbar, .i-kampvogn .ting-navn { display: none !important; }   /* ⬆ får kampvognen til at hoppe */
     #klatter { position: fixed; inset: 0; pointer-events: none; z-index: 4; overflow: hidden; }
     .klat { position: absolute; width: 34vmin; height: 34vmin; transform: translate(-50%, -50%) scale(.2); animation: klat 2.6s ease-out forwards; }
     .klat svg { width: 100%; height: 100%; display: block; }

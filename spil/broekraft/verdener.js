@@ -6,6 +6,7 @@
 //  lys:     [himmellys, jordlys, styrke, sollys-styrke] (bruges på dyrene)
 //  stemning: musikken — "rolig" | "uhyggelig" | "glad" | "rum" · tyngde: 28 er normalt (lavere = hop højere)
 //  dyr:     hvilke dyr der bor der · antal: hvor mange · genfød: nye dyr dukker op når nogle forsvinder
+//  størrelse: [bredde, højde, dybde], når man spiller alene (højden skal gå op i 16) — ellers 64 × 32 × 64
 //  hotbar:  det man starter med: bloknavne fra blokke.js, "v:gevær" = værktøj (vaerktoej.js), "æg:ko" = dyre-æg
 //  vis:     tre blokke der vises på verdens-kortet · skyd: balloner, kampvogne og point · fyrværkeri: nytårsnat
 //  generer: opskriften på terrænet — får værktøjer fra verden.js (terræn, pynt, sæt, hent, R, støj …)
@@ -150,56 +151,153 @@ export const VERDENER = [
   },
 
   {
-    id: "skydebane", navn: "Skydebanen", ikon: "🎯", tekst: "Skyd på skydeskiver, balloner og legetøjsrobotter — og kør kampvogn!",
-    himmel: ["#5fa8f0", "#e0f0ff"], tåge: [34, 86], hav: "#3f8fe0", sol: "#fff6b0", skyer: "#ffffff",
+    id: "skydebane", navn: "Skydebanen", ikon: "🎯", tekst: "Skyd på skydeskiver, balloner, robotter og turbo-dinoer — og kør kampvogn!",
+    himmel: ["#5fa8f0", "#e0f0ff"], tåge: [40, 100], hav: "#3f8fe0", sol: "#fff6b0", skyer: "#ffffff",
     lys: ["#ffffff", "#9a8a5a", 2.2, 1.4], stemning: "glad", tyngde: 28,
-    dyr: ["robot"], antal: 7, genfød: true,
+    størrelse: [160, 48, 160],                                   // større end de andre øer (bredde, højde, dybde)
+    dyr: ["robot", "robot", "dino"], antal: 12, genfød: true,
     skyd: true,                                                  // balloner, kampvogne og point (skyd.js)
     hotbar: ["v:gevær", "v:bazooka", "v:maling", "Skydeskive", "Sandsæk", "Trækasse", "Camouflage", "TNT", "æg:robot"],
     vis: ["Skydeskive", "Sandsæk", "Camouflage"],
-    hent: ["Stiller skydeskiver op…", "Puster balloner op…", "Tanker kampvognene…"],
+    hent: ["Stiller skydeskiver op…", "Bygger kasernerne…", "Puster balloner op…", "Tanker kampvognene…"],
     generer(a) {
       const { R, støj, ID, BX, BZ, top } = a, cx = BX / 2, cz = BZ / 2, h0 = (x, z) => top[x + z * BX];
+      const inde = (x, z) => x > 1 && z > 1 && x < BX - 2 && z < BZ - 2;
       // En flad slette omkring startstedet og bløde bakker længere ude, så kampvognene kan køre rundt
       a.terræn((x, z) => {
-        const ud = Math.min(1, Math.max(0, (Math.hypot(x - cx, z - cz) - 20) / 30));
-        return Math.round(9 + (støj(x / 20, z / 20) * 6 + støj(x / 8 + 40, z / 8) * 2 - 4) * ud);
+        const ud = Math.min(1, Math.max(0, (Math.hypot(x - cx, z - cz) - 24) / 34));
+        return Math.round(9 + (støj(x / 22, z / 22) * 7 + støj(x / 8 + 40, z / 8) * 2 - 4.5) * ud);
       }, (x, z, y, h) => {
         const sand = støj(x / 13 + 300, z / 13) > 0.6;
         return y === 0 ? ID.Bundsten : y < h - 3 ? ID.Sten : y < h ? (sand ? ID.Sand : ID.Jord) : (sand ? ID.Sand : ID["Græs"]);
       });
+      // Pladser, der allerede er brugt (så bygninger og bunkere ikke står oven i hinanden)
+      const optaget = [];
+      const fri = (x0, z0, b, d) => inde(x0, z0) && inde(x0 + b, z0 + d) && !optaget.some(([x, z, bb, dd]) => x0 < x + bb + 2 && x0 + b + 2 > x && z0 < z + dd + 2 && z0 + d + 2 > z);
+      // Jævn grunden til en bygning og svar gulvets højde
+      const grund = (x0, z0, b, d) => {
+        let sum = 0, n = 0;
+        for (let x = x0; x < x0 + b; x++) for (let z = z0; z < z0 + d; z++) { sum += h0(x, z); n++; }
+        const h = Math.round(sum / n);
+        for (let x = x0 - 1; x <= x0 + b; x++) for (let z = z0 - 1; z <= z0 + d; z++) {
+          const i = x + z * BX;
+          for (let y = top[i] + 1; y <= h; y++) a.sæt(x, y, z, y === h ? ID["Græs"] : ID.Jord);
+          for (let y = h + 1; y <= top[i]; y++) a.sæt(x, y, z, 0);
+          top[i] = h;
+        }
+        optaget.push([x0, z0, b, d]);
+        return h;
+      };
+      const kasse = (x0, z0, b, d, y0, y1, blok) => { for (let x = x0; x < x0 + b; x++) for (let z = z0; z < z0 + d; z++) for (let y = y0; y <= y1; y++) a.sæt(x, y, z, blok); };
+
       // Skydelinjen foran startstedet (mod nord) og tre rækker skydeskiver på stolper
-      for (let x = cx - 9; x <= cx + 9; x++) if ((x - cx) % 4 !== 0) a.sæt(x, h0(x, cz - 4) + 1, cz - 4, ID.Sandsæk);
-      for (const [dz, n, højde] of [[-13, 5, 1], [-19, 6, 2], [-26, 7, 3]]) for (let i = 0; i < n; i++) {
+      optaget.push([cx - 12, cz - 30, 24, 28]);
+      for (let x = cx - 10; x <= cx + 10; x++) if ((x - cx) % 4 !== 0) a.sæt(x, h0(x, cz - 4) + 1, cz - 4, ID.Sandsæk);
+      for (const [dz, n, højde] of [[-13, 5, 1], [-20, 6, 2], [-28, 7, 3]]) for (let i = 0; i < n; i++) {
         const x = Math.round(cx - (n - 1) * 1.6 + i * 3.2), z = cz + dz, h = h0(x, z);
         for (let y = 1; y <= højde; y++) a.sæt(x, h + y, z, ID.Planker);
         a.sæt(x, h + højde + 1, z, ID.Skydeskive);
       }
-      // Bunkere af sandsække og stakke af trækasser
-      for (let n = 0; n < a.antal(14); n++) {
+
+      // Hangaren bag startstedet — de grønne kampvogne holder foran den
+      { const x0 = cx - 7, z0 = cz + 10, b = 15, d = 9, h = grund(x0, z0, b, d);
+        kasse(x0, z0, b, d, h, h, ID.Sten);
+        for (let x = x0; x < x0 + b; x++) for (let z = z0; z < z0 + d; z++) {
+          const væg = x === x0 || x === x0 + b - 1 || z === z0 + d - 1;
+          for (let y = 1; y <= 5; y++) a.sæt(x, h + y, z, væg ? ID.Sten : 0);
+          a.sæt(x, h + 6, z, ID.Camouflage);
+        }
+        a.sæt(cx - 4, h + 5, z0 + d - 2, ID.Lampe); a.sæt(cx + 4, h + 5, z0 + d - 2, ID.Lampe);
+        kasse(x0 + 1, z0 + d - 2, 2, 1, h + 1, h + 2, ID.Trækasse); kasse(x0 + b - 3, z0 + d - 2, 2, 1, h + 1, h + 1, ID.Trækasse);
+      }
+
+      // Vagttårne i fire hjørner — man kan flyve op og kigge ud over banen
+      for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+        const x0 = Math.round(cx + dx * Math.min(38, BX / 2 - 12)) - 2, z0 = Math.round(cz + dz * Math.min(38, BZ / 2 - 12)) - 2;
+        if (!fri(x0, z0, 5, 5)) continue;
+        const h = grund(x0, z0, 5, 5);
+        for (const [px, pz] of [[0, 0], [4, 0], [0, 4], [4, 4]]) kasse(x0 + px, z0 + pz, 1, 1, h + 1, h + 7, ID.Træstamme);
+        kasse(x0, z0, 5, 5, h + 8, h + 8, ID.Planker);
+        for (let i = 0; i < 5; i++) for (const [x, z] of [[x0 + i, z0], [x0 + i, z0 + 4], [x0, z0 + i], [x0 + 4, z0 + i]]) a.sæt(x, h + 9, z, ID.Sandsæk);
+        a.sæt(x0 + 2, h + 9, z0 + 2, ID.Lampe);
+        a.sæt(x0 + 2, h + 6, z0 - (dz < 0 ? 0 : -4), ID.Skydeskive);
+      }
+
+      // Kaserner af mursten med vinduer, dør og sandsække på taget
+      for (const [x0, z0] of [[cx + 22, cz - 2], [cx - 34, cz - 8]]) {
+        const b = 11, d = 7;
+        if (!fri(x0, z0, b, d)) continue;
+        const h = grund(x0, z0, b, d);
+        kasse(x0, z0, b, d, h, h, ID.Planker);
+        for (let x = x0; x < x0 + b; x++) for (let z = z0; z < z0 + d; z++) {
+          const væg = x === x0 || x === x0 + b - 1 || z === z0 || z === z0 + d - 1;
+          for (let y = 1; y <= 4; y++) {
+            const vindue = y === 2 && væg && ((x - x0) % 3 === 1 || (z - z0) % 3 === 1) && !(x === x0 || x === x0 + b - 1) !== !(z === z0 || z === z0 + d - 1);
+            a.sæt(x, h + y, z, !væg ? 0 : vindue ? ID.Glas : ID.Mursten);
+          }
+          a.sæt(x, h + 5, z, ID.Planker);
+          if (væg) a.sæt(x, h + 6, z, ID.Sandsæk);
+        }
+        const dør = x0 + Math.floor(b / 2);
+        a.sæt(dør, h + 1, z0, 0); a.sæt(dør, h + 2, z0, 0);
+        a.sæt(dør, h + 4, z0 + 1, ID.Lampe);
+        kasse(x0 + 1, z0 + d - 2, 3, 1, h + 1, h + 1, ID.Trækasse);
+      }
+
+      // Tivoli-skydetelt med røde og hvide striber og skiver indenfor
+      { const x0 = cx + 15, z0 = cz - 20, b = 5, d = 7;
+        if (fri(x0, z0, b, d)) {
+          const h = grund(x0, z0, b, d);
+          for (let x = x0; x < x0 + b; x++) for (let z = z0; z < z0 + d; z++) {
+            const stribe = (z - z0) % 2 ? ID["Hvid uld"] : ID["Rød uld"];
+            const væg = x === x0 + b - 1 || z === z0 || z === z0 + d - 1;
+            for (let y = 1; y <= 3; y++) a.sæt(x, h + y, z, væg ? stribe : 0);
+            a.sæt(x, h + 4, z, stribe);
+          }
+          for (let z = z0 + 1; z < z0 + d - 1; z++) { a.sæt(x0, h + 1, z, ID.Planker); a.sæt(x0 + b - 2, h + 2, z, ID.Skydeskive); }
+          a.sæt(x0, h + 5, z0, ID.Lampe); a.sæt(x0, h + 5, z0 + d - 1, ID.Lampe);
+        }
+      }
+
+      // Legetøjsbyen: små farvede huse rundt om en plads (her kører legetøjskampvognene gerne rundt)
+      { const bx = Math.round(cx - Math.min(40, BX / 2 - 18)), bz = Math.round(cz - Math.min(40, BZ / 2 - 18));
+        const FARVER = ["Rød uld", "Gul uld", "Blå uld", "Grøn uld", "Lilla uld", "Orange uld"];
+        [[-9, -9], [0, -10], [9, -9], [-10, 1], [10, 1], [0, 10]].forEach(([dx, dz], i) => {
+          const x0 = bx + dx - 2, z0 = bz + dz - 2;
+          if (!fri(x0, z0, 5, 5)) return;
+          const h = grund(x0, z0, 5, 5), mur = ID[FARVER[i % FARVER.length]], tag = ID[FARVER[(i + 2) % FARVER.length]];
+          for (let x = x0; x < x0 + 5; x++) for (let z = z0; z < z0 + 5; z++) {
+            const væg = x === x0 || x === x0 + 4 || z === z0 || z === z0 + 4;
+            for (let y = 1; y <= 3; y++) a.sæt(x, h + y, z, !væg ? 0 : y === 2 && (x === x0 + 2 || z === z0 + 2) ? ID.Glas : mur);
+            a.sæt(x, h + 4, z, tag);
+          }
+          a.sæt(x0 + 2, h + 5, z0 + 2, tag);
+          a.sæt(x0 + 2, h + 1, z0 + (dz > 0 ? 0 : 4), 0);                   // dør ud mod pladsen
+          a.sæt(x0 + 2, h + 1, z0 + 2, ID.Lampe);
+        });
+      }
+
+      // Bunkere af sandsække, stakke af trækasser og camouflage-telte ude i landskabet
+      for (let n = 0; n < a.antal(16); n++) {
         const x = 5 + Math.floor(R() * (BX - 10)), z = 5 + Math.floor(R() * (BZ - 10)), h = h0(x, z);
-        if (a.nærStart(x, z, 28)) continue;
-        if (R() < 0.5) {
+        if (a.nærStart(x, z, 30) || !fri(x - 3, z - 3, 6, 6)) continue;
+        optaget.push([x - 3, z - 3, 6, 6]);
+        const valg = R();
+        if (valg < 0.4) {
           for (let i = -2; i <= 2; i++) for (let y = 1; y <= 2; y++) {
             a.sæt(x + i, h + y, z - 2, ID.Sandsæk);
             if (Math.abs(i) === 2) for (let j = -1; j <= 1; j++) a.sæt(x + i, h + y, z + j, ID.Sandsæk);
           }
-        } else for (let i = 0; i < 5; i++) {
+        } else if (valg < 0.75) for (let i = 0; i < 5; i++) {
           const dx = Math.floor(R() * 3) - 1, dz = Math.floor(R() * 3) - 1;
           let y = h + 1; while (y < h + 4 && a.hent(x + dx, y, z + dz)) y++;
           a.sæt(x + dx, y, z + dz, ID.Trækasse);
-        }
+        } else for (let dx = -3; dx <= 3; dx++) for (let dz = -2; dz <= 2; dz++) a.sæt(x + dx, h + 4 - Math.abs(dx), z + dz, ID.Camouflage);
       }
-      // Camouflage-telte
-      for (let n = 0; n < a.antal(4); n++) {
-        const x = 6 + Math.floor(R() * (BX - 12)), z = 6 + Math.floor(R() * (BZ - 12)), h = h0(x, z);
-        if (a.nærStart(x, z, 26)) continue;
-        for (let dx = -3; dx <= 3; dx++) for (let dz = -2; dz <= 2; dz++) a.sæt(x + dx, h + 4 - Math.abs(dx), z + dz, ID.Camouflage);
-      }
-      // Nogle få træer
-      for (let n = 0; n < a.antal(10); n++) {
+      // Træer i udkanten
+      for (let n = 0; n < a.antal(12); n++) {
         const x = 3 + Math.floor(R() * (BX - 6)), z = 3 + Math.floor(R() * (BZ - 6)), h = h0(x, z);
-        if (a.hent(x, h, z) !== ID["Græs"] || a.nærStart(x, z, 30)) continue;
+        if (a.hent(x, h, z) !== ID["Græs"] || a.nærStart(x, z, 32) || !fri(x - 1, z - 1, 2, 2)) continue;
         for (let y = 1; y <= 4; y++) a.sæt(x, h + y, z, ID.Træstamme);
         for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) for (let y = 4; y <= 5; y++) if (a.hent(x + dx, h + y, z + dz) === 0) a.sæt(x + dx, h + y, z + dz, ID.Blade);
         a.sæt(x, h + 6, z, ID.Blade);

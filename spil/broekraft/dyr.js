@@ -6,9 +6,10 @@
 //         "arm" (zombie-arme) · "flamme" (vises kun når turbosneglen drøner af sted)
 //  regnbue: true = klodsen skifter farve · lys: true = lyser selv · gennemsigtig: 0.8 = lidt gennemsigtig
 //  evne:  "flyver" | "hopper" | "turbo" | "flagrer" (falder langsomt) | "zombie" (følger efter dig) | "svæver"
+//         "jæger" (spurter efter dig og skubber — se skyd.js) · liv: hvor mange skud der skal til (standard 1)
 //  klap:  "puf" = dyret forsvinder i konfetti og bliver til en blomst når man trykker på det
 //  skala: gør hele dyret større/mindre · fart: blokke pr. sekund
-//  lyd:   "muh" | "øf" | "mæh" | "kluk" | "kvæk" | "rap" | "wiii" | "uuuh" | "buuh" | "boing" | "bipbop" | "pip"
+//  lyd:   "muh" | "øf" | "mæh" | "kluk" | "kvæk" | "rap" | "wiii" | "uuuh" | "buuh" | "boing" | "bipbop" | "pip" | "rawr"
 //  æg:    to farver til dyre-ægget
 
 import * as THREE from "./three.js";
@@ -222,6 +223,22 @@ export const DYR = [
       { s: [3, 2, 2], p: [0, 2.5, 8.6], f: "#ffcf3f" },
     ] },
   ] },
+  // Skydebanen: en hurtig turbo-dino, der spurter efter dig og skubber dig omkuld — man skal ramme den to gange
+  { id: "dino", navn: "Turbo-dino", lyd: "rawr", fart: 6, evne: "jæger", klap: "puf", liv: 2, æg: ["#5fd35f", "#ffd23f"], dele: [
+    { s: [8, 9, 14], p: [0, 15, 0], f: "#5fd35f" },
+    { s: [8.4, 3, 10], p: [0, 18.5, -1], f: "#3a9a3a" },
+    { s: [6, 3, 10], p: [0, 11, 1], f: "#d8f5a0" },
+    { s: [4, 4, 14], p: [0, 16, -13], f: "#5fd35f", rolle: "hale" },
+    { s: [3, 10, 4], p: [-3, 5, 0], f: "#4cbf4c", rolle: "ben", fase: 0 },
+    { s: [3, 10, 4], p: [3, 5, 0], f: "#4cbf4c", rolle: "ben", fase: Math.PI },
+    { s: [1.5, 4, 1.5], p: [-3, 13, 7], f: "#4cbf4c" }, { s: [1.5, 4, 1.5], p: [3, 13, 7], f: "#4cbf4c" },
+    { s: [7, 7, 10], p: [0, 22, 9], f: "#5fd35f", rolle: "hoved", børn: [
+      ...øjne(2, 24, 14.1, 2.4),
+      { s: [6, 1.5, 0.4], p: [0, 20, 14.1], f: "#2a4a2a" },
+      { s: [1, 1, 0.5], p: [-2, 19.5, 14.2], f: "#ffffff" }, { s: [1, 1, 0.5], p: [2, 19.5, 14.2], f: "#ffffff" },
+      { s: [2, 2, 3], p: [0, 26, 7], f: "#ffd23f" },
+    ] },
+  ] },
   // Skydebanen: en legetøjsrobot, der går efter dig og danser — rammer man den, bliver den til konfetti
   { id: "robot", navn: "Legetøjsrobot", lyd: "bipbop", fart: 1.1, evne: "zombie", klap: "puf", skala: 0.85, æg: ["#9aa8b8", "#ffd23f"], dele: [
     { s: [3, 8, 3], p: [-2.5, 4, 0], f: "#5a6a7a", rolle: "ben", fase: 0 },
@@ -286,6 +303,7 @@ export class Dyr {
     this.tid = Math.random() * 2; this.går = false; this.jord = false; this.fase = 0; this.t = Math.random() * 10;
     this.skub = new THREE.Vector3();                     // skub fra en eksplosion
     this.flyv = 0; this.turbo = 0; this.hopTid = 0; this.klapTid = 0; this.lydTid = 4 + Math.random() * 10;
+    this.liv = def.liv || 1; this.flugt = 0;              // liv: hvor mange skud der skal til · flugt: løber væk et øjeblik
   }
 
   opdater(dt, spiller) {
@@ -304,9 +322,19 @@ export class Dyr {
       this.målYaw = Math.atan2(tilX, tilZ);
       this.går = afst > 2.3; this.danser = !this.går; this.tid = 1;
     }
+    if (d.evne === "jæger") {                              // turbo-dinoen spurter efter dig — og løber væk efter et skub
+      this.flugt = Math.max(0, this.flugt - dt);
+      this.omvej = Math.max(0, (this.omvej || 0) - dt);
+      if (this.omvej > 0) { this.målYaw = this.omvejYaw; this.går = true; this.tid = 1; }
+      else if (this.flugt > 0) { this.målYaw = Math.atan2(-tilX, -tilZ); this.går = true; this.tid = 1; }
+      else if (afst < 32) {
+        this.målYaw = Math.atan2(tilX, tilZ); this.går = afst > 0.6; this.tid = 1;
+        if (this.jord && afst > 2 && afst < 6 && Math.random() < dt * 1.5) this.vel.y = 7;     // et spring frem
+      }
+    }
     let dy = this.målYaw - this.yaw;
     dy = ((dy + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
-    this.yaw += dy * Math.min(1, dt * 4);
+    this.yaw += dy * Math.min(1, dt * (d.evne === "jæger" ? 10 : 4));   // dinoen drejer skarpt
 
     let fart = this.går ? d.fart : 0;
     if (this.turbo > 0) { this.turbo -= dt; fart = 6; this.går = true; }
@@ -337,7 +365,10 @@ export class Dyr {
     if (r.jord && this.v.hopperUnder(this.pos, this.b)) this.vel.y = 11;       // boing!
     if (r.væg && this.går) {                             // hop op ad et trin, eller vend om
       tmp.copy(this.pos); tmp.y += 1.05; tmp.x += fx * 0.3; tmp.z += fz * 0.3;
+      const jæger = d.evne === "jæger";
       if (this.jord && !this.v.kolliderer(tmp, this.b, this.h)) this.vel.y = 7.5;
+      else if (jæger && this.jord && !this.v.kolliderer(tmp.setY(this.pos.y + 2.05), this.b, this.h)) this.vel.y = 11;   // dinoen springer højt
+      else if (jæger) { this.omvej = 0.7; this.omvejYaw = this.yaw + (Math.random() < 0.5 ? 1 : -1) * Math.PI / 2; }  // løb udenom
       else this.målYaw += Math.PI * (0.5 + Math.random());
     }
 

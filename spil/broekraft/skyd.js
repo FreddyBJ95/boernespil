@@ -107,7 +107,10 @@ export class Skydning {
   }
   ramtDyr(p, d) {
     if (VÅBEN[p.type].brag) return this.brag(p.pos.clone());
-    if (d.def.klap === "puf") { this.s.puf(d); this.s.point(2); return; }
+    if (d.def.klap === "puf") {
+      if (--d.liv > 0) { d.klap(); d.flugt = 1.5; this.stænk(p.pos, "#fff3a0", 8, 1); return; }   // dinoen skal rammes to gange
+      this.s.puf(d); this.s.point(d.def.liv ? 3 : 2); return;
+    }
     d.klap();                                                        // venlige dyr hopper bare lidt
     if (p.type === "maling") this.stænk(p.pos, p.farve, 10);
   }
@@ -227,6 +230,7 @@ export class Skydning {
   // Styr kampvognen med pilene. Tårnet følger kameraet.
   styr(tast, kameraYaw, dt) {
     const kv = this.kører;
+    if (tast.hop && kv.hop()) this.s.lyd.boing();                   // ⬆ = kampvognen hopper
     kv.kør(tast.frem - tast.tilbage, tast.hoejre - tast.venstre, dt, this.s.tyngde);
     kv.sigt(kameraYaw + Math.PI, dt, 4);
     this.s.sp.pos.set(kv.pos.x, kv.pos.y + 0.6, kv.pos.z);
@@ -253,12 +257,12 @@ export class Skydning {
       if (!this.startet && verden.hentet(Math.floor(sp.pos.x), Math.floor(sp.pos.z))) {
         this.startet = true;
         const [sx, sz] = this.s.start;
-        this.nyKampvogn(Math.floor(sx) + 6, Math.floor(sz) + 4, false); this.nyKampvogn(Math.floor(sx) - 6, Math.floor(sz) + 4, false);
-        for (let i = 0; i < 3; i++) { const s = this.ledigtSted(28, 50); if (s) this.nyKampvogn(s[0], s[1], true); }
+        this.nyKampvogn(Math.floor(sx) + 4, Math.floor(sz) + 6, false); this.nyKampvogn(Math.floor(sx) - 4, Math.floor(sz) + 6, false);   // foran hangaren
+        for (let i = 0; i < 4; i++) { const s = this.ledigtSted(30, 60); if (s) this.nyKampvogn(s[0], s[1], true); }
       }
       if (this.startet && this.balloner.length < 12 && Math.random() < dt * 2) this.nyBallon();
       for (let i = this.igen.length - 1; i >= 0; i--) if ((this.igen[i].tid -= dt) <= 0) {
-        const s = this.ledigtSted(30, 50);
+        const s = this.ledigtSted(30, 60);
         if (s) { this.nyKampvogn(s[0], s[1], true); this.igen.splice(i, 1); } else this.igen[i].tid = 3;
       }
     }
@@ -270,6 +274,19 @@ export class Skydning {
       if (verden.hent(g.x, g.y, g.z) === 0 && !(Math.abs(g.x + 0.5 - sp.pos.x) < 0.9 && Math.abs(g.z + 0.5 - sp.pos.z) < 0.9)) {
         if (this.s.online) this.s.net()?.sæt(g.x, g.y, g.z, ID.Skydeskive); else this.s.sæt(g.x, g.y, g.z, ID.Skydeskive);
       }
+    }
+
+    // turbo-dinoerne: når de når frem, skubber de barnet omkuld (en farveklat, men ingen skade) og løber væk
+    for (const d of dyr) {
+      if (d.def.evne !== "jæger" || d.flugt > 0) continue;
+      const dx = sp.pos.x - d.pos.x, dz = sp.pos.z - d.pos.z, afst = Math.hypot(dx, dz);
+      if (afst > (this.kører ? 2.2 : 1.7) || Math.abs(sp.pos.y - d.pos.y) > 1.8) continue;
+      d.flugt = 2.5; d.klapTid = 0.5;
+      this.s.lyd.dyrLyd(d.def.lyd);
+      if (this.kører) continue;                                    // kampvognen er for stor til at vælte
+      const k = 1 / Math.max(0.3, afst);
+      sp.vel.x += dx * k * 9; sp.vel.z += dz * k * 9; sp.vel.y = Math.max(sp.vel.y, 6); sp.jord = false;
+      this.s.klat("#5fd35f"); this.s.lyd.klask(1);
     }
 
     // balloner svæver og vipper

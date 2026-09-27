@@ -40,7 +40,8 @@ if (ONLINE) {
   try { onlineInfo = (await (await fetch("/verdensliste", { cache: "no-store" })).json()).find(v => v.id === ONLINE_ID) || null; } catch (_) {}
 }
 const cfg = (ONLINE ? VERDENER.find(v => v.id === onlineInfo?.type) : VERDENER.find(v => v.id === læs("broekraft-verden", "græsø"))) || VERDENER[0];
-const MÅL = ONLINE ? { BX: onlineInfo?.bredde || 128, BY: 64, BZ: onlineInfo?.dybde || 128, online: true } : {};
+const MÅL = ONLINE ? { BX: onlineInfo?.bredde || 128, BY: 64, BZ: onlineInfo?.dybde || 128, online: true }
+  : cfg.størrelse ? { BX: cfg.størrelse[0], BY: cfg.størrelse[1], BZ: cfg.størrelse[2] } : {};      // alene: nogle verdener er større
 const VX = MÅL.BX || BX, VZ = MÅL.BZ || BZ;
 // Hvor langt man kan se, når man spiller sammen (store verdener)
 const UDSYN = [{ navn: "Kort", r: 3, tåge: [18, 44] }, { navn: "Mellem", r: 5, tåge: [30, 74] }, { navn: "Langt", r: 7, tåge: [45, 106] }];
@@ -52,7 +53,7 @@ const TYNGDE = cfg.tyngde || 28;
 Lyd.sætStemning(cfg.stemning);
 
 // ---------- Gemt verden (kun på denne enhed — hver verden for sig) ----------
-const GEM = ONLINE ? `broekraft-online-${ONLINE_ID}` : cfg.id === "græsø" ? "broekraft-v1" : `broekraft-v1-${cfg.id}`;
+const GEM = ONLINE ? `broekraft-online-${ONLINE_ID}` : cfg.id === "græsø" ? "broekraft-v1" : `broekraft-v1-${cfg.id}${cfg.størrelse ? "-" + cfg.størrelse[0] : ""}`;
 const tilTing = n => (n.startsWith("æg:") ? { æg: n.slice(3) } : n.startsWith("v:") ? { v: n.slice(2) } : { blok: ID[n] });
 const STANDARD = cfg.hotbar.map(tilTing);
 let gemt = læs(GEM, null);
@@ -156,7 +157,7 @@ verden.tyngde = TYNGDE;
 if (!ONLINE) {                                    // alene: lav øen her. Sammen: serveren sender verdenen
   verden.generer(cfg.generer);
   verden.anvend(gemt.ændringer);
-  verden.bygAlle();
+  verden.bygOmkring(gemt.spiller?.[0] ?? VX / 2, gemt.spiller?.[2] ?? VZ / 2);   // tæt på først, resten lidt efter lidt
 }
 
 // ---------- Vand og lava flyder, ild breder sig (alene: her på tabletten — sammen: på serveren) ----------
@@ -221,10 +222,12 @@ function lavStartDyr(cx, cz) {                  // dyrene bor lokalt på hver ta
   for (let i = 0; i < cfg.antal; i++) {
     const x = Math.floor(cx + (R() - 0.5) * 26), z = Math.floor(cz + (R() - 0.5) * 26);
     if (!verden.hentet(x, z) || !verden.inde(x, 0, z)) continue;
-    nytDyr(dyrDef(cfg.dyr[i % cfg.dyr.length]), x + 0.5, verden.topY(x, z) + 1, z + 0.5);
+    const def = dyrDef(cfg.dyr[i % cfg.dyr.length]);
+    if (def.evne === "jæger") continue;                            // turbo-dinoerne kommer først senere — og langt væk
+    nytDyr(def, x + 0.5, verden.topY(x, z) + 1, z + 0.5);
   }
 }
-if (!ONLINE) lavStartDyr(BX / 2, BZ / 2);
+if (!ONLINE) lavStartDyr(VX / 2, VZ / 2);
 let genfødTid = 6;
 function genfød(dt) {                                            // nye zombier og spøgelser dukker op langt væk
   if (!cfg.genfød || (genfødTid -= dt) > 0) return;
@@ -233,8 +236,10 @@ function genfød(dt) {                                            // nye zombier
   for (let f = 0; f < 12; f++) {
     const x = ONLINE ? Math.floor(sp.pos.x + (Math.random() - 0.5) * 50) : 2 + Math.floor(Math.random() * (verden.BX - 4));
     const z = ONLINE ? Math.floor(sp.pos.z + (Math.random() - 0.5) * 50) : 2 + Math.floor(Math.random() * (verden.BZ - 4));
-    if (Math.hypot(x - sp.pos.x, z - sp.pos.z) < 10 || !verden.inde(x, 0, z) || !verden.hentet(x, z)) continue;
-    nytDyr(dyrDef(cfg.dyr[Math.floor(Math.random() * cfg.dyr.length)]), x + 0.5, verden.topY(x, z) + 1, z + 0.5);
+    let def = dyrDef(cfg.dyr[Math.floor(Math.random() * cfg.dyr.length)]);
+    if (def.evne === "jæger" && dyr.filter(d => d.def.evne === "jæger").length >= 3) def = dyrDef(cfg.dyr[0]);   // højst tre dinoer ad gangen
+    if (Math.hypot(x - sp.pos.x, z - sp.pos.z) < (def.evne === "jæger" ? 30 : 10) || !verden.inde(x, 0, z) || !verden.hentet(x, z)) continue;
+    nytDyr(def, x + 0.5, verden.topY(x, z) + 1, z + 0.5);
     return;
   }
 }
@@ -1061,7 +1066,7 @@ function tegnFrame(nu) {
   else if (!iGang) sp.yaw += dt * 0.06;                                           // titelskærm: kig langsomt rundt
   for (const d of dyr) d.opdater(dt, sp.pos);
   if (ONLINE) opdaterOnline(dt);
-  verden.opdater(ONLINE ? 6 : 4);
+  verden.opdater(ONLINE ? 6 : verden.snavset.size > 40 ? 12 : 4);
   animerVæsker();
   opdaterVærktøj(håndFlamme, tid);
   opdaterStykker(dt);

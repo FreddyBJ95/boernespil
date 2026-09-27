@@ -52,14 +52,33 @@ export class Kampvogn {
     this.vel.x += (fx * fart - this.vel.x) * Math.min(1, dt * 4);
     this.vel.z += (fz * fart - this.vel.z) * Math.min(1, dt * 4);
     this.vel.y = Math.max(-30, this.vel.y - tyngde * dt);
+    const førX = this.pos.x, førZ = this.pos.z;
     const r = this.verden.bevæg(this.pos, tmp.copy(this.vel).multiplyScalar(dt), KV_B, KV_H);
     if (r.jord) this.vel.y = 0;
     if (r.loft) this.vel.y = Math.min(0, this.vel.y);
     this.jord = r.jord;
-    if (r.væg && this.jord && Math.abs(frem) > 0.1) {             // kør selv op ad ét trin
-      tmp.copy(this.pos); tmp.y += 1.05; tmp.x += fx * 0.45 * Math.sign(frem); tmp.z += fz * 0.45 * Math.sign(frem);
-      if (!this.verden.kolliderer(tmp, KV_B, KV_H)) this.vel.y = 7.5; else this.blokeret = true;
+    if (r.væg && this.jord && Math.abs(frem) > 0.1) {             // kør selv op over en kant — op til tre blokke høj
+      let op = 0;
+      for (const h of [1, 2, 3]) {
+        tmp.copy(this.pos); tmp.y += h + 0.05; tmp.x += fx * 0.5 * Math.sign(frem); tmp.z += fz * 0.5 * Math.sign(frem);
+        if (!this.verden.kolliderer(tmp, KV_B, KV_H)) { op = h; break; }
+      }
+      if (op) this.vel.y = Math.sqrt(2 * tyngde * (op + 0.4)); else this.blokeret = true;
     }
+    // Sidder kampvognen fast (fx i et dybt hul)? Så hopper den selv op efter et øjeblik
+    const flyttet = Math.hypot(this.pos.x - førX, this.pos.z - førZ) / Math.max(dt, 1e-4);
+    this.fast = Math.abs(frem) > 0.1 && flyttet < 0.6 ? (this.fast || 0) + dt : 0;
+    if (flyttet > 2) this.redning = 0;
+    if (this.fast > 1.2 && this.jord) {                           // hver gang den stadig sidder fast, hopper den højere
+      this.hop(Math.min(2, 1.25 + 0.35 * (this.redning || 0)));
+      this.redning = (this.redning || 0) + 1; this.fast = 0;
+    }
+  }
+  // Hop! (knappen ⬆ i kampvognen) — styrke 1 er godt to blokke op
+  hop(styrke = 1) {
+    if (!this.jord) return false;
+    this.vel.y = 11 * styrke; this.jord = false;
+    return true;
   }
 
   // Drej tårnet blødt mod en retning (yaw i verden)

@@ -203,6 +203,13 @@ export class Verden {
   bygAlle() {
     for (let cx = 0; cx < this.BX / CS; cx++) for (let cy = 0; cy < this.BY / CS; cy++) for (let cz = 0; cz < this.BZ / CS; cz++) this.bygKlump(cx, cy, cz);
   }
+  // Byg klumperne tæt på (x, z) med det samme — resten kommer lidt efter lidt, de nærmeste først
+  bygOmkring(x, z, r = 3) {
+    const cx0 = Math.floor(x / CS), cz0 = Math.floor(z / CS), alle = [];
+    for (let cx = 0; cx < this.BX / CS; cx++) for (let cy = 0; cy < this.BY / CS; cy++) for (let cz = 0; cz < this.BZ / CS; cz++) alle.push([cx, cy, cz, Math.hypot(cx - cx0, cz - cz0)]);
+    alle.sort((a, b) => a[3] - b[3]);
+    for (const [cx, cy, cz, d] of alle) { if (d <= r) this.bygKlump(cx, cy, cz); else this.snavset.add(`${cx},${cy},${cz}`); }
+  }
   opdater(maks = 4) {
     let n = 0;
     for (const k of this.snavset) {

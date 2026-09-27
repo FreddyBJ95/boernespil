@@ -474,6 +474,7 @@ export function dyrLyd(type, afstand = 0) {
     case "boing": glid(180, 620, t, 0.35, { vol: 0.22 * v, vibHz: 14, vib: 50 }); break;
     case "bipbop": [0, 0.1, 0.2, 0.3].forEach(d => tone(600 + Math.random() * 900, t + d, 0.08, "square", 0.08 * v)); break;
     case "pip": [0, 0.12].forEach(d => tone(2200, t + d, 0.06, "sine", 0.15 * v, 2800)); break;
+    case "rawr": glid(340, 170, t, 0.45, { type: "sawtooth", vol: 0.2 * v, vibHz: 22, vib: 30, filter: 900, q: 2 }); sus(t, 0.35, 1200, 400, 0.12 * v, "bandpass", 1.5); break;
     default: tone(600, t, 0.1, "sine", 0.2 * v, 900);
   }
 }
