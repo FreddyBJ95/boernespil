@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { VERDENER } from "../spil/broekraft/verdener.js";
+import { BLOKKE } from "../spil/broekraft/blokke.js";
 
 export const VERSION = "0.2.0";
 // Protokollen får nyt nummer; verdensdata beholder sit kompatible format.
@@ -89,7 +90,7 @@ export class Verdenslager {
     const meta = await this.meta(id);
     const fil = await Deno.open(join(this.mappe(id), "data.bin.gz"));
     const data = new Uint8Array(await new Response(fil.readable.pipeThrough(new DecompressionStream("gzip"))).arrayBuffer());
-    if (data.length !== meta.bredde * meta.dybde * meta.højde || data.some(id => id > 56)) throw new Error("Verdensdata er beskadiget");
+    if (data.length !== meta.bredde * meta.dybde * meta.højde || data.some(id => id >= BLOKKE.length)) throw new Error("Verdensdata er beskadiget");
     return { meta, data };
   }
 

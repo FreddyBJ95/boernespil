@@ -98,9 +98,10 @@ export class Fyrværkeri {
   }
 
   // Send en raket op fra (x, y, z). mønster: se MØNSTRE (tom = tilfældigt)
-  raket(x, y, z, { mønster, farver, højde = 16 + Math.random() * 10 } = {}) {
+  // Sammen sender serveren fart, farver og højde med, så raketten flyver ens hos alle
+  raket(x, y, z, { mønster, farver, højde = 16 + Math.random() * 10, vx = (Math.random() - 0.5) * 2.5, vy = 22 + Math.random() * 5, vz = (Math.random() - 0.5) * 2.5 } = {}) {
     if (this.raketter.length > 24) return;
-    this.raketter.push({ x, y, z, vx: (Math.random() - 0.5) * 2.5, vy: 22 + Math.random() * 5, vz: (Math.random() - 0.5) * 2.5, top: y + højde,
+    this.raketter.push({ x, y, z, vx, vy, vz, top: y + højde,
       mønster: mønster || tilfældig(Object.keys(MØNSTRE)), farver: farver || [tilfældig(FARVER), tilfældig(FARVER)], t: 0 });
     this.lyd.fløjt?.(this.afstand(x, y, z));
   }

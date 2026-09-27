@@ -24,6 +24,14 @@ Deno.test("RLE: rundtur, 255-grænse og ødelagte pakker", () => {
   assert.throws(() => læsBesked(new Uint8Array(8)));
 });
 
+Deno.test("RLE: alle blokke i BLOKKE kommer igennem — også nye, der tilføjes nederst", async () => {
+  const { BLOKKE } = await import("../../spil/broekraft/blokke.js");
+  const data = new Uint8Array(256 * 64); data.fill(BLOKKE.length - 1, 0, 256);   // fx Sne i Fyrværkeri-verdenen
+  const klump = udpakKlump(pakKlump(data, 1, 1, 64).buffer);
+  assert.equal(klump.data[0], BLOKKE.length - 1);
+  assert.throws(() => udpakKlump(pakKlump(data, 1, 1, 64).buffer, BLOKKE.length - 2), /Ugyldig RLE/);
+});
+
 Deno.test("To spillere deler blokke; nummer maks+1 får fuld", () => {
   const r = testRum(), a = spiller("a"), b = spiller("b"), c = spiller("c");
   assert.equal(r.ind(a), true); assert.equal(r.ind(b), true); assert.equal(r.ind(c), false);

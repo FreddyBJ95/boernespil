@@ -129,7 +129,7 @@ export class Skydning {
     }
     for (const b of [...this.balloner]) if (b.pos.distanceTo(c) < 4.5) this.ballonPop(b);
     for (const kv of [...this.fjender]) if (kv.rammer(c, 2.5) && kv.træf(3)) this.kampvognVæk(kv);
-    if (this.s.online) this.s.bragEffekt(c.x, c.y, c.z);             // sammen: kun et brag at se på
+    if (this.s.online) this.s.net()?.brag(c.x, c.y, c.z);           // sammen: serveren sprænger og sender "bum" til alle
     else this.s.eksploder(c.x, c.y, c.z);
   }
 

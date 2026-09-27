@@ -1,5 +1,6 @@
 // Lille EventTarget-klient. Ingen afhængigheder og ingen antagelser om 3D-visningen.
-export function udpakKlump(buffer) {
+// maksId: det højeste blok-id, spillet kender (BLOKKE.length - 1). Nye blokke tilføjes løbende nederst.
+export function udpakKlump(buffer, maksId = 255) {
   const bytes = new Uint8Array(buffer);
   if (bytes.length < 13 || bytes[0] !== 1 || (bytes.length - 11) % 2) throw new Error("Ugyldig klump");
   const header = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -9,7 +10,7 @@ export function udpakKlump(buffer) {
   let pos = 0;
   for (let i = 11; i < bytes.length; i += 2) {
     const antal = bytes[i], id = bytes[i + 1];
-    if (!antal || pos + antal > data.length || id > 56) throw new Error("Ugyldig RLE");
+    if (!antal || pos + antal > data.length || id > maksId) throw new Error("Ugyldig RLE");
     data.fill(id, pos, pos + antal); pos += antal;
   }
   if (pos !== data.length) throw new Error("Ufuldstændig klump");

@@ -679,12 +679,13 @@ function fyrTryk(v, hit) {
   let x, y, z;
   if (hit && hit.n[1] === 1) { x = hit.x + 0.5; y = hit.y + 1; z = hit.z + 0.5; }
   else { x = sp.pos.x - Math.sin(sp.yaw) * 2.5; z = sp.pos.z - Math.cos(sp.yaw) * 2.5; y = verden.topY(Math.floor(x), Math.floor(z)) + 1; }
-  fyr.raket(x, y, z);
+  if (ONLINE) net?.fyrværkeri(x, y, z);                           // sammen: serveren sender raketten til alle
+  else fyr.raket(x, y, z);
 }
 // Fyrværkeri-kassen tændes og skyder en hel serie raketter op
 function tændFyrkasse({ x, y, z }) {
-  if (ONLINE) net?.sæt(x, y, z, 0); else verden.sæt(x, y, z, 0);
-  fyr.tændKasse(x, y, z, 12);
+  if (ONLINE) net?.tændFyrkasse(x, y, z);                         // sammen: serveren fyrer serien af for alle
+  else { verden.sæt(x, y, z, 0); fyr.tændKasse(x, y, z, 12); }
   Lyd.tænd(); sving = 1;
   gemSnart();
 }
@@ -1192,6 +1193,7 @@ async function forbindOnline() {
   });
   net.addEventListener("bum", e => { sidsteBum = { ...e.detail, tid: performance.now() }; bragEffekt(e.detail.x, e.detail.y, e.detail.z); });
   net.addEventListener("emoji", e => visEmoji(e.detail.id, e.detail.e));
+  net.addEventListener("fyrværkeri", e => fyr.raket(e.detail.x, e.detail.y, e.detail.z, e.detail));
   net.addEventListener("lukket", e => status(e.detail.genforbinder ? "🟡 Forbinder igen…" : "🔴 Afbrudt"));
   net.addEventListener("fejl", e => besked(`⚠️ ${e.detail.besked}`, 3000));
   net.udsyn(UDSYN[udsynNr].r);

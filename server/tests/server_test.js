@@ -93,6 +93,12 @@ Deno.test("Gemninger står i kø, snapshot bevares, og ugyldige metadata afvises
     assert.equal((await lager.indlæs(m.id)).data[10], 7);
     const a = lager.gem(m, data); data[10] = 5; const b = lager.gem(m, data); await Promise.all([a, b]);
     assert.equal((await lager.indlæs(m.id)).data[10], 5);
+    const { BLOKKE } = await import("../../spil/broekraft/blokke.js");        // nyeste blok (fx Sne) kan gemmes og hentes
+    data[11] = BLOKKE.length - 1; await lager.gem(m, data);
+    assert.equal((await lager.indlæs(m.id)).data[11], BLOKKE.length - 1);
+    data[11] = BLOKKE.length; await lager.gem(m, data);
+    await assert.rejects(() => lager.indlæs(m.id), /beskadiget/);
+    data[11] = 0; await lager.gem(m, data);
     for (const valg of [{ bredde: 64 }, { maksSpillere: 9 }, { maksSpillere: 0 }, { frø: -1 }, { type: "ukendt" }]) assert.throws(() => metadata({ ...m, ...valg }));
     assert.throws(() => lager.mappe("../../andre-filer"));
     assert.equal(lokal("::1"), true); assert.equal(lokal("192.168.1.1"), false);
