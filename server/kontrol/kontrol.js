@@ -84,16 +84,20 @@ async function opdater() {
     if (j.status === "arbejder") { const p = document.createElement("progress"); p.max = 100; p.value = j.procent; e.append(p); }
     return e;
   }));
-  $("#opret button").disabled = b.job.some(j => j.status === "arbejder");
+  const arbejder = b.job.some(j => j.status === "arbejder");
+  $("#opret button").disabled = arbejder;
+  // Når verdenen er klar, forsvinder "bliver oprettet…" igen (listen ovenfor viser "Klar")
+  if (!arbejder && $("#besked").textContent === OPRETTER) $("#besked").textContent = "";
 }
 
+const OPRETTER = "Verdenen bliver oprettet…";
 $("#opret").onsubmit = async e => {
   e.preventDefault();
   const f = new FormData(e.target);
   $("#opret button").disabled = true;
   try {
     await handling("opret", { navn: f.get("navn"), type: f.get("type"), bredde: Number(f.get("bredde")), maksSpillere: Number(f.get("maksSpillere")), frø: f.get("frø"), ildBreder: f.has("ildBreder") });
-    $("#besked").textContent = "Verdenen bliver oprettet…"; await opdater();
+    $("#besked").textContent = OPRETTER; await opdater();
   } catch (fejl) { $("#besked").textContent = fejl.message; $("#opret button").disabled = false; }
 };
 
