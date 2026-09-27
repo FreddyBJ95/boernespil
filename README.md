@@ -18,29 +18,21 @@ Scan koden med tablettens kamera:
 Første gang skal der være internet. Bagefter virker spillene også offline.
 
 ## Spil
-- 🐮 **Tryk på dyret**
-- 🐍 **Fjollet Slange**
-- 🎨 **Tegn!**
-- 🎈 **Pop ballonerne**
-- 🧠 **Find par**
-- 🧺 **Fang frugten**
-- 🔨 **Slå muldvarpen**
-- 🔢 **Tæl dyrene**
-- 🎵 **Husk farverne**
-- 🎹 **Dyre-piano**
-- 🚀 **Undvig stenene**
-- 🧩 **Skydepuslespil**
-- 🚽 **Skibidi Toilet**
-- 🚜 **Vaskehallen**
-- 🎣 **Mærkelige fisk** (3D)
-- ⛏️ **Broekraft** (3D-byggespil i Minecraft-stil med 4 verdener, hammer og TNT)
+Forsiden har faner, så man kan vælge kategori (appen husker den sidste):
+
+- 🧊 **3D:** ⛏️ Broekraft (byggespil i Minecraft-stil med 4 verdener, hammer og TNT), 🎣 Mærkelige fisk
+- 🎮 **2D:** 🐮 Tryk på dyret, 🎈 Pop ballonerne, 🧺 Fang frugten, 🔨 Slå muldvarpen, 🚀 Undvig stenene,
+  🐍 Fjollet Slange, 🚽 Skibidi Toilet, 🚜 Vaskehallen
+- 🧠 **Lær:** 🔢 Tæl dyrene, 🧠 Find par, 🎵 Husk farverne, 🧩 Skydepuslespil
+- 🎨 **Tegn & musik:** 🎨 Tegn!, 🎹 Dyre-piano
 
 ## Kør lokalt
 Åbn `index.html` i en browser.
 
 ## Tilføj et nyt spil
 1. Lav en ny mappe under `spil/`, fx `spil/mit-spil/` med en `index.html`.
-2. Tilføj et nyt "spil-kort" i forsidens `index.html`.
+2. Kopiér et "spil-kort" ind i den rigtige kategori i forsidens `index.html`
+   (`data-ny="ÅÅÅÅ-MM-DD"` giver et NY!-mærke i tre uger).
 3. Tilføj mappenavnet til `SPIL` i `sw.js` og sæt tallet i `CACHE` én op.
 
 ## Mærkelige fisk: flere fisk og stænger
