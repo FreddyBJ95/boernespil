@@ -1,14 +1,90 @@
-/* Enkel grundstil; Claude står for det endelige design. */
-:root { font: 18px system-ui, sans-serif; color: #202e32; background: #f5f7f8; }
-body { max-width: 1000px; margin: auto; padding: 24px; }
-section { background: white; border: 1px solid #d3dce0; border-radius: 12px; padding: 20px; margin: 20px 0; }
-form, #adresser { display: flex; flex-wrap: wrap; gap: 20px; }
-label { display: flex; flex-direction: column; gap: 5px; }
-input, select, button { font: inherit; padding: 10px; }
-button { cursor: pointer; margin: 4px; }
-button:disabled { cursor: wait; }
-article { border-bottom: 1px solid #d3dce0; padding: 12px 0; }
-#besked { white-space: pre-wrap; overflow-wrap: anywhere; }
-#adresser a { display: block; }
-#adresser svg { width: 190px; height: 190px; }
-progress { margin: 10px; }
+/* Kontrolpanel til forældre — venligt og overskueligt, i Broekraft-stil. */
+:root {
+  --græs: #5fb33a; --jord: #8b5a2b; --himmel: #cde8ff; --tekst: #1f2a30; --svag: #5d6b72;
+  --kort: #ffffff; --kant: #d7e2e8; --blå: #2f7fd6; --rød: #d64545;
+  font: 17px ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--tekst); background: #eef4f7;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+
+/* Bånd med græs og jord øverst */
+.bånd {
+  background: linear-gradient(180deg, #4a9df5, var(--himmel));
+  border-bottom: 14px solid var(--græs); box-shadow: 0 10px 0 var(--jord);
+  margin-bottom: 34px; padding: 26px 20px 20px;
+}
+.bånd .indre { max-width: 1040px; margin: auto; }
+.bånd h1 {
+  margin: 0; font-size: 44px; font-weight: 900; letter-spacing: 2px; color: #f2f2f2;
+  text-shadow: 3px 4px 0 #2b2b2b;
+}
+.bånd h1 span { color: #ffff3f; font-size: 26px; text-shadow: 2px 2px 0 #3f3f00; letter-spacing: 0; }
+.bånd p { margin: 6px 0 0; font-weight: 600; color: #123; }
+
+main { max-width: 1040px; margin: auto; padding: 0 20px 40px; }
+section {
+  background: var(--kort); border: 1px solid var(--kant); border-radius: 16px; padding: 20px 22px; margin: 0 0 20px;
+  box-shadow: 0 6px 18px rgba(20,40,60,.06);
+}
+h2 { margin: 0 0 14px; font-size: 22px; }
+.to { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+@media (max-width: 820px) { .to { grid-template-columns: 1fr; } }
+
+#besked:empty { display: none; }
+#besked {
+  white-space: pre-wrap; overflow-wrap: anywhere; background: #fff7d6; border: 1px solid #f0d77a;
+  border-radius: 12px; padding: 12px 16px; font-weight: 600;
+}
+
+/* Forbind: vejledning + stor QR-kode */
+.forbind { display: flex; gap: 24px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.trin { margin: 0; padding-left: 22px; line-height: 1.7; color: var(--svag); }
+.trin b { color: var(--tekst); }
+#adresser { display: flex; flex-wrap: wrap; gap: 18px; }
+#adresser > div {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px;
+  border: 3px solid var(--græs); border-radius: 16px; background: #fff;
+}
+#adresser svg { width: 210px; height: 210px; display: block; }
+#adresser a { font-weight: 800; font-size: 18px; color: var(--blå); text-decoration: none; }
+
+/* Formular */
+form { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; align-items: end; }
+label { display: flex; flex-direction: column; gap: 6px; font-weight: 700; font-size: 15px; color: var(--svag); }
+label.flueben { flex-direction: row; align-items: center; gap: 10px; color: var(--tekst); padding-bottom: 10px; }
+label.flueben input { width: 22px; height: 22px; }
+input, select {
+  font: inherit; color: var(--tekst); padding: 10px 12px; border: 2px solid var(--kant); border-radius: 10px; background: #fbfdfe;
+}
+input:focus, select:focus { outline: none; border-color: var(--blå); }
+button {
+  font: inherit; font-weight: 800; cursor: pointer; padding: 10px 16px; margin: 4px 6px 0 0;
+  border: 2px solid #b9c6cd; border-radius: 10px; background: #f4f7f9; color: var(--tekst);
+}
+button:hover { background: #e8eef2; }
+button:disabled { cursor: wait; opacity: .6; }
+button.primær, form button {
+  background: var(--græs); border-color: #3f8a25; color: #fff; text-shadow: 1px 1px 0 rgba(0,0,0,.25); padding: 12px 18px;
+}
+button.primær:hover, form button:hover { background: #56a334; }
+#job p { display: flex; align-items: center; gap: 10px; font-weight: 700; margin: 14px 0 0; }
+progress { flex: 1; height: 16px; accent-color: var(--græs); }
+
+/* Verdensliste */
+#verdener article {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 14px 0; border-bottom: 1px solid var(--kant);
+}
+#verdener article:last-child { border-bottom: none; }
+#verdener h3 { margin: 0; font-size: 19px; flex-basis: 100%; }
+#verdener article p { margin: 0 0 4px; color: var(--svag); flex-basis: 100%; }
+#verdener article button:last-of-type { border-color: #e7b3b3; color: var(--rød); background: #fff5f5; }
+#verdener article button:last-of-type:hover { background: #ffe9e9; }
+
+/* Spillere */
+#spillere { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+#spillere li { font-size: 18px; font-weight: 700; background: #f1f7ec; border-radius: 10px; padding: 8px 12px; }
+#spillere:empty::before { content: "Ingen spiller lige nu."; color: var(--svag); font-weight: 600; }
+
+footer { color: var(--svag); font-size: 14px; }
+footer a { color: var(--blå); }

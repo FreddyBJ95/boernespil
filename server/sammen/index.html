@@ -1,5 +1,93 @@
 <!doctype html>
 <html lang="da">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Spil sammen · Broekraft</title></head>
-<body><h1>Spil sammen</h1><p>Vælg en verden fra familiens computer.</p><main id="verdener"></main><p id="besked" role="status"></p><p><a href="/tilslut/">Forbind til en anden computer · Scan QR-kode</a></p><script type="module" src="/sammen/sammen.js"></script></body>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Spil sammen · Broekraft</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Broekraft Sammen">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: ui-rounded, "SF Pro Rounded", "Baloo 2", system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: #fff; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+      background: linear-gradient(180deg, #4a9df5 0%, #cde8ff 70%, #6cbf4a 70%, #5aa845 100%) fixed;
+      display: flex; flex-direction: column; align-items: center; padding: 22px 16px 40px;
+    }
+    /* Pixel-skyer på himlen */
+    .sky { position: fixed; height: 18px; background: #fff; opacity: .85; z-index: 0; animation: driv linear infinite; }
+    @keyframes driv { from { transform: translateX(-30vw); } to { transform: translateX(130vw); } }
+    main, header, footer { position: relative; z-index: 1; width: 100%; max-width: 900px; }
+    header { text-align: center; margin-bottom: 14px; }
+    .logo {
+      margin: 0; font-size: clamp(44px, 11vw, 92px); font-weight: 900; letter-spacing: 3px; line-height: 1;
+      background: linear-gradient(180deg, #f2f2f2 0%, #bdbdbd 45%, #8a8a8a 50%, #a8a8a8 100%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      filter: drop-shadow(4px 5px 0 #2b2b2b);
+    }
+    .splash {
+      display: inline-block; color: #ffff3f; font-weight: 900; font-size: clamp(20px, 4vw, 28px);
+      text-shadow: 2px 2px 0 #3f3f00; transform: rotate(-8deg); margin-top: 4px; animation: pust .6s ease-in-out infinite alternate;
+    }
+    @keyframes pust { to { transform: rotate(-8deg) scale(1.1); } }
+    .under { font-weight: 800; font-size: 19px; text-shadow: 2px 2px 0 rgba(0,0,0,.45); margin: 10px 0 0; }
+
+    .verdener { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; }
+    .verdener .kort { width: min(100%, 290px); }
+    .kort {
+      display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px 14px; text-align: center;
+      border: 3px solid #1e1e1e; box-shadow: inset -4px -4px 0 rgba(0,0,0,.3), inset 4px 4px 0 rgba(255,255,255,.3), 0 10px 24px rgba(0,0,0,.25);
+      text-shadow: 2px 2px 0 rgba(0,0,0,.55); animation: ind .4s cubic-bezier(.2,1.3,.4,1) both;
+    }
+    @keyframes ind { from { opacity: 0; transform: translateY(14px) scale(.96); } }
+    .ikon { font-size: 60px; line-height: 1; filter: drop-shadow(2px 3px 0 rgba(0,0,0,.35)); }
+    .navn { font-size: 26px; font-weight: 900; }
+    .type { font-size: 15px; font-weight: 700; opacity: .9; }
+    .pladser { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; }
+    .plads { width: 18px; height: 18px; border: 2px solid #1e1e1e; background: rgba(255,255,255,.35); }
+    .plads.fyldt { background: #7cd15a; }
+    .mc {
+      display: block; width: 100%; padding: 14px 18px; color: #fff; font: 800 24px ui-rounded, system-ui, sans-serif;
+      text-decoration: none; text-align: center; background: #8b8b8b; border: 3px solid #1e1e1e;
+      box-shadow: inset -3px -4px 0 #5a5a5a, inset 3px 3px 0 #b8b8b8; text-shadow: 2px 2px 0 #3f3f3f;
+    }
+    .mc:active { background: #7aa6e0; box-shadow: inset -3px -4px 0 #4f78b0, inset 3px 3px 0 #a9c8f0; }
+    .mc.fuld { background: #6a6a6a; opacity: .75; pointer-events: none; }
+
+    .tom {
+      text-align: center; padding: 26px 20px; background: rgba(0,0,0,.35); border: 3px solid #1e1e1e;
+      font-size: 22px; font-weight: 800; text-shadow: 2px 2px 0 rgba(0,0,0,.5);
+    }
+    .tom .stort { font-size: 64px; display: block; margin-bottom: 8px; animation: sov 2.5s ease-in-out infinite; }
+    @keyframes sov { 50% { transform: translateY(-6px) rotate(-4deg); } }
+    footer { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 22px; }
+    footer .mc { width: auto; font-size: 18px; padding: 10px 16px; }
+  </style>
+</head>
+<body>
+  <div class="sky" style="top: 8%; width: 180px; animation-duration: 70s;"></div>
+  <div class="sky" style="top: 18%; width: 120px; animation-duration: 95s; animation-delay: -40s;"></div>
+  <div class="sky" style="top: 30%; width: 220px; animation-duration: 80s; animation-delay: -20s;"></div>
+
+  <header>
+    <h1 class="logo">BROEKRAFT</h1>
+    <div class="splash">Spil sammen!</div>
+    <p class="under">Vælg en verden og byg sammen med de andre 👫</p>
+  </header>
+
+  <main>
+    <div class="verdener" id="verdener"></div>
+    <div class="tom" id="tom" hidden><span class="stort">💤</span>Ingen verdener er startet endnu.<br>Bed en voksen om at starte en verden på computeren.</div>
+    <div class="tom" id="fejl" hidden><span class="stort">🔌</span><span id="fejlTekst">Computeren svarer ikke.</span></div>
+  </main>
+
+  <footer>
+    <a class="mc" href="/index.html">🏠 Alle spil</a>
+    <a class="mc" href="/tilslut/">📷 En anden computer</a>
+  </footer>
+
+  <script type="module" src="/sammen/sammen.js"></script>
+</body>
 </html>
