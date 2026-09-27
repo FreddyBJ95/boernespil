@@ -31,6 +31,7 @@ Første gang skal der være internet. Bagefter virker spillene også offline.
 - 🚀 **Undvig stenene**
 - 🧩 **Skydepuslespil**
 - 🚽 **Skibidi Toilet**
+- 🚜 **Vaskehallen**
 
 ## Kør lokalt
 Åbn `index.html` i en browser.

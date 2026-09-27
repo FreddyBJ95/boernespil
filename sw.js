@@ -1,10 +1,10 @@
 // ===== Service Worker — gør spillene installerbare og tilgængelige offline =====
 // Bump dette tal når der ændres filer, så de gamle bliver hentet på ny.
-const CACHE = "boernespil-v5";
+const CACHE = "boernespil-v6";
 
 const SPIL = [
   "tryk-paa-dyret", "slange", "tegne", "balloner", "find-par", "fang",
-  "muldvarp", "tael", "simon", "piano", "undvig", "puslespil", "skibidi"
+  "muldvarp", "tael", "simon", "piano", "undvig", "puslespil", "skibidi", "vask"
 ];
 
 const FILER = [
