@@ -1,9 +1,11 @@
 // ===== Blokkene i Broekraft =====
 // Tilføj en ny blok: skriv en ny linje i BLOKKE (id = pladsen i listen).
 //  tekstur:      navnet på et mønster i MØNSTRE — eller { top, side, bund } med tre forskellige.
-//                "uld:#farve" og "blomst:#farve" laver uld/blomster i en valgfri farve.
+//                "uld:#farve", "blomst:#farve", "prikker:#farve:#prik" og "lilleSvamp:#farve" kan få valgfri farver.
 //  gennemsigtig: man kan se igennem (glas) · kryds: tynd plante man kan gå igennem (blomster)
 //  lyser:        altid fuldt oplyst · uknuselig: kan ikke hakkes · skjult: vises ikke i inventaret
+//  hopper:       man hopper højt når man lander på den (som en trampolin)
+//  Nye blokke skal altid tilføjes NEDERST, så gemte verdener stadig passer.
 //  lyd:          "græs" | "sten" | "træ" | "sand" | "glas" | "uld" | "metal"
 // Et nyt mønster er en funktion i MØNSTRE der tegner 16×16 pixels med set(x, y, farve).
 
@@ -37,6 +39,24 @@ export const BLOKKE = [
   { navn: "Rød blomst", tekstur: "blomst:#e8283c", kryds: true, lyd: "græs" },
   { navn: "Gul blomst", tekstur: "blomst:#f7d51d", kryds: true, lyd: "græs" },
   { navn: "Bundsten", tekstur: "bundsten", uknuselig: true, skjult: true, lyd: "sten" },
+  // --- Zombieverdenen ---
+  { navn: "Mørkt græs", tekstur: { top: "mørkGræsTop", side: "mørkGræsSide", bund: "jord" }, lyd: "græs" },
+  { navn: "Gravsten", tekstur: "gravsten", lyd: "sten" },
+  { navn: "Død stamme", tekstur: { top: "stammeTop", side: "dødStamme", bund: "stammeTop" }, lyd: "træ" },
+  { navn: "Lygtemand", tekstur: { top: "græskarTop", side: "lygtemand", bund: "græskarTop" }, lyser: true, lyd: "træ" },
+  { navn: "Spindelvæv", tekstur: "spindelvæv", kryds: true, lyd: "uld" },
+  // --- Svampeverdenen ---
+  { navn: "Svampejord", tekstur: { top: "svampejordTop", side: "svampejordSide", bund: "jord" }, lyd: "græs" },
+  { navn: "Rød svamp", tekstur: "prikker:#d9232e:#ffffff", hopper: true, lyd: "uld" },
+  { navn: "Blå svamp", tekstur: "prikker:#3a7be0:#ffe066", hopper: true, lyd: "uld" },
+  { navn: "Svampestok", tekstur: { top: "svampestokTop", side: "svampestok", bund: "svampestokTop" }, lyd: "træ" },
+  { navn: "Lille svamp", tekstur: "lilleSvamp:#e8283c", kryds: true, lyd: "græs" },
+  { navn: "Glødesvamp", tekstur: "lilleSvamp:#5ff0ff", kryds: true, lyser: true, lyd: "glas" },
+  // --- Ostemånen ---
+  { navn: "Ost", tekstur: "ost", lyd: "uld" },
+  { navn: "Månesten", tekstur: "månesten", lyd: "sten" },
+  { navn: "Stjerneblok", tekstur: "stjerner", lyser: true, lyd: "glas" },
+  { navn: "Krystal", tekstur: "krystal", kryds: true, lyser: true, lyd: "glas" },
 ];
 
 export const ID = {};
@@ -133,6 +153,64 @@ const MØNSTRE = {
     set(x, y, øje || mund ? hex("#3a2410") : lys(hex("#e8891c"), (x % 4 === 0 ? 0.85 : 1) * (1 + (r() - 0.5) * 0.12)));
   }),
   bundsten: (set, r) => { fyld(set, r, "#3a3a3a", 0.3); prik(set, r, ["#555555", "#222222"], 40); },
+
+  // --- Zombieverdenen ---
+  mørkGræsTop: (set, r) => { fyld(set, r, "#2f5d4a", 0.3); prik(set, r, ["#6b3f8c", "#3f7a5a", "#24483a"], 30); },
+  mørkGræsSide: (set, r) => {
+    fyld(set, r, "#5a3a22", 0.25); prik(set, r, ["#442a18", "#6e4a2c"], 20);
+    const g = hex("#2f5d4a");
+    for (let x = 0; x < T; x++) { const h = 3 + (r() < 0.5 ? 1 : 0); for (let y = 0; y < h; y++) set(x, y, lys(g, 1 + (r() - 0.5) * 0.3)); }
+  },
+  gravsten: (set, r) => {
+    fyld(set, r, "#9a9aa2", 0.15);
+    alle((x, y) => { if (x === 0 || x === 15 || y === 0 || y === 15) set(x, y, hex("#6f6f78")); });
+    for (let y = 3; y <= 12; y++) { set(7, y, hex("#55555c")); set(8, y, hex("#55555c")); }
+    for (let x = 4; x <= 11; x++) { set(x, 5, hex("#55555c")); set(x, 6, hex("#55555c")); }
+    for (let i = 0; i < 10; i++) set(Math.floor(r() * T), 13 + Math.floor(r() * 3), hex("#4f7a3a"));
+  },
+  dødStamme: (set, r) => { const c = hex("#6e6259"); alle((x, y) => set(x, y, lys(c, (x % 5 === 0 ? 0.72 : 1) * (1 + (r() - 0.5) * 0.18)))); },
+  lygtemand: (set, r) => alle((x, y) => {
+    const øje = y >= 4 && y <= 6 && ((x >= 3 && x <= 5) || (x >= 10 && x <= 12)) && !(y === 4 && (x === 3 || x === 12));
+    const mund = (y === 10 && x >= 3 && x <= 12) || (y === 11 && x >= 4 && x <= 11 && x !== 6 && x !== 9);
+    set(x, y, øje || mund ? lys(hex("#ffe066"), 1 + (r() - 0.5) * 0.15) : lys(hex("#e8891c"), (x % 4 === 0 ? 0.85 : 1) * (1 + (r() - 0.5) * 0.12)));
+  }),
+  spindelvæv: set => alle((x, y) => {
+    const d = Math.max(Math.abs(x - 7.5), Math.abs(y - 7.5));
+    const tråd = x === y || x + y === 15 || x === 7 || y === 8 || Math.abs(d - 3.5) < 0.5 || Math.abs(d - 6.5) < 0.5;
+    set(x, y, [240, 240, 245], tråd ? 255 : 0);
+  }),
+
+  // --- Svampeverdenen ---
+  svampejordTop: (set, r) => { fyld(set, r, "#8a6f9e", 0.25); prik(set, r, ["#b89ad0", "#6a5280", "#c9b0e0"], 30); },
+  svampejordSide: (set, r) => {
+    MØNSTRE.jord(set, r);
+    const g = hex("#8a6f9e");
+    for (let x = 0; x < T; x++) { const h = 2 + (r() < 0.5 ? 1 : 0); for (let y = 0; y < h; y++) set(x, y, lys(g, 1 + (r() - 0.5) * 0.3)); }
+  },
+  svampestok: (set, r) => { const c = hex("#efe6d2"); alle((x, y) => set(x, y, lys(c, (x % 3 === 0 ? 0.93 : 1) * (1 + (r() - 0.5) * 0.06)))); },
+  svampestokTop: (set, r) => alle((x, y) => set(x, y, lys(hex(Math.hypot(x - 7.5, y - 7.5) < 3 ? "#d9cdb0" : "#efe6d2"), 1 + (r() - 0.5) * 0.06))),
+
+  // --- Ostemånen ---
+  ost: (set, r) => {
+    fyld(set, r, "#ffcf3f", 0.08);
+    const huller = [[4, 4, 2.2], [11, 6, 1.6], [6, 11, 1.8], [12, 12, 1.3], [1, 9, 1]];
+    alle((x, y) => { for (const [hx, hy, hr] of huller) { const d = Math.hypot(x - hx, y - hy); if (d < hr) set(x, y, hex(d < hr - 0.8 ? "#c98f1e" : "#e0a82a")); } });
+  },
+  månesten: (set, r) => {
+    fyld(set, r, "#a9a9b8", 0.18);
+    for (const [hx, hy, hr] of [[5, 5, 2.5], [11, 11, 2], [12, 3, 1.3]]) alle((x, y) => {
+      const d = Math.hypot(x - hx, y - hy);
+      if (d < hr - 0.7) set(x, y, hex("#8a8a99")); else if (d < hr + 0.3) set(x, y, hex("#c8c8d4"));
+    });
+  },
+  stjerner: (set, r) => {
+    fyld(set, r, "#141438", 0.25); prik(set, r, ["#ffffff", "#fff3a0", "#b0c8ff"], 14);
+    for (const [cx, cy] of [[4, 11], [11, 4]]) for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) set(cx + dx, cy + dy, hex("#ffffff"));
+  },
+  krystal: set => alle((x, y) => {
+    const a = y >= 4 && Math.abs(x - 4.5) <= (y - 4) * 0.28, b = y >= 7 && Math.abs(x - 11) <= (y - 7) * 0.3, c = y >= 1 && Math.abs(x - 7.5) <= (y - 1) * 0.2;
+    if (c) set(x, y, hex(x < 7.5 ? "#e2d0ff" : "#c9a8ff")); else if (a || b) set(x, y, hex(x % 2 ? "#b98cff" : "#9b6ae8")); else set(x, y, [0, 0, 0], 0);
+  }),
 };
 
 function maler(navn) {
@@ -147,6 +225,18 @@ function maler(navn) {
     for (const [x, y] of [[6, 11], [5, 12], [9, 12], [10, 11]]) set(x, y, hex("#3f9b35"));
     alle((x, y) => { if ((x - 7.5) ** 2 + (y - 4.5) ** 2 < 11) set(x, y, lys(hex(farve), 1 + (r() - 0.5) * 0.25)); });
     for (const [x, y] of [[7, 4], [8, 4], [7, 5], [8, 5]]) set(x, y, hex("#fff3a0"));
+  };
+  if (type === "prikker") return (set, r) => {
+    const prikFarve = navn.split(":")[2];
+    fyld(set, r, farve, 0.12);
+    const prikker = [[3, 3], [10, 2], [6, 8], [13, 9], [2, 12], [9, 13]];
+    alle((x, y) => { for (const [px, py] of prikker) if ((x - px) ** 2 + (y - py) ** 2 < 2.6) set(x, y, lys(hex(prikFarve), 1 + (r() - 0.5) * 0.08)); });
+  };
+  if (type === "lilleSvamp") return (set, r) => {
+    alle((x, y) => set(x, y, [0, 0, 0], 0));
+    for (let y = 9; y < T; y++) { set(7, y, hex("#efe6d2")); set(8, y, hex("#d9cdb0")); }
+    alle((x, y) => { if (y <= 9 && (x - 7.5) ** 2 / 30 + (y - 9.5) ** 2 / 26 < 1) set(x, y, lys(hex(farve), 1 + (r() - 0.5) * 0.15)); });
+    for (const [x, y] of [[5, 6], [9, 5], [11, 8], [7, 7]]) set(x, y, hex("#ffffff"));
   };
   return MØNSTRE[type] || MØNSTRE.jord;
 }

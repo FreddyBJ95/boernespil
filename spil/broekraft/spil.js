@@ -1,76 +1,117 @@
 // ===== Broekraft — byg og udforsk i 3D, lavet til de mindste =====
 // Styring som Minecraft på tablet: pilene går, træk med fingeren for at kigge rundt,
-// tryk = sæt en blok, hold fingeren = hak en blok, hop-knap (dobbelttryk = flyv).
-// På computer: WASD/pile, mellemrum = hop (to gange = flyv), shift = ned, 1–9 = vælg blok, E = inventar.
-// Blokkene står i blokke.js og dyrene i dyr.js — tilføj flere dér.
+// tryk = sæt en blok, 🔨 hammer = tryk for at fjerne en blok (eller hold fingeren på blokken),
+// hop-knap (dobbelttryk = flyv). På computer: WASD/pile, mellemrum = hop (to gange = flyv),
+// shift = ned, 1–9 = vælg blok, 0/Q = hammer, E = inventar.
+// Blokkene står i blokke.js, dyrene i dyr.js og verdenerne i verdener.js — tilføj flere dér.
 
 import * as THREE from "./three.js";
 import { BLOKKE, ID, lavAtlas } from "./blokke.js";
 import { Verden, BX, BY, BZ, HAV, rng } from "./verden.js";
 import { DYR, Dyr, ægIkon } from "./dyr.js";
+import { VERDENER } from "./verdener.js";
 import * as Lyd from "./lyd.js";
 
 const E = window.Effekter, $ = id => document.getElementById(id);
 const RÆKKE = 7, HAKTID = 0.4;                                  // hvor langt man når, og hvor længe en blok tager at hakke
-const B = 0.3, HØJ = 1.7, ØJE = 1.55, HOP = 8.6, TYNGDE = 28, GÅ = 4.3, FLYV = 9;
+const B = 0.3, HØJ = 1.7, ØJE = 1.55, HOP = 8.6, GÅ = 4.3, FLYV = 9;
 
-// ---------- Gemt verden (kun på denne enhed) ----------
-const GEM = "broekraft-v1";
-const STANDARD = [
-  { blok: ID["Græs"] }, { blok: ID.Planker }, { blok: ID.Sten }, { blok: ID.Glas }, { blok: ID["Rød uld"] },
-  { blok: ID["Gul uld"] }, { blok: ID["Blå uld"] }, { blok: ID.Regnbue }, { æg: "?" },
-];
-let gemt = null;
-try { gemt = JSON.parse(localStorage.getItem(GEM)); } catch (_) {}
-if (!gemt || !Number.isFinite(gemt.frø)) gemt = { frø: (Math.random() * 2 ** 31) | 0, ændringer: {}, musik: true };
+// ---------- Hvilken verden spiller vi i? ----------
+const læs = (k, std) => { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? std; } catch (_) { return std; } };
+const skriv = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} };
+const cfg = VERDENER.find(v => v.id === læs("broekraft-verden", "græsø")) || VERDENER[0];
+let hentet = læs("broekraft-hentet", ["græsø"]);
+if (!Array.isArray(hentet)) hentet = [];
+if (!hentet.includes("græsø")) hentet.push("græsø");
+const TYNGDE = cfg.tyngde || 28;
+Lyd.sætStemning(cfg.stemning);
+
+// ---------- Gemt verden (kun på denne enhed — hver verden for sig) ----------
+const GEM = cfg.id === "græsø" ? "broekraft-v1" : `broekraft-v1-${cfg.id}`;
+const tilTing = n => (n.startsWith("æg:") ? { æg: n.slice(3) } : { blok: ID[n] });
+const STANDARD = cfg.hotbar.map(tilTing);
+let gemt = læs(GEM, null);
+if (!gemt || !Number.isFinite(gemt.frø)) gemt = { frø: (Math.random() * 2 ** 31) | 0, ændringer: {}, musik: læs("broekraft-musik", true) };
 const gyldig = s => s && (s.æg ? s.æg === "?" || DYR.some(d => d.id === s.æg) : BLOKKE[s.blok] && !BLOKKE[s.blok].skjult);
 if (!Array.isArray(gemt.hotbar) || gemt.hotbar.length !== 9 || !gemt.hotbar.every(gyldig)) gemt.hotbar = STANDARD.map(s => ({ ...s }));
-if (!(gemt.valgt >= 0 && gemt.valgt < 9)) gemt.valgt = 0;
+if (!(gemt.valgt >= -1 && gemt.valgt < 9)) gemt.valgt = 0;
 if (gemt.musik === undefined) gemt.musik = true;
 
-// ---------- 3D-scene ----------
+// ---------- 3D-scene: himmel, lys, sol, stjerner, hav og skyer efter verdenens farver ----------
 const renderer = new THREE.WebGLRenderer({ canvas: $("scene"), antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 const scene = new THREE.Scene();
-const HORISONT = new THREE.Color("#cde8ff");
+const HORISONT = new THREE.Color(cfg.himmel[1]);
 scene.background = HORISONT;
-scene.fog = new THREE.Fog(HORISONT, 30, 72);
+scene.fog = new THREE.Fog(HORISONT, cfg.tåge[0], cfg.tåge[1]);
 const kamera = new THREE.PerspectiveCamera(70, 1, 0.05, 500);
 kamera.rotation.order = "YXZ";
 scene.add(kamera);
-scene.add(new THREE.HemisphereLight("#ffffff", "#7a9a5a", 2.2));
-const sollys = new THREE.DirectionalLight("#ffffff", 1.4);
+scene.add(new THREE.HemisphereLight(cfg.lys[0], cfg.lys[1], cfg.lys[2]));
+const sollys = new THREE.DirectionalLight("#ffffff", cfg.lys[3]);
 sollys.position.set(0.5, 1, 0.3);
 scene.add(sollys);
 
-// himmel, firkantet sol, hav og skyer
 const himmelGeo = new THREE.SphereGeometry(300, 24, 12), hp = himmelGeo.attributes.position, hf = [];
 {
-  const top = new THREE.Color("#4a9df5"), c = new THREE.Color();
+  const top = new THREE.Color(cfg.himmel[0]), c = new THREE.Color();
   for (let i = 0; i < hp.count; i++) { c.copy(HORISONT).lerp(top, Math.pow(Math.max(0, hp.getY(i) / 300), 0.6)); hf.push(c.r, c.g, c.b); }
 }
 himmelGeo.setAttribute("color", new THREE.Float32BufferAttribute(hf, 3));
 const himmel = new THREE.Mesh(himmelGeo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false }));
 himmel.renderOrder = -1;
 scene.add(himmel);
-const sol = new THREE.Mesh(new THREE.PlaneGeometry(36, 36), new THREE.MeshBasicMaterial({ color: "#fff6b0", fog: false }));
-const SOL_RETNING = new THREE.Vector3(0.4, 0.55, -0.7).normalize();
-scene.add(sol);
-const hav = new THREE.Mesh(new THREE.PlaneGeometry(900, 900).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: "#3f8fe0" }));
-hav.position.set(BX / 2, HAV, BZ / 2);
-scene.add(hav);
-const skyer = [], skyR = rng(gemt.frø + 7), skyMat = new THREE.MeshBasicMaterial({ color: "#ffffff", transparent: true, opacity: 0.85, fog: false });
-for (let i = 0; i < 16; i++) {
-  const s = new THREE.Mesh(new THREE.BoxGeometry(6 + skyR() * 14, 1.5, 4 + skyR() * 10), skyMat);
-  s.position.set(-60 + skyR() * 184, 44 + skyR() * 4, -60 + skyR() * 184);
-  scene.add(s); skyer.push(s);
+
+const følgerKamera = [];                                         // ting på himlen der flytter med kameraet
+function påHimlen(mesh, retning, afstand) { mesh.userData.retning = retning.normalize(); mesh.userData.afstand = afstand; følgerKamera.push(mesh); scene.add(mesh); }
+if (cfg.sol) {
+  const str = cfg.solStr || 36;
+  påHimlen(new THREE.Mesh(new THREE.PlaneGeometry(str, str), new THREE.MeshBasicMaterial({ color: cfg.sol, fog: false })), new THREE.Vector3(0.4, 0.55, -0.7), 250);
+}
+if (cfg.jordklode) {                                           // Jorden set fra månen — i pixels, selvfølgelig
+  const c = document.createElement("canvas"); c.width = c.height = 16;
+  const g = c.getContext("2d");
+  g.fillStyle = "#2a6fd6"; g.fillRect(0, 0, 16, 16);
+  g.fillStyle = "#4cb748"; for (const [x, y, w, h] of [[3, 3, 4, 3], [2, 6, 3, 3], [9, 2, 3, 2], [10, 8, 4, 4], [6, 11, 3, 2]]) g.fillRect(x, y, w, h);
+  g.fillStyle = "#ffffff"; for (const [x, y, w] of [[5, 1, 4], [1, 10, 3], [11, 13, 3], [7, 7, 2]]) g.fillRect(x, y, w, 1);
+  const t = new THREE.CanvasTexture(c);
+  t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.colorSpace = THREE.SRGBColorSpace;
+  påHimlen(new THREE.Mesh(new THREE.PlaneGeometry(46, 46), new THREE.MeshBasicMaterial({ map: t, fog: false })), new THREE.Vector3(-0.6, 0.35, -0.75), 240);
+}
+let stjerner = null;
+if (cfg.stjerner) {
+  const pos = [], R = rng(7);
+  for (let i = 0; i < 900; i++) {
+    const y = R() * 1.1 - 0.1, rr = Math.sqrt(Math.max(0, 1 - y * y)), a = R() * Math.PI * 2;
+    pos.push(Math.cos(a) * rr * 250, y * 250, Math.sin(a) * rr * 250);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  stjerner = new THREE.Points(g, new THREE.PointsMaterial({ color: "#ffffff", size: 2.2, sizeAttenuation: false, fog: false, transparent: true, opacity: 0.9 }));
+  stjerner.renderOrder = -1;
+  scene.add(stjerner);
+}
+if (cfg.hav) {
+  const hav = new THREE.Mesh(new THREE.PlaneGeometry(900, 900).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: cfg.hav }));
+  hav.position.set(BX / 2, HAV, BZ / 2);
+  scene.add(hav);
+}
+const skyer = [];
+if (cfg.skyer) {
+  const skyR = rng(gemt.frø + 7), skyMat = new THREE.MeshBasicMaterial({ color: cfg.skyer, transparent: true, opacity: 0.85, fog: false });
+  for (let i = 0; i < 16; i++) {
+    const s = new THREE.Mesh(new THREE.BoxGeometry(6 + skyR() * 14, 1.5, 4 + skyR() * 10), skyMat);
+    s.position.set(-60 + skyR() * 184, 44 + skyR() * 4, -60 + skyR() * 184);
+    scene.add(s); skyer.push(s);
+  }
 }
 
 // ---------- Verdenen ----------
 const atlas = lavAtlas();
 const blokMat = new THREE.MeshBasicMaterial({ map: atlas.tekstur, vertexColors: true, alphaTest: 0.5 });
 const verden = new Verden(gemt.frø, atlas, blokMat, scene);
-verden.generer();
+verden.tyngde = TYNGDE;
+verden.generer(cfg.generer);
 verden.anvend(gemt.ændringer);
 verden.bygAlle();
 
@@ -102,6 +143,7 @@ window.addEventListener("pagehide", gem);
 
 // ---------- Dyr ----------
 const dyr = [];
+const dyrDef = id => DYR.find(d => d.id === id) || DYR[0];
 function nytDyr(def, x, y, z) {
   const d = new Dyr(def, verden, scene);
   d.pos.set(x, y, z);
@@ -112,21 +154,42 @@ function nytDyr(def, x, y, z) {
 }
 {
   const R = rng(gemt.frø + 99);
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < cfg.antal; i++) {
     const x = Math.floor(BX / 2 + (R() - 0.5) * 26), z = Math.floor(BZ / 2 + (R() - 0.5) * 26);
-    nytDyr(DYR[i % DYR.length], x + 0.5, verden.topY(x, z) + 1, z + 0.5);
+    nytDyr(dyrDef(cfg.dyr[i % cfg.dyr.length]), x + 0.5, verden.topY(x, z) + 1, z + 0.5);
+  }
+}
+let genfødTid = 6;
+function genfød(dt) {                                            // nye zombier og spøgelser dukker op langt væk
+  if (!cfg.genfød || (genfødTid -= dt) > 0) return;
+  genfødTid = 5;
+  if (dyr.filter(d => cfg.dyr.includes(d.def.id)).length >= cfg.antal) return;
+  for (let f = 0; f < 12; f++) {
+    const x = 2 + Math.floor(Math.random() * (BX - 4)), z = 2 + Math.floor(Math.random() * (BZ - 4));
+    if (Math.hypot(x - sp.pos.x, z - sp.pos.z) < 10) continue;
+    nytDyr(dyrDef(cfg.dyr[Math.floor(Math.random() * cfg.dyr.length)]), x + 0.5, verden.topY(x, z) + 1, z + 0.5);
+    return;
   }
 }
 
-// ---------- Hånden med den valgte blok ----------
+// ---------- Hånden: den valgte blok, et dyre-æg eller hammeren ----------
 const hånd = new THREE.Group();
 kamera.add(hånd);
 let håndModel = null, sving = 0;
-const ægFarver = s => s.æg === "?" ? ["#ffffff", "#ff7eb6"] : (DYR.find(d => d.id === s.æg) || DYR[0]).æg;
+const valgtTing = () => (gemt.valgt < 0 ? { hammer: true } : gemt.hotbar[gemt.valgt]);
+const ægFarver = s => (s.æg === "?" ? ["#ffffff", "#ff7eb6"] : dyrDef(s.æg).æg);
 function opdaterHånd() {
   if (håndModel) { hånd.remove(håndModel); håndModel.traverse(c => { if (c.isMesh) { c.geometry.dispose(); c.material.dispose(); } }); }
-  const s = gemt.hotbar[gemt.valgt];
-  if (s.æg) {
+  const s = valgtTing();
+  if (s.hammer) {
+    håndModel = new THREE.Group();
+    const skaft = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.1, 0.14), new THREE.MeshLambertMaterial({ color: "#8a5a2b" }));
+    const hoved = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.3, 0.3), new THREE.MeshLambertMaterial({ color: "#9aa3ad" }));
+    const flade = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.34, 0.34), new THREE.MeshLambertMaterial({ color: "#c8d0d8" }));
+    hoved.position.y = 0.5; flade.position.set(0.33, 0.5, 0);
+    håndModel.add(skaft, hoved, flade);
+    håndModel.rotation.set(0.2, 0.3, 0.5);
+  } else if (s.æg) {
     const [a, b] = ægFarver(s);
     håndModel = new THREE.Group();
     const æg = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 12), new THREE.MeshLambertMaterial({ color: a }));
@@ -136,9 +199,12 @@ function opdaterHånd() {
       const p = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), new THREE.MeshLambertMaterial({ color: b }));
       p.position.set(x, y, z); p.renderOrder = 11; håndModel.add(p);
     }
-  } else håndModel = atlas.blokMesh(s.blok);
+    håndModel.rotation.set(0.15, 0.75, 0);
+  } else {
+    håndModel = atlas.blokMesh(s.blok);
+    håndModel.rotation.set(0.15, 0.75, 0);
+  }
   håndModel.scale.setScalar(0.22);
-  håndModel.rotation.set(0.15, 0.75, 0);
   håndModel.traverse(c => { if (c.material) { c.material.depthTest = false; c.material.fog = false; } if (!c.renderOrder) c.renderOrder = 10; });
   hånd.add(håndModel);
 }
@@ -170,7 +236,7 @@ function opdaterStykker(dt) {
   for (let i = 0; i < STYK; i++) {
     const s = styk[i];
     if (s.liv > 0) {
-      s.liv -= dt; s.vy -= 20 * dt;
+      s.liv -= dt; s.vy -= 20 * (TYNGDE / 28) * dt;
       s.x += s.vx * dt; s.z += s.vz * dt;
       const ny = s.y + s.vy * dt;
       if (verden.erFast(Math.floor(s.x), Math.floor(ny), Math.floor(s.z))) { s.vy = 0; s.vx *= 0.8; s.vz *= 0.8; } else s.y = ny;
@@ -183,7 +249,7 @@ function opdaterStykker(dt) {
   stykMesh.instanceMatrix.needsUpdate = true;
 }
 
-// ---------- Byg, hak og dyr ----------
+// ---------- Byg, fjern og dyr ----------
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 function stråleFra(x, y) {
   ndc.set(x / window.innerWidth * 2 - 1, -(y / window.innerHeight) * 2 + 1);
@@ -204,16 +270,36 @@ function tryk(x, y) {
     if (h && h.distance < RÆKKE && (!bedst || h.distance < bedst.afst)) bedst = { d, afst: h.distance };
   }
   if (bedst && (!hit || bedst.afst < hit.t)) {
+    if (bedst.d.def.klap === "puf") { puf(bedst.d); return; }
     bedst.d.klap();
     const p = tilSkærm(bedst.d.pos, bedst.d.h + 0.3);
     E.tekstPop(p.x, p.y, "❤️", { s: 50 });
     return;
   }
-  if (hit) sætBlok(hit);
+  if (!hit) return;
+  if (valgtTing().hammer) {                                      // hammeren fjerner blokken med det samme
+    if (!BLOKKE[hit.id].uknuselig) { knus(hit, true); sving = 1; }
+    return;
+  }
+  sætBlok(hit);
+}
+
+function puf(d) {                                                // zombier og spøgelser bliver til konfetti og en blomst
+  const p = tilSkærm(d.pos, d.h * 0.6);
+  E.konfetti(p.x, p.y, { antal: 40 });
+  E.tekstPop(p.x, p.y - 30, "PUF!", { s: 52 });
+  Lyd.puf();
+  const x = Math.floor(d.pos.x), y = Math.floor(d.pos.y + 0.05), z = Math.floor(d.pos.z);
+  if (verden.hent(x, y, z) === 0 && verden.fast[verden.hent(x, y - 1, z)]) {
+    verden.sæt(x, y, z, Math.random() < 0.5 ? ID["Rød blomst"] : ID["Gul blomst"]);
+    gemSnart();
+  }
+  d.fjern();
+  dyr.splice(dyr.indexOf(d), 1);
 }
 
 function sætBlok(hit) {
-  const s = gemt.hotbar[gemt.valgt];
+  const s = valgtTing();
   let tx = hit.x + hit.n[0], ty = hit.y + hit.n[1], tz = hit.z + hit.n[2];
   if (BLOKKE[hit.id].kryds) { tx = hit.x; ty = hit.y; tz = hit.z; }            // tryk på en blomst = byt den ud
   if (s.æg) { lavDyr(s, tx, ty, tz); return; }
@@ -231,7 +317,7 @@ function sætBlok(hit) {
 
 function lavDyr(s, x, y, z) {
   if (x < 0 || x >= BX || z < 0 || z >= BZ || y >= BY) return;
-  const def = s.æg === "?" ? DYR[Math.floor(Math.random() * DYR.length)] : DYR.find(d => d.id === s.æg) || DYR[0];
+  const def = s.æg === "?" ? DYR[Math.floor(Math.random() * DYR.length)] : dyrDef(s.æg);
   const d = nytDyr(def, x + 0.5, y + 0.01, z + 0.5);
   d.klapTid = 0.5;
   Lyd.æg(); sving = 1;
@@ -241,12 +327,12 @@ function lavDyr(s, x, y, z) {
   E.tekstPop(p.x, p.y - 40, def.navn, { s: 30 });
 }
 
-function knus(hit) {
+function knus(hit, hammer = false) {
   verden.sæt(hit.x, hit.y, hit.z, 0);
   const over = verden.hent(hit.x, hit.y + 1, hit.z);
   if (over && BLOKKE[over].kryds) verden.sæt(hit.x, hit.y + 1, hit.z, 0);          // blomsten ovenpå ryger med
   stykker(hit.x + 0.5, hit.y + 0.5, hit.z + 0.5, atlas.farve(hit.id));
-  Lyd.knus(BLOKKE[hit.id].lyd);
+  if (hammer) Lyd.bank(BLOKKE[hit.id].lyd); else Lyd.knus(BLOKKE[hit.id].lyd);
   gemSnart();
 }
 
@@ -275,6 +361,7 @@ window.addEventListener("keydown", e => {
   if (e.code === "Space") { e.preventDefault(); if (!e.repeat) hopTryk(); tast.hop = 1; }
   if (e.code === "KeyF" && !e.repeat) skiftFlyv();
   if (e.code === "KeyE" && !e.repeat) visInventar();
+  if (e.code === "KeyQ" || e.code === "Digit0") vælgSlot(-1);
   if (/^Digit[1-9]$/.test(e.code)) vælgSlot(+e.code.slice(5) - 1);
 });
 window.addEventListener("keyup", e => { if (TASTER[e.code]) tast[TASTER[e.code]] = 0; if (e.code === "Space") tast.hop = 0; });
@@ -296,7 +383,7 @@ document.querySelectorAll("[data-tast]").forEach(k => {
 });
 $("flyKnap").addEventListener("pointerdown", e => { e.preventDefault(); Lyd.klar(); skiftFlyv(); });
 
-// Fingre på selve verdenen: træk = kig, tryk = byg, hold = hak
+// Fingre på selve verdenen: træk = kig, tryk = byg (eller fjern med hammeren), hold = hak
 const cv = $("scene"), fingre = new Map();
 const FØL = { touch: 0.0065, pen: 0.0065, mouse: 0.0045 };
 cv.addEventListener("pointerdown", e => {
@@ -328,7 +415,7 @@ const slip = e => {
 cv.addEventListener("pointerup", slip);
 cv.addEventListener("pointercancel", slip);
 cv.addEventListener("contextmenu", e => e.preventDefault());
-cv.addEventListener("wheel", e => { e.preventDefault(); if (iGang) vælgSlot((gemt.valgt + (e.deltaY > 0 ? 1 : 8)) % 9); }, { passive: false });
+cv.addEventListener("wheel", e => { e.preventDefault(); if (iGang) vælgSlot((gemt.valgt + (e.deltaY > 0 ? 2 : 10)) % 10 - 1); }, { passive: false });
 
 function opdaterHak(dt) {
   let f = null;
@@ -371,16 +458,18 @@ function opdaterSpiller(dt) {
   }
   const fald = sp.vel.y;
   const r = verden.bevæg(sp.pos, tmp.copy(sp.vel).multiplyScalar(dt), B, HØJ);
+  const trampolin = r.jord && !sp.flyver && verden.hopperUnder(sp.pos, B);
   if (r.jord) {
-    if (fald < -13) Lyd.land();
+    if (fald < -13 && !trampolin) Lyd.land();
     sp.vel.y = 0;
     if (sp.flyver && fald < -0.5) skiftFlyv();                                  // lander man, så går man igen
   }
   if (r.loft) sp.vel.y = Math.min(0, sp.vel.y);
   sp.jord = r.jord;
+  if (trampolin) { sp.vel.y = Math.min(17, Math.max(11, -fald)); sp.jord = false; Lyd.boing(); }   // boing!
   if (r.væg && sp.jord && l > 0.1) {                                            // hop selv op ad ét trin
     tmp.copy(sp.pos); tmp.y += 1.05; tmp.x += mx * 0.35; tmp.z += mz * 0.35;
-    if (!verden.kolliderer(tmp, B, HØJ)) sp.vel.y = HOP * 0.92;
+    if (!verden.kolliderer(tmp, B, HØJ)) sp.vel.y = Math.max(HOP * 0.92, Math.sqrt(2 * TYNGDE * 1.3));
   }
   const vandret = Math.hypot(sp.vel.x, sp.vel.z);
   if (sp.jord && vandret > 0.5) {
@@ -395,15 +484,21 @@ function opdaterSpiller(dt) {
 }
 
 // ---------- Hotbar, inventar og menu ----------
-const ikonFor = s => s.æg ? ægIkon(ægFarver(s)) : atlas.ikon(s.blok);
-const navnFor = s => s.æg ? (s.æg === "?" ? "Overraskelses-æg" : `${(DYR.find(d => d.id === s.æg) || DYR[0]).navn}-æg`) : BLOKKE[s.blok].navn;
+const ikonFor = s => (s.æg ? ægIkon(ægFarver(s)) : atlas.ikon(s.blok));
+const navnFor = s => (s.hammer ? "Hammer" : s.æg ? (s.æg === "?" ? "Overraskelses-æg" : `${dyrDef(s.æg).navn}-æg`) : BLOKKE[s.blok].navn);
 
 function tegnHotbar() {
   const hb = $("hotbar");
   hb.innerHTML = "";
+  const hammer = document.createElement("button");
+  hammer.className = "slot hammer" + (gemt.valgt < 0 ? " valgt" : "");
+  hammer.dataset.i = -1; hammer.textContent = "🔨"; hammer.setAttribute("aria-label", "Hammer");
+  hammer.addEventListener("pointerdown", e => { e.preventDefault(); Lyd.klar(); vælgSlot(-1); });
+  hb.appendChild(hammer);
   gemt.hotbar.forEach((s, i) => {
     const b = document.createElement("button");
     b.className = "slot" + (i === gemt.valgt ? " valgt" : "");
+    b.dataset.i = i;
     b.setAttribute("aria-label", navnFor(s));
     const img = new Image(); img.src = ikonFor(s); img.alt = "";
     b.appendChild(img);
@@ -419,11 +514,11 @@ let navnTimer = 0;
 function vælgSlot(i) {
   if (i === gemt.valgt) return;
   gemt.valgt = i;
-  document.querySelectorAll("#hotbar .slot:not(.mere)").forEach((b, j) => b.classList.toggle("valgt", j === i));
+  document.querySelectorAll("#hotbar .slot[data-i]").forEach(b => b.classList.toggle("valgt", +b.dataset.i === i));
   opdaterHånd();
   Lyd.vælg();
   const n = $("tingNavn");
-  n.textContent = navnFor(gemt.hotbar[i]); n.classList.add("vis");
+  n.textContent = navnFor(valgtTing()); n.classList.add("vis");
   clearTimeout(navnTimer); navnTimer = setTimeout(() => n.classList.remove("vis"), 1400);
   gemSnart();
 }
@@ -446,7 +541,8 @@ function visInventar() {
     const t = document.createElement("span"); t.textContent = navnFor(s);
     b.append(img, t);
     b.addEventListener("click", () => {
-      gemt.hotbar[gemt.valgt] = { ...s };
+      const plads = gemt.valgt < 0 ? 0 : gemt.valgt;
+      gemt.hotbar[plads] = { ...s }; gemt.valgt = plads;
       tegnHotbar(); opdaterHånd(); Lyd.vælg(); gemSnart();
       luk("inventar");
     });
@@ -455,19 +551,70 @@ function visInventar() {
   vis("inventar");
 }
 
-$("menuKnap").addEventListener("click", () => { Lyd.klik(); $("musikKnap").textContent = gemt.musik ? "🎵 Musik: TIL" : "🔇 Musik: FRA"; nyTryk = 0; $("nyVerden").textContent = "🌍 Ny verden"; vis("menu"); });
+// Verdener man kan "hente" og skifte imellem
+function visVerdener() {
+  const grid = $("verdenGrid");
+  grid.innerHTML = "";
+  for (const v of VERDENER) {
+    const kort = document.createElement("div");
+    kort.className = "verden-kort" + (v.id === cfg.id ? " her" : "");
+    kort.style.background = `linear-gradient(165deg, ${v.himmel[0]}, ${v.himmel[1]})`;
+    const top = document.createElement("div"); top.className = "verden-top";
+    const ikon = document.createElement("span"); ikon.className = "verden-ikon"; ikon.textContent = v.ikon;
+    top.appendChild(ikon);
+    for (const n of v.vis) { const img = new Image(); img.src = atlas.ikon(ID[n]); img.alt = ""; top.appendChild(img); }
+    const navn = document.createElement("div"); navn.className = "verden-navn"; navn.textContent = v.navn;
+    const tekst = document.createElement("div"); tekst.className = "verden-tekst"; tekst.textContent = v.tekst;
+    const knap = document.createElement("button"); knap.className = "mc";
+    knap.textContent = v.id === cfg.id ? "▶ Du er her" : hentet.includes(v.id) ? "▶ Spil" : "⬇ Hent";
+    knap.addEventListener("click", () => vælgVerden(v));
+    kort.append(top, navn, tekst, knap);
+    grid.appendChild(kort);
+  }
+  vis("verdener");
+}
+function vælgVerden(v) {
+  Lyd.klar(); Lyd.klik();
+  if (v.id === cfg.id) { luk("verdener"); if (!iGang) startSpil(); return; }
+  if (hentet.includes(v.id)) { skiftTil(v); return; }
+  // "Download" — en lille statuslinje mens verdenen bliver gjort klar
+  vis("henter");
+  $("henterNavn").textContent = `Henter ${v.navn} ${v.ikon}`;
+  const fyld = $("henterFyld"), tekst = $("henterTekst");
+  let p = 0;
+  (function trin() {
+    p = Math.min(100, p + 4 + Math.random() * 9);
+    fyld.style.width = p + "%";
+    tekst.textContent = `${v.hent[Math.min(v.hent.length - 1, Math.floor(p / 100 * v.hent.length))]}  ${Math.round(p)}%`;
+    Lyd.klik();
+    if (p < 100) { setTimeout(trin, 90 + Math.random() * 90); return; }
+    hentet.push(v.id); skriv("broekraft-hentet", hentet);
+    Lyd.æg(); tekst.textContent = "Færdig! ✓";
+    setTimeout(() => skiftTil(v), 700);
+  })();
+}
+function skiftTil(v) {
+  gem();
+  skriv("broekraft-verden", v.id);
+  try { sessionStorage.setItem("broekraft-start", "1"); } catch (_) {}
+  location.reload();
+}
+
+$("verdenKnap").addEventListener("click", () => { Lyd.klar(); Lyd.klik(); visVerdener(); });
+$("skiftVerden").addEventListener("click", () => { Lyd.klik(); luk("menu"); visVerdener(); });
+$("menuKnap").addEventListener("click", () => { Lyd.klik(); $("musikKnap").textContent = gemt.musik ? "🎵 Musik: TIL" : "🔇 Musik: FRA"; nyTryk = 0; $("nyVerden").textContent = "🔄 Start forfra"; vis("menu"); });
 $("musikKnap").addEventListener("click", () => {
-  gemt.musik = !gemt.musik; Lyd.sætMusik(gemt.musik); Lyd.klik(); gemSnart();
+  gemt.musik = !gemt.musik; Lyd.sætMusik(gemt.musik); Lyd.klik(); gemSnart(); skriv("broekraft-musik", gemt.musik);
   $("musikKnap").textContent = gemt.musik ? "🎵 Musik: TIL" : "🔇 Musik: FRA";
 });
 $("hjemStart").addEventListener("click", () => { Lyd.klik(); startSted(); if (sp.flyver) skiftFlyv(); luk("menu"); gemSnart(); });
 let nyTryk = 0;
 $("nyVerden").addEventListener("click", () => {
   Lyd.klik();
-  if (Date.now() - nyTryk > 4000) { nyTryk = Date.now(); $("nyVerden").textContent = "Er du sikker? Tryk igen 🌍"; return; }
+  if (Date.now() - nyTryk > 4000) { nyTryk = Date.now(); $("nyVerden").textContent = "Er du sikker? Tryk igen 🔄"; return; }
   clearTimeout(gemTimer);
   gemt = { frø: (Math.random() * 2 ** 31) | 0, ændringer: {}, hotbar: gemt.hotbar, valgt: gemt.valgt, musik: gemt.musik };
-  try { localStorage.setItem(GEM, JSON.stringify(gemt)); } catch (_) {}
+  try { localStorage.setItem(GEM, JSON.stringify(gemt)); sessionStorage.setItem("broekraft-start", "1"); } catch (_) {}
   window.removeEventListener("pagehide", gem);
   location.reload();
 });
@@ -494,7 +641,7 @@ let tid = 0, sidst = performance.now();
 renderer.setAnimationLoop(nu => {
   const dt = Math.min(0.05, (nu - sidst) / 1000);
   sidst = nu; tid += dt;
-  if (iGang && !pause) { opdaterSpiller(dt); opdaterHak(dt); }
+  if (iGang && !pause) { opdaterSpiller(dt); opdaterHak(dt); genfød(dt); }
   else if (!iGang) sp.yaw += dt * 0.06;                                           // titelskærm: kig langsomt rundt
   for (const d of dyr) d.opdater(dt, sp.pos);
   verden.opdater(4);
@@ -505,8 +652,8 @@ renderer.setAnimationLoop(nu => {
   kamera.position.set(sp.pos.x, sp.pos.y + ØJE + bob, sp.pos.z);
   kamera.rotation.set(sp.pitch, sp.yaw, 0);
   himmel.position.copy(kamera.position);
-  sol.position.copy(kamera.position).addScaledVector(SOL_RETNING, 250);
-  sol.lookAt(kamera.position);
+  if (stjerner) stjerner.position.copy(kamera.position);
+  for (const m of følgerKamera) { m.position.copy(kamera.position).addScaledVector(m.userData.retning, m.userData.afstand); m.lookAt(kamera.position); }
 
   sving = Math.max(0, sving - dt * 4);
   const s = Math.sin(sving * Math.PI);
@@ -517,18 +664,26 @@ renderer.setAnimationLoop(nu => {
 });
 
 // ---------- Start ----------
-tegnHotbar();
-opdaterHånd();
-const startKnap = $("startKnap");
-startKnap.textContent = "▶ Spil";
-startKnap.disabled = false;
-startKnap.addEventListener("click", () => {
+function startSpil() {
+  Lyd.sætStemning(cfg.stemning);
   Lyd.klar(); Lyd.sætMusik(gemt.musik); Lyd.klik();
   try { if ("speechSynthesis" in window) speechSynthesis.cancel(); } catch (_) {}
   iGang = true;
   luk("start");
   document.body.classList.add("i-gang");
-  besked("Tryk = byg 🧱   Hold = hak ⛏️   Træk = kig 👀", 6000);
-});
+  besked(`${cfg.ikon} ${cfg.navn}`, 2400);
+  setTimeout(() => { if (iGang) besked("Tryk = byg 🧱   🔨 = fjern   Træk = kig 👀", 5000); }, 2500);
+}
+tegnHotbar();
+opdaterHånd();
+$("verdenNavn").textContent = `${cfg.ikon} ${cfg.navn}`;
+$("verdenNy").classList.toggle("skjult", hentet.length >= VERDENER.length);
+const startKnap = $("startKnap");
+startKnap.textContent = "▶ Spil";
+startKnap.disabled = false;
+startKnap.addEventListener("click", startSpil);
+let autoStart = false;
+try { autoStart = sessionStorage.getItem("broekraft-start") === "1"; sessionStorage.removeItem("broekraft-start"); } catch (_) {}
+if (autoStart) startSpil();
 window.broekraftKlar = true;
-if (location.search.includes("debug")) window.bk = { sp, verden, dyr, tast };
+if (location.search.includes("debug")) window.bk = { sp, verden, dyr, tast, cfg };

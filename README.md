@@ -66,10 +66,12 @@ Byggespillet ligger i `spil/broekraft/` og er delt op på samme måde:
 |---|---|
 | `blokke.js` | Alle blokkene (`BLOKKE`) og deres 16×16 pixel-mønstre (`MØNSTRE`) |
 | `dyr.js` | De mærkelige dyr (`DYR`) — bygget af klodser målt i pixels, ligesom i Minecraft |
+| `verdener.js` | Verdenerne (`VERDENER`): Græsøen, Zombieverdenen, Svampeverdenen og Ostemånen — farver, musik, tyngdekraft, dyr og en opskrift på terrænet |
 | `verden.js` | Terrænet, 3D-modellen af blokkene og kollision |
 | `lyd.js` | Lyde og den rolige klavermusik |
 | `spil.js` | Spilleren, styringen, hotbar, inventar og gemning |
 
-Øverst i `blokke.js` og `dyr.js` står hvad hver værdi betyder. Verdenen gemmes på enheden,
-og "Ny verden" i menuen (⏸) laver en helt ny ø. `spil/broekraft/?debug` giver adgang til
+Øverst i `blokke.js`, `dyr.js` og `verdener.js` står hvad hver værdi betyder. Nye blokke skal
+tilføjes nederst i `BLOKKE`, så gemte verdener stadig passer. Hver verden gemmes for sig på enheden;
+"🌍 Verdener" skifter verden, og "Start forfra" i menuen (⏸) laver verdenen helt ny. `spil/broekraft/?debug` giver adgang til
 spilleren i konsollen (`bk.sp`), hvis man vil fejlsøge.

@@ -1,18 +1,23 @@
 // ===== Lyde og musik til Broekraft — alt laves med Web Audio, ingen lydfiler =====
 
-let ac = null, ud = null, musikG = null, støjBuf = null, musikTil = true;
+let ac = null, ud = null, musikG = null, ekko = null, støjBuf = null, musikTil = true;
 
 export function klar() {
   if (ac) { if (ac.state === "suspended") ac.resume(); return; }
   ac = window.Effekter.audio();
   ud = ac.createGain(); ud.gain.value = 0.9; ud.connect(ac.destination);
   musikG = ac.createGain(); musikG.gain.value = musikTil ? 1 : 0; musikG.connect(ud);
+  // ekko til rum-musikken
+  const forsink = ac.createDelay(1), tilbage = ac.createGain();
+  ekko = ac.createGain(); ekko.gain.value = stemning.ekko ? 0.5 : 0;
+  forsink.delayTime.value = 0.38; tilbage.gain.value = 0.4;
+  musikG.connect(ekko); ekko.connect(forsink); forsink.connect(tilbage); tilbage.connect(forsink); forsink.connect(ud);
   støjBuf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate);
   const d = støjBuf.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   (function musikLøkke() {
     if (musikTil && !document.hidden) frase();
-    setTimeout(musikLøkke, 2600 + Math.random() * 2600);
+    setTimeout(musikLøkke, stemning.pause[0] + Math.random() * (stemning.pause[1] - stemning.pause[0]));
   })();
   (function fugleLøkke() {
     setTimeout(() => { if (!document.hidden) fugl(); fugleLøkke(); }, 6000 + Math.random() * 9000);
@@ -75,21 +80,32 @@ function glid(f0, f1, t0, dur, { type = "sine", vol = 0.25, vibHz = 0, vib = 0, 
   o.start(t0); o.stop(t0 + dur + 0.05);
 }
 
-// ---------- Rolig klavermusik der finder på sig selv ----------
-const SKALA = [261.6, 293.7, 329.6, 392.0, 440.0, 523.3, 587.3, 659.3, 784.0];
+// ---------- Musik der finder på sig selv — hver verden har sin stemning ----------
+const STEMNINGER = {
+  rolig: { skala: [261.6, 293.7, 329.6, 392.0, 440.0, 523.3, 587.3, 659.3, 784.0], type: "sine", længde: 2.4, vol: 0.05, noder: 3, pause: [2600, 5200] },
+  uhyggelig: { skala: [110, 130.8, 146.8, 164.8, 196, 220, 261.6, 293.7], type: "triangle", længde: 3.2, vol: 0.06, noder: 2, pause: [3000, 5500], klokke: true },
+  glad: { skala: [523.3, 587.3, 659.3, 740.0, 784.0, 880.0, 987.8, 1046.5], type: "triangle", længde: 0.8, vol: 0.05, noder: 6, pause: [1600, 3200] },
+  rum: { skala: [261.6, 293.7, 329.6, 370.0, 415.3, 466.2, 523.3, 587.3], type: "sine", længde: 4.5, vol: 0.045, noder: 2, pause: [3500, 6500], ekko: true },
+};
+let stemning = STEMNINGER.rolig;
+export function sætStemning(navn) {
+  stemning = STEMNINGER[navn] || STEMNINGER.rolig;
+  if (ekko) ekko.gain.value = stemning.ekko ? 0.5 : 0;
+}
 function klaver(f, t0, dur, vol) {
-  tone(f, t0, dur, "sine", vol, null, musikG);
+  tone(f, t0, dur, stemning.type, vol, null, musikG);
   tone(f * 2, t0, dur * 0.5, "triangle", vol * 0.25, null, musikG);
 }
 function frase() {
   if (!ac) return;
-  const t = nu() + 0.05, n = 1 + Math.floor(Math.random() * 3);
-  let i = Math.floor(Math.random() * SKALA.length);
+  const S = stemning.skala, t = nu() + 0.05, n = 1 + Math.floor(Math.random() * stemning.noder), trin = stemning.længde < 1 ? 0.2 : 0.5;
+  let i = Math.floor(Math.random() * S.length);
   for (let k = 0; k < n; k++) {
-    i = Math.max(0, Math.min(SKALA.length - 1, i + Math.floor(Math.random() * 5) - 2));
-    klaver(SKALA[i], t + k * 0.5 + Math.random() * 0.1, 2.4, 0.05);
+    i = Math.max(0, Math.min(S.length - 1, i + Math.floor(Math.random() * 5) - 2));
+    klaver(S[i], t + k * trin + Math.random() * 0.05, stemning.længde, stemning.vol);
   }
-  if (Math.random() < 0.5) klaver(SKALA[Math.floor(Math.random() * 4)] / 2, t, 3.2, 0.04);
+  if (Math.random() < 0.5) klaver(S[Math.floor(Math.random() * 4)] / 2, t, stemning.længde * 1.3, stemning.vol * 0.8);
+  if (stemning.klokke && Math.random() < 0.3) tone(880, t + 0.3, 2.5, "sine", 0.03, null, musikG);   // fjern klokke
 }
 
 // ---------- Blokke, skridt og bevægelse ----------
@@ -133,6 +149,17 @@ export function æg() {
   tone(600, nu(), 0.09, "sine", 0.3, 200);
   [784, 988, 1175, 1568].forEach((f, i) => tone(f, nu() + 0.1 + i * 0.07, 0.25, "triangle", 0.12));
 }
+export function puf() {           // zombier og spøgelser der forsvinder i konfetti
+  if (!ac) return;
+  sus(nu(), 0.3, 3000, 400, 0.4, "bandpass", 0.8);
+  [1047, 1319, 1568].forEach((f, i) => tone(f, nu() + 0.08 + i * 0.06, 0.2, "triangle", 0.12));
+}
+export function boing() { if (ac) glid(180, 620, nu(), 0.35, { vol: 0.22, vibHz: 14, vib: 50 }); }
+export function bank(m) {         // hammerslag
+  if (!ac) return;
+  tone(160, nu(), 0.12, "square", 0.12, 70);
+  knus(m);
+}
 export function fugl() {
   if (!ac) return;
   const f = 2400 + Math.random() * 1600, n = 2 + Math.floor(Math.random() * 3), t0 = nu();
@@ -151,6 +178,11 @@ export function dyrLyd(type, afstand = 0) {
     case "kvæk": for (const d of [0, 0.16]) glid(190, 140, t + d, 0.12, { type: "square", vol: 0.2 * v, filter: 700, q: 4 }); break;
     case "rap": for (const d of [0, 0.22]) glid(520, 330, t + d, 0.18, { type: "sawtooth", vol: 0.28 * v, filter: 1300, q: 2.5 }); break;
     case "wiii": glid(400, 1600, t, 0.6, { vol: 0.2 * v, vibHz: 20, vib: 40 }); sus(t, 0.8, 600, 3000, 0.2 * v, "bandpass", 1); break;
+    case "uuuh": glid(220, 150, t, 1.1, { type: "sawtooth", vol: 0.22 * v, vibHz: 4, vib: 8, filter: 500, q: 2 }); break;
+    case "buuh": glid(520, 330, t, 0.9, { vol: 0.2 * v, vibHz: 6, vib: 25 }); break;
+    case "boing": glid(180, 620, t, 0.35, { vol: 0.22 * v, vibHz: 14, vib: 50 }); break;
+    case "bipbop": [0, 0.1, 0.2, 0.3].forEach(d => tone(600 + Math.random() * 900, t + d, 0.08, "square", 0.08 * v)); break;
+    case "pip": [0, 0.12].forEach(d => tone(2200, t + d, 0.06, "sine", 0.15 * v, 2800)); break;
     default: tone(600, t, 0.1, "sine", 0.2 * v, 900);
   }
 }

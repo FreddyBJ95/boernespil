@@ -3,10 +3,13 @@
 // Mål er i "pixels" ligesom i Minecraft: 16 pixels = 1 blok. y = 0 er jorden, +z er forrest (næsen).
 //  del:   { s: [bredde, højde, dybde], p: [x, y, z] = klodsens midte, f: farve, rolle, børn: [flere dele] }
 //  rolle: "ben" (svinger når dyret går) · "hoved" (kigger på dig) · "vinge" (basker) · "hale" (logrer)
-//         "flamme" (vises kun når turbosneglen drøner af sted)
-//  regnbue: true = klodsen skifter farve hele tiden
-//  evne:  "flyver" | "hopper" | "turbo" | "flagrer" (falder langsomt) · fart: blokke pr. sekund
-//  lyd:   "muh" | "øf" | "mæh" | "kluk" | "kvæk" | "rap" | "wiii" (se lyd.js) · æg: to farver til dyre-ægget
+//         "arm" (zombie-arme) · "flamme" (vises kun når turbosneglen drøner af sted)
+//  regnbue: true = klodsen skifter farve · lys: true = lyser selv · gennemsigtig: 0.8 = lidt gennemsigtig
+//  evne:  "flyver" | "hopper" | "turbo" | "flagrer" (falder langsomt) | "zombie" (følger efter dig) | "svæver"
+//  klap:  "puf" = dyret forsvinder i konfetti og bliver til en blomst når man trykker på det
+//  skala: gør hele dyret større/mindre · fart: blokke pr. sekund
+//  lyd:   "muh" | "øf" | "mæh" | "kluk" | "kvæk" | "rap" | "wiii" | "uuuh" | "buuh" | "boing" | "bipbop" | "pip"
+//  æg:    to farver til dyre-ægget
 
 import * as THREE from "./three.js";
 import * as Lyd from "./lyd.js";
@@ -113,23 +116,130 @@ export const DYR = [
       { s: [1.6, 1.6, 1.6], p: [-1, 7.5, 7], f: "#1a1a1a" }, { s: [1.6, 1.6, 1.6], p: [1, 7.5, 7], f: "#1a1a1a" },
     ] },
   ] },
-];
 
+  // ---------- Zombieverdenen ----------
+  { id: "zombie", navn: "Fjollet zombie", lyd: "uuuh", fart: 0.9, evne: "zombie", klap: "puf", skala: 0.8, æg: ["#5fae4f", "#3a4fb0"], dele: [
+    { s: [8, 12, 4], p: [0, 18, 0], f: "#3fa0a0" },
+    { s: [4, 12, 4], p: [-2, 6, 0], f: "#3a4fb0", rolle: "ben", fase: 0 },
+    { s: [4, 12, 4], p: [2, 6, 0], f: "#3a4fb0", rolle: "ben", fase: Math.PI },
+    { s: [4, 4, 12], p: [-6, 22, 4], f: "#5fae4f", rolle: "arm" },
+    { s: [4, 4, 12], p: [6, 22, 4], f: "#5fae4f", rolle: "arm" },
+    { s: [8, 8, 8], p: [0, 28, 0], f: "#5fae4f", rolle: "hoved", børn: [
+      { s: [3, 3, 0.4], p: [-2, 29, 4.1], f: "#ffffff" }, { s: [1.5, 1.5, 0.5], p: [-2, 28.5, 4.2], f: "#1a1a1a" },
+      { s: [2, 2, 0.4], p: [2.2, 29, 4.1], f: "#ffffff" }, { s: [1, 1, 0.5], p: [2.4, 28.8, 4.2], f: "#1a1a1a" },
+      { s: [4, 1, 0.4], p: [0, 25.5, 4.1], f: "#2a4a2a" },
+      { s: [2, 1.5, 1], p: [0.8, 24.8, 4.4], f: "#ff7eb6" },
+      { s: [1, 3, 1], p: [0, 33.5, 0], f: "#3f9b35" },
+      { s: [3, 3, 1], p: [0, 36, 0], f: "#ff7eb6" }, { s: [1, 1, 1.2], p: [0, 36, 0], f: "#ffd23f" },
+    ] },
+  ] },
+  { id: "zombiehone", navn: "Zombiehøne", lyd: "kluk", fart: 1.2, evne: "flagrer", klap: "puf", æg: ["#9fd08a", "#ffffff"], dele: [
+    { s: [6, 6, 8], p: [0, 7, 0], f: "#9fd08a" },
+    { s: [1, 4, 1], p: [-1.5, 2, 0], f: "#f5b22a", rolle: "ben", fase: 0 },
+    { s: [1, 4, 1], p: [1.5, 2, 0], f: "#f5b22a", rolle: "ben", fase: Math.PI },
+    { s: [1, 4, 6], p: [-3.5, 8, 0], f: "#8ac077", rolle: "vinge" },
+    { s: [1, 4, 6], p: [3.5, 8, 0], f: "#8ac077", rolle: "vinge" },
+    { s: [4, 4, 2], p: [0, 10, -4.5], f: "#8ac077", rolle: "hale" },
+    { s: [4, 6, 3], p: [0, 12, 4], f: "#9fd08a", rolle: "hoved", børn: [
+      { s: [4, 2, 2], p: [0, 12, 6.5], f: "#f5a623" },
+      { s: [4.4, 1.2, 3.4], p: [0, 14.2, 4], f: "#ffffff" },
+      { s: [2, 2, 2], p: [0, 16, 4], f: "#e03a3a" },
+      ...øjne(1.5, 13, 5.6, 1.5),
+    ] },
+  ] },
+  { id: "spogelse", navn: "Venligt spøgelse", lyd: "buuh", fart: 1.0, evne: "svæver", klap: "puf", æg: ["#ffffff", "#b0b0ff"], dele: [
+    { s: [3, 3, 3], p: [-3.5, 1.5, -3], f: "#f4f4ff", gennemsigtig: 0.8, rolle: "ben", fase: 0 },
+    { s: [3, 3, 3], p: [3.5, 1.5, -3], f: "#f4f4ff", gennemsigtig: 0.8, rolle: "ben", fase: Math.PI },
+    { s: [3, 3, 3], p: [-3.5, 1.5, 3], f: "#f4f4ff", gennemsigtig: 0.8, rolle: "ben", fase: Math.PI },
+    { s: [3, 3, 3], p: [3.5, 1.5, 3], f: "#f4f4ff", gennemsigtig: 0.8, rolle: "ben", fase: 0 },
+    { s: [3, 5, 3], p: [-6.5, 9, 1], f: "#f4f4ff", gennemsigtig: 0.8, rolle: "vinge" },
+    { s: [3, 5, 3], p: [6.5, 9, 1], f: "#f4f4ff", gennemsigtig: 0.8, rolle: "vinge" },
+    { s: [10, 12, 10], p: [0, 9, 0], f: "#f4f4ff", gennemsigtig: 0.8, rolle: "hoved", børn: [
+      { s: [2, 3, 0.4], p: [-2, 11, 5.1], f: "#1a1a2a" }, { s: [2, 3, 0.4], p: [2, 11, 5.1], f: "#1a1a2a" },
+      { s: [0.8, 0.8, 0.5], p: [-2.4, 11.8, 5.2], f: "#ffffff" }, { s: [0.8, 0.8, 0.5], p: [1.6, 11.8, 5.2], f: "#ffffff" },
+      { s: [2, 2, 0.4], p: [0, 7.5, 5.1], f: "#1a1a2a" },
+      { s: [2, 1, 0.4], p: [-3.8, 9, 5.1], f: "#ffb0c8" }, { s: [2, 1, 0.4], p: [3.8, 9, 5.1], f: "#ffb0c8" },
+    ] },
+  ] },
+
+  // ---------- Svampeverdenen ----------
+  { id: "svampeko", navn: "Svampeko", lyd: "muh", fart: 1.1, æg: ["#d9232e", "#ffffff"], dele: [
+    { s: [12, 10, 18], p: [0, 17, 0], f: "#d9232e" },
+    { s: [12.4, 4, 5], p: [0, 19, 4], f: "#ffffff" },
+    { s: [12.4, 5, 4], p: [0, 15, -5], f: "#ffffff" },
+    ...fireBen([4, 12, 4], 4, 6, 6.5, "#c9b8b0"),
+    { s: [1, 3, 1], p: [-3, 23.5, -4], f: "#efe6d2" }, { s: [4, 1.5, 4], p: [-3, 25.5, -4], f: "#d9232e" },
+    { s: [1, 3, 1], p: [3, 23.5, 2], f: "#efe6d2" }, { s: [4, 1.5, 4], p: [3, 25.5, 2], f: "#d9232e" },
+    { s: [1, 3, 1], p: [-2, 23.5, 5], f: "#efe6d2" }, { s: [3, 1.2, 3], p: [-2, 25.2, 5], f: "#3a7be0" },
+    { s: [1, 8, 1], p: [0, 17, -9.5], f: "#c9b8b0", rolle: "hale" },
+    { s: [8, 8, 6], p: [0, 21, 12], f: "#d9232e", rolle: "hoved", børn: [
+      { s: [6, 3, 1], p: [0, 18, 15.5], f: "#ffd1d6" },
+      { s: [1, 3, 1], p: [-3.5, 26.5, 12], f: "#efe6d2" }, { s: [1, 3, 1], p: [3.5, 26.5, 12], f: "#efe6d2" },
+      ...øjne(2.5, 22, 15.1),
+    ] },
+  ] },
+  { id: "hoppesvamp", navn: "Hoppesvamp", lyd: "boing", fart: 2.2, evne: "hopper", æg: ["#e03a3a", "#ffffff"], dele: [
+    { s: [2, 1, 3], p: [-1.5, 0.5, 0.5], f: "#d9cdb0", rolle: "ben", fase: 0 },
+    { s: [2, 1, 3], p: [1.5, 0.5, 0.5], f: "#d9cdb0", rolle: "ben", fase: Math.PI },
+    { s: [6, 7, 6], p: [0, 4.5, 0], f: "#efe6d2", rolle: "hoved", børn: [
+      ...øjne(1.5, 6, 3.1, 1.6),
+      { s: [2.4, 0.7, 0.3], p: [0, 3.5, 3.1], f: "#d9476b" },
+      { s: [1.2, 0.8, 0.3], p: [-2.2, 4.3, 3.1], f: "#ffb0c8" }, { s: [1.2, 0.8, 0.3], p: [2.2, 4.3, 3.1], f: "#ffb0c8" },
+      { s: [12, 4, 12], p: [0, 10, 0], f: "#e03a3a" },
+      { s: [2.4, 0.4, 2.4], p: [-3, 12.1, -2], f: "#ffffff" }, { s: [2, 0.4, 2], p: [3, 12.1, 2], f: "#ffffff" },
+      { s: [1.6, 0.4, 1.6], p: [0, 12.1, 0], f: "#ffffff" },
+      { s: [0.4, 2, 2], p: [6.1, 10, 1], f: "#ffffff" }, { s: [0.4, 2, 2], p: [-6.1, 10, -1], f: "#ffffff" },
+      { s: [2, 2, 0.4], p: [2, 10, 6.1], f: "#ffffff" },
+    ] },
+  ] },
+
+  // ---------- Ostemånen ----------
+  { id: "rumvaesen", navn: "Rumvæsen", lyd: "bipbop", fart: 1.5, evne: "hopper", æg: ["#7ee08a", "#b98cff"], dele: [
+    { s: [6, 8, 4], p: [0, 8, 0], f: "#7ee08a" },
+    { s: [2, 4, 2], p: [-1.5, 2, 0], f: "#5fc06f", rolle: "ben", fase: 0 },
+    { s: [2, 4, 2], p: [1.5, 2, 0], f: "#5fc06f", rolle: "ben", fase: Math.PI },
+    { s: [2, 6, 2], p: [-4, 8, 0], f: "#5fc06f", rolle: "vinge" },
+    { s: [2, 6, 2], p: [4, 8, 0], f: "#5fc06f", rolle: "vinge" },
+    { s: [10, 8, 8], p: [0, 16, 0], f: "#7ee08a", rolle: "hoved", børn: [
+      { s: [2.5, 2.5, 0.4], p: [-3, 17, 4.1], f: "#1a1a2a" }, { s: [2.5, 2.5, 0.4], p: [3, 17, 4.1], f: "#1a1a2a" },
+      { s: [2.5, 2.5, 0.4], p: [0, 19.2, 4.1], f: "#1a1a2a" },
+      { s: [0.8, 0.8, 0.5], p: [-3.5, 17.6, 4.2], f: "#ffffff" }, { s: [0.8, 0.8, 0.5], p: [2.5, 17.6, 4.2], f: "#ffffff" },
+      { s: [0.8, 0.8, 0.5], p: [-0.5, 19.8, 4.2], f: "#ffffff" },
+      { s: [3, 0.6, 0.3], p: [0, 13.5, 4.1], f: "#2e6b2e" },
+      { s: [0.8, 4, 0.8], p: [0, 22, 0], f: "#5fc06f" },
+      { s: [2, 2, 2], p: [0, 25, 0], f: "#ffe066", lys: true },
+    ] },
+  ] },
+  { id: "ostemus", navn: "Ostemus", lyd: "pip", fart: 2.6, æg: ["#b0b0b8", "#ff9ecb"], dele: [
+    { s: [5, 4, 8], p: [0, 3, 0], f: "#b0b0b8" },
+    ...fireBen([1, 1, 1], 1.8, 0.5, 2.5, "#ff9ecb"),
+    { s: [0.6, 0.6, 8], p: [0, 3, -8], f: "#ff9ecb", rolle: "hale" },
+    { s: [4, 4, 4], p: [0, 4, 5.5], f: "#b0b0b8", rolle: "hoved", børn: [
+      { s: [3, 3, 0.6], p: [-2, 7.5, 5], f: "#ff9ecb" }, { s: [3, 3, 0.6], p: [2, 7.5, 5], f: "#ff9ecb" },
+      { s: [1, 1, 1], p: [0, 4, 7.6], f: "#ff6f91" },
+      ...øjne(1.1, 5, 7.6, 1.2),
+      { s: [3, 0.2, 0.2], p: [-2, 3.8, 7.5], f: "#ffffff" }, { s: [3, 0.2, 0.2], p: [2, 3.8, 7.5], f: "#ffffff" },
+      { s: [3, 2, 2], p: [0, 2.5, 8.6], f: "#ffcf3f" },
+    ] },
+  ] },
+];
 // ---------- Byg et dyr af klodser ----------
 const kasse = new THREE.BoxGeometry(1, 1, 1);
 const S = 1 / 16;
 export function byggDyr(def) {
   const g = new THREE.Group();
-  const u = { ben: [], hoved: [], vinge: [], hale: [], flamme: [], regnbue: [] };
+  const u = { ben: [], hoved: [], vinge: [], hale: [], arm: [], flamme: [], regnbue: [] };
   function del(d, forælder, fp) {
     const [w, h, dd] = d.s, [x, y, z] = d.p;
     const pivot = d.rolle === "ben" ? [x, y + h / 2, z]
       : d.rolle === "hoved" ? [x, y - h / 2, z - dd / 2]
       : d.rolle === "vinge" ? [x - Math.sign(x) * w / 2, y, z]
-      : d.rolle === "hale" ? [x, y, z + dd / 2] : [x, y, z];
+      : d.rolle === "hale" ? [x, y, z + dd / 2]
+      : d.rolle === "arm" ? [x, y, z - dd / 2] : [x, y, z];
     const grp = new THREE.Group();
     grp.position.set((pivot[0] - fp[0]) * S, (pivot[1] - fp[1]) * S, (pivot[2] - fp[2]) * S);
-    const mat = new THREE.MeshLambertMaterial({ color: d.f });
+    const mat = d.lys ? new THREE.MeshBasicMaterial({ color: d.f })
+      : new THREE.MeshLambertMaterial({ color: d.f, transparent: !!d.gennemsigtig, opacity: d.gennemsigtig || 1 });
     const m = new THREE.Mesh(kasse, mat);
     m.scale.set(w * S, h * S, dd * S);
     m.position.set((x - pivot[0]) * S, (y - pivot[1]) * S, (z - pivot[2]) * S);
@@ -143,6 +253,7 @@ export function byggDyr(def) {
   }
   for (const d of def.dele) del(d, g, [0, 0, 0]);
   g.userData = u;
+  g.scale.setScalar(def.skala || 1);
   return g;
 }
 
@@ -172,6 +283,12 @@ export class Dyr {
       if (d.evne === "flyver" && Math.random() < 0.3) this.flyv = 3 + Math.random() * 3;
       if (d.evne === "turbo" && this.går && Math.random() < 0.35) this.turbo = 1.6;
     }
+    const tilX = spiller.x - this.pos.x, tilZ = spiller.z - this.pos.z, afst = Math.hypot(tilX, tilZ);
+    this.danser = false;
+    if (d.evne === "zombie" && afst < 14) {               // zombier traver efter dig — og danser når de når frem
+      this.målYaw = Math.atan2(tilX, tilZ);
+      this.går = afst > 2.3; this.danser = !this.går; this.tid = 1;
+    }
     let dy = this.målYaw - this.yaw;
     dy = ((dy + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
     this.yaw += dy * Math.min(1, dt * 4);
@@ -185,17 +302,22 @@ export class Dyr {
       this.vel.x = fx * luft; this.vel.z = fz * luft;
     } else { this.vel.x = fx * fart; this.vel.z = fz * fart; }
 
-    if (this.flyv > 0) {                                 // flyvegrisen letter
+    const g = this.v.tyngde;
+    if (d.evne === "svæver") {                            // spøgelset svæver over jorden
+      const målY = this.v.topY(Math.floor(this.pos.x), Math.floor(this.pos.z)) + 1.4 + Math.sin(this.t * 2) * 0.3;
+      this.vel.y = (målY - this.pos.y) * 3;
+    } else if (this.flyv > 0) {                          // flyvegrisen letter
       this.flyv -= dt;
       const målY = this.v.topY(Math.floor(this.pos.x), Math.floor(this.pos.z)) + 4;
       this.vel.y += ((målY - this.pos.y) * 2 - this.vel.y) * Math.min(1, dt * 3);
     } else {
-      this.vel.y -= 28 * dt;
+      this.vel.y -= g * dt;
       if (d.evne === "flagrer" && this.vel.y < -2.5) this.vel.y = -2.5;
     }
     const r = this.v.bevæg(this.pos, tmp.copy(this.vel).multiplyScalar(dt), this.b, this.h);
     this.jord = r.jord;
     if (r.jord || r.loft) this.vel.y = r.jord ? 0 : Math.min(0, this.vel.y);
+    if (r.jord && this.v.hopperUnder(this.pos, this.b)) this.vel.y = 11;       // boing!
     if (r.væg && this.går) {                             // hop op ad et trin, eller vend om
       tmp.copy(this.pos); tmp.y += 1.05; tmp.x += fx * 0.3; tmp.z += fz * 0.3;
       if (this.jord && !this.v.kolliderer(tmp, this.b, this.h)) this.vel.y = 7.5;
@@ -209,17 +331,18 @@ export class Dyr {
     for (const w of u.vinge) w.rotation.z = w.userData.side * ((this.flyv > 0 || luft ? Math.sin(this.t * 20) * 0.7 : Math.sin(this.t * 3) * 0.1) - 0.1);
     for (const h of u.hale) h.rotation.y = Math.sin(this.t * 6) * 0.35;
     for (const f of u.flamme) { f.visible = this.turbo > 0; f.scale.setScalar(0.8 + Math.random() * 0.6); }
+    for (const a of u.arm) a.rotation.x = this.danser ? -0.8 + Math.sin(this.t * 9) * 0.6 : Math.sin(this.t * 2.5 + a.userData.side) * 0.12;
     for (const m of u.regnbue) m.color.setHSL((this.t * 0.2) % 1, 0.75, 0.72);
-    const dx = spiller.x - this.pos.x, dz = spiller.z - this.pos.z, afst = Math.hypot(dx, dz);
     let kig = Math.sin(this.t * 0.7) * 0.4;
-    if (afst < 6) { kig = Math.atan2(dx, dz) - this.yaw; kig = ((kig + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; kig = Math.max(-0.9, Math.min(0.9, kig)); }
+    if (afst < 6) { kig = Math.atan2(tilX, tilZ) - this.yaw; kig = ((kig + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; kig = Math.max(-0.9, Math.min(0.9, kig)); }
     for (const h of u.hoved) { h.rotation.y += (kig - h.rotation.y) * Math.min(1, dt * 5); h.rotation.x = Math.sin(this.t * 2) * 0.05; }
 
     this.klapTid = Math.max(0, this.klapTid - dt);
     const hop = Math.sin(this.klapTid / 0.5 * Math.PI) * 0.15;
-    this.model.scale.set(1 + hop, 1 - hop, 1 + hop);
+    const k = d.skala || 1;
+    this.model.scale.set(k * (1 + hop), k * (1 - hop), k * (1 + hop));
     this.model.position.copy(this.pos);
-    this.model.rotation.y = this.yaw;
+    this.model.rotation.set(0, this.yaw + (this.danser ? Math.sin(this.t * 6) * 0.4 : 0), this.danser ? Math.sin(this.t * 6) * 0.12 : 0);
 
     this.lydTid -= dt;
     if (this.lydTid <= 0) { this.lydTid = 8 + Math.random() * 12; if (afst < 12) Lyd.dyrLyd(d.lyd, afst); }

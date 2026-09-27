@@ -54,6 +54,8 @@ export class Verden {
     this.ændringer = new Map();
     this.fast = BLOKKE.map(b => !!b && !b.kryds);                      // kan ikke gå igennem
     this.dækker = BLOKKE.map(b => !!b && !b.gennemsigtig && !b.kryds); // skjuler naboens side
+    this.hopper = BLOKKE.map(b => !!b && !!b.hopper);                 // trampolin
+    this.tyngde = 28;
   }
 
   i(x, y, z) { return x + z * BX + y * BX * BZ; }
@@ -81,46 +83,44 @@ export class Verden {
     if ((z & 15) === 0) m(cx, cy, cz - 1); if ((z & 15) === 15) m(cx, cy, cz + 1);
     return true;
   }
+  // Står kassen (med fødderne i p) på en trampolin-blok?
+  hopperUnder(p, b) {
+    const y = Math.floor(p.y - 0.05);
+    for (const [dx, dz] of [[0, 0], [-b, -b], [b, -b], [-b, b], [b, b]]) if (this.hopper[this.hent(Math.floor(p.x + dx), y, Math.floor(p.z + dz))]) return true;
+    return false;
+  }
   topY(x, z) {
     for (let y = BY - 1; y >= 0; y--) if (this.fast[this.hent(x, y, z)]) return y;
     return 0;
   }
 
   // ---------- Terræn ----------
-  generer() {
+  // Hver verden har sin egen opskrift (se verdener.js). Den får et lille værktøjssæt:
+  // sæt/hent blokke, tilfældige tal (R), bløde bakker (støj), terræn(), pynt() og top[] = højeste blok.
+  generer(opskrift) {
     const R = rng(this.frø), støj = lavStøj(this.frø), top = new Int16Array(BX * BZ);
-    const sæt = (x, y, z, id) => { if (this.inde(x, y, z)) this.data[this.i(x, y, z)] = id; };
-    for (let x = 0; x < BX; x++) for (let z = 0; z < BZ; z++) {
-      // bløde bakker — lidt fladere omkring midten, hvor man starter
-      const midt = Math.min(1, Math.hypot(x - BX / 2, z - BZ / 2) / 14);
-      const h = Math.round(10 + (støj(x / 18, z / 18) * 7 + støj(x / 7 + 50, z / 7 + 20) * 2.5 - 4.5) * (0.35 + 0.65 * midt));
-      const sand = støj(x / 11 + 200, z / 11 + 100) > 0.7;
-      for (let y = 0; y <= h; y++) {
-        sæt(x, y, z, y === 0 ? ID.Bundsten : y < h - 3 ? ID.Sten : y < h ? (sand ? ID.Sand : ID.Jord) : (sand ? ID.Sand : ID["Græs"]));
-      }
-      top[x + z * BX] = h;
-    }
-    // træer
-    for (let n = 0; n < 28; n++) {
-      const x = 3 + Math.floor(R() * (BX - 6)), z = 3 + Math.floor(R() * (BZ - 6)), h = top[x + z * BX];
-      if (this.data[this.i(x, h, z)] !== ID["Græs"] || (Math.abs(x - BX / 2) < 5 && Math.abs(z - BZ / 2) < 5)) continue;
-      const hs = 4 + Math.floor(R() * 2);
-      for (let y = 1; y <= hs; y++) sæt(x, h + y, z, ID.Træstamme);
-      for (let dy = -2; dy <= 1; dy++) {
-        const r = dy >= 0 ? 1 : 2;
-        for (let dx = -r; dx <= r; dx++) for (let dz = -r; dz <= r; dz++) {
-          if (r === 2 && Math.abs(dx) === 2 && Math.abs(dz) === 2 && R() < 0.7) continue;
-          if (dy === 1 && Math.abs(dx) === 1 && Math.abs(dz) === 1) continue;
-          if (this.hent(x + dx, h + hs + dy, z + dz) === 0) sæt(x + dx, h + hs + dy, z + dz, ID.Blade);
+    const a = {
+      R, støj, ID, BX, BY, BZ, top,
+      sæt: (x, y, z, id) => { if (this.inde(x, y, z)) this.data[this.i(x, y, z)] = id; },
+      hent: (x, y, z) => this.hent(x, y, z),
+      nærStart: (x, z, r) => Math.abs(x - BX / 2) < r && Math.abs(z - BZ / 2) < r,
+      // fyld jorden: højde(x, z) giver overfladens højde, lag(x, z, y, h) giver blokken i højde y
+      terræn: (højde, lag) => {
+        for (let x = 0; x < BX; x++) for (let z = 0; z < BZ; z++) {
+          const h = Math.max(1, Math.min(BY - 6, højde(x, z)));
+          for (let y = 0; y <= h; y++) a.sæt(x, y, z, lag(x, z, y, h));
+          top[x + z * BX] = h;
         }
-      }
-    }
-    // blomster
-    for (let n = 0; n < 70; n++) {
-      const x = Math.floor(R() * BX), z = Math.floor(R() * BZ), h = top[x + z * BX];
-      if (this.data[this.i(x, h, z)] === ID["Græs"] && this.hent(x, h + 1, z) === 0)
-        sæt(x, h + 1, z, R() < 0.5 ? ID["Rød blomst"] : ID["Gul blomst"]);
-    }
+      },
+      // strø n ting ud oven på overfladen, men kun hvor den øverste blok er en af "på"
+      pynt: (n, vælg, på) => {
+        for (let k = 0; k < n; k++) {
+          const x = Math.floor(R() * BX), z = Math.floor(R() * BZ), h = top[x + z * BX];
+          if (på.includes(a.hent(x, h, z)) && a.hent(x, h + 1, z) === 0) a.sæt(x, h + 1, z, typeof vælg === "function" ? vælg() : vælg);
+        }
+      },
+    };
+    opskrift(a);
   }
   anvend(ændringer) {
     for (const [i, id] of Object.entries(ændringer || {})) {
