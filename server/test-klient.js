@@ -5,7 +5,7 @@ const log = (navn, b) => { $("log").textContent = `${navn}: ${JSON.stringify(b)}
 const xyz = () => ["x", "y", "z"].map(k => Number($(k).value));
 $("forbind").onclick = async () => {
   try {
-    f?.luk(); f = await forbind(`ws://${location.host}/ws`, { figur: $("figur").value });
+    f?.luk(); f = await forbind(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`, { figur: $("figur").value });
     for (const t of ["velkommen", "ind", "ud", "blok", "bum", "emoji", "glem", "lukket", "fejl"]) f.addEventListener(t, e => log(t, e.detail));
     f.addEventListener("klump", e => log("klump", { cx: e.detail.cx, cz: e.detail.cz, blokke: e.detail.data.length }));
     f.addEventListener("pos", e => { $("spillere").textContent = JSON.stringify(e.detail.liste, null, 2); });

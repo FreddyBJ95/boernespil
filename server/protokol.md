@@ -1,6 +1,7 @@
-# Broekraft-protokol 0.1.0
+# Broekraft-protokol 0.2.0
 
-WebSocket: `/ws`, samme host/origin som spillet. JSON-tekst har feltet `t` og er højst 4096 UTF-8-bytes.
+WebSocket: `/ws`, samme host/origin som spillet (wss på HTTPS). JSON-tekst har feltet `t` og er højst 4096 UTF-8-bytes,
+bortset fra `rtc`, som må fylde 32768 bytes. Version 0.1.0 accepteres stadig uden stemmer.
 Ukendte typer ignoreres. Binære klientbeskeder afvises. Serveren har en samlet grænse på 100 beskeder/s
 pr. forbindelse ud over grænserne nedenfor. En brudt forbindelse fjernes automatisk (WebSocket ping/pong).
 
@@ -8,7 +9,7 @@ pr. forbindelse ud over grænserne nedenfor. En brudt forbindelse fjernes automa
 
 | t | Felter | Betydning |
 |---|---|---|
-| hej | figur, version | Første besked; version `0.1.0`. Figur: gris, ko, faar, hone, fro, and, snegl, zombie |
+| hej | figur, version | Første besked; version `0.2.0` eller `0.1.0`. Figur: gris, ko, faar, hone, fro, and, snegl, zombie |
 | verdener | – | Liste over startede verdener |
 | vælg | verden | Verdens-id; ny tilslutning nulstiller klumper |
 | udsyn | r | Heltal; begrænses til 1–8, standard 6 |
@@ -70,6 +71,47 @@ genforbinder efter 0,5–10 sekunder og gentager hej/vælg/udsyn og seneste posi
 Ændringer, der forsøges under afbrydelsen, køres ikke senere. Vis først ændringer efter serverens blok-besked.
 `luk()` stopper genforbindelse, når spillet forlades. Ved et almindeligt verdensskift skal spillet nulstille
 sin position ud fra spillerlisten og kalde pos med den nye startposition.
+
+## Walkie-talkie (0.2.0)
+
+`velkommen.verden.stemmer` er boolsk og standard `false`; spillerlisten og `ind` indeholder også
+`version`. `net.info` indeholder seneste velkomst, og `net.spillere` er et Map med aktuelle spillere.
+`net.rtc(til,data)` og `net.taler(til)` sender kun under en aktiv tilslutning med version 0.2.0.
+
+- Klient → server: `{t:"rtc",til:<spiller-id>,data}`. Server → modtager: `{t:"rtc",fra:<ægte afsender-id>,data}`.
+  Kun mellem 0.2.0-spillere i samme rum med stemmer slået til. Højst 64 signaler/sekund pr. afsender;
+  overskydende signaler ignoreres. Lyd transporteres ikke på WebSocket.
+- `data` er enten `{klar:true,runde}`, `{runde,modrunde,beskrivelse:{type,sdp}}` eller
+  `{runde,modrunde,kandidat:{candidate,sdpMid,sdpMLineIndex,usernameFragment?}}`.
+  Runde er en ny UUID ved genforbindelse/skift. Modrunde skal matche modtagerens aktuelle UUID.
+  Klar-håndtrykket gør, at modulet kan oprettes efter `vælg` og mikrofontilladelsen. Mindste spiller-id
+  sender offer. Gamle svar og kandidater fra tidligere forbindelser ignoreres.
+- SDP: én audio-sektion, rtcp-mux, højst 24000 tegn. ICE: kun lokale `host`-kandidater, private IPv4,
+  lokal IPv6 eller mDNS `.local`. Ingen STUN/TURN. Video og data channels accepteres ikke.
+- Klient → server: `{t:"taler",til:true|false}`. Server → rum: `{t:"taler",id,til}` til 0.2.0-klienter.
+  Højst fire startbeskeder/sekund; stop accepteres altid. Serveren stopper talestatus efter 20 sekunder.
+- Voksenkontakt: `POST /api/stemmer {id,til}` med samme origin/token som andre kontrolhandlinger.
+  Gemmes før udsendelse af `{t:"stemmer",til}`. Ved fra lukkes lydforbindelserne straks af klienten.
+  Ældre 0.1.0-klienter modtager ikke disse nye beskedtyper, men kan stadig spille.
+
+`forbindStemmer(net,strøm)` fra `spil/broekraft/stemmer.js` returnerer synkront en EventTarget.
+Strømmen skal have præcis ét audiospor, ingen video, og være den færdigbehandlede stemme fra Claudes
+lydgraf. Modulet henter aldrig mikrofon, optager aldrig og afspiller aldrig selv. Det slukker sporet
+straks; `tal(true)` tænder, `tal(false)` slukker. Gentagne true forlænger ikke 20-sekundersfristen.
+Efter automatisk stop/afbrydelse kræves `tal(false)` før næste tryk. Skjult side, fokus-tab og
+netafbrydelse slukker også sporet. `luk()` lukker peers og fjerner alle lyttere.
+
+Events (`e.detail`): `lyd {id,strøm}`, `taler {id,til}`, `stemmerTil {til}`, desuden
+`lydSlut {id}` til oprydning af afspilleren og `fejl {id?,besked}`. Den aktuelle tilladelse findes på
+`tilladt`; første `stemmerTil` kommer også som microtask, så lyttere kan tilføjes efter oprettelsen.
+Net-genforbindelse og verdensskift håndteres automatisk. En fejlet ICE-forbindelse giver `fejl`;
+genopret modulet eller skift voksenkontakten fra og til for at forsøge igen.
+
+**Claude ejer mikrofon og afspillere:** kald `tal(false)` ved pointerup/pointercancel/lostpointercapture,
+og `luk()` ved exit. Stop de oprindelige mikrofonspor og luk lydgrafen ved exit/tilbagekaldt tilladelse;
+modulet deaktiverer kun det leverede spor og stopper ikke kalderens lydgraf. Afspil den modtagne stream
+i et audio-element og håndtér Safaris krav om brugertryk. Tilslut aldrig egen stemme til højttaleren.
+Intet af dette bruger et offentligt relæ; netværk med klientisolering kan derfor blokere lyden.
 
 ## Simulering
 

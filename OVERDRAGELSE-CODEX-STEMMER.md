@@ -81,3 +81,78 @@ metadata og kan skiftes, mens der spilles.
 - Alle tests består, og der er ingen fejl i konsollen.
 - Skriv noter nederst i denne fil til Claude, som bagefter laver knappen, effekterne og figurernes
   lydbølger.
+
+---
+
+## Tilbage til Claude — Codex, 27. september 2026
+
+Codex-delen er implementeret på **`codex/stemmer`**. Intet er pushet eller udgivet på `main`.
+Den fysiske iPad/computer-accepttest mangler fortsat og skal udføres efter din spil-integration.
+
+### Det ligger klar
+
+- Server 0.2.0 med HTTPS på 8443, egen vedvarende CA, 365-dages servercertifikat og fornyelse ved
+  ændrede IP'er/opstart. HTTP-certifikatside med `.mobileconfig`, `.crt`, aftryk og dansk vejledning.
+  node-forge 1.4.0 er vendoret og afprøvet i den kompilerede Windows-fil uden kildefiler i arbejdsmappen.
+- To QR-trin i kontrolpanelet: certifikat via HTTP først, spil via HTTPS bagefter.
+- **🎤 Må tale sammen** pr. verden, standard fra, gemmes og opdaterer spillere straks.
+- `net.js` bruger 0.2.0 som standard; serveren accepterer fortsat 0.1.0 uden tale.
+  `net.info` og `net.spillere` følger forbindelsen; `net.rtc()`/`net.taler()` er klar.
+- `stemmer.js` og `stemmesignal.js`: lokale WebRTC-peers, ingen STUN/TURN, ét behandlet lydspor,
+  højst syv andre deltagere, 20-sekundersgrænse og stop ved slip/fokus-tab/skjult side/netafbrydelse.
+  Serveren kontrollerer rum, voksenkontakt, protokol, SDP/ICE og højst 64 signaler/sekund.
+- `tilslut/adresse.js` accepterer HTTPS og genkender en bar lokal adresse med port 8443.
+
+### Sådan kobler du spillet på
+
+```js
+import { forbindStemmer } from './stemmer.js';
+
+// Efter verdensvalg og brugerens mikrofontilladelse:
+// effektStrøm er din MediaStreamAudioDestinationNode.stream, præcis ét audiospor.
+const tale = forbindStemmer(net, effektStrøm); // synkront, ikke Promise
+tale.addEventListener('lyd', e => tilføjAfspiller(e.detail.id, e.detail.strøm));
+tale.addEventListener('lydSlut', e => fjernAfspiller(e.detail.id));
+tale.addEventListener('taler', e => visLydbølge(e.detail.id, e.detail.til));
+tale.addEventListener('stemmerTil', e => visTaleknap(e.detail.til));
+tale.addEventListener('fejl', e => visLydfejl(e.detail.besked));
+// pointerdown: tale.tal(true)
+// pointerup, pointercancel, lostpointercapture: tale.tal(false)
+// exit: tale.luk(), fjern afspillere, stop rå mikrofonspor og luk din lydgraf
+```
+
+Funktionsnavnene til UI i eksemplet er pladsholdere til din integration.
+Modulet beder **aldrig** selv om mikrofon eller afspiller lyd. Det deaktiverer effektsporet straks.
+Lad effekterne skifte inde i den samme lydgraf og behold destinationssporet. Et nyt destinationsspor
+kræver `tale.luk()` og en ny `forbindStemmer`. `luk()` stopper ikke kalderens mikrofon/AudioContext;
+det er dit ansvar at frigive dem. Stop også rå mikrofonspor ved tilbagekaldt voksenkontakt og opret
+eventuelt modulet på ny efter et nyt brugertryk. Et slukket effektspor betyder, at der sendes stilhed;
+det frigiver ikke i sig selv den fysiske mikrofon eller browserens mikrofonindikator.
+
+`tale.tilladt` giver aktuel tilladelse; `stemmerTil` udsendes også som microtask efter oprettelsen.
+Efter 20 sekunder skal `tal(false)` kaldes før næste `tal(true)`. Bind altid slip/cancel, også hvis
+fingeren ender uden for knappen. Net-genforbindelse håndteres automatisk med nye peerforbindelser.
+Ved en egentlig ICE-fejl giver modulet `fejl`; genopret modulet eller skift voksenkontakten fra/til.
+Afspil andres streams med audio-elementer og håndtér Safaris play/resume-krav ved et brugertryk.
+Kobl aldrig barnets egen mikrofon eller effektstrøm til højttaleren.
+
+Spillets nuværende ws/wss-valg passer allerede til HTTPS. `spil.js`, `lyd.js`, spillets HTML og øvrige
+designfiler er ikke ændret. Husk eventuelle nye filer og versionsløft i `sw.js` ved din integration.
+Den fulde kontrakt og fejlhåndtering står i `server/protokol.md`; opsætning står i `server/LÆSMIG.md`.
+
+### Verificeret og tilbageværende
+
+- **39 automatiske tests består**, inklusive CA/SAN/gyldighed/genbrug/fornyelse, TLS med eksplicit tillid,
+  certifikat-download, rumsortering, rategrænse, gammel klient, gemt kontakt, genforbindelse, ICE-kø,
+  syv-peer-grænse, 20 sekunders tryk og oprydning.
+- Rigtig Chromium/WebRTC-browsertest med to WebSocket-klienter og kunstig tone består: modtagne
+  lydsamples måles, stilhed efter slip bekræftes, og afbrydelse lukker peer og lydspor.
+  Ingen konsolfejl. Testen bruger ingen fysisk mikrofon eller hørbar afspilning.
+  Kør den med `server/tests/browser-server.js` som beskrevet i LÆSMIG.
+- Windows, Mac-Intel og Mac-AppleSilicon er kompileret. Windows er startet isoleret med ny CA og
+  kontrolleret over HTTPS med den korrekte CA. Mac-programmerne er ikke kørt på fysisk Mac.
+- **Mangler:** din 🎤-knap, mus/trold/robot/spøgelse, figurernes lydbølger og Safari-afspilning.
+  Derefter fysisk iPad + computer på samme wifi: installer profil/tillid, tillad mikrofon ved tryk,
+  prøv begge taleretninger/effekter, slip og 20 sekunder, voksen fra/til, verdensskift og genforbindelse.
+  Kontroller Safari-konsollen og prøv også to tablets. Der er ikke installeret tillidsrødder på ejerens
+  computer eller tablets under Codex-testen.

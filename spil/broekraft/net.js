@@ -17,10 +17,12 @@ export function udpakKlump(buffer) {
 }
 
 class Forbindelse extends EventTarget {
-  constructor(url, { figur = "gris", version = "0.1.0" } = {}) {
+  constructor(url, { figur = "gris", version = "0.2.0" } = {}) {
     super();
     Object.assign(this, { url, figur, version });
     this.ventende = new Map();
+    this.spillere = new Map();
+    this.info = null;
     this.forsøg = 0;
     this.radius = 6;
     this.sidstePos = -Infinity;
@@ -46,12 +48,17 @@ class Forbindelse extends EventTarget {
           if (typeof data !== "string") { this.hændelse("klump", udpakKlump(data)); return; }
           const b = JSON.parse(data), { t, ...detail } = b;
           if (t === "velkommen") {
+            this.info = detail;
+            this.spillere = new Map(b.spillere.map(s => [s.id, s]));
             if (!this.gendanPosition) { this.position = null; clearTimeout(this.posTimer); this.posTimer = null; }
             this.klar = true;
             this.verden = b.verden.id;
             this.send({ t: "udsyn", r: this.radius });
             if (this.position) this.send({ t: "pos", ...this.position });
           }
+          if (t === "ind") this.spillere.set(b.id, detail);
+          if (t === "ud") this.spillere.delete(b.id);
+          if (t === "stemmer" && this.info) this.info.verden.stemmer = b.til === true;
           const type = t === "fuld" ? "velkommen" : t;
           if (t === "fejl") this.afvisAlle(new Error(b.besked));
           else if (this.ventende.has(type)) {
@@ -64,6 +71,7 @@ class Forbindelse extends EventTarget {
       };
       socket.onclose = () => {
         clearTimeout(timeout); this.klar = false;
+        this.info = null; this.spillere.clear();
         this.afvisAlle(new Error("Forbindelsen blev afbrudt"));
         this.hændelse("lukket", { genforbinder: !this.stoppet });
         if (!åbnet) reject(new Error("Kunne ikke forbinde til serveren"));
@@ -106,10 +114,14 @@ class Forbindelse extends EventTarget {
   sæt(x, y, z, id) { if (this.klar) this.send({ t: "sæt", x, y, z, id }); }
   tænd(x, y, z) { if (this.klar) this.send({ t: "tænd", x, y, z }); }
   emoji(e) { if (this.klar) this.send({ t: "emoji", e }); }
+  rtc(til, data) { if (this.klar && this.info?.verden.stemmer && this.version === "0.2.0") this.send({ t: "rtc", til, data }); }
+  taler(til) { if (this.klar && this.version === "0.2.0") this.send({ t: "taler", til: til === true }); }
   luk() {
     this.stoppet = true; this.klar = false;
     clearTimeout(this.genforbindTimer); clearTimeout(this.posTimer);
     this.afvisAlle(new Error("Forbindelsen er lukket"));
+    this.info = null; this.spillere.clear();
+    this.hændelse("lukket", { genforbinder: false });
     this.socket?.close();
   }
 }

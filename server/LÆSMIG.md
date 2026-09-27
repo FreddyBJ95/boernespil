@@ -33,7 +33,7 @@ På Børnespil-forsiden kan du også vælge **Spil sammen → Scan QR-kode**. Ti
 og peg på koden på computeren. Når adressen vises, tryk **Åbn familiens server**.
 Scanneren virker fra den sikre Børnespil-hjemmeside; på en lokal http-side bruges tablettens
 app Kamera eller **Skriv adressen i stedet**. Sidst brugte serveradresse huskes på tabletten.
-I Safari kan du bruge **Del → Føj til hjemmeskærm**. På LAN bruges almindelig http.
+I Safari kan du bruge **Del → Føj til hjemmeskærm**. Fra version 0.2.0 bruger spillets QR-kode HTTPS.
 Hvis der vises flere adresser, vælg den på familiens wifi. Et gæstenetværk kan blokere forbindelsen.
 Hvis IP-adressen ændrer sig, genstart serveren og scan den nye QR-kode.
 
@@ -42,6 +42,37 @@ ved første indlæsning. Selve serverprogrammet indeholder sin kopi af bibliotek
 
 **Sådan spiller børnene:** Tryk på "Spil sammen" i Børnespil-appen, og scan QR-koden fra kontrolpanelet.
 Vælg en verden og et dyr. Vand, lava, ild og TNT styres af serveren, så alle ser det samme.
+
+## Gør enhederne klar til mikrofon (0.2.0)
+
+En voksen gør dette én gang på hver enhed. Scan først koden under **Gør tabletten klar til mikrofon**.
+Den åbner `http://computerens-adresse:8080/certifikat`, som virker uden installeret certifikat.
+Hvis HTTP-porten var optaget, viser panelet den valgte port i stedet.
+
+1. **iPad/iPhone:** Åbn siden i Safari, og hent profilen. Gå til **Indstillinger → Profil hentet → Installer**.
+2. Gå til **Indstillinger → Generelt → Om → Certifikattillid**, og slå fuld tillid til **Broekraft Server hjemme** til.
+3. Scan spillets QR-kode, der åbner `https://computerens-adresse:8443`. Hvis Safari stadig advarer om certifikatet,
+   kontroller installationen og at du bruger den aktuelle adresse fra panelet.
+
+**Windows:** Hent `.crt` fra samme side. Åbn filen → Installer certifikat → Aktuel bruger → Placér alle
+certifikater i følgende lager → Rodnøglecentre, der er tillid til. Genstart browseren ved behov.
+**Mac:** Åbn `.crt` i Nøglering, vælg certifikatet, og indstil SSL-tillid til Altid godkend.
+**Android:** Hent `.crt`, og installer som CA-certifikat under Indstillinger → Sikkerhed → Kryptering og
+legitimationsoplysninger (navne varierer). Browserens understøttelse af brugerinstallerede CA'er varierer.
+
+Sammenlign SHA-256-aftrykket på tabletten med det i computerens kontrolpanel. Installer kun familiens
+eget certifikat: en betroet rod kan godkende certifikater på enheden. iOS-profilen indeholder kun roden,
+ingen fjernadministration. Den kan fjernes under Generelt → VPN og administration af enhed.
+Rodens private nøgle bliver i datamappen `BroekraftServer/certifikater`; del aldrig den mappe.
+
+Kontakten **🎤 Må tale sammen** er fra som standard. Den gemmes pr. verden og virker straks under spil.
+Lyd sendes direkte mellem deltagere i samme verden med lokale WebRTC-forbindelser uden STUN/TURN.
+Der optages eller gemmes ingen lyd. Et tryk varer højst 20 sekunder, hvorefter knappen skal slippes igen.
+Selve taleknappen og stemmeeffekterne integreres særskilt i spillet af Claude.
+
+Servercertifikatet gælder 365 dage. Ved opstart fornyes det, hvis IP-adresserne ændres eller der er mindre
+end 30 dage tilbage. Roden beholdes, så enhederne ikke skal sættes op igen. Genstart serveren efter
+adresseændringer. HTTP virker fortsat til certifikatopsætning og ældre spilklienter; mikrofon kræver HTTPS.
 
 ## Gemning og backup
 
@@ -65,5 +96,14 @@ Tændt TNT afsluttes, når en verden stoppes, så dets ændringer også gemmes.
 
 Installer Deno 2.9.7 eller nyere. Fra `server/`: `deno task start`, `deno task test`, `deno task byg`.
 Byg laver programmer til Windows og begge Mac-typer i `server/dist/`.
-Et tag som `server-v0.1.0` bygger zip-filer og udgiver dem på GitHub Releases.
+Et tag som `server-v0.2.0` bygger zip-filer og udgiver dem på GitHub Releases.
 Opret først tagget, når ejeren har godkendt den samlede spilversion.
+
+Certifikater laves med **node-forge 1.4.0**, som ligger i `server/vendor/node-forge` (BSD-3-Clause).
+RSA-nøgler skabes med WebCrypto. Certifikatbiblioteket indlæses som CommonJS og medtages i de kompilerede
+programmer; serveren behøver ingen netadgang for at oprette eller forny certifikater.
+
+Manuel Chromium-test uden mikrofontilladelse: `deno run --allow-read --allow-write --allow-net --allow-env
+tests/browser-server.js`, åbn `http://127.0.0.1:8097/lydtest`, og tryk Start testen. Den bruger en kunstig
+tone, to rigtige WebSocket-klienter og WebRTC, og kontrollerer modtaget lydenergi uden at afspille lyden.
+Afslut med Ctrl+C. Testen erstatter ikke en afsluttende prøve mellem fysisk iPad og computer.

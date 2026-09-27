@@ -8,6 +8,9 @@ Deno.test("Tablet: lokale serveradresser med og uden http", () => {
   assert.equal(serveradresse("http://172.16.1.3:8085/sammen/"), "http://172.16.1.3:8085/");
   assert.equal(serveradresse("http://192.168.0.5/"), "http://192.168.0.5/");
   assert.equal(serveradresse("172.31.255.254:65535"), "http://172.31.255.254:65535/");
+  assert.equal(serveradresse("https://192.168.0.123:8443/"), "https://192.168.0.123:8443/");
+  assert.equal(serveradresse("192.168.0.123:8443"), "https://192.168.0.123:8443/");
+  assert.equal(serveradresse("https://192.168.0.123/"), "https://192.168.0.123/");
 });
 
 Deno.test("Tablet: fremmede koder, credentials og skjulte adresser afvises", () => {
@@ -19,7 +22,7 @@ Deno.test("Tablet: jsQR læser den samme QR-kode som kontrolpanelet laver", asyn
   runInNewContext(await Deno.readTextFile(new URL("../vendor/qrcode.js", import.meta.url)), generator);
   const læser = { module: { exports: {} }, exports: {} };
   runInNewContext(await Deno.readTextFile(new URL("../../tilslut/vendor/jsQR.js", import.meta.url)), læser);
-  for (const adresse of ["http://192.168.0.123:8080/", "http://10.0.0.5:8087/"]) {
+  for (const adresse of ["http://192.168.0.123:8080/", "http://10.0.0.5:8087/", "https://192.168.0.123:8443/"]) {
     const qr = generator.module.exports(0, "M"); qr.addData(adresse); qr.make();
     const felter = qr.getModuleCount(), kant = 4, pixel = 6, side = (felter + kant * 2) * pixel;
     const billede = new Uint8ClampedArray(side * side * 4); billede.fill(255);

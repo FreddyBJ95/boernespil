@@ -1,0 +1,51 @@
+<!doctype html><html lang="da"><meta charset="utf-8"><title>Walkie-talkie browsertest</title>
+<h1>Walkie-talkie browsertest</h1><p>To rigtige WebRTC-forbindelser med kunstig lyd. Ingen mikrofon eller højttaler bruges.</p>
+<button id="start">Start testen</button><pre id="resultat"></pre>
+<script type="module">
+import { forbind } from "/spil/broekraft/net.js";
+import { forbindStemmer } from "/spil/broekraft/stemmer.js";
+const ud = document.querySelector("#resultat"), vent = ms => new Promise(r => setTimeout(r, ms));
+const kræv = (b, tekst) => { if (!b) throw new Error(tekst); ud.textContent += "OK: " + tekst + "\n"; };
+document.querySelector("#start").onclick = async () => {
+  document.querySelector("#start").disabled = true;
+  const klienter = [], stemmer = [], context = new AudioContext(), målere = new Map();
+  const lydstyrke = v => { const m = målere.get(v), tal = new Float32Array(m.fftSize); m.getFloatTimeDomainData(tal); return Math.max(...tal.map(Math.abs)); };
+  try {
+    await context.resume();
+    for (const figur of ["gris", "ko"]) {
+      const net = await forbind(`ws://${location.host}/ws`, { figur }); klienter.push(net);
+      const verdener = await net.verdener(); await net.vælg(verdener[0].id);
+      const destination = context.createMediaStreamDestination(), tone = context.createOscillator();
+      tone.connect(destination); tone.start();
+      const v = forbindStemmer(net, destination.stream); stemmer.push(v);
+      v.addEventListener("lyd", e => {
+        const afspiller = document.createElement("audio"); afspiller.muted = true; afspiller.srcObject = e.detail.strøm;
+        document.body.append(afspiller); afspiller.play().catch(fejl => { ud.textContent += "Afspiller: " + fejl.message + "\n"; });
+        const kilde = context.createMediaStreamSource(e.detail.strøm), måler = context.createAnalyser(), lydløs = context.createGain();
+        lydløs.gain.value = 0; kilde.connect(måler); måler.connect(lydløs); lydløs.connect(context.destination); målere.set(v, måler);
+      });
+      v.addEventListener("fejl", e => { ud.textContent += "FEJL: " + e.detail.besked + "\n"; });
+    }
+    let forbundet = false;
+    for (let i = 0; i < 100; i++) {
+      forbundet = stemmer.every(v => v.peers.size === 1 && [...v.peers.values()][0].pc.connectionState === "connected");
+      if (forbundet) break; await vent(100);
+    }
+    kræv(forbundet, "Begge peers forbundet gennem serverens signalering");
+    kræv(stemmer.every(v => !v.spor[0].enabled), "Lydsporet er fra før tryk");
+    const pc = [...stemmer[1].peers.values()][0].pc;
+    kræv(stemmer[0].tal(true), "Tryk starter tale");
+    await vent(2500);
+    const statistik = await pc.getStats();
+    // Web Audios analysator måler de modtagne samples; Chromium kan rapportere totalAudioEnergy=0 ved muted afspilning.
+    kræv([...statistik.values()].some(s => s.type === "inbound-rtp" && s.kind === "audio" && s.bytesReceived > 0) && lydstyrke(stemmer[1]) > 0.1, "Den anden peer modtager kunstig lyd med målbar styrke");
+    kræv([...statistik.values()].filter(s => ["local-candidate", "remote-candidate"].includes(s.type)).every(s => s.candidateType === "host"), "Kun host-kandidater bruges");
+    stemmer[0].tal(false); kræv(!stemmer[0].spor[0].enabled, "Slip slukker lydsporet");
+    await vent(400); kræv(lydstyrke(stemmer[1]) < 0.005, "Modtageren er stille efter slip");
+    stemmer[0].tal(true); klienter[0].luk();
+    kræv(!stemmer[0].spor[0].enabled && stemmer[0].peers.size === 0, "Afbrydelse stopper tale og lukker peers");
+    ud.textContent += "BESTÅET\n";
+  } catch (fejl) { ud.textContent += "FEJL: " + fejl.message + "\n"; }
+  finally { stemmer.forEach(v => v.luk()); klienter.forEach(n => n.luk()); document.querySelectorAll("audio").forEach(a => { a.srcObject = null; a.remove(); }); await context.close(); }
+};
+</script></html>

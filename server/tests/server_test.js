@@ -100,3 +100,35 @@ Deno.test("Gemninger står i kø, snapshot bevares, og ugyldige metadata afvises
     for (const ip of ["8.8.8.8", "172.32.0.1", "192.168.999.1"]) assert.equal(privat(ip), false);
   } finally { await Deno.remove(rod, { recursive: true }); }
 });
+
+Deno.test("Stemmer: voksenkontakt gemmes og virker straks; 0.1.0 spiller stadig", async () => {
+  const v = await opsæt(), klienter = [];
+  try {
+    const url = v.base.replace("http", "ws") + "/ws";
+    const a = await forbind(url, { figur: "gris" }); klienter.push(a);
+    const gammel = await forbind(url, { figur: "ko", version: "0.1.0" }); klienter.push(gammel);
+    assert.equal((await a.vælg(v.meta.id)).verden.stemmer, false);
+    await gammel.vælg(v.meta.id);
+    const gamleSignaler = []; gammel.addEventListener("stemmer", e => gamleSignaler.push(e.detail));
+    const post = async til => {
+      const svar = await fetch(v.base + "/api/stemmer", { method: "POST", headers: { origin: v.base, "x-broekraft-token": v.app.token }, body: JSON.stringify({ id: v.meta.id, til }) });
+      await svar.text(); return svar.status;
+    };
+    for (const til of [true, false, true]) {
+      const skift = hændelse(a, "stemmer");
+      assert.equal(await post(til), 200); assert.deepEqual(await skift, { til });
+      assert.equal(a.info.verden.stemmer, til);
+      assert.equal((await v.lager.indlæs(v.meta.id)).meta.stemmer, til);
+    }
+    assert.equal(await post("ja"), 400);
+    const blok = hændelse(a, "blok", b => b.x === 66);
+    gammel.sæt(66, 10, 64, 7); await blok;
+    assert.deepEqual(gamleSignaler, []);
+    for (const k of klienter) k.luk(); await vent(30);
+    await v.app.stop(v.meta.id);
+    assert.equal(await post(false), 200);
+    await v.app.start(v.meta.id);
+    assert.equal(v.app.rum.get(v.meta.id).meta.stemmer, false);
+    assert.equal(v.app.rum.get(v.meta.id).hent(66, 10, 64), 7);
+  } finally { for (const k of klienter) k.luk(); await vent(30); await v.luk(); }
+});

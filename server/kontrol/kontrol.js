@@ -1,6 +1,6 @@
 // Panelet bruger textContent til verdensnavne og viser aldrig indtastninger som HTML.
 const $ = s => document.querySelector(s);
-let token, sidsteAdresser = "", sidsteVerdener = "";
+let token, sidsteAdresser = "", sidsteVerdener = "", sidsteCertifikater = "";
 const figurer = { gris: "🐷", ko: "🐮", faar: "🐑", hone: "🐔", fro: "🐸", and: "🦆", snegl: "🐌", zombie: "🧟" };
 const tekst = (tag, indhold) => { const e = document.createElement(tag); e.textContent = indhold; return e; };
 
@@ -29,6 +29,15 @@ function visVerdener(liste) {
   for (const v of liste) {
     const e = document.createElement("article");
     e.append(tekst("h3", v.navn), tekst("p", `${v.bredde} × ${v.dybde} · ${v.spillere}/${v.maksSpillere} spillere · ${v.startet ? "Startet" : "Stoppet"}`));
+    const mærkat = tekst("label", "🎤 Må tale sammen "), kontakt = document.createElement("input");
+    mærkat.className = "flueben"; kontakt.type = "checkbox"; kontakt.checked = v.stemmer === true;
+    kontakt.onchange = async () => {
+      kontakt.disabled = true;
+      try { await handling("stemmer", { id: v.id, til: kontakt.checked }); await opdater(); }
+      catch (fejl) { kontakt.checked = v.stemmer === true; $("#besked").textContent = fejl.message; }
+      finally { kontakt.disabled = false; }
+    };
+    mærkat.append(kontakt); e.append(mærkat);
     e.append(knap(v.startet ? "Stop" : "Start", () => handling(v.startet ? "stop" : "start", { id: v.id })));
     e.append(knap("Backup", async () => { const b = await handling("backup", { id: v.id }); $("#besked").textContent = `Backup gemt i:\n${b.mappe}`; }));
     e.append(knap("Slet", async () => {
@@ -45,6 +54,17 @@ async function opdater() {
   const svar = await fetch("/api/status"), b = await svar.json();
   if (!svar.ok) throw new Error(b.fejl || "Kan ikke hente status");
   token = b.token;
+  $("#aftryk").textContent = b.aftryk || "Certifikatet er ikke klar.";
+  if (JSON.stringify(b.certifikatAdresser) !== sidsteCertifikater) {
+    sidsteCertifikater = JSON.stringify(b.certifikatAdresser);
+    $("#certifikat-adresser").replaceChildren();
+    for (const adresse of b.certifikatAdresser || []) {
+      const e = document.createElement("div"), a = tekst("a", "Hent certifikat til tablet"); a.href = adresse;
+      const qr = globalThis.qrcode(0, "M"); qr.addData(adresse); qr.make();
+      const billede = document.createElement("div"); billede.innerHTML = qr.createSvgTag({ scalable: true, margin: 4 });
+      e.append(billede, a); $("#certifikat-adresser").append(e);
+    }
+  }
   $("#lagring").textContent = `Verdener gemmes i: ${b.datamappe}`;
   if (JSON.stringify(b.adresser) !== sidsteAdresser) {
     sidsteAdresser = JSON.stringify(b.adresser); $("#adresser").replaceChildren();

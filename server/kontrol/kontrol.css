@@ -41,13 +41,13 @@ h2 { margin: 0 0 14px; font-size: 22px; }
 .forbind { display: flex; gap: 24px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 .trin { margin: 0; padding-left: 22px; line-height: 1.7; color: var(--svag); }
 .trin b { color: var(--tekst); }
-#adresser { display: flex; flex-wrap: wrap; gap: 18px; }
-#adresser > div {
+#adresser, #certifikat-adresser { display: flex; flex-wrap: wrap; gap: 18px; }
+#adresser > div, #certifikat-adresser > div {
   display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px;
   border: 3px solid var(--græs); border-radius: 16px; background: #fff;
 }
-#adresser svg { width: 210px; height: 210px; display: block; }
-#adresser a { font-weight: 800; font-size: 18px; color: var(--blå); text-decoration: none; }
+#adresser svg, #certifikat-adresser svg { width: 210px; height: 210px; display: block; }
+#adresser a, #certifikat-adresser a { font-weight: 800; font-size: 18px; color: var(--blå); text-decoration: none; }
 
 /* Formular */
 form { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; align-items: end; }

@@ -1,8 +1,9 @@
-import { extname, sep, resolve } from "node:path";
+import { extname, sep, resolve, join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Verdenslager, metadata, VERSION } from "./verdener.js";
 import { Rum } from "./rum.js";
 import { FIGURER, læsBesked, send } from "./protokol.js";
+import { hentCertifikater, certifikatSvar } from "./certifikat.js";
 
 const ROD = fileURLToPath(new URL("../", import.meta.url));
 const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".ico": "image/x-icon", ".webmanifest": "application/manifest+json", ".mp3": "audio/mpeg", ".woff2": "font/woff2" };
@@ -92,8 +93,8 @@ export class BroekraftServer {
         if (++s.antal > 100) { socket.close(1008, "For mange beskeder"); return; }
         const b = læsBesked(data);
         if (b.t === "hej") {
-          if (!FIGURER.includes(b.figur) || b.version !== VERSION) { send(s, { t: "fejl", besked: "Ukendt figur eller version; genindlæs siden" }); return; }
-          if (!s.hej) { s.figur = b.figur; s.hej = true; }
+          if (!FIGURER.includes(b.figur) || !["0.1.0", VERSION].includes(b.version)) { send(s, { t: "fejl", besked: "Ukendt figur eller version; genindlæs siden" }); return; }
+          if (!s.hej) { s.figur = b.figur; s.version = b.version; s.hej = true; }
           return;
         }
         if (!s.hej) { send(s, { t: "fejl", besked: "Send hej først" }); return; }
@@ -119,6 +120,14 @@ export class BroekraftServer {
       if (!this.værter.has(url.hostname) || (!lokal(ip) && !privat(ip))) return new Response("Kun lokalnettet", { status: 403 });
       const kontrol = sti === "/kontrol" || sti.startsWith("/kontrol/") || sti.startsWith("/api/");
       if (kontrol && !lokal(ip)) return new Response("Kun på serverens computer", { status: 403 });
+      if (this.certifikater && (sti === "/certifikat" || sti.startsWith("/certifikat/"))) {
+        if (!["GET", "HEAD"].includes(req.method)) return new Response("Metoden er ikke tilladt", { status: 405 });
+        const svar = certifikatSvar(sti, this.certifikater, `https://${url.hostname}:${this.httpsPort}/`);
+        return req.method === "HEAD" ? new Response(null, { status: svar.status, headers: svar.headers }) : svar;
+      }
+      if (this.certifikater && url.protocol === "http:" && ["/", "/sammen", "/sammen/"].includes(sti)) {
+        return new Response(null, { status: 307, headers: { location: `https://${url.hostname}:${this.httpsPort}${url.pathname}${url.search}`, "cache-control": "no-store" } });
+      }
       if (sti.startsWith("/api/")) {
         if (req.method !== "GET" && (req.headers.get("origin") !== url.origin || req.headers.get("x-broekraft-token") !== this.token)) return new Response("Åbn kontrolpanelet igen", { status: 403 });
         return await this.api(req, sti);
@@ -141,7 +150,8 @@ export class BroekraftServer {
 
   async api(req, sti) {
     if (sti === "/api/status" && req.method === "GET") return json({
-      token: this.token, version: VERSION, adresser: this.adresser.map(ip => `http://${ip}:${this.port}/`), datamappe: this.lager.rod,
+      token: this.token, version: VERSION, adresser: this.adresser.map(ip => this.certifikater ? `https://${ip}:${this.httpsPort}/` : `http://${ip}:${this.port}/`), datamappe: this.lager.rod,
+      certifikatAdresser: this.certifikater ? this.adresser.map(ip => `http://${ip}:${this.port}/certifikat`) : [], aftryk: this.certifikater?.aftryk,
       verdener: [...this.metadata.values()].map(m => ({ ...m, startet: this.rum.has(m.id), spillere: this.rum.get(m.id)?.spillere.size || 0 })),
       spillere: [...this.spillere].filter(s => s.rum).map(s => ({ figur: s.figur, verden: s.rum.meta.navn })),
       job: [...this.job.values()].map(({ færdig: _, ...j }) => j),
@@ -162,6 +172,14 @@ export class BroekraftServer {
     if (!this.metadata.has(b.id)) return json({ fejl: "Ukendt verden" }, 404);
     return await this.lås(b.id, async () => {
       if (sti === "/api/start") await this.start(b.id);
+      else if (sti === "/api/stemmer") {
+        if (typeof b.til !== "boolean") return json({ fejl: "Vælg til eller fra" }, 400);
+        const meta = { ...this.metadata.get(b.id), stemmer: b.til };
+        await this.lager.gemMeta(meta);
+        this.metadata.set(b.id, meta);
+        const r = this.rum.get(b.id);
+        if (r) { r.meta = meta; r.skiftStemmer(b.til); }
+      }
       else if (sti === "/api/stop") await this.stop(b.id);
       else if (sti === "/api/backup") {
         const r = this.rum.get(b.id); if (r) await this.gem(r);
@@ -214,9 +232,11 @@ export class BroekraftServer {
 }
 
 // Lyt kun på loopback og private netkort; der oprettes ingen port-forwarding.
-export async function startServer({ port = 8080, lager, åbn = true } = {}) {
+export async function startServer({ port = 8080, httpsPort = 8443, lager, åbn = true } = {}) {
   const adresser = [...new Set(Deno.networkInterfaces().map(n => n.address).filter(privat))];
   const app = new BroekraftServer({ lager, adresser }); await app.init();
+  app.certifikater = await hentCertifikater(join(dirname(app.lager.rod), "certifikater"), adresser);
+  app.httpsPort = httpsPort;
   let servere = [];
   for (; port < 8180; port++) {
     try {
@@ -228,6 +248,12 @@ export async function startServer({ port = 8080, lager, åbn = true } = {}) {
     }
   }
   if (!servere.length) throw new Error("Ingen ledig port mellem 8080 og 8179");
+  try {
+    for (const hostname of ["127.0.0.1", ...adresser]) servere.push(Deno.serve({ hostname, port: httpsPort, cert: app.certifikater.cert, key: app.certifikater.key, onListen() {} }, (req, info) => app.håndter(req, info)));
+  } catch (fejl) {
+    await Promise.all(servere.map(s => s.shutdown()));
+    throw new Error(`Kunne ikke åbne HTTPS-port ${httpsPort}. Luk en eventuel anden server og prøv igen. ${fejl.message}`);
+  }
   app.port = port; app.kørTimere();
   const url = `http://127.0.0.1:${port}/kontrol`;
   console.log(`Broekraft Server ${VERSION}\nKontrolpanel: ${url}\nLad dette vindue stå åbent. Stop med Ctrl+C.`);

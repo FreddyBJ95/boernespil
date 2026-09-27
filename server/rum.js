@@ -1,6 +1,7 @@
 import { BLOKKE, ID } from "../spil/broekraft/blokke.js";
 import { Simulering } from "../spil/broekraft/simulering.js";
 import { EMOJIER, pakKlump, send } from "./protokol.js";
+import { rensSignal } from "../spil/broekraft/stemmesignal.js";
 
 export class Rum {
   constructor(meta, data) {
@@ -40,14 +41,48 @@ export class Rum {
     Object.assign(s, { rum: this, x: x + 0.5, y, z: z + 0.5, yaw: 0, pitch: 0, r: s.r || 6, klumper: new Set() });
     this.spillere.set(s.id, s);
     const { id, navn, type, bredde, dybde, højde, frø, ildBreder } = this.meta;
-    send(s, { t: "velkommen", dig: s.id, verden: { id, navn, type, bredde, dybde, højde, frø, ildBreder }, spillere: [...this.spillere.values()].map(p => this.spillerInfo(p)) });
-    this.alle({ t: "ind", id: s.id, figur: s.figur }, s);
+    send(s, { t: "velkommen", dig: s.id, verden: { id, navn, type, bredde, dybde, højde, frø, ildBreder, stemmer: this.meta.stemmer === true }, spillere: [...this.spillere.values()].map(p => this.spillerInfo(p)) });
+    this.alle({ t: "ind", id: s.id, figur: s.figur, version: s.version }, s);
     this.strøm(s);
     return true;
   }
 
-  spillerInfo(s) { return { id: s.id, figur: s.figur, x: s.x, y: s.y, z: s.z, yaw: s.yaw, pitch: s.pitch }; }
-  ud(s) { if (!this.spillere.delete(s.id)) return; s.rum = null; this.alle({ t: "ud", id: s.id }); }
+  spillerInfo(s) { return { id: s.id, figur: s.figur, version: s.version, x: s.x, y: s.y, z: s.z, yaw: s.yaw, pitch: s.pitch }; }
+  ud(s) { if (!this.spillere.delete(s.id)) return; this.taleStatus(s, false); s.rum = null; this.alle({ t: "ud", id: s.id }); }
+
+  // Serveren sender kun signaler; mikrofonens lyd går direkte mellem tablets.
+  stemmeBesked(s, b, nu) {
+    if (s.version !== "0.2.0" || !this.meta.stemmer) return;
+    if (b.t === "taler") {
+      if (typeof b.til !== "boolean") return;
+      if (!b.til) { this.taleStatus(s, false); return; }
+      s.taleTider = (s.taleTider || []).filter(t => nu - t < 1000);
+      if (s.taleTider.length >= 4 || s.taler) return;
+      s.taleTider.push(nu); s.taleSlut = nu + 20000; this.taleStatus(s, true);
+      return;
+    }
+    s.rtcTider = (s.rtcTider || []).filter(t => nu - t < 1000);
+    if (s.rtcTider.length >= 64) return;
+    s.rtcTider.push(nu);
+    const modtager = this.spillere.get(b.til);
+    if (!modtager || modtager === s || modtager.version !== "0.2.0") return;
+    const data = rensSignal(b.data);
+    if (data) send(modtager, { t: "rtc", fra: s.id, data });
+  }
+
+  taleStatus(s, til) {
+    if (!!s.taler === til) return;
+    s.taler = til;
+    for (const p of this.spillere.values()) if (p.version === "0.2.0") send(p, { t: "taler", id: s.id, til });
+  }
+
+  skiftStemmer(til) {
+    this.meta.stemmer = til;
+    for (const s of this.spillere.values()) {
+      if (!til) this.taleStatus(s, false);
+      if (s.version === "0.2.0") send(s, { t: "stemmer", til });
+    }
+  }
 
   // Send højst fire søjler ad gangen, så langsomme tablets ikke drukner i data.
   strøm(s) {
@@ -77,6 +112,7 @@ export class Rum {
 
   // Alle ændringer og positioner valideres på serveren.
   besked(s, b, nu = performance.now()) {
+    if (b.t === "rtc" || b.t === "taler") { this.stemmeBesked(s, b, nu); return; }
     if (b.t === "udsyn" && Number.isInteger(b.r)) s.r = Math.max(1, Math.min(8, b.r));
     if (b.t === "pos" && nu - (s.sidstePos ?? -Infinity) >= 100) {
       if (![b.x, b.y, b.z, b.yaw, b.pitch].every(Number.isFinite) || b.x < 0 || b.x >= this.meta.bredde || b.z < 0 || b.z >= this.meta.dybde || b.y < 0 || b.y > this.meta.højde + 64 || Math.abs(b.yaw) > 1e6 || Math.abs(b.pitch) > Math.PI) return;
@@ -119,6 +155,7 @@ export class Rum {
   }
 
   tick(dt) {
+    for (const s of this.spillere.values()) if (s.taler && performance.now() >= s.taleSlut) this.taleStatus(s, false);
     this.sim.tick(dt);
     for (const t of [...this.lunter]) {
       t.lunte -= dt;

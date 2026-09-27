@@ -1,7 +1,9 @@
 import { join } from "node:path";
 import { VERDENER } from "../spil/broekraft/verdener.js";
 
-export const VERSION = "0.1.0";
+export const VERSION = "0.2.0";
+// Protokollen får nyt nummer; verdensdata beholder sit kompatible format.
+const DATA_VERSION = "0.1.0";
 export const STØRRELSER = [128, 256, 512, 1024];
 
 // Data ligger uden for programmet, så en opdatering ikke overskriver børnenes verdener.
@@ -19,7 +21,8 @@ export function metadata(valg) {
   const frø = valg.frø === "" || valg.frø == null ? crypto.getRandomValues(new Uint32Array(1))[0] : Number(valg.frø);
   if (!Number.isInteger(frø) || frø < 0 || frø > 0xffffffff) throw new Error("Frø skal være et helt tal mellem 0 og 4294967295");
   if (valg.ildBreder != null && typeof valg.ildBreder !== "boolean") throw new Error("Ildindstillingen skal være til eller fra");
-  return { id: crypto.randomUUID(), navn: valg.navn.trim(), type: valg.type, bredde: valg.bredde, dybde: valg.bredde, højde: 64, frø, maksSpillere, ildBreder: valg.ildBreder ?? true, oprettet: new Date().toISOString(), version: VERSION };
+  if (valg.stemmer != null && typeof valg.stemmer !== "boolean") throw new Error("Taleindstillingen skal være til eller fra");
+  return { id: crypto.randomUUID(), navn: valg.navn.trim(), type: valg.type, bredde: valg.bredde, dybde: valg.bredde, højde: 64, frø, maksSpillere, ildBreder: valg.ildBreder ?? true, stemmer: valg.stemmer ?? false, oprettet: new Date().toISOString(), version: DATA_VERSION };
 }
 
 export class Verdenslager {
@@ -47,15 +50,14 @@ export class Verdenslager {
   async meta(id) {
     const meta = JSON.parse(await Deno.readTextFile(join(this.mappe(id), "meta.json")));
     metadata(meta);
-    if (meta.id !== id || meta.dybde !== meta.bredde || meta.højde !== 64 || meta.version !== VERSION) throw new Error("Verdensfilen har et ukendt format");
-    return meta;
+    if (meta.id !== id || meta.dybde !== meta.bredde || meta.højde !== 64 || meta.version !== DATA_VERSION) throw new Error("Verdensfilen har et ukendt format");
+    return { ...meta, stemmer: meta.stemmer ?? false };
   }
 
   // Skriv til midlertidig fil og omdøb atomisk; samtidige gemninger står i kø.
   gem(meta, data) {
     const kopi = data.slice();
-    const forrige = this.køer.get(meta.id) || Promise.resolve();
-    const opgave = forrige.catch(() => {}).then(async () => {
+    return this.iKø(meta.id, async () => {
       const mappe = this.mappe(meta.id);
       await Deno.mkdir(mappe, { recursive: true });
       const pakket = new Blob([kopi]).stream().pipeThrough(new CompressionStream("gzip"));
@@ -65,8 +67,21 @@ export class Verdenslager {
       await Deno.writeTextFile(join(mappe, "meta.json.ny"), JSON.stringify(meta, null, 2));
       await Deno.rename(join(mappe, "meta.json.ny"), join(mappe, "meta.json"));
     });
-    this.køer.set(meta.id, opgave);
-    opgave.finally(() => { if (this.køer.get(meta.id) === opgave) this.køer.delete(meta.id); }).catch(() => {});
+  }
+
+  // Kontakten kan gemmes uden at læse en stor, stoppet verden ind i hukommelsen.
+  gemMeta(meta) {
+    return this.iKø(meta.id, async () => {
+      const mappe = this.mappe(meta.id);
+      await Deno.writeTextFile(join(mappe, "meta.json.ny"), JSON.stringify(meta, null, 2));
+      await Deno.rename(join(mappe, "meta.json.ny"), join(mappe, "meta.json"));
+    });
+  }
+
+  iKø(id, handling) {
+    const opgave = (this.køer.get(id) || Promise.resolve()).catch(() => {}).then(handling);
+    this.køer.set(id, opgave);
+    opgave.finally(() => { if (this.køer.get(id) === opgave) this.køer.delete(id); }).catch(() => {});
     return opgave;
   }
 
