@@ -26,59 +26,113 @@
     <p class="undertekst">✨ Tryk på et kort og leg ✨</p>
   </header>
 
-  <!-- Hvert <a> er en knap til et spil. Tilføj et nyt spil ved at kopiere én blok. -->
-  <main class="spil-gitter">
+  <!-- Faner: vælg hvilken slags spil der vises. Appen husker den sidste fane. -->
+  <nav class="faner" aria-label="Kategorier">
+    <button class="fane" data-vis="alle"><span class="fane-ikon">⭐</span><span class="fane-navn">Alle</span></button>
+    <button class="fane" data-vis="3d"><span class="fane-ikon">🧊</span><span class="fane-navn">3D</span></button>
+    <button class="fane" data-vis="2d"><span class="fane-ikon">🎮</span><span class="fane-navn">2D</span></button>
+    <button class="fane" data-vis="laer"><span class="fane-ikon">🧠</span><span class="fane-navn">Lær</span></button>
+    <button class="fane" data-vis="kreativ"><span class="fane-ikon">🎨</span><span class="fane-navn">Tegn &amp; musik</span></button>
+  </nav>
 
-    <a class="spil-kort" href="spil/tryk-paa-dyret/" style="--farve:#ffd166">
-      <span class="ikon">🐮</span><span class="navn">Tryk på dyret</span>
-    </a>
-    <a class="spil-kort" href="spil/slange/" style="--farve:#80ed99">
-      <span class="ikon">🐍</span><span class="navn">Fjollet Slange</span>
-    </a>
-    <a class="spil-kort" href="spil/tegne/" style="--farve:#ff8fab">
-      <span class="ikon">🎨</span><span class="navn">Tegn!</span>
-    </a>
-    <a class="spil-kort" href="spil/balloner/" style="--farve:#4cc9f0">
-      <span class="ikon">🎈</span><span class="navn">Pop ballonerne</span>
-    </a>
-    <a class="spil-kort" href="spil/find-par/" style="--farve:#ffb703">
-      <span class="ikon">🧠</span><span class="navn">Find par</span>
-    </a>
-    <a class="spil-kort" href="spil/fang/" style="--farve:#b15bff">
-      <span class="ikon">🧺</span><span class="navn">Fang frugten</span>
-    </a>
-    <a class="spil-kort" href="spil/muldvarp/" style="--farve:#52b788">
-      <span class="ikon">🔨</span><span class="navn">Slå muldvarpen</span>
-    </a>
-    <a class="spil-kort" href="spil/tael/" style="--farve:#ff9e6d">
-      <span class="ikon">🔢</span><span class="navn">Tæl dyrene</span>
-    </a>
-    <a class="spil-kort" href="spil/simon/" style="--farve:#c77dff">
-      <span class="ikon">🎵</span><span class="navn">Husk farverne</span>
-    </a>
-    <a class="spil-kort" href="spil/piano/" style="--farve:#ff70a6">
-      <span class="ikon">🎹</span><span class="navn">Dyre-piano</span>
-    </a>
-    <a class="spil-kort" href="spil/undvig/" style="--farve:#48cae4">
-      <span class="ikon">🚀</span><span class="navn">Undvig stenene</span>
-    </a>
-    <a class="spil-kort" href="spil/puslespil/" style="--farve:#90e0a0">
-      <span class="ikon">🧩</span><span class="navn">Skydepuslespil</span>
-    </a>
-    <a class="spil-kort" href="spil/skibidi/" style="--farve:#ff477e">
-      <span class="ikon">🚽</span><span class="navn">Skibidi Toilet</span>
-    </a>
-    <a class="spil-kort" href="spil/vask/" style="--farve:#56cfe1">
-      <span class="ikon">🚜</span><span class="navn">Vaskehallen</span>
-    </a>
-    <a class="spil-kort" href="spil/fisk/" style="--farve:#4895ef">
-      <span class="ikon">🎣</span><span class="navn">Mærkelige fisk</span>
-    </a>
-    <a class="spil-kort" href="spil/broekraft/" style="--farve:#7cc35a">
-      <span class="ikon">⛏️</span><span class="navn">Broekraft</span>
-    </a>
+  <!-- Spillene i kategorier. Tilføj et nyt spil ved at kopiere et kort ind i den rigtige kategori.
+       data-ny="ÅÅÅÅ-MM-DD" giver et NY!-mærke i tre uger. -->
+  <main>
+    <section class="kategori" data-kat="3d">
+      <h2 class="kat-titel"><span>🧊</span>3D-spil</h2>
+      <div class="spil-gitter">
+        <a class="spil-kort" href="spil/broekraft/" style="--farve:#7cc35a" data-ny="2026-09-27">
+          <span class="ikon">⛏️</span><span class="navn">Broekraft</span>
+        </a>
+        <a class="spil-kort" href="spil/fisk/" style="--farve:#4895ef" data-ny="2026-09-27">
+          <span class="ikon">🎣</span><span class="navn">Mærkelige fisk</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="kategori" data-kat="2d">
+      <h2 class="kat-titel"><span>🎮</span>2D-spil</h2>
+      <div class="spil-gitter">
+        <a class="spil-kort" href="spil/tryk-paa-dyret/" style="--farve:#ffd166">
+          <span class="ikon">🐮</span><span class="navn">Tryk på dyret</span>
+        </a>
+        <a class="spil-kort" href="spil/balloner/" style="--farve:#4cc9f0">
+          <span class="ikon">🎈</span><span class="navn">Pop ballonerne</span>
+        </a>
+        <a class="spil-kort" href="spil/fang/" style="--farve:#b15bff">
+          <span class="ikon">🧺</span><span class="navn">Fang frugten</span>
+        </a>
+        <a class="spil-kort" href="spil/muldvarp/" style="--farve:#52b788">
+          <span class="ikon">🔨</span><span class="navn">Slå muldvarpen</span>
+        </a>
+        <a class="spil-kort" href="spil/undvig/" style="--farve:#48cae4">
+          <span class="ikon">🚀</span><span class="navn">Undvig stenene</span>
+        </a>
+        <a class="spil-kort" href="spil/slange/" style="--farve:#80ed99">
+          <span class="ikon">🐍</span><span class="navn">Fjollet Slange</span>
+        </a>
+        <a class="spil-kort" href="spil/skibidi/" style="--farve:#ff477e">
+          <span class="ikon">🚽</span><span class="navn">Skibidi Toilet</span>
+        </a>
+        <a class="spil-kort" href="spil/vask/" style="--farve:#56cfe1" data-ny="2026-09-27">
+          <span class="ikon">🚜</span><span class="navn">Vaskehallen</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="kategori" data-kat="laer">
+      <h2 class="kat-titel"><span>🧠</span>Lær og tænk</h2>
+      <div class="spil-gitter">
+        <a class="spil-kort" href="spil/tael/" style="--farve:#ff9e6d">
+          <span class="ikon">🔢</span><span class="navn">Tæl dyrene</span>
+        </a>
+        <a class="spil-kort" href="spil/find-par/" style="--farve:#ffb703">
+          <span class="ikon">🧠</span><span class="navn">Find par</span>
+        </a>
+        <a class="spil-kort" href="spil/simon/" style="--farve:#c77dff">
+          <span class="ikon">🎵</span><span class="navn">Husk farverne</span>
+        </a>
+        <a class="spil-kort" href="spil/puslespil/" style="--farve:#90e0a0">
+          <span class="ikon">🧩</span><span class="navn">Skydepuslespil</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="kategori" data-kat="kreativ">
+      <h2 class="kat-titel"><span>🎨</span>Tegn &amp; musik</h2>
+      <div class="spil-gitter">
+        <a class="spil-kort" href="spil/tegne/" style="--farve:#ff8fab">
+          <span class="ikon">🎨</span><span class="navn">Tegn!</span>
+        </a>
+        <a class="spil-kort" href="spil/piano/" style="--farve:#ff70a6">
+          <span class="ikon">🎹</span><span class="navn">Dyre-piano</span>
+        </a>
+      </div>
+    </section>
 
   </main>
+
+  <script>
+    // ----- Faner: vis én kategori eller alle -----
+    const faner = document.querySelectorAll(".fane"), kategorier = document.querySelectorAll(".kategori");
+    function vis(kat) {
+      faner.forEach(f => f.setAttribute("aria-pressed", f.dataset.vis === kat));
+      kategorier.forEach(k => { k.hidden = kat !== "alle" && k.dataset.kat !== kat; });
+      try { localStorage.setItem("forside-fane", kat); } catch (_) {}
+    }
+    faner.forEach(f => f.addEventListener("click", () => vis(f.dataset.vis)));
+    let startFane = "alle";
+    try { startFane = localStorage.getItem("forside-fane") || "alle"; } catch (_) {}
+    vis([...faner].some(f => f.dataset.vis === startFane) ? startFane : "alle");
+
+    // ----- NY!-mærker på nye spil (i tre uger) -----
+    document.querySelectorAll("[data-ny]").forEach(k => {
+      if (Date.now() - Date.parse(k.dataset.ny) > 21 * 864e5) return;
+      const m = document.createElement("span");
+      m.className = "ny-maerke"; m.textContent = "NY!";
+      k.appendChild(m);
+    });
+  </script>
 
   <!-- Registrér service worker (offline + installerbar) -->
   <script>
