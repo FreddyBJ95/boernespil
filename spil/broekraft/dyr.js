@@ -222,6 +222,20 @@ export const DYR = [
       { s: [3, 2, 2], p: [0, 2.5, 8.6], f: "#ffcf3f" },
     ] },
   ] },
+  // Skydebanen: en legetøjsrobot, der går efter dig og danser — rammer man den, bliver den til konfetti
+  { id: "robot", navn: "Legetøjsrobot", lyd: "bipbop", fart: 1.1, evne: "zombie", klap: "puf", skala: 0.85, æg: ["#9aa8b8", "#ffd23f"], dele: [
+    { s: [3, 8, 3], p: [-2.5, 4, 0], f: "#5a6a7a", rolle: "ben", fase: 0 },
+    { s: [3, 8, 3], p: [2.5, 4, 0], f: "#5a6a7a", rolle: "ben", fase: Math.PI },
+    { s: [10, 9, 6], p: [0, 12.5, 0], f: "#9aa8b8" },
+    { s: [4, 3, 0.4], p: [0, 13.5, 3.1], f: "#ffd23f", lys: true },
+    { s: [2.5, 2.5, 7], p: [-6.5, 14, 3], f: "#7a8a9a", rolle: "arm" },
+    { s: [2.5, 2.5, 7], p: [6.5, 14, 3], f: "#7a8a9a", rolle: "arm" },
+    { s: [8, 7, 7], p: [0, 20.5, 0], f: "#b8c4d2", rolle: "hoved", børn: [
+      { s: [2, 2, 0.4], p: [-2, 21, 3.6], f: "#5ff0ff", lys: true }, { s: [2, 2, 0.4], p: [2, 21, 3.6], f: "#5ff0ff", lys: true },
+      { s: [4, 1, 0.4], p: [0, 18.5, 3.6], f: "#2a2a2a" },
+      { s: [1, 4, 1], p: [0, 25.5, 0], f: "#5a6a7a" }, { s: [2, 2, 2], p: [0, 28, 0], f: "#ff3b30", lys: true },
+    ] },
+  ] },
 ];
 // ---------- Byg et dyr af klodser ----------
 const kasse = new THREE.BoxGeometry(1, 1, 1);

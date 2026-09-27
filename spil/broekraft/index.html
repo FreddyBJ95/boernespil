@@ -187,6 +187,22 @@
     .stemme-bar button span { font-size: 11px; font-weight: 800; margin-top: 4px; text-shadow: 1px 1px 0 #000; }
     .stemme-bar button.valgt { background: #7aa6e0; border-color: #ffff3f; }
     #mikKnap { width: 84px; height: 84px; font-size: 38px; }
+    /* Skydebanen: point, kampvogn og farveklatter · Fyrværkeri: himlen blinker */
+    .point {
+      position: fixed; top: 10px; left: 124px; z-index: 6; display: none;
+      font-weight: 900; font-size: 24px; padding: 6px 14px; background: rgba(0,0,0,.45); border-radius: 12px; text-shadow: 2px 2px 0 #000;
+    }
+    .i-gang.skydebane .point { display: block; }
+    .point.pop { animation: pointPop .35s ease-out; }
+    @keyframes pointPop { 40% { transform: scale(1.35); } }
+    #udKnap { position: fixed; right: 18px; bottom: calc(var(--s) + 40px); z-index: 7; display: none; min-width: 0; }
+    .i-kampvogn #udKnap { display: block; }
+    .i-kampvogn .hopknapper, .i-kampvogn .hotbar, .i-kampvogn .ting-navn { display: none !important; }
+    #klatter { position: fixed; inset: 0; pointer-events: none; z-index: 4; overflow: hidden; }
+    .klat { position: absolute; width: 34vmin; height: 34vmin; transform: translate(-50%, -50%) scale(.2); animation: klat 2.6s ease-out forwards; }
+    .klat svg { width: 100%; height: 100%; display: block; }
+    @keyframes klat { 12% { transform: translate(-50%, -50%) scale(1.05); opacity: .92; } 70% { opacity: .75; } 100% { transform: translate(-50%, -38%) scale(1); opacity: 0; } }
+    #himmelBlink { position: fixed; inset: 0; pointer-events: none; z-index: 1; opacity: 0; }
     #mikKnap.taler { background: rgba(226,58,58,.85); border-color: #fff; animation: mikPuls .5s ease-in-out infinite alternate; }
     @keyframes mikPuls { from { box-shadow: 0 0 0 0 rgba(255,90,90,.7); transform: scale(1); } to { box-shadow: 0 0 0 16px rgba(255,90,90,0); transform: scale(1.08); } }
     .figur-valg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-width: 460px; width: 100%; margin: 4px 0 6px; }
@@ -214,6 +230,10 @@
 <body>
   <canvas id="scene"></canvas>
   <div id="underVand"></div>
+  <div id="himmelBlink"></div>
+  <div id="klatter"></div>
+  <div class="point" id="point">⭐ 0</div>
+  <button class="mc" id="udKnap" aria-label="Stig ud af kampvognen">🚪 Stig ud</button>
 
   <div class="top styring">
     <a class="mc lille" href="../../" aria-label="Til forsiden">🏠</a>

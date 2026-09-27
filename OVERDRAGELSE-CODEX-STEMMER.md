@@ -183,3 +183,14 @@ overse for forældre. Serveren kunne tjekke netværksprofilen, fx via
 `powershell Get-NetConnectionProfile`. Er den `Public`, bør kontrolpanelet vise en tydelig dansk
 vejledning (gør wifi privat + tillad appen i firewallen). Hvis tabletter aldrig forbinder, kan panelet
 også vise et "Tabletten kan ikke komme ind?"-afsnit.
+
+**Nye verdenstyper (Claude, 27. september):**
+- `skydebane` 🎯 og `fyrvaerkeri` 🎆 ligger i `verdener.js` og kan oprettes i kontrolpanelet.
+- Nye blokke 57–62: Skydeskive, Sandsæk, Trækasse, Camouflage, Fyrværkeri og Sne.
+- Online virker det allerede sådan her:
+  - gevær og maling (skydeskiver og malede blokke sendes med `sæt`)
+  - balloner, robotter og kampvogne er lokale pr. tablet, ligesom dyrene
+- Det mangler online og kunne være en næste serveropgave:
+  - bazooka- og kanonbrag ødelægger kun blokke alene; sammen er de kun til at se på
+  - raketter og fyrværkeri-kasser ses kun på den tablet, der sender dem op
+  - Forslag: en `brag`-besked (ligesom TNT) og en `fyrværkeri`-besked `{x,y,z,mønster}`, som serveren sender videre til rummet.

@@ -226,6 +226,58 @@ export function av() {                     // lava eller ild: en lille hoppende 
   sus(t, 0.3, 5000, 2000, 0.12, "highpass", 0.6);
 }
 
+// ---------- Skydebanen (legetøjslyde) ----------
+export function skud() {                   // pjuu — legetøjsgeværet
+  if (!ac) return;
+  glid(1500, 420, nu(), 0.11, { type: "square", vol: 0.06, filter: 3000 });
+  sus(nu(), 0.05, 5000, 2500, 0.1, "highpass", 0.8);
+}
+export function bazookaSkud() {            // fuuusj — raketten flyver af sted
+  if (!ac) return;
+  sus(nu(), 0.7, 300, 1800, 0.35, "bandpass", 0.9);
+  tone(130, nu(), 0.25, "sine", 0.3, 60);
+}
+export function kanonSkud() {              // en dyb "dunk" fra kampvognen
+  if (!ac) return;
+  tone(95, nu(), 0.35, "sine", 0.45, 40);
+  sus(nu(), 0.35, 1400, 160, 0.35, "lowpass", 0.7);
+}
+export function klask(styrke = 1) {        // en blød skumkugle eller malingsklat
+  if (!ac) return;
+  sus(nu(), 0.16, 900, 200, 0.35 * styrke, "lowpass", 1);
+  glid(320, 130, nu(), 0.14, { vol: 0.14 * styrke });
+}
+export function ballon(afstand = 0) {      // ballonen springer
+  if (!ac) return;
+  const v = Math.max(0.2, 1 - afstand / 40);
+  sus(nu(), 0.07, 6000, 1500, 0.45 * v, "bandpass", 0.6);
+  tone(1100, nu(), 0.05, "square", 0.07 * v, 300);
+}
+export function point() { if (ac) [1319, 1760].forEach((f, i) => tone(f, nu() + i * 0.07, 0.12, "triangle", 0.1)); }
+
+// ---------- Fyrværkeri ----------
+const fjern = afstand => Math.max(0.15, 1 - afstand / 90);
+export function fløjt(afstand = 0) {       // raketten hviner op
+  if (!ac) return;
+  const v = fjern(afstand);
+  glid(500, 1800, nu(), 0.9, { type: "triangle", vol: 0.05 * v, vibHz: 16, vib: 25 });
+  sus(nu(), 0.9, 2000, 6000, 0.07 * v, "highpass", 0.5);
+}
+export function fyrBrag(afstand = 0) {     // et blødt, dybt brag — ikke så højt som TNT
+  if (!ac) return;
+  const v = fjern(afstand), t = nu() + Math.min(0.4, afstand / 340);   // lyden kommer lidt efter lyset
+  sus(t, 1.1, 900, 70, 0.45 * v, "lowpass", 0.6);
+  tone(70, t, 0.5, "sine", 0.3 * v, 35);
+}
+export function fyrKnitre(afstand = 0) {   // gnister, der knitrer
+  if (!ac) return;
+  const v = fjern(afstand), t = nu() + 0.3;
+  for (let i = 0; i < 16; i++) sus(t + Math.random() * 1.3, 0.025, 5000 + Math.random() * 3000, 2500, 0.12 * v, "highpass", 1);
+}
+export function gnistre() {                // stjernekasteren
+  if (ac) sus(nu(), 0.06, 7000, 4000, 0.03, "highpass", 1);
+}
+
 // ---------- Dyrenes stemmer (vælges med "lyd" i dyr.js) ----------
 export function dyrLyd(type, afstand = 0) {
   if (!ac) return;

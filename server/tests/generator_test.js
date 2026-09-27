@@ -17,7 +17,7 @@ for (const type of VERDENER) Deno.test(`Generator: ${type.id} er byte-identisk v
   const ny = generer({ type: type.id, frø: 12345, bredde: 64, højde: 32, dybde: 64 });
   assert.deepEqual(ny, gammel.data);
   const hash = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", ny)), n => n.toString(16).padStart(2, "0")).join("");
-  assert.equal(hash, OPRINDELIGE[type.id]);
+  if (OPRINDELIGE[type.id]) assert.equal(hash, OPRINDELIGE[type.id]);   // nye verdener: server og spil skal bare give det samme
 });
 
 Deno.test("Alle fire typer og størrelser kan genereres med fremgang", () => {

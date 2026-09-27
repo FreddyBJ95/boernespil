@@ -20,6 +20,8 @@ import { Simulering } from "./simulering.js";
 import { VÆRKTØJ, værktøjIkon, værktøjModel, opdaterVærktøj } from "./vaerktoej.js";
 import { forbindStemmer } from "./stemmer.js";
 import { Stemmegraf, STEMMER, stemmeAf } from "./stemmeeffekt.js";
+import { Skydning } from "./skyd.js";
+import { Fyrværkeri } from "./fyrvaerkeri.js";
 
 const E = window.Effekter, $ = id => document.getElementById(id);
 const RÆKKE = 7, HAKTID = 0.4;                                  // hvor langt man når, og hvor længe en blok tager at hakke
@@ -54,7 +56,7 @@ const GEM = ONLINE ? `broekraft-online-${ONLINE_ID}` : cfg.id === "græsø" ? "b
 const tilTing = n => (n.startsWith("æg:") ? { æg: n.slice(3) } : n.startsWith("v:") ? { v: n.slice(2) } : { blok: ID[n] });
 const STANDARD = cfg.hotbar.map(tilTing);
 let gemt = læs(GEM, null);
-if (!gemt || !Number.isFinite(gemt.frø)) gemt = { frø: (Math.random() * 2 ** 31) | 0, ændringer: {}, musik: læs("broekraft-musik", true) };
+if (!gemt || !Number.isFinite(gemt.frø)) gemt = { frø: (Math.random() * 2 ** 31) | 0, ændringer: {}, musik: læs("broekraft-musik", true), tnt: true, væske: true };
 const gyldig = s => s && (s.v ? !!VÆRKTØJ[s.v] : s.æg ? s.æg === "?" || DYR.some(d => d.id === s.æg) : BLOKKE[s.blok] && !BLOKKE[s.blok].skjult);
 if (!Array.isArray(gemt.hotbar) || gemt.hotbar.length !== 9 || !gemt.hotbar.every(gyldig)) gemt.hotbar = STANDARD.map(s => ({ ...s }));
 if (!(gemt.valgt >= -1 && gemt.valgt < 9)) gemt.valgt = 0;
@@ -336,7 +338,17 @@ function tilSkærm(p, dy = 0) {
 const overlap = (x, y, z, p, b, h) => x + 1 > p.x - b && x < p.x + b && y + 1 > p.y && y < p.y + h && z + 1 > p.z - b && z < p.z + b;
 
 function tryk(x, y) {
-  const hit = stråleFra(x, y, !!valgtTing().hammer);
+  const valgt = valgtTing(), værk = valgt.v && VÆRKTØJ[valgt.v];
+  const hit = stråleFra(x, y, !!valgt.hammer);
+  if (skyd.kører) { skyd.kanon(ray.ray.direction.clone()); return; }       // i kampvognen skyder kanonen
+  const kv = skyd.kampvognVed(ray.ray, RÆKKE + 4);                           // tryk på en grøn kampvogn = stig ind
+  if (kv && (!hit || kv.afst < hit.t)) {
+    skyd.stigInd(kv.kv); Lyd.vælg();
+    besked("Du sidder i kampvognen! Kør med pilene, og tryk for at skyde 🎯", 4000);
+    return;
+  }
+  if (værk?.våben) { if (skyd.skydMod(værk.våben, kamera.position, ray.ray.direction)) sving = 1; return; }
+  if (værk?.fyrværkeri) { fyrTryk(valgt.v, hit); return; }
   let bedst = null;
   for (const d of dyr) {
     const h = ray.intersectObject(d.model, true)[0];
@@ -351,6 +363,7 @@ function tryk(x, y) {
   }
   if (!hit) return;
   if (valgtTing().hammer) {                                      // hammeren fjerner blokken med det samme
+    if (BLOKKE[hit.id].fyrværkeri) { tændFyrkasse(hit); return; }        // fyrværkeri-kassen går i gang
     if (BLOKKE[hit.id].tnt) {                                     // … men TNT bliver tændt!
       if (ONLINE) { net?.tænd(hit.x, hit.y, hit.z); tændTNT(hit.x, hit.y, hit.z, 2.2, true); } else tændTNT(hit.x, hit.y, hit.z);
       sving = 1; return;
@@ -431,6 +444,7 @@ const VANDFARVE = new THREE.Color("#8fc4ff"), DAMP = new THREE.Color("#f2f2f2");
 // Spandene hælder vand eller lava ud · tænderen sætter ild (eller tænder TNT)
 function brugVærktøj(v, hit) {
   const b = BLOKKE[hit.id];
+  if (v === "tænder" && b.fyrværkeri) { tændFyrkasse(hit); return; }
   if (v === "tænder" && b.tnt) {
     if (ONLINE) { net?.tænd(hit.x, hit.y, hit.z); tændTNT(hit.x, hit.y, hit.z, 2.2, true); } else tændTNT(hit.x, hit.y, hit.z);
     sving = 1; return;
@@ -605,6 +619,79 @@ function bragEffekt(cx, cy, cz) {
   if (afst < 30) E.flash("#fff1b8");
 }
 
+// ---------- Skydning og fyrværkeri (skyd.js, kampvogn.js og fyrvaerkeri.js) ----------
+const skyd = new Skydning({
+  scene, verden, kamera, sp, dyr, partikel, eksploder, bragEffekt, puf, lyd: Lyd, net: () => net, online: ONLINE,
+  sæt: (x, y, z, id) => { verden.sæt(x, y, z, id); gemSnart(); }, point: n => nyePoint(n), klat: f => klat(f),
+  tyngde: TYNGDE, bane: !!cfg.skyd, start: [VX / 2, VZ / 2],
+});
+const fyr = new Fyrværkeri(scene, kamera, { lyd: { fløjt: Lyd.fløjt, brag: Lyd.fyrBrag, knitre: Lyd.fyrKnitre }, blink: himmelBlink });
+
+// Point på Skydebanen: ⭐ oppe i midten — og en lille fest for hver 25
+let point = gemt.point | 0;
+function nyePoint(n) {
+  if (!cfg.skyd) return;
+  const før = point;
+  point += n; gemt.point = point;
+  const el = $("point");
+  el.textContent = `⭐ ${point}`;
+  el.classList.remove("pop"); void el.offsetWidth; el.classList.add("pop");
+  if (Math.floor(før / 25) < Math.floor(point / 25)) { E.fanfare?.(); E.konfetti(window.innerWidth / 2, 70, { antal: 70 }); }
+  else Lyd.point();
+  gemSnart();
+}
+$("point").textContent = `⭐ ${point}`;
+document.body.classList.toggle("skydebane", !!cfg.skyd);
+$("udKnap").addEventListener("pointerdown", e => { e.preventDefault(); Lyd.klar(); Lyd.klik(); skyd.stigUd(); });
+
+// En blød skumkugle rammer: en farveklat på skærmen, der falmer væk
+function klat(farve) {
+  const k = document.createElement("div"), n = 9, pkt = [];
+  for (let i = 0; i < n; i++) { const v = i / n * Math.PI * 2, r = 30 + Math.random() * 16; pkt.push([50 + Math.cos(v) * r, 50 + Math.sin(v) * r]); }
+  let d = `M${(pkt[0][0] + pkt[n - 1][0]) / 2},${(pkt[0][1] + pkt[n - 1][1]) / 2}`;
+  for (let i = 0; i < n; i++) { const a = pkt[i], b = pkt[(i + 1) % n]; d += ` Q${a[0]},${a[1]} ${(a[0] + b[0]) / 2},${(a[1] + b[1]) / 2}`; }
+  const dråber = Array.from({ length: 4 }, () => `<circle cx="${10 + Math.random() * 80}" cy="${10 + Math.random() * 80}" r="${3 + Math.random() * 5}"/>`).join("");
+  k.className = "klat";
+  k.style.left = 15 + Math.random() * 70 + "%"; k.style.top = 15 + Math.random() * 60 + "%";
+  k.innerHTML = `<svg viewBox="0 0 100 100" fill="${farve}"><path d="${d}Z"/>${dråber}</svg>`;
+  $("klatter").appendChild(k);
+  setTimeout(() => k.remove(), 2700);
+}
+
+// Fyrværkeri lyser himlen op et øjeblik
+function himmelBlink(farve, styrke) {
+  const el = $("himmelBlink");
+  el.style.transition = "none";
+  el.style.background = `radial-gradient(ellipse at 50% 20%, rgba(${farve.r * 255 | 0},${farve.g * 255 | 0},${farve.b * 255 | 0},${0.28 * styrke}), transparent 70%)`;
+  el.style.opacity = "1";
+  requestAnimationFrame(() => { el.style.transition = "opacity .9s ease-out"; el.style.opacity = "0"; });
+}
+
+// Raket: sendes op fra det sted, man peger på — eller lige foran en
+function fyrTryk(v, hit) {
+  sving = 1;
+  if (v === "stjernekaster") { stjernedrys(18, 5); Lyd.gnistre(); return; }
+  let x, y, z;
+  if (hit && hit.n[1] === 1) { x = hit.x + 0.5; y = hit.y + 1; z = hit.z + 0.5; }
+  else { x = sp.pos.x - Math.sin(sp.yaw) * 2.5; z = sp.pos.z - Math.cos(sp.yaw) * 2.5; y = verden.topY(Math.floor(x), Math.floor(z)) + 1; }
+  fyr.raket(x, y, z);
+}
+// Fyrværkeri-kassen tændes og skyder en hel serie raketter op
+function tændFyrkasse({ x, y, z }) {
+  if (ONLINE) net?.sæt(x, y, z, 0); else verden.sæt(x, y, z, 0);
+  fyr.tændKasse(x, y, z, 12);
+  Lyd.tænd(); sving = 1;
+  gemSnart();
+}
+// Gnister fra stjernekasteren i hånden
+const spids = new THREE.Vector3(), GNIST = ["#fff3a0", "#ffd23f", "#ffffff", "#ffb347"].map(f => new THREE.Color(f));
+let gnistLyd = 0;
+function stjernedrys(n, fart) {
+  if (!håndFlamme) return;
+  håndFlamme.getWorldPosition(spids);
+  for (let i = 0; i < n; i++) partikel(spids.x, spids.y, spids.z, GNIST[i % GNIST.length], (Math.random() - 0.5) * fart, (Math.random() - 0.3) * fart, (Math.random() - 0.5) * fart, 0.25 + Math.random() * 0.3, 0.3, 0.3);
+}
+
 // ---------- Styring ----------
 const tast = { frem: 0, tilbage: 0, venstre: 0, hoejre: 0, op: 0, ned: 0, hop: 0 };
 let iGang = false, pause = false, sidsteHop = 0;
@@ -616,6 +703,7 @@ function hopTryk() {
   if (!sp.flyver && sp.jord) { sp.vel.y = HOP; Lyd.hop(); }
 }
 function skiftFlyv() {
+  if (skyd.kører) return;
   sp.flyver = !sp.flyver;
   if (sp.flyver) sp.vel.y = 4;
   Lyd.flyv(sp.flyver);
@@ -691,6 +779,12 @@ function opdaterHak(dt) {
   for (const g of fingre.values()) {
     if (!g.flyttet && !g.hakker && g.knap === 0 && performance.now() - g.t > 300) g.hakker = true;
     if (g.hakker) f = g;
+  }
+  const værk = valgtTing().v && VÆRKTØJ[valgtTing().v];
+  if (f && (værk?.hold || skyd.kører)) {
+    markør.visible = revne.visible = false;
+    if ((f.skudT = (f.skudT ?? 0) - dt) <= 0) { f.skudT = skyd.kører ? 0.9 : værk.hold; tryk(f.x, f.y); }
+    return;
   }
   const hit = f && stråleFra(f.x, f.y);
   if (!hit || BLOKKE[hit.id].uknuselig) { markør.visible = revne.visible = false; if (f) f.mål = null; return; }
@@ -903,7 +997,7 @@ $("musikKnap").addEventListener("click", () => {
   gemt.musik = !gemt.musik; Lyd.sætMusik(gemt.musik); Lyd.klik(); gemSnart(); skriv("broekraft-musik", gemt.musik);
   $("musikKnap").textContent = gemt.musik ? "🎵 Musik: TIL" : "🔇 Musik: FRA";
 });
-$("hjemStart").addEventListener("click", () => { Lyd.klik(); startSted(); if (sp.flyver) skiftFlyv(); luk("menu"); gemSnart(); });
+$("hjemStart").addEventListener("click", () => { Lyd.klik(); skyd.stigUd(); startSted(); if (sp.flyver) skiftFlyv(); luk("menu"); gemSnart(); });
 $("udsynKnap").textContent = `👀 Udsyn: ${UDSYN[udsynNr].navn}`;
 $("udsynKnap").addEventListener("click", () => {                  // hvor langt kan man se (online)
   udsynNr = (udsynNr + 1) % UDSYN.length; skriv("broekraft-udsyn", udsynNr); Lyd.klik();
@@ -948,7 +1042,15 @@ renderer.setAnimationLoop(nu => {
 function tegnFrame(nu) {
   const dt = Math.min(0.05, (nu - sidst) / 1000);
   sidst = nu; tid += dt;
-  if (iGang && !pause) { opdaterSpiller(dt); opdaterHak(dt); genfød(dt); opdaterTNT(dt); sim?.tick(dt); opdaterGløder(dt); }
+  if (iGang && !pause) {
+    if (skyd.kører) { skyd.styr(tast, sp.yaw, dt); sp.pitch = Math.max(-1.1, Math.min(0.45, sp.pitch)); } else opdaterSpiller(dt);
+    opdaterHak(dt); genfød(dt); opdaterTNT(dt); sim?.tick(dt); opdaterGløder(dt);
+    skyd.opdater(dt); fyr.opdater(dt);
+    if (valgtTing().v === "stjernekaster" && !skyd.kører) {
+      stjernedrys(3, 1.6);
+      if ((gnistLyd -= dt) <= 0) { gnistLyd = 0.15; Lyd.gnistre(); }
+    }
+  }
   else if (!iGang) sp.yaw += dt * 0.06;                                           // titelskærm: kig langsomt rundt
   for (const d of dyr) d.opdater(dt, sp.pos);
   if (ONLINE) opdaterOnline(dt);
@@ -963,7 +1065,12 @@ function tegnFrame(nu) {
   }
 
   const bob = sp.jord && !sp.flyver ? Math.abs(Math.sin(gangFase * Math.PI)) * 0.06 : 0;
-  kamera.position.set(sp.pos.x, sp.pos.y + ØJE + bob, sp.pos.z);
+  if (skyd.kører) {                                                               // kameraet bag og over kampvognen
+    const kv = skyd.kører, cp = Math.cos(sp.pitch), fx = -Math.sin(sp.yaw) * cp, fy = Math.sin(sp.pitch), fz = -Math.cos(sp.yaw) * cp;
+    let afst = 7.5;
+    for (let d = 1.5; d <= 7.5; d += 0.5) if (verden.erFast(Math.floor(kv.pos.x - fx * d), Math.floor(kv.pos.y + 2.4 - fy * d), Math.floor(kv.pos.z - fz * d))) { afst = d - 0.6; break; }
+    kamera.position.set(kv.pos.x - fx * afst, kv.pos.y + 2.4 - fy * afst, kv.pos.z - fz * afst);
+  } else kamera.position.set(sp.pos.x, sp.pos.y + ØJE + bob, sp.pos.z);
   if (rystelse > 0) {                                                             // skærmen ryster efter et brag
     rystelse = Math.max(0, rystelse - dt * 1.6);
     kamera.position.x += (Math.random() - 0.5) * rystelse * 0.3;
@@ -982,7 +1089,7 @@ function tegnFrame(nu) {
   const s = Math.sin(sving * Math.PI);
   hånd.position.set(0.4 + Math.cos(gangFase * Math.PI * 2) * 0.012, -0.36 + bob * 0.4 - s * 0.1, -0.9 - s * 0.1);
   hånd.rotation.x = -s * 0.8;
-  hånd.visible = iGang;
+  hånd.visible = iGang && !skyd.kører;
   renderer.render(scene, kamera);
 }
 
@@ -996,7 +1103,9 @@ async function startSpil() {
   luk("start");
   document.body.classList.add("i-gang");
   besked(ONLINE ? `${figurIkon(minFigur)} Velkommen til ${onlineInfo?.navn || cfg.navn}!` : `${cfg.ikon} ${cfg.navn}`, 2400);
-  setTimeout(() => { if (iGang) besked(nyVæske ? "NYT: 🪣 Vand, 🌋 lava og 🔥 ild! Find dem i ⋯" : nyTNT && !ONLINE ? "NYT: 🧨 TNT! Sæt den og slå på den med 🔨" : "Tryk = byg 🧱   🔨 = fjern   Træk = kig 👀", 5000); }, 2500);
+  setTimeout(() => { if (iGang) besked(cfg.skyd ? "🎯 Tryk for at skyde · hold fingeren nede for at skyde mange · tryk på en grøn kampvogn for at køre"
+    : cfg.fyrværkeri ? "🎆 Tryk for at sende en raket op · tænd fyrværkeri-kasserne med 🔥 tænderen"
+    : nyVæske ? "NYT: 🪣 Vand, 🌋 lava og 🔥 ild! Find dem i ⋯" : nyTNT && !ONLINE ? "NYT: 🧨 TNT! Sæt den og slå på den med 🔨" : "Tryk = byg 🧱   🔨 = fjern   Træk = kig 👀", 5000); }, 2500);
 }
 tegnHotbar();
 opdaterHånd();
@@ -1260,4 +1369,4 @@ if (ONLINE) {
 
 if (ONLINE) forberedOnline();
 window.broekraftKlar = true;
-if (location.search.includes("debug")) window.bk = { sp, verden, dyr, tast, cfg, andre, sim, get net() { return net; }, get tale() { return tale; }, get graf() { return graf; }, afspillere };
+if (location.search.includes("debug")) window.bk = { sp, verden, dyr, tast, cfg, andre, sim, get net() { return net; }, get tale() { return tale; }, get graf() { return graf; }, afspillere, skyd, fyr };
