@@ -18,6 +18,8 @@ import { forbind } from "./net.js";
 import { Figur, FIGURER, figurIkon } from "./figurer.js";
 import { Simulering } from "./simulering.js";
 import { VÆRKTØJ, værktøjIkon, værktøjModel, opdaterVærktøj } from "./vaerktoej.js";
+import { forbindStemmer } from "./stemmer.js";
+import { Stemmegraf, STEMMER, stemmeAf } from "./stemmeeffekt.js";
 
 const E = window.Effekter, $ = id => document.getElementById(id);
 const RÆKKE = 7, HAKTID = 0.4;                                  // hvor langt man når, og hvor længe en blok tager at hakke
@@ -913,7 +915,7 @@ $("udsynKnap").addEventListener("click", () => {                  // hvor langt 
   net?.udsyn(UDSYN[udsynNr].r);
   $("udsynKnap").textContent = `👀 Udsyn: ${UDSYN[udsynNr].navn}`;
 });
-$("forladKnap").addEventListener("click", () => { Lyd.klik(); net?.luk(); location.href = "/"; });
+$("forladKnap").addEventListener("click", () => { Lyd.klik(); stopTale(); net?.luk(); location.href = "/"; });
 let nyTryk = 0;
 $("nyVerden").addEventListener("click", () => {
   Lyd.klik();
@@ -1051,6 +1053,7 @@ function visFejl(titel, tekst) {
 async function forbindOnline() {
   startKnap.disabled = true; startKnap.textContent = "Forbinder…";
   $("onlineFejl").classList.add("skjult");
+  stopTale();
   if (net) { net.luk(); net = null; }
   try {
     net = await forbind(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`, { figur: minFigur });
@@ -1082,6 +1085,7 @@ async function forbindOnline() {
       fejl.message === "fuld" ? "Vent lidt, eller vælg en anden verden." : "Prøv igen om lidt.");
     return false;
   }
+  startTale();
   startKnap.textContent = "▶ Spil sammen"; startKnap.disabled = false;
   return true;
 }
@@ -1129,11 +1133,135 @@ function opdaterOnline(dt) {
   if (!dyrLavet && verden.hentet(Math.floor(sp.pos.x), Math.floor(sp.pos.z)) && !ventPåJord) { dyrLavet = true; lavStartDyr(sp.pos.x, sp.pos.z); }
 }
 // Emoji-knapperne
-$("emojiKnap").addEventListener("click", () => { Lyd.klar(); Lyd.klik(); $("emojiBar").classList.toggle("skjult"); });
+$("emojiKnap").addEventListener("click", () => { Lyd.klar(); Lyd.klik(); $("stemmeBar").classList.add("skjult"); $("emojiBar").classList.toggle("skjult"); });
 $("emojiBar").querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
   net?.emoji(b.textContent); $("emojiBar").classList.add("skjult");
 }));
 
+// ---------- Walkie-talkie: hold 🎤 nede og tal med de andre — med sjove stemmer ----------
+// En voksen slår det til for verdenen i kontrolpanelet. stemmer.js laver forbindelserne mellem
+// tablets; her er knappen, mikrofonen, stemmerne (stemmeeffekt.js), afspilningen og lydbølgerne.
+// Barnets egen stemme sendes kun ud — den spilles aldrig i ens egen højttaler.
+let tale = null, graf = null, mik = null, henterMik = false, taleTip = false;
+let minStemme = stemmeAf(læs("broekraft-stemme", "normal")).id;
+const afspillere = new Map();                                     // id → <audio> med et andet barns stemme
+const talere = new Set();
+const mikKnap = $("mikKnap"), stemmeBar = $("stemmeBar");
+
+function startTale() {
+  if (!net || tale) return;
+  try {
+    graf ||= new Stemmegraf(E.audio());
+    graf.sæt(minStemme);
+    tale = forbindStemmer(net, graf.strøm);
+  } catch (fejl) { console.warn("Walkie-talkie er ikke mulig her:", fejl.message); tale = null; return; }
+  tale.addEventListener("stemmerTil", e => visTaleknap(e.detail.til));
+  tale.addEventListener("lyd", e => nyAfspiller(e.detail.id, e.detail.strøm));
+  tale.addEventListener("lydSlut", e => fjernAfspiller(e.detail.id));
+  tale.addEventListener("taler", e => talerSkift(e.detail.id, e.detail.til));
+  tale.addEventListener("fejl", e => besked(`🎤 ${e.detail.besked}`, 3500));
+}
+function stopTale() {
+  tale?.luk(); tale = null;
+  slipMikrofon();
+  for (const id of [...afspillere.keys()]) fjernAfspiller(id);
+  talere.clear(); Lyd.dæmp(false);
+  document.body.classList.remove("kan-tale");
+}
+// Knapperne vises kun, når en voksen har sagt ja
+function visTaleknap(til) {
+  document.body.classList.toggle("kan-tale", til);
+  if (!til) { slipMikrofon(); mikKnap.classList.remove("taler"); stemmeBar.classList.add("skjult"); return; }
+  if (taleTip) return;
+  taleTip = true;
+  setTimeout(() => { if (tale?.tilladt && iGang) besked("🎤 I kan tale sammen! Hold mikrofonen nede, mens du snakker", 4500); }, iGang ? 0 : 8000);
+}
+
+// Mikrofonen: spørg først om lov, når barnet trykker på 🎤 første gang
+async function hentMikrofon() {
+  if (PARAM.has("falskmik") && PARAM.has("debug")) {           // afprøvning uden mikrofon: en tone i stedet
+    const ac = E.audio(), o = ac.createOscillator(), d = ac.createMediaStreamDestination();
+    o.frequency.value = 220; o.connect(d); o.start();
+    return d.stream;
+  }
+  if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) throw new Error("usikker");
+  return navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false });
+}
+async function tændMikrofon() {
+  if (henterMik) return;
+  henterMik = true;
+  try {
+    const strøm = await hentMikrofon();
+    if (!tale?.tilladt) { strøm.getTracks().forEach(t => t.stop()); return; }
+    mik = strøm;
+    mik.getAudioTracks()[0]?.addEventListener("ended", () => { if (mik === strøm) slipMikrofon(); });
+    graf.tilslut(mik);
+    Lyd.vælg(); besked("🎤 Klar! Hold knappen nede, mens du snakker", 3500);
+  } catch (fejl) {
+    besked(fejl.message === "usikker"
+      ? "🔒 En voksen skal gøre tabletten klar til mikrofonen (se computerens kontrolpanel)"
+      : "🎤 Mikrofonen fik ikke lov. En voksen kan tillade den i Safari", 5000);
+  } finally { henterMik = false; }
+}
+function slipMikrofon() { graf?.frakobl(); mik?.getTracks().forEach(t => t.stop()); mik = null; }
+
+// Hold nede = tal · slip = stop (også hvis fingeren glider af knappen)
+function talTryk() {
+  Lyd.klar(); afspilVentende();
+  if (!tale?.tilladt) return;
+  if (!mik) { tændMikrofon(); return; }
+  if (tale.tal(true)) mikKnap.classList.add("taler");
+}
+function talSlip() { tale?.tal(false); mikKnap.classList.remove("taler"); }
+mikKnap.addEventListener("pointerdown", e => { e.preventDefault(); try { mikKnap.setPointerCapture(e.pointerId); } catch (_) {} talTryk(); });
+for (const n of ["pointerup", "pointercancel", "lostpointercapture"]) mikKnap.addEventListener(n, talSlip);
+window.addEventListener("keydown", e => { if (e.code === "KeyT" && !e.repeat && iGang && !pause) talTryk(); });   // T på computeren
+window.addEventListener("keyup", e => { if (e.code === "KeyT") talSlip(); });
+
+// De andres stemmer spilles med et lille lydelement hver. Safari vil have et tryk, før lyd må starte.
+function nyAfspiller(id, strøm) {
+  fjernAfspiller(id);
+  const a = document.createElement("audio");
+  a.autoplay = true; a.setAttribute("playsinline", ""); a.srcObject = strøm; a.hidden = true;
+  document.body.appendChild(a);
+  afspillere.set(id, a);
+  a.play().catch(() => {});
+}
+function afspilVentende() { for (const a of afspillere.values()) if (a.paused) a.play().catch(() => {}); }
+function fjernAfspiller(id) {
+  const a = afspillere.get(id);
+  if (!a) return;
+  a.pause(); a.srcObject = null; a.remove(); afspillere.delete(id);
+}
+// Lydbølger om den, der taler — og spillets egne lyde bliver stille imens
+function talerSkift(id, til) {
+  if (id === minId) mikKnap.classList.toggle("taler", til);
+  else andre.get(id)?.visTaler(til);
+  if (til) talere.add(id); else talere.delete(id);
+  Lyd.dæmp([...talere].some(t => t !== minId));
+}
+
+// Vælg en sjov stemme: 🙂 🐭 🦁 🤖 👻
+for (const st of STEMMER) {
+  const b = document.createElement("button");
+  b.dataset.stemme = st.id; b.setAttribute("aria-label", st.navn);
+  b.innerHTML = `${st.ikon}<span>${st.navn}</span>`;
+  b.addEventListener("click", () => { vælgStemme(st.id); Lyd.vælg(); besked(`${st.ikon} ${st.navn}`, 1500); stemmeBar.classList.add("skjult"); });
+  stemmeBar.appendChild(b);
+}
+function vælgStemme(id) {
+  minStemme = stemmeAf(id).id; skriv("broekraft-stemme", minStemme);
+  graf?.sæt(minStemme);
+  $("stemmeKnap").textContent = stemmeAf(minStemme).ikon;
+  stemmeBar.querySelectorAll("button").forEach(b => b.classList.toggle("valgt", b.dataset.stemme === minStemme));
+}
+vælgStemme(minStemme);
+$("stemmeKnap").addEventListener("click", () => { Lyd.klar(); Lyd.klik(); $("emojiBar").classList.add("skjult"); stemmeBar.classList.toggle("skjult"); });
+if (ONLINE) {
+  document.addEventListener("pointerdown", afspilVentende, true);
+  window.addEventListener("pagehide", slipMikrofon);
+}
+
 if (ONLINE) forberedOnline();
 window.broekraftKlar = true;
-if (location.search.includes("debug")) window.bk = { sp, verden, dyr, tast, cfg, andre, sim, get net() { return net; } };
+if (location.search.includes("debug")) window.bk = { sp, verden, dyr, tast, cfg, andre, sim, get net() { return net; }, get tale() { return tale; }, get graf() { return graf; }, afspillere };

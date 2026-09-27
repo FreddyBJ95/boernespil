@@ -123,6 +123,23 @@ Deno.test("Walkie-talkie: forhandling, ICE-kø, 20 sekunder, afbrydelse og opryd
   assert.equal(timere.size, 0);
 });
 
+Deno.test("Walkie-talkie: et sent ekko fra serveren stopper ikke et nyt, hurtigt tryk", async () => {
+  const oprindelig = globalThis.RTCPeerConnection;
+  globalThis.RTCPeerConnection = TestPeer;
+  const a = new TestNet("a", ["a", "b"]), sa = strøm();
+  let va;
+  try {
+    va = forbindStemmer(a, sa); await afvent();
+    const egne = []; va.addEventListener("taler", e => egne.push(e.detail));
+    assert.equal(va.tal(true), true); va.tal(false); assert.equal(va.tal(true), true);   // slip og tryk hurtigt igen
+    a.hændelse("taler", { id: "a", til: false });                                    // ekkoet af slippet kommer for sent
+    assert.equal(sa.getAudioTracks()[0].enabled, true); assert.equal(va.talerNu, true);
+    assert.deepEqual(egne.map(t => t.til), [true, false, true]);
+    a.hændelse("taler", { id: "b", til: true });                                     // andre børns tale vises stadig
+    assert.deepEqual(egne.at(-1), { id: "b", til: true });
+  } finally { va?.luk(); globalThis.RTCPeerConnection = oprindelig; }
+});
+
 Deno.test("Walkie-talkie: højst syv andre peers og ingen lyd uden voksenkontakt", () => {
   const oprindelig = globalThis.RTCPeerConnection; globalThis.RTCPeerConnection = TestPeer;
   let v;

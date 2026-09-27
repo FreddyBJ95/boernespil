@@ -1,7 +1,8 @@
 // ===== De andre børn, når man spiller sammen =====
 // Hver spiller er et af dyrene fra dyr.js. Figuren glider blødt hen til de positioner, serveren
 // sender (ca. 10 gange i sekundet), svinger med benene og har en lille boble over hovedet,
-// så man kan finde hinanden. Emoji vises i en stor boble i et par sekunder.
+// så man kan finde hinanden. Emoji vises i en stor boble i et par sekunder, og når barnet taler
+// i walkie-talkien, kommer der lydbølger omkring boblen.
 
 import * as THREE from "./three.js";
 import { DYR, byggDyr } from "./dyr.js";
@@ -34,6 +35,23 @@ function boble(tekst, farve) {
 }
 const FARVER = ["#ffffff", "#ffe066", "#a6e3ff", "#ffc2e0", "#c8f7a8", "#e0ccff", "#ffd1a6", "#b8fff0"];
 
+// Lydbølger på begge sider af boblen — vises når barnet taler i walkie-talkien: (( 🐷 ))
+function lydbølger() {
+  const c = document.createElement("canvas"); c.width = 256; c.height = 128;
+  const g = c.getContext("2d");
+  g.lineCap = "round";
+  for (const [bredde, farve] of [[16, "rgba(0,0,0,.35)"], [9, "#ffffff"]]) {
+    g.lineWidth = bredde; g.strokeStyle = farve;
+    for (const r of [72, 92, 112]) for (const vinkel of [0, Math.PI]) {
+      g.beginPath(); g.arc(128, 62, r, vinkel - 0.45, vinkel + 0.45); g.stroke();
+    }
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true, fog: false }));
+  s.renderOrder = 19;
+  return s;
+}
+
 export class Figur {
   constructor(id, figur, scene) {
     this.id = id; this.figur = figur; this.scene = scene;
@@ -48,6 +66,7 @@ export class Figur {
     this.pos = new THREE.Vector3(); this.mål = new THREE.Vector3();
     this.yaw = 0; this.målYaw = 0; this.fase = 0; this.t = Math.random() * 10; this.ny = true;
     this.emoji = null; this.emojiTid = 0;
+    this.bølger = null; this.taler = false; this.tale = 0;
   }
 
   // Ny position fra serveren (fødderne). Spillerens kamera kigger mod -z, dyrene har næsen mod +z.
@@ -62,6 +81,12 @@ export class Figur {
     this.emoji = boble(e, "#ffffff");
     this.scene.add(this.emoji);
     this.emojiTid = 2.8;
+  }
+
+  // Walkie-talkie: lydbølger og en boble der hopper, mens barnet taler
+  visTaler(til) {
+    this.taler = til;
+    if (til && !this.bølger) { this.bølger = lydbølger(); this.scene.add(this.bølger); }
   }
 
   opdater(dt) {
@@ -86,6 +111,15 @@ export class Figur {
     this.model.rotation.set(0, this.yaw, 0);
     const top = this.pos.y + this.højde * k;
     this.mærke.position.set(this.pos.x, top + 0.55 + Math.sin(this.t * 2.5) * 0.06, this.pos.z);
+    this.tale += ((this.taler ? 1 : 0) - this.tale) * Math.min(1, dt * 10);
+    this.mærke.scale.setScalar(0.55 * (1 + this.tale * Math.abs(Math.sin(this.t * 11)) * 0.18));
+    if (this.bølger) {
+      const puls = 1 + Math.sin(this.t * 12) * 0.1;
+      this.bølger.position.copy(this.mærke.position);
+      this.bølger.scale.set(1.1 * puls, 0.55 * puls, 1);
+      this.bølger.material.opacity = this.tale;
+      if (!this.taler && this.tale < 0.02) this.fjernBølger();
+    }
     if (this.emoji) {
       this.emojiTid -= dt;
       const pop = Math.min(1, (2.8 - this.emojiTid) * 6);
@@ -96,9 +130,15 @@ export class Figur {
     }
   }
 
+  fjernBølger() {
+    if (!this.bølger) return;
+    this.scene.remove(this.bølger); this.bølger.material.map.dispose(); this.bølger.material.dispose(); this.bølger = null;
+  }
+
   fjern() {
     this.scene.remove(this.model, this.mærke);
     if (this.emoji) this.scene.remove(this.emoji);
+    this.fjernBølger();
     this.model.traverse(c => { if (c.material) c.material.dispose(); });
     this.mærke.material.map.dispose(); this.mærke.material.dispose();
   }

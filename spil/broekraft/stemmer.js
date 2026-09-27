@@ -16,10 +16,9 @@ class Stemmer extends EventTarget {
     this.lyt(net, "rtc", e => this.signal(e.detail));
     this.lyt(net, "stemmer", e => this.skift(e.detail.til));
     this.lyt(net, "lukket", () => this.nulstil(null));
-    this.lyt(net, "taler", e => {
-      if (e.detail.id === this.dig && !e.detail.til) this.stopTale(true);
-      this.hændelse("taler", e.detail);
-    });
+    // Serverens ekko af vores egne tryk kan ankomme efter et nyt, hurtigt tryk — det ignoreres.
+    // Egen tale stoppes af 20-sekundersgrænsen, voksenkontakten og afbrydelser her i klienten.
+    this.lyt(net, "taler", e => { if (e.detail.id !== this.dig) this.hændelse("taler", e.detail); });
     this.lyt(globalThis.document, "visibilitychange", () => { if (globalThis.document.hidden) this.stopTale(true); });
     this.lyt(globalThis, "pagehide", () => this.luk());
     this.lyt(globalThis, "blur", () => this.stopTale(true));

@@ -31,6 +31,9 @@ export function sætMusik(til) {
   if (musikG) musikG.gain.setTargetAtTime(til ? 1 : 0, ac.currentTime, 0.3);
 }
 
+// Når et andet barn taler i walkie-talkien, bliver spillets musik og lyde stille, så man kan høre det
+export function dæmp(til) { if (ud) ud.gain.setTargetAtTime(til ? 0.3 : 0.9, ac.currentTime, 0.15); }
+
 const nu = () => ac.currentTime;
 function tone(f, t0, dur, type = "sine", vol = 0.2, slut, mål = ud) {
   if (!ac) return;
