@@ -34,7 +34,8 @@ Deno.test("Alle fire typer og størrelser kan genereres med fremgang", () => {
 Deno.test("Nye blokke bevarer gamle id'er og simuleringens tabel", () => {
   assert.equal(ID.TNT, 42); assert.equal(ID.Bundsten, 26);
   assert.equal(ID.Vand, 43); assert.equal(ID.Lava, 51); assert.equal(ID.Ild, 55); assert.equal(ID.Obsidian, 56);
-  for (let i = 43; i <= 56; i++) assert.equal(BLOKKE[i].skjult, true);
+  for (let i = 43; i <= 55; i++) assert.equal(BLOKKE[i].skjult, true);   // hældes ud med spande/tænder
+  assert.ok(!BLOKKE[56].skjult);                                          // obsidian kan man bygge med
   for (const [i, navn] of [[3, "Sten"], [5, "Træstamme"], [6, "Blade"], [7, "Planker"], [22, "Kage"], [23, "Græskar"], [24, "Rød blomst"], [25, "Gul blomst"], [29, "Død stamme"], [31, "Spindelvæv"], [35, "Svampestok"], [36, "Lille svamp"]]) assert.equal(BLOKKE[i].navn, navn);
   for (let i = 10; i <= 17; i++) assert.ok(BLOKKE[i].navn.endsWith("uld"));
 });

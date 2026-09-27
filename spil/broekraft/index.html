@@ -57,7 +57,13 @@
     #hopKnap { width: 92px; height: 92px; font-size: 38px; }
     #nedKnap { width: 72px; height: 72px; font-size: 28px; display: none; }
     #flyKnap { width: 60px; height: 60px; font-size: 26px; }
-    .flyver #nedKnap { display: block; }
+    .flyver #nedKnap, .svømmer #nedKnap { display: block; }
+    /* Under vandet bliver alt blåt */
+    #underVand {
+      position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0; transition: opacity .25s;
+      background: radial-gradient(ellipse at 50% 40%, rgba(60,140,240,.22), rgba(20,70,170,.55));
+    }
+    .under-vand #underVand { opacity: 1; }
     .flyver #flyKnap { background: rgba(122,166,224,.75); }
 
     /* Hotbar */
@@ -198,6 +204,7 @@
 </head>
 <body>
   <canvas id="scene"></canvas>
+  <div id="underVand"></div>
 
   <div class="top styring">
     <a class="mc lille" href="../../" aria-label="Til forsiden">🏠</a>
@@ -266,6 +273,7 @@
       <button class="mc" data-luk="menu">▶ Fortsæt</button>
       <button class="mc" id="hjemStart">🏡 Tilbage til start</button>
       <button class="mc" id="musikKnap">🎵 Musik: TIL</button>
+      <button class="mc kun-alene" id="ildKnap">🔥 Ild breder sig: TIL</button>
       <button class="mc kun-online" id="udsynKnap">👀 Udsyn: Mellem</button>
       <button class="mc kun-alene" id="skiftVerden">🌍 Skift verden</button>
       <button class="mc kun-alene" id="nyVerden">🔄 Start forfra</button>

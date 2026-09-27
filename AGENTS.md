@@ -22,4 +22,4 @@ Filer der tilhører Claude må ikke ændres, bortset fra de små, præcist beskr
 - Nye blokke tilføjes altid **nederst** i `BLOKKE` i `spil/broekraft/blokke.js`, så gemte verdener passer.
 
 ## Aktuel opgave
-Se `OVERDRAGELSE-CODEX.md`.
+Se `OVERDRAGELSE-CODEX-STEMMER.md` (walkie-talkie, opgave C). Opgave A og B i `OVERDRAGELSE-CODEX.md` er færdige.

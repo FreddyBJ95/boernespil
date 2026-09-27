@@ -114,7 +114,8 @@ function frase() {
 const MAT = {
   græs: { f: 900, q: 0.8, tone: 160 }, sten: { f: 2200, q: 1.5, tone: 260 }, træ: { f: 650, q: 2, tone: 190 },
   sand: { f: 1500, q: 0.5, tone: 150 }, glas: { f: 3500, q: 3, tone: 1400 }, uld: { f: 500, q: 0.7, tone: 140 },
-  metal: { f: 3000, q: 6, tone: 1100 },
+  metal: { f: 3000, q: 6, tone: 1100 }, vand: { f: 700, q: 1.2, tone: 300 }, lava: { f: 400, q: 1, tone: 110 },
+  ild: { f: 2500, q: 0.8, tone: 400 },
 };
 const mat = m => MAT[m] || MAT.græs;
 
@@ -181,6 +182,45 @@ export function fugl() {
   if (!ac) return;
   const f = 2400 + Math.random() * 1600, n = 2 + Math.floor(Math.random() * 3), t0 = nu();
   for (let i = 0; i < n; i++) tone(f * (1 + (i % 2) * 0.12), t0 + i * 0.12, 0.08, "sine", 0.035, f * 1.35);
+}
+
+// ---------- Vand, lava og ild ----------
+const nær = afstand => Math.max(0, 1 - afstand / 24);
+export function plask(afstand = 0) {       // man hopper i vandet eller hælder vand ud
+  if (!ac) return;
+  const v = nær(afstand), t = nu();
+  if (v <= 0) return;
+  sus(t, 0.45, 2500, 300, 0.4 * v, "bandpass", 0.7);
+  for (let i = 0; i < 4; i++) glid(500 + Math.random() * 500, 1200 + Math.random() * 800, t + 0.05 + i * 0.06, 0.07, { vol: 0.08 * v });
+}
+export function blub(afstand = 0) {        // en boble i vandet eller i lavaen
+  if (!ac) return;
+  const v = nær(afstand);
+  if (v > 0) glid(180 + Math.random() * 120, 520 + Math.random() * 200, nu(), 0.09, { vol: 0.16 * v });
+}
+export function tss(afstand = 0) {         // lava der møder vand bliver til sten
+  if (!ac) return;
+  const v = nær(afstand);
+  if (v > 0) sus(nu(), 0.8, 7000, 2500, 0.3 * v, "highpass", 0.6);
+}
+export function knitre(afstand = 0) {      // ild der knitrer
+  if (!ac) return;
+  const v = nær(afstand), t = nu();
+  if (v <= 0) return;
+  for (let i = 0; i < 3; i++) sus(t + Math.random() * 0.25, 0.03, 3000 + Math.random() * 2000, 1500, 0.14 * v, "bandpass", 2);
+  sus(t, 0.3, 500, 300, 0.05 * v, "lowpass");
+}
+export function tændIld() {                // wuusj — ilden blusser op
+  if (!ac) return;
+  sus(nu(), 0.5, 300, 1800, 0.35, "bandpass", 0.8);
+  knitre(0);
+}
+export function av() {                     // "Av, varmt!" — en lille hoppende tone, ingen skade
+  if (!ac) return;
+  const t = nu();
+  glid(900, 500, t, 0.14, { type: "triangle", vol: 0.2 });
+  glid(1000, 1500, t + 0.15, 0.18, { type: "triangle", vol: 0.18 });
+  sus(t, 0.3, 5000, 2000, 0.12, "highpass", 0.6);
 }
 
 // ---------- Dyrenes stemmer (vælges med "lyd" i dyr.js) ----------

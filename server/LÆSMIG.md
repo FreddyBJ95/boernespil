@@ -40,9 +40,8 @@ Hvis IP-adressen ændrer sig, genstart serveren og scan den nye QR-kode.
 Spillets three.js hentes fortsat fra et CDN i browseren; tabletterne skal derfor have internetadgang
 ved første indlæsning. Selve serverprogrammet indeholder sin kopi af biblioteket.
 
-**Udviklingsstatus:** Online-visningen kobles til af Claude. Indtil den er færdig, bruges linket
-**Åbn testklient** i kontrolpanelet til at afprøve fællesspil. Undlad at udgive denne version til
-børnene, før online-visningen er integreret og prøvet på iPad.
+**Sådan spiller børnene:** Tryk på "Spil sammen" i Børnespil-appen, og scan QR-koden fra kontrolpanelet.
+Vælg en verden og et dyr. Vand, lava, ild og TNT styres af serveren, så alle ser det samme.
 
 ## Gemning og backup
 

@@ -9,7 +9,7 @@
 //  væske:        "vand" eller "lava" · niveau: 0 = kilde, højere = tyndere strøm
 //  ild:          flammer styret af simulering.js
 //  Nye blokke skal altid tilføjes NEDERST, så gemte verdener stadig passer.
-//  lyd:          "græs" | "sten" | "træ" | "sand" | "glas" | "uld" | "metal"
+//  lyd:          "græs" | "sten" | "træ" | "sand" | "glas" | "uld" | "metal" | "vand" | "lava" | "ild"
 // Et nyt mønster er en funktion i MØNSTRE der tegner 16×16 pixels med set(x, y, farve).
 
 import * as THREE from "./three.js";
@@ -62,21 +62,21 @@ export const BLOKKE = [
   { navn: "Krystal", tekstur: "krystal", kryds: true, lyser: true, lyd: "glas" },
   // --- TNT ---
   { navn: "TNT", tekstur: { top: "tntTop", side: "tntSide", bund: "tntBund" }, tnt: true, lyd: "græs" },
-  // --- Vand, lava og ild (Claude tilføjer visningen) ---
-  { navn: "Vand", tekstur: "uld:#3a6fe0", væske: "vand", niveau: 0, gennemsigtig: true, skjult: true, lyd: "sten" },
-  { navn: "Vand 1", tekstur: "uld:#3a6fe0", væske: "vand", niveau: 1, gennemsigtig: true, skjult: true, lyd: "sten" },
-  { navn: "Vand 2", tekstur: "uld:#3a6fe0", væske: "vand", niveau: 2, gennemsigtig: true, skjult: true, lyd: "sten" },
-  { navn: "Vand 3", tekstur: "uld:#3a6fe0", væske: "vand", niveau: 3, gennemsigtig: true, skjult: true, lyd: "sten" },
-  { navn: "Vand 4", tekstur: "uld:#3a6fe0", væske: "vand", niveau: 4, gennemsigtig: true, skjult: true, lyd: "sten" },
-  { navn: "Vand 5", tekstur: "uld:#3a6fe0", væske: "vand", niveau: 5, gennemsigtig: true, skjult: true, lyd: "sten" },
-  { navn: "Vand 6", tekstur: "uld:#3a6fe0", væske: "vand", niveau: 6, gennemsigtig: true, skjult: true, lyd: "sten" },
-  { navn: "Vand 7", tekstur: "uld:#3a6fe0", væske: "vand", niveau: 7, gennemsigtig: true, skjult: true, lyd: "sten" },
-  { navn: "Lava", tekstur: "uld:#f28a1e", væske: "lava", niveau: 0, lyser: true, skjult: true, lyd: "sten" },
-  { navn: "Lava 1", tekstur: "uld:#f28a1e", væske: "lava", niveau: 1, lyser: true, skjult: true, lyd: "sten" },
-  { navn: "Lava 2", tekstur: "uld:#f28a1e", væske: "lava", niveau: 2, lyser: true, skjult: true, lyd: "sten" },
-  { navn: "Lava 3", tekstur: "uld:#f28a1e", væske: "lava", niveau: 3, lyser: true, skjult: true, lyd: "sten" },
-  { navn: "Ild", tekstur: "blomst:#f28a1e", ild: true, kryds: true, lyser: true, skjult: true, lyd: "græs" },
-  { navn: "Obsidian", tekstur: "bundsten", skjult: true, lyd: "sten" },
+  // --- Vand, lava og ild: flyder og brænder via simulering.js. Man hælder dem ud med spandene og tænderen (vaerktoej.js) ---
+  { navn: "Vand", tekstur: "vand", væske: "vand", niveau: 0, gennemsigtig: true, skjult: true, lyd: "vand" },
+  { navn: "Vand 1", tekstur: "vand", væske: "vand", niveau: 1, gennemsigtig: true, skjult: true, lyd: "vand" },
+  { navn: "Vand 2", tekstur: "vand", væske: "vand", niveau: 2, gennemsigtig: true, skjult: true, lyd: "vand" },
+  { navn: "Vand 3", tekstur: "vand", væske: "vand", niveau: 3, gennemsigtig: true, skjult: true, lyd: "vand" },
+  { navn: "Vand 4", tekstur: "vand", væske: "vand", niveau: 4, gennemsigtig: true, skjult: true, lyd: "vand" },
+  { navn: "Vand 5", tekstur: "vand", væske: "vand", niveau: 5, gennemsigtig: true, skjult: true, lyd: "vand" },
+  { navn: "Vand 6", tekstur: "vand", væske: "vand", niveau: 6, gennemsigtig: true, skjult: true, lyd: "vand" },
+  { navn: "Vand 7", tekstur: "vand", væske: "vand", niveau: 7, gennemsigtig: true, skjult: true, lyd: "vand" },
+  { navn: "Lava", tekstur: "lava", væske: "lava", niveau: 0, lyser: true, skjult: true, lyd: "lava" },
+  { navn: "Lava 1", tekstur: "lava", væske: "lava", niveau: 1, lyser: true, skjult: true, lyd: "lava" },
+  { navn: "Lava 2", tekstur: "lava", væske: "lava", niveau: 2, lyser: true, skjult: true, lyd: "lava" },
+  { navn: "Lava 3", tekstur: "lava", væske: "lava", niveau: 3, lyser: true, skjult: true, lyd: "lava" },
+  { navn: "Ild", tekstur: "ild", ild: true, kryds: true, lyser: true, skjult: true, lyd: "ild" },
+  { navn: "Obsidian", tekstur: "obsidian", lyd: "sten" },
 ];
 
 export const ID = {};
@@ -247,7 +247,42 @@ const MØNSTRE = {
     const a = y >= 4 && Math.abs(x - 4.5) <= (y - 4) * 0.28, b = y >= 7 && Math.abs(x - 11) <= (y - 7) * 0.3, c = y >= 1 && Math.abs(x - 7.5) <= (y - 1) * 0.2;
     if (c) set(x, y, hex(x < 7.5 ? "#e2d0ff" : "#c9a8ff")); else if (a || b) set(x, y, hex(x % 2 ? "#b98cff" : "#9b6ae8")); else set(x, y, [0, 0, 0], 0);
   }),
+
+  // --- Vand, lava og ild (mønstrene går i ét, så de kan glide hen over fladerne) ---
+  vand: (set, r) => {
+    fyld(set, r, "#3b7fe0", 0.1);
+    for (let y = 1; y < T; y += 4) {                                     // små bølger
+      const x0 = (y * 5 + Math.floor(r() * 4)) % T;
+      for (let i = 0; i < 5; i++) set((x0 + i) % T, y, lys(hex("#79b4ff"), 1 + (r() - 0.5) * 0.08));
+      set((x0 + 5) % T, (y + 1) % T, hex("#5a98f0"));
+    }
+    prik(set, r, ["#d8ecff"], 5);
+  },
+  lava: (set, r) => {
+    fyld(set, r, "#f2661b", 0.12);
+    const om = (a, b) => Math.min(Math.abs(a - b), T - Math.abs(a - b));  // afstand hele vejen rundt
+    for (const [cx, cy, rr, f] of [[4, 4, 3.2, "#ffc93a"], [12, 9, 2.6, "#ffb02e"], [7, 13, 2.2, "#ffd84f"], [13, 2, 1.6, "#ffe27a"]]) {
+      alle((x, y) => { const d = Math.hypot(om(x, cx), om(y, cy)); if (d < rr) set(x, y, lys(hex(d < rr * 0.5 ? "#fff1a8" : f), 1 + (r() - 0.5) * 0.08)); });
+    }
+    for (const [cx, cy] of [[10, 5], [2, 10], [15, 13]]) alle((x, y) => { if (Math.hypot(om(x, cx), om(y, cy)) < 1.3) set(x, y, hex("#b8360f")); });
+  },
+  ild: (set, r) => ildRamme(set, r),
+  obsidian: (set, r) => { fyld(set, r, "#1f1433", 0.3); prik(set, r, ["#3b2566", "#5a3d8f", "#0f0a1a", "#6e4fb0"], 34); },
 };
+
+// Én flamme-tegning (16×16). Hver ramme får sin egen tilfældighed, så ilden blafrer.
+function ildRamme(set, r) {
+  alle((x, y) => set(x, y, [0, 0, 0], 0));
+  for (let x = 1; x < T - 1; x++) {
+    const h = Math.max(2, Math.round(12.5 - Math.abs(x - 7.5) * 1.25 + (r() - 0.5) * 5));
+    for (let i = 0; i < h; i++) {
+      const t = i / h, midt = Math.abs(x - 7.5) < 3.5;
+      const c = t < 0.4 ? (midt ? "#fff3a0" : "#ffd23f") : t < 0.75 ? "#ff9a1f" : "#ff4d2e";
+      set(x, T - 1 - i, lys(hex(c), 1 + (r() - 0.5) * 0.1));
+    }
+  }
+  for (let i = 0; i < 3; i++) set(2 + Math.floor(r() * 12), Math.floor(r() * 4), hex("#ffb02e"));   // gnister
+}
 
 function maler(navn) {
   const [type, farve] = navn.split(":");
@@ -373,5 +408,27 @@ export function lavAtlas() {
     return k.toDataURL();
   }
 
-  return { tekstur, uv: (id, side) => uvTab[id][side], farve: id => farver[id], ikon, blokMesh, feltBillede, lin };
+  // Levende teksturer til vand, lava og ild: de gentages hen over fladerne og flyttes lidt hvert billede
+  function flise(h, tegn) {
+    const k = document.createElement("canvas"); k.width = T; k.height = h;
+    const g = k.getContext("2d"), bil = g.createImageData(T, h);
+    tegn((x, y, col, a = 255) => { const i = (y * T + x) * 4; bil.data.set([col[0], col[1], col[2], a], i); });
+    g.putImageData(bil, 0, 0);
+    const t = new THREE.CanvasTexture(k);
+    t.magFilter = t.minFilter = THREE.NearestFilter;
+    t.generateMipmaps = false;
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }
+  const RAMMER = 4;
+  const anim = {
+    vand: flise(T, set => MØNSTRE.vand(set, rng(navnFrø("vand")))),
+    lava: flise(T, set => MØNSTRE.lava(set, rng(navnFrø("lava")))),
+    ild: flise(T * RAMMER, set => { for (let f = 0; f < RAMMER; f++) ildRamme((x, y, c, a) => set(x, y + f * T, c, a), rng(navnFrø("ild") + f)); }),
+    rammer: RAMMER,
+  };
+  anim.ild.repeat.set(1, 1 / RAMMER);
+
+  return { tekstur, uv: (id, side) => uvTab[id][side], farve: id => farver[id], ikon, blokMesh, feltBillede, lin, anim };
 }

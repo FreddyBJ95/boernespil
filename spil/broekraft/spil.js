@@ -16,6 +16,8 @@ import { VERDENER } from "./verdener.js";
 import * as Lyd from "./lyd.js";
 import { forbind } from "./net.js";
 import { Figur, FIGURER, figurIkon } from "./figurer.js";
+import { Simulering } from "./simulering.js";
+import { VÆRKTØJ, værktøjIkon, værktøjModel, opdaterVærktøj } from "./vaerktoej.js";
 
 const E = window.Effekter, $ = id => document.getElementById(id);
 const RÆKKE = 7, HAKTID = 0.4;                                  // hvor langt man når, og hvor længe en blok tager at hakke
@@ -47,17 +49,23 @@ Lyd.sætStemning(cfg.stemning);
 
 // ---------- Gemt verden (kun på denne enhed — hver verden for sig) ----------
 const GEM = ONLINE ? `broekraft-online-${ONLINE_ID}` : cfg.id === "græsø" ? "broekraft-v1" : `broekraft-v1-${cfg.id}`;
-const tilTing = n => (n.startsWith("æg:") ? { æg: n.slice(3) } : { blok: ID[n] });
+const tilTing = n => (n.startsWith("æg:") ? { æg: n.slice(3) } : n.startsWith("v:") ? { v: n.slice(2) } : { blok: ID[n] });
 const STANDARD = cfg.hotbar.map(tilTing);
 let gemt = læs(GEM, null);
 if (!gemt || !Number.isFinite(gemt.frø)) gemt = { frø: (Math.random() * 2 ** 31) | 0, ændringer: {}, musik: læs("broekraft-musik", true) };
-const gyldig = s => s && (s.æg ? s.æg === "?" || DYR.some(d => d.id === s.æg) : BLOKKE[s.blok] && !BLOKKE[s.blok].skjult);
+const gyldig = s => s && (s.v ? !!VÆRKTØJ[s.v] : s.æg ? s.æg === "?" || DYR.some(d => d.id === s.æg) : BLOKKE[s.blok] && !BLOKKE[s.blok].skjult);
 if (!Array.isArray(gemt.hotbar) || gemt.hotbar.length !== 9 || !gemt.hotbar.every(gyldig)) gemt.hotbar = STANDARD.map(s => ({ ...s }));
 if (!(gemt.valgt >= -1 && gemt.valgt < 9)) gemt.valgt = 0;
 if (gemt.musik === undefined) gemt.musik = true;
 if (!gemt.tnt && !gemt.hotbar.some(s => s.blok === ID.TNT)) gemt.hotbar[7] = { blok: ID.TNT };   // nyt: TNT!
 const nyTNT = !gemt.tnt;
 gemt.tnt = true;
+if (!gemt.væske) {                                                // nyt: vandspand og tænder!
+  if (!gemt.hotbar.some(s => s.v === "vand")) gemt.hotbar[5] = { v: "vand" };
+  if (!gemt.hotbar.some(s => s.v === "tænder")) gemt.hotbar[6] = { v: "tænder" };
+}
+const nyVæske = !gemt.væske;
+gemt.væske = true;
 
 // ---------- 3D-scene: himmel, lys, sol, stjerner, hav og skyer efter verdenens farver ----------
 const renderer = new THREE.WebGLRenderer({ canvas: $("scene"), antialias: true });
@@ -133,12 +141,32 @@ if (cfg.skyer) {
 // ---------- Verdenen ----------
 const atlas = lavAtlas();
 const blokMat = new THREE.MeshBasicMaterial({ map: atlas.tekstur, vertexColors: true, alphaTest: 0.5 });
+const animMat = {                                               // vand er gennemsigtigt, lava gløder, ild blafrer
+  vand: new THREE.MeshBasicMaterial({ map: atlas.anim.vand, vertexColors: true, transparent: true, opacity: 0.72, depthWrite: false, side: THREE.DoubleSide }),
+  lava: new THREE.MeshBasicMaterial({ map: atlas.anim.lava, vertexColors: true }),
+  ild: new THREE.MeshBasicMaterial({ map: atlas.anim.ild, alphaTest: 0.4, side: THREE.DoubleSide }),
+};
 const verden = new Verden(gemt.frø, atlas, blokMat, scene, MÅL);
+verden.animMat = animMat;
 verden.tyngde = TYNGDE;
 if (!ONLINE) {                                    // alene: lav øen her. Sammen: serveren sender verdenen
   verden.generer(cfg.generer);
   verden.anvend(gemt.ændringer);
   verden.bygAlle();
+}
+
+// ---------- Vand og lava flyder, ild breder sig (alene: her på tabletten — sammen: på serveren) ----------
+const sim = ONLINE ? null : new Simulering({
+  hent: (x, y, z) => verden.hent(x, y, z), sæt: (x, y, z, id) => verden.sæt(x, y, z, id), inde: (x, y, z) => verden.inde(x, y, z),
+  højde: verden.BY, ildBreder: gemt.ildBreder !== false,
+  tændTNT: (x, y, z) => tændTNT(x, y, z), lyd: (navn, x, y, z) => simLyd(navn, x, y, z),
+});
+if (sim) {
+  verden.vedÆndring = (x, y, z) => { sim.blokÆndret(x, y, z); gemSnart(); };
+  const lag = verden.BX * verden.BZ;                              // væk gemt vand, lava og ild én gang
+  for (let i = 0; i < verden.data.length; i++) {
+    if (verden.data[i] >= ID.Vand && verden.data[i] <= ID.Ild) sim.blokÆndret(i % verden.BX, Math.floor(i / lag), Math.floor((i % lag) / verden.BX));
+  }
 }
 
 // ---------- Spilleren ----------
@@ -160,7 +188,7 @@ document.body.classList.toggle("flyver", sp.flyver);
 function gem() {
   try {
     if (ONLINE) {                                  // verdenen gemmes på computeren — her kun hotbaren
-      localStorage.setItem(GEM, JSON.stringify({ frø: gemt.frø, hotbar: gemt.hotbar, valgt: gemt.valgt, musik: gemt.musik, tnt: true }));
+      localStorage.setItem(GEM, JSON.stringify({ frø: gemt.frø, hotbar: gemt.hotbar, valgt: gemt.valgt, musik: gemt.musik, tnt: true, væske: true }));
       return;
     }
     gemt.ændringer = Object.fromEntries(verden.ændringer);
@@ -169,7 +197,7 @@ function gem() {
   } catch (_) {}
 }
 let gemTimer = 0;
-const gemSnart = () => { clearTimeout(gemTimer); gemTimer = setTimeout(gem, 1200); };
+const gemSnart = () => { if (!gemTimer) gemTimer = setTimeout(() => { gemTimer = 0; gem(); }, 1500); };   // højst hvert 1,5 sekund
 document.addEventListener("visibilitychange", () => { if (document.hidden) gem(); });
 window.addEventListener("pagehide", gem);
 
@@ -210,13 +238,16 @@ function genfød(dt) {                                            // nye zombier
 // ---------- Hånden: den valgte blok, et dyre-æg eller hammeren ----------
 const hånd = new THREE.Group();
 kamera.add(hånd);
-let håndModel = null, sving = 0;
+let håndModel = null, håndFlamme = null, sving = 0;
 const valgtTing = () => (gemt.valgt < 0 ? { hammer: true } : gemt.hotbar[gemt.valgt]);
 const ægFarver = s => (s.æg === "?" ? ["#ffffff", "#ff7eb6"] : dyrDef(s.æg).æg);
 function opdaterHånd() {
   if (håndModel) { hånd.remove(håndModel); håndModel.traverse(c => { if (c.isMesh) { c.geometry.dispose(); c.material.dispose(); } }); }
   const s = valgtTing();
-  if (s.hammer) {
+  håndFlamme = null;
+  if (s.v) {
+    ({ model: håndModel, flamme: håndFlamme } = værktøjModel(s.v));
+  } else if (s.hammer) {
     håndModel = new THREE.Group();
     const skaft = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.1, 0.14), new THREE.MeshLambertMaterial({ color: "#8a5a2b" }));
     const hoved = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.3, 0.3), new THREE.MeshLambertMaterial({ color: "#9aa3ad" }));
@@ -240,7 +271,8 @@ function opdaterHånd() {
     håndModel.rotation.set(0.15, 0.75, 0);
   }
   håndModel.scale.setScalar(0.22);
-  håndModel.traverse(c => { if (c.material) { c.material.depthTest = false; c.material.fog = false; } if (!c.renderOrder) c.renderOrder = 10; });
+  // hånden tegnes oven på alt andet — også oven på vandet, når man svømmer
+  håndModel.traverse(c => { if (c.material) { c.material.depthTest = false; c.material.fog = false; c.material.transparent = true; } if (!c.renderOrder) c.renderOrder = 10; });
   hånd.add(håndModel);
 }
 
@@ -290,10 +322,10 @@ function opdaterStykker(dt) {
 
 // ---------- Byg, fjern og dyr ----------
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
-function stråleFra(x, y) {
+function stråleFra(x, y, medVæske = false) {
   ndc.set(x / window.innerWidth * 2 - 1, -(y / window.innerHeight) * 2 + 1);
   ray.setFromCamera(ndc, kamera);
-  return verden.stråle(ray.ray.origin, ray.ray.direction, RÆKKE);
+  return verden.stråle(ray.ray.origin, ray.ray.direction, RÆKKE, medVæske);
 }
 function tilSkærm(p, dy = 0) {
   const v = tmp.set(p.x, p.y + dy, p.z).project(kamera);
@@ -302,7 +334,7 @@ function tilSkærm(p, dy = 0) {
 const overlap = (x, y, z, p, b, h) => x + 1 > p.x - b && x < p.x + b && y + 1 > p.y && y < p.y + h && z + 1 > p.z - b && z < p.z + b;
 
 function tryk(x, y) {
-  const hit = stråleFra(x, y);
+  const hit = stråleFra(x, y, !!valgtTing().hammer);
   let bedst = null;
   for (const d of dyr) {
     const h = ray.intersectObject(d.model, true)[0];
@@ -324,6 +356,7 @@ function tryk(x, y) {
     if (!BLOKKE[hit.id].uknuselig) { knus(hit, true); sving = 1; }
     return;
   }
+  if (valgtTing().v) { brugVærktøj(valgtTing().v, hit); return; }
   sætBlok(hit);
 }
 
@@ -348,7 +381,7 @@ function sætBlok(hit) {
   if (s.æg) { lavDyr(s, tx, ty, tz); return; }
   if (!verden.inde(tx, ty, tz)) return;
   const der = verden.hent(tx, ty, tz);
-  if (der && !BLOKKE[der].kryds) return;
+  if (der && !BLOKKE[der].kryds && !BLOKKE[der].væske) return;                 // man kan bygge ned i vand
   const b = BLOKKE[s.blok];
   if (b.kryds && !verden.fast[verden.hent(tx, ty - 1, tz)]) return;             // blomster skal stå på noget
   if (!b.kryds && (overlap(tx, ty, tz, sp.pos, B, HØJ) || dyr.some(d => overlap(tx, ty, tz, d.pos, d.b, d.h)))) return;
@@ -381,9 +414,94 @@ function knus(hit, hammer = false) {
     verden.sæt(hit.x, hit.y, hit.z, 0);
     if (over && BLOKKE[over].kryds) verden.sæt(hit.x, hit.y + 1, hit.z, 0);        // blomsten ovenpå ryger med
   }
-  stykker(hit.x + 0.5, hit.y + 0.5, hit.z + 0.5, atlas.farve(hit.id));
-  if (hammer) Lyd.bank(BLOKKE[hit.id].lyd); else Lyd.knus(BLOKKE[hit.id].lyd);
+  const b = BLOKKE[hit.id];
+  if (b.væske || b.ild) {
+    stænk(hit.x + 0.5, hit.y + 0.7, hit.z + 0.5, atlas.farve(hit.id));
+    if (b.væske) Lyd.plask(); else Lyd.knitre();
+  } else {
+    stykker(hit.x + 0.5, hit.y + 0.5, hit.z + 0.5, atlas.farve(hit.id));
+    if (hammer) Lyd.bank(b.lyd); else Lyd.knus(b.lyd);
+  }
   gemSnart();
+}
+
+// ---------- Vand, lava og ild ----------
+const VANDFARVE = new THREE.Color("#8fc4ff"), DAMP = new THREE.Color("#f2f2f2");
+// Spandene hælder vand eller lava ud · tænderen sætter ild (eller tænder TNT)
+function brugVærktøj(v, hit) {
+  const b = BLOKKE[hit.id];
+  if (v === "tænder" && b.tnt) {
+    if (ONLINE) { net?.tænd(hit.x, hit.y, hit.z); tændTNT(hit.x, hit.y, hit.z, 2.2, true); } else tændTNT(hit.x, hit.y, hit.z);
+    sving = 1; return;
+  }
+  let tx = hit.x + hit.n[0], ty = hit.y + hit.n[1], tz = hit.z + hit.n[2];
+  if (b.kryds) { tx = hit.x; ty = hit.y; tz = hit.z; }                         // en blomst eller ild bliver skiftet ud
+  if (!verden.inde(tx, ty, tz)) return;
+  const der = verden.hent(tx, ty, tz), ny = v === "tænder" ? ID.Ild : VÆRKTØJ[v].blok;
+  if (der === ny || (der && !BLOKKE[der].kryds && !BLOKKE[der].væske)) return;
+  if (v === "tænder" && verden.væske[der]) return;                             // ild kan ikke brænde i vand og lava
+  if (v !== "vand" && overlap(tx, ty, tz, sp.pos, B, HØJ)) return;            // ingen ild eller lava oven på sig selv
+  if (ONLINE) net?.sæt(tx, ty, tz, ny); else verden.sæt(tx, ty, tz, ny);
+  sving = 1;
+  if (v === "tænder") { Lyd.tændIld(); stænk(tx + 0.5, ty + 0.3, tz + 0.5, ILD[1], 10); }
+  else { Lyd.plask(); stænk(tx + 0.5, ty + 0.9, tz + 0.5, v === "vand" ? VANDFARVE : ILD[2], 12); }
+  gemSnart();
+}
+// Dråber eller gnister der springer op
+function stænk(x, y, z, farve, antal = 10) {
+  for (let i = 0; i < antal; i++) partikel(x + (Math.random() - 0.5) * 0.6, y, z + (Math.random() - 0.5) * 0.6, farve,
+    (Math.random() - 0.5) * 3, 2 + Math.random() * 3, (Math.random() - 0.5) * 3, 0.5 + Math.random() * 0.3, 0.8, 0.8);
+}
+// Lyde fra simuleringen (og fra serveren, når man spiller sammen)
+let knitreTid = 0;
+function simLyd(navn, x, y, z) {
+  const afst = Math.hypot(sp.pos.x - x - 0.5, sp.pos.y - y, sp.pos.z - z - 0.5);
+  if (navn === "tss") {                                                         // lava + vand = sten og damp
+    Lyd.tss(afst);
+    for (let i = 0; i < 8; i++) partikel(x + Math.random(), y + 1, z + Math.random(), DAMP, Math.random() - 0.5, 1.5 + Math.random(), Math.random() - 0.5, 1.2, -0.08, 2.4);
+  } else if (navn === "knitre" && tid - knitreTid > 0.3) { knitreTid = tid; Lyd.knitre(afst); }
+}
+// Gnister og røg fra ilden og bobler der springer op af lavaen — kun tæt på spilleren
+let glødT = 0;
+function opdaterGløder(dt) {
+  if ((glødT -= dt) > 0) return;
+  glødT = 0.05;
+  const px = sp.pos.x, pz = sp.pos.z;
+  for (const [nøgle, g] of verden.gløder) {
+    const [cx, , cz] = nøgle.split(",").map(Number);
+    if (Math.abs(cx * 16 + 8 - px) > 40 || Math.abs(cz * 16 + 8 - pz) > 40) continue;
+    if (g.ild.length && Math.random() < 0.6) {
+      const [x, y, z] = g.ild[Math.floor(Math.random() * g.ild.length)];
+      partikel(x + Math.random(), y + 0.8, z + Math.random(), ILD[Math.floor(Math.random() * 3)], (Math.random() - 0.5) * 0.6, 1.5 + Math.random() * 1.5, (Math.random() - 0.5) * 0.6, 0.6, -0.05, 0.7);
+      if (Math.random() < 0.25) partikel(x + 0.5, y + 1.2, z + 0.5, RØG, (Math.random() - 0.5) * 0.4, 1, (Math.random() - 0.5) * 0.4, 1.5, -0.06, 2.2);
+      if (Math.random() < 0.04) simLyd("knitre", x, y, z);
+    }
+    if (g.lava.length && Math.random() < 0.15) {
+      const [x, y, z] = g.lava[Math.floor(Math.random() * g.lava.length)];
+      for (let i = 0; i < 3; i++) partikel(x + 0.3 + Math.random() * 0.4, y + 0.9, z + 0.3 + Math.random() * 0.4, ILD[i + 1], (Math.random() - 0.5) * 1.5, 2.5 + Math.random() * 2, (Math.random() - 0.5) * 1.5, 0.7, 0.7, 0.8);
+      if (Math.random() < 0.3) Lyd.blub(Math.hypot(x - px, z - pz));
+    }
+  }
+}
+// Lava og ild: "Av, varmt!" — man hopper op og baglæns, men kommer ikke til skade
+let varmeTid = 0;
+function tjekVarme(fod, krop, dt) {
+  varmeTid -= dt;
+  const hed = id => verden.væske[id] === "lava" || !!BLOKKE[id]?.ild;
+  if (varmeTid > 0 || !(hed(fod) || hed(krop))) return;
+  varmeTid = 0.9;
+  sp.vel.set(Math.sin(sp.yaw) * 5, 10, Math.cos(sp.yaw) * 5);
+  sp.jord = false;
+  Lyd.av();
+  E.tekstPop(window.innerWidth / 2, window.innerHeight * 0.35, "Av, varmt! 🔥", { s: 56 });
+  for (let i = 0; i < 12; i++) partikel(sp.pos.x, sp.pos.y + 0.3, sp.pos.z, ILD[i % ILD.length], (Math.random() - 0.5) * 3, 2 + Math.random() * 3, (Math.random() - 0.5) * 3, 0.5, -0.1, 1.4);
+}
+// De levende teksturer: vandet glider, lavaen gløder, ilden blafrer
+function animerVæsker() {
+  atlas.anim.vand.offset.set(tid * 0.07, tid * 0.18);
+  atlas.anim.lava.offset.set(tid * 0.03, tid * 0.06);
+  atlas.anim.ild.offset.y = (Math.floor(tid * 9) % atlas.anim.rammer) / atlas.anim.rammer;
+  animMat.lava.color.setScalar(0.9 + Math.sin(tid * 2.2) * 0.1);
 }
 
 // ---------- TNT ----------
@@ -592,7 +710,7 @@ function opdaterHak(dt) {
 }
 
 // ---------- Spillerens bevægelse ----------
-let gangFase = 0;
+let gangFase = 0, svømmer = false;
 let venteBesked = 0;
 function opdaterSpiller(dt) {
   if (ONLINE) {                                     // stå stille, til jorden under en er hentet
@@ -605,12 +723,23 @@ function opdaterSpiller(dt) {
   let mx = fx * frem + rx * side, mz = fz * frem + rz * side;
   const l = Math.hypot(mx, mz);
   if (l > 1) { mx /= l; mz /= l; }
-  const fart = sp.flyver ? FLYV : GÅ, greb = sp.jord || sp.flyver ? 12 : 3;
+  const fod = verden.hent(Math.floor(sp.pos.x), Math.floor(sp.pos.y + 0.1), Math.floor(sp.pos.z));
+  const krop = verden.hent(Math.floor(sp.pos.x), Math.floor(sp.pos.y + 0.9), Math.floor(sp.pos.z));
+  const iVand = !sp.flyver && (verden.væske[fod] === "vand" || verden.væske[krop] === "vand");
+  if (iVand !== svømmer) {                                                     // plask!
+    svømmer = iVand;
+    document.body.classList.toggle("svømmer", iVand);
+    if (iVand && sp.vel.y < -4) { Lyd.plask(); stænk(sp.pos.x, sp.pos.y + 0.9, sp.pos.z, VANDFARVE, 16); }
+  }
+  const fart = sp.flyver ? FLYV : iVand ? GÅ * 0.65 : GÅ, greb = sp.jord || sp.flyver || iVand ? 12 : 3;
   sp.vel.x += (mx * fart - sp.vel.x) * Math.min(1, dt * greb);
   sp.vel.z += (mz * fart - sp.vel.z) * Math.min(1, dt * greb);
   if (sp.flyver) {
     const op = (tast.hop || tast.op ? 1 : 0) - (tast.ned ? 1 : 0);
     sp.vel.y += (op * 7 - sp.vel.y) * Math.min(1, dt * 8);
+  } else if (iVand) {                                                          // man flyder op · ⬇ dykker · ⬆ svømmer op
+    const mål = tast.ned ? -3 : tast.hop || tast.op ? 3.5 : 1.2;
+    sp.vel.y += (mål - sp.vel.y) * Math.min(1, dt * 3);
   } else {
     if (tast.hop && sp.jord) { sp.vel.y = HOP; Lyd.hop(); }
     sp.vel.y = Math.max(-40, sp.vel.y - TYNGDE * dt);
@@ -630,6 +759,8 @@ function opdaterSpiller(dt) {
     tmp.copy(sp.pos); tmp.y += 1.05; tmp.x += mx * 0.35; tmp.z += mz * 0.35;
     if (!verden.kolliderer(tmp, B, HØJ)) sp.vel.y = Math.max(HOP * 0.92, Math.sqrt(2 * TYNGDE * 1.3));
   }
+  if (r.væg && iVand && l > 0.1) sp.vel.y = Math.max(sp.vel.y, 5.5);          // kravl op ad kanten
+  tjekVarme(fod, krop, dt);
   const vandret = Math.hypot(sp.vel.x, sp.vel.z);
   if (sp.jord && vandret > 0.5) {
     const før = Math.floor(gangFase * 2);
@@ -643,8 +774,8 @@ function opdaterSpiller(dt) {
 }
 
 // ---------- Hotbar, inventar og menu ----------
-const ikonFor = s => (s.æg ? ægIkon(ægFarver(s)) : atlas.ikon(s.blok));
-const navnFor = s => (s.hammer ? "Hammer" : s.æg ? (s.æg === "?" ? "Overraskelses-æg" : `${dyrDef(s.æg).navn}-æg`) : BLOKKE[s.blok].navn);
+const ikonFor = s => (s.v ? værktøjIkon(s.v) : s.æg ? ægIkon(ægFarver(s)) : atlas.ikon(s.blok));
+const navnFor = s => (s.hammer ? "Hammer" : s.v ? VÆRKTØJ[s.v].navn : s.æg ? (s.æg === "?" ? "Overraskelses-æg" : `${dyrDef(s.æg).navn}-æg`) : BLOKKE[s.blok].navn);
 
 function tegnHotbar() {
   const hb = $("hotbar");
@@ -690,6 +821,7 @@ function visInventar() {
   const grid = $("invGrid");
   grid.innerHTML = "";
   const ting = [
+    ...Object.keys(VÆRKTØJ).map(v => ({ v })),
     ...BLOKKE.map((b, id) => (b && !b.skjult ? { blok: id } : null)).filter(Boolean),
     { æg: "?" }, ...DYR.map(d => ({ æg: d.id })),
   ];
@@ -762,6 +894,13 @@ function skiftTil(v) {
 $("verdenKnap").addEventListener("click", () => { Lyd.klar(); Lyd.klik(); visVerdener(); });
 $("skiftVerden").addEventListener("click", () => { Lyd.klik(); luk("menu"); visVerdener(); });
 $("menuKnap").addEventListener("click", () => { Lyd.klik(); $("musikKnap").textContent = gemt.musik ? "🎵 Musik: TIL" : "🔇 Musik: FRA"; nyTryk = 0; $("nyVerden").textContent = "🔄 Start forfra"; vis("menu"); });
+const ildTekst = () => (gemt.ildBreder !== false ? "🔥 Ild breder sig: TIL" : "🔥 Ild breder sig: FRA");
+$("menuKnap").addEventListener("click", () => { $("ildKnap").textContent = ildTekst(); });
+$("ildKnap").addEventListener("click", () => {
+  gemt.ildBreder = gemt.ildBreder === false;
+  if (sim) sim.ildBreder = gemt.ildBreder;
+  Lyd.klik(); $("ildKnap").textContent = ildTekst(); gemSnart();
+});
 $("musikKnap").addEventListener("click", () => {
   gemt.musik = !gemt.musik; Lyd.sætMusik(gemt.musik); Lyd.klik(); gemSnart(); skriv("broekraft-musik", gemt.musik);
   $("musikKnap").textContent = gemt.musik ? "🎵 Musik: TIL" : "🔇 Musik: FRA";
@@ -811,11 +950,13 @@ renderer.setAnimationLoop(nu => {
 function tegnFrame(nu) {
   const dt = Math.min(0.05, (nu - sidst) / 1000);
   sidst = nu; tid += dt;
-  if (iGang && !pause) { opdaterSpiller(dt); opdaterHak(dt); genfød(dt); opdaterTNT(dt); }
+  if (iGang && !pause) { opdaterSpiller(dt); opdaterHak(dt); genfød(dt); opdaterTNT(dt); sim?.tick(dt); opdaterGløder(dt); }
   else if (!iGang) sp.yaw += dt * 0.06;                                           // titelskærm: kig langsomt rundt
   for (const d of dyr) d.opdater(dt, sp.pos);
   if (ONLINE) opdaterOnline(dt);
   verden.opdater(ONLINE ? 6 : 4);
+  animerVæsker();
+  opdaterVærktøj(håndFlamme, tid);
   opdaterStykker(dt);
   for (const s of skyer) {                                                        // skyerne driver og følger med
     s.position.x += dt * 0.8;
@@ -832,6 +973,9 @@ function tegnFrame(nu) {
     kamera.position.z += (Math.random() - 0.5) * rystelse * 0.3;
   }
   kamera.rotation.set(sp.pitch, sp.yaw, 0);
+  const øje = verden.hent(Math.floor(kamera.position.x), Math.floor(kamera.position.y), Math.floor(kamera.position.z));
+  const underVand = iGang && verden.væske[øje] === "vand";
+  if (underVand !== document.body.classList.contains("under-vand")) document.body.classList.toggle("under-vand", underVand);
   himmel.position.copy(kamera.position);
   if (stjerner) stjerner.position.copy(kamera.position);
   for (const m of følgerKamera) { m.position.copy(kamera.position).addScaledVector(m.userData.retning, m.userData.afstand); m.lookAt(kamera.position); }
@@ -854,7 +998,7 @@ async function startSpil() {
   luk("start");
   document.body.classList.add("i-gang");
   besked(ONLINE ? `${figurIkon(minFigur)} Velkommen til ${onlineInfo?.navn || cfg.navn}!` : `${cfg.ikon} ${cfg.navn}`, 2400);
-  setTimeout(() => { if (iGang) besked(nyTNT && !ONLINE ? "NYT: 🧨 TNT! Sæt den og slå på den med 🔨" : "Tryk = byg 🧱   🔨 = fjern   Træk = kig 👀", 5000); }, 2500);
+  setTimeout(() => { if (iGang) besked(nyVæske ? "NYT: 🪣 Vand, 🌋 lava og 🔥 ild! Find dem i ⋯" : nyTNT && !ONLINE ? "NYT: 🧨 TNT! Sæt den og slå på den med 🔨" : "Tryk = byg 🧱   🔨 = fjern   Træk = kig 👀", 5000); }, 2500);
 }
 tegnHotbar();
 opdaterHånd();
@@ -964,6 +1108,8 @@ function nyFigur(p) {
 function blokFraServer({ x, y, z, id }) {
   const før = verden.hent(x, y, z);
   if (!verden.sæt(x, y, z, id)) return;
+  if (verden.væske[før] === "lava" && (id === ID.Sten || id === ID.Obsidian)) simLyd("tss", x, y, z);
+  else if (id === ID.Ild) simLyd("knitre", x, y, z);
   // blokke der ryger i et brag, flyver som småstykker
   if (!id && før && sidsteBum && performance.now() - sidsteBum.tid < 700 && Math.random() < 0.4) {
     const a = Math.max(0.3, Math.hypot(x + 0.5 - sidsteBum.x, z + 0.5 - sidsteBum.z)), f = atlas.farve(før);
@@ -990,4 +1136,4 @@ $("emojiBar").querySelectorAll("button").forEach(b => b.addEventListener("click"
 
 if (ONLINE) forberedOnline();
 window.broekraftKlar = true;
-if (location.search.includes("debug")) window.bk = { sp, verden, dyr, tast, cfg, andre, get net() { return net; } };
+if (location.search.includes("debug")) window.bk = { sp, verden, dyr, tast, cfg, andre, sim, get net() { return net; } };

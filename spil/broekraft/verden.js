@@ -44,6 +44,11 @@ const FLADER = [
 for (const F of FLADER) F.t = [0, 1, 2].filter(a => F.n[a] === 0);   // de to akser langs fladen
 const AO = [0.5, 0.68, 0.84, 1];                                      // mørkere i hjørner og kroge
 const lin = l => Math.pow(l, 2.2);
+// Hver klump tegnes i fire lag: faste blokke, vand (gennemsigtigt), lava (gløder) og ild (blafrer).
+const LAG = ["fast", "vand", "lava", "ild"];
+const lagNøgle = (nøgle, lag) => (lag === "fast" ? nøgle : `${nøgle}|${lag}`);
+const nytLag = () => ({ pos: [], uv: [], farve: [], idx: [] });
+const HJØRNER = [[-1, -1], [0, -1], [-1, 0], [0, 0]];
 
 export class Verden {
   // mål: { BX, BY, BZ } — standard er den lille ø. online: true gemmer verdenen som søjler på 16×16,
@@ -57,8 +62,12 @@ export class Verden {
     this.klumper = new Map();
     this.snavset = new Set();
     this.ændringer = new Map();
-    this.fast = BLOKKE.map(b => !!b && !b.kryds);                      // kan ikke gå igennem
-    this.dækker = BLOKKE.map(b => !!b && !b.gennemsigtig && !b.kryds); // skjuler naboens side
+    this.fast = BLOKKE.map(b => !!b && !b.kryds && !b.væske);          // kan ikke gå igennem
+    this.dækker = BLOKKE.map(b => !!b && !b.gennemsigtig && !b.kryds && !b.væske); // skjuler naboens side
+    this.væske = BLOKKE.map(b => b?.væske || null);                    // "vand", "lava" eller null
+    this.animMat = null;                                               // { vand, lava, ild } — sættes af spil.js
+    this.gløder = new Map();                                           // klump → ild og lava (til gnister og bobler)
+    this.vedÆndring = null;                                            // kaldes efter hver sæt() (simuleringen)
     this.hopper = BLOKKE.map(b => !!b && !!b.hopper);                 // trampolin
     this.tyngde = 28;
   }
@@ -97,6 +106,7 @@ export class Verden {
     if ((x & 15) === 0) this.snavs(cx - 1, cy, cz); if ((x & 15) === 15) this.snavs(cx + 1, cy, cz);
     if ((y & 15) === 0) this.snavs(cx, cy - 1, cz); if ((y & 15) === 15) this.snavs(cx, cy + 1, cz);
     if ((z & 15) === 0) this.snavs(cx, cy, cz - 1); if ((z & 15) === 15) this.snavs(cx, cy, cz + 1);
+    if (this.vedÆndring) this.vedÆndring(x, y, z);
     return true;
   }
   // Markér en 16×16×16-klump til at blive bygget om
@@ -128,12 +138,18 @@ export class Verden {
   }
   rydAlt() {                                    // ny tilslutning: glem alt og vent på nye søjler
     if (this.online) this.søjler.fill(undefined);
-    for (const k of [...this.klumper.keys()]) this.fjernKlump(k);
+    for (const m of this.klumper.values()) { this.scene.remove(m); m.geometry.dispose(); }
+    this.klumper.clear();
+    this.gløder.clear();
     this.snavset.clear();
   }
   fjernKlump(nøgle) {
-    const m = this.klumper.get(nøgle);
-    if (m) { this.scene.remove(m); m.geometry.dispose(); this.klumper.delete(nøgle); }
+    for (const lag of LAG) this.fjernLag(lagNøgle(nøgle, lag));
+    this.gløder.delete(nøgle);
+  }
+  fjernLag(k) {
+    const m = this.klumper.get(k);
+    if (m) { this.scene.remove(m); m.geometry.dispose(); this.klumper.delete(k); }
   }
   // Står kassen (med fødderne i p) på en trampolin-blok?
   hopperUnder(p, b) {
@@ -206,12 +222,19 @@ export class Verden {
     return s1 && s2 ? 0 : 3 - s1 - s2 - hj;
   }
   bygKlump(cx, cy, cz) {
-    const pos = [], uv = [], farve = [], idx = [];
+    const lag = { fast: nytLag(), vand: nytLag(), lava: nytLag(), ild: nytLag() }, gløder = { ild: [], lava: [] };
+    const { pos, uv, farve, idx } = lag.fast;
     for (let y = cy * CS; y < cy * CS + CS; y++) for (let z = cz * CS; z < cz * CS + CS; z++) for (let x = cx * CS; x < cx * CS + CS; x++) {
       const id = this.hent(x, y, z);
       if (!id) continue;
       const b = BLOKKE[id];
       if (!b) continue;                                            // ukendt blok — spring over
+      if (b.væske) {
+        this.væskeFlader(x, y, z, id, lag[b.væske]);
+        if (b.væske === "lava" && this.væske[this.hent(x, y + 1, z)] !== "lava") gløder.lava.push([x, y, z]);
+        continue;
+      }
+      if (b.ild) { this.flammer(x, y, z, lag.ild); gløder.ild.push([x, y, z]); continue; }
       if (b.kryds) { this.kryds(x, y, z, id, pos, uv, farve, idx); continue; }
       for (const F of FLADER) {
         const nid = this.hent(x + F.n[0], y + F.n[1], z + F.n[2]);
@@ -231,16 +254,79 @@ export class Verden {
       }
     }
     const nøgle = `${cx},${cy},${cz}`;
-    let m = this.klumper.get(nøgle);
-    if (!pos.length) { this.fjernKlump(nøgle); return; }
+    for (const navn of LAG) this.sætLag(nøgle, navn, lag[navn]);
+    if (gløder.ild.length || gløder.lava.length) this.gløder.set(nøgle, gløder); else this.gløder.delete(nøgle);
+  }
+  sætLag(nøgle, navn, { pos, uv, farve, idx }) {
+    const k = lagNøgle(nøgle, navn);
+    let m = this.klumper.get(k);
+    if (!pos.length) { this.fjernLag(k); return; }
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
     g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
     g.setAttribute("color", new THREE.Float32BufferAttribute(farve, 3));
     g.setIndex(idx);
     g.computeBoundingSphere();
-    if (m) { m.geometry.dispose(); m.geometry = g; }
-    else { m = new THREE.Mesh(g, this.mat); this.scene.add(m); this.klumper.set(nøgle, m); }
+    if (m) { m.geometry.dispose(); m.geometry = g; return; }
+    m = new THREE.Mesh(g, navn === "fast" ? this.mat : this.animMat?.[navn] || this.mat);
+    if (navn === "vand") m.renderOrder = 1;                      // gennemsigtigt vand tegnes efter alt det faste
+    this.scene.add(m); this.klumper.set(k, m);
+  }
+
+  // ---------- Vand og lava: overfladen er lavere, jo tyndere strømmen er ----------
+  væskeHøjde(id) {
+    const b = BLOKKE[id], maks = b.væske === "vand" ? 7 : 3;
+    return (maks + 1 - b.niveau) / (maks + 2);
+  }
+  // Højden i et hjørne er et gennemsnit af de fire blokke omkring det, så strømme skråner blødt nedad
+  hjørne(x, y, z, type) {
+    let sum = 0, n = 0;
+    for (const [dx, dz] of HJØRNER) {
+      const id = this.hent(x + dx, y, z + dz);
+      if (this.væske[id] === type) {
+        if (this.væske[this.hent(x + dx, y + 1, z + dz)] === type) return 1;
+        const w = BLOKKE[id].niveau ? 1 : 4;                        // kilder vejer mest
+        sum += this.væskeHøjde(id) * w; n += w;
+      } else if (!this.fast[id]) n += 1;                          // luft ved siden af trækker kanten ned
+    }
+    return n ? Math.max(0.06, sum / n) : 0.06;
+  }
+  væskeFlader(x, y, z, id, { pos, uv, farve, idx }) {
+    const type = this.væske[id], lyser = BLOKKE[id].lyser;
+    const fuld = this.væske[this.hent(x, y + 1, z)] === type;
+    const h = fuld ? [1, 1, 1, 1] : [this.hjørne(x, y, z, type), this.hjørne(x + 1, y, z, type), this.hjørne(x + 1, y, z + 1, type), this.hjørne(x, y, z + 1, type)];
+    const top = (a, b) => h[a ? (b ? 2 : 1) : (b ? 3 : 0)];
+    for (const F of FLADER) {
+      const nid = this.hent(x + F.n[0], y + F.n[1], z + F.n[2]);
+      if (this.væske[nid] === type) continue;                      // samme væske ved siden af: ingen væg
+      if (F.n[1] !== 1 && this.dækker[nid]) continue;             // toppen vises altid (der er luft over den)
+      const l = lin(lyser ? 1 : F.lys), s = pos.length / 3;
+      for (const c of F.v) {
+        const vy = c[1] ? top(c[0], c[2]) : 0;
+        pos.push(x + c[0], y + vy, z + c[2]);
+        farve.push(l, l, l);
+        if (F.n[1]) uv.push(x + c[0], z + c[2]);                   // mønstret følger verden, så det går i ét
+        else if (F.n[0]) uv.push(z + c[2], y + vy);
+        else uv.push(x + c[0], y + vy);
+      }
+      idx.push(s, s + 1, s + 2, s, s + 2, s + 3);
+    }
+  }
+  // Ild: to skrå flammer på kryds og fire langs kanterne (materialet viser én ramme ad gangen)
+  flammer(x, y, z, { pos, uv, farve, idx }) {
+    const H = 1.1, i = 0.14, spejl = (x + z) & 1;
+    const kvadrater = [
+      [[0, 0, 0], [1, 0, 1], [1, H, 1], [0, H, 0]], [[1, 0, 0], [0, 0, 1], [0, H, 1], [1, H, 0]],
+      [[i, 0, 0], [i, 0, 1], [i, H, 1], [i, H, 0]], [[1 - i, 0, 1], [1 - i, 0, 0], [1 - i, H, 0], [1 - i, H, 1]],
+      [[1, 0, i], [0, 0, i], [0, H, i], [1, H, i]], [[0, 0, 1 - i], [1, 0, 1 - i], [1, H, 1 - i], [0, H, 1 - i]],
+    ];
+    const u0 = spejl ? 1 : 0, u1 = 1 - u0, v0 = 0.02, v1 = 0.98;
+    for (const q of kvadrater) {
+      const s = pos.length / 3;
+      for (const c of q) { pos.push(x + c[0], y + c[1], z + c[2]); farve.push(1, 1, 1); }
+      uv.push(u0, v0, u1, v0, u1, v1, u0, v1);
+      idx.push(s, s + 1, s + 2, s, s + 2, s + 3);
+    }
   }
   kryds(x, y, z, id, pos, uv, farve, idx) {     // blomster: to skrå flader på kryds
     const [u0, v0, u1, v1] = this.atlas.uv(id, "side");
@@ -257,7 +343,7 @@ export class Verden {
   }
 
   // ---------- Stråle: hvilken blok peger man på? ----------
-  stråle(o, d, maks = 8) {
+  stråle(o, d, maks = 8, medVæske = false) {          // vand og lava rammes kun med medVæske
     let x = Math.floor(o.x), y = Math.floor(o.y), z = Math.floor(o.z);
     const sx = Math.sign(d.x), sy = Math.sign(d.y), sz = Math.sign(d.z);
     const tdx = sx ? Math.abs(1 / d.x) : Infinity, tdy = sy ? Math.abs(1 / d.y) : Infinity, tdz = sz ? Math.abs(1 / d.z) : Infinity;
@@ -267,7 +353,7 @@ export class Verden {
     let t = 0, n = [0, 0, 0];
     while (t <= maks) {
       const id = this.hent(x, y, z);
-      if (id && t > 0) return { x, y, z, id, n, t };
+      if (id && t > 0 && (medVæske || !this.væske[id])) return { x, y, z, id, n, t };
       if (tx < ty && tx < tz) { x += sx; t = tx; tx += tdx; n = [-sx, 0, 0]; }
       else if (ty < tz) { y += sy; t = ty; ty += tdy; n = [0, -sy, 0]; }
       else { z += sz; t = tz; tz += tdz; n = [0, 0, -sz]; }
