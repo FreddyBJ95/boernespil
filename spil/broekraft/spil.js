@@ -985,7 +985,7 @@ function skiftTil(v) {
 
 $("verdenKnap").addEventListener("click", () => { Lyd.klar(); Lyd.klik(); visVerdener(); });
 $("skiftVerden").addEventListener("click", () => { Lyd.klik(); luk("menu"); visVerdener(); });
-$("menuKnap").addEventListener("click", () => { Lyd.klik(); $("musikKnap").textContent = gemt.musik ? "🎵 Musik: TIL" : "🔇 Musik: FRA"; nyTryk = 0; $("nyVerden").textContent = "🔄 Start forfra"; vis("menu"); });
+$("menuKnap").addEventListener("click", () => { Lyd.klik(); $("musikKnap").textContent = musikTekst(); nyTryk = 0; $("nyVerden").textContent = "🔄 Start forfra"; vis("menu"); });
 const ildTekst = () => (gemt.ildBreder !== false ? "🔥 Ild breder sig: TIL" : "🔥 Ild breder sig: FRA");
 $("menuKnap").addEventListener("click", () => { $("ildKnap").textContent = ildTekst(); });
 $("ildKnap").addEventListener("click", () => {
@@ -993,10 +993,17 @@ $("ildKnap").addEventListener("click", () => {
   if (sim) sim.ildBreder = gemt.ildBreder;
   Lyd.klik(); $("ildKnap").textContent = ildTekst(); gemSnart();
 });
+// Baggrundsmusik: tryk for at skifte mellem stille, hardstyle, rock, 8-bit og fra (gælder alle verdener)
+let musikStil = læs("broekraft-musikstil", læs("broekraft-musik", true) === false ? "fra" : "stille");
+const musikTekst = () => `🎵 Musik: ${(Lyd.MUSIKSTILE.find(m => m.id === musikStil) || Lyd.MUSIKSTILE[0]).navn}`;
 $("musikKnap").addEventListener("click", () => {
-  gemt.musik = !gemt.musik; Lyd.sætMusik(gemt.musik); Lyd.klik(); gemSnart(); skriv("broekraft-musik", gemt.musik);
-  $("musikKnap").textContent = gemt.musik ? "🎵 Musik: TIL" : "🔇 Musik: FRA";
+  const i = Lyd.MUSIKSTILE.findIndex(m => m.id === musikStil);
+  musikStil = Lyd.MUSIKSTILE[(i + 1) % Lyd.MUSIKSTILE.length].id;
+  skriv("broekraft-musikstil", musikStil); gemt.musik = musikStil !== "fra"; gemSnart();
+  Lyd.klar(); Lyd.sætMusikStil(musikStil); Lyd.klik();
+  $("musikKnap").textContent = musikTekst();
 });
+$("musikKnap").textContent = musikTekst();
 $("hjemStart").addEventListener("click", () => { Lyd.klik(); skyd.stigUd(); startSted(); if (sp.flyver) skiftFlyv(); luk("menu"); gemSnart(); });
 $("udsynKnap").textContent = `👀 Udsyn: ${UDSYN[udsynNr].navn}`;
 $("udsynKnap").addEventListener("click", () => {                  // hvor langt kan man se (online)
@@ -1096,7 +1103,7 @@ function tegnFrame(nu) {
 // ---------- Start ----------
 async function startSpil() {
   Lyd.sætStemning(cfg.stemning);
-  Lyd.klar(); Lyd.sætMusik(gemt.musik); Lyd.klik();
+  Lyd.klar(); Lyd.sætMusikStil(musikStil); Lyd.klik();
   if (ONLINE && !(await forbindOnline())) return;
   try { if ("speechSynthesis" in window) speechSynthesis.cancel(); } catch (_) {}
   iGang = true;

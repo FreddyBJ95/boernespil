@@ -1,6 +1,6 @@
 // ===== Lyde og musik til Broekraft — alt laves med Web Audio, ingen lydfiler =====
 
-let ac = null, ud = null, musikG = null, ekko = null, støjBuf = null, musikTil = true;
+let ac = null, ud = null, musikG = null, ekko = null, støjBuf = null, musikTil = true, musikStil = "stille";
 
 export function klar() {
   if (ac) { if (ac.state === "suspended") ac.resume(); return; }
@@ -18,17 +18,31 @@ export function klar() {
   const d = støjBuf.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   (function musikLøkke() {
-    if (musikTil && !document.hidden) frase();
+    if (musikTil && musikStil === "stille" && !document.hidden) frase();
     setTimeout(musikLøkke, stemning.pause[0] + Math.random() * (stemning.pause[1] - stemning.pause[0]));
   })();
   (function fugleLøkke() {
-    setTimeout(() => { if (!document.hidden) fugl(); fugleLøkke(); }, 6000 + Math.random() * 9000);
+    setTimeout(() => { if (!document.hidden && (musikStil === "stille" || musikStil === "fra")) fugl(); fugleLøkke(); }, 6000 + Math.random() * 9000);
   })();
+  if (SEKVENSER[musikStil]) startSekvens(musikStil);
 }
 
 export function sætMusik(til) {
   musikTil = til;
   if (musikG) musikG.gain.setTargetAtTime(til ? 1 : 0, ac.currentTime, 0.3);
+}
+
+// Vælg baggrundsmusik: "stille" (den rolige, der passer til verdenen), "hardstyle", "rock", "chip" (8-bit) eller "fra"
+export const MUSIKSTILE = [
+  { id: "stille", navn: "🎹 Stille" }, { id: "hardstyle", navn: "🔊 Hardstyle" }, { id: "rock", navn: "🎸 Rock" },
+  { id: "chip", navn: "👾 8-bit" }, { id: "fra", navn: "🔇 Fra" },
+];
+export function sætMusikStil(stil) {
+  musikStil = MUSIKSTILE.some(s => s.id === stil) ? stil : "stille";
+  sætMusik(musikStil !== "fra");
+  if (!ac) return;
+  stopSekvens();
+  if (SEKVENSER[musikStil]) startSekvens(musikStil);
 }
 
 // Når et andet barn taler i walkie-talkien, bliver spillets musik og lyde stille, så man kan høre det
@@ -111,6 +125,171 @@ function frase() {
   }
   if (Math.random() < 0.5) klaver(S[Math.floor(Math.random() * 4)] / 2, t, stemning.længde * 1.3, stemning.vol * 0.8);
   if (stemning.klokke && Math.random() < 0.3) tone(880, t + 0.3, 2.5, "sine", 0.03, null, musikG);   // fjern klokke
+}
+
+// ---------- Baggrundsmusik: hardstyle, rock og 8-bit ----------
+// En lille sequencer spiller 16-dele efter et mønster. Instrumenterne er bygget af oscillatorer,
+// støj og forvrængning. Nye numre: tilføj en stil i SEKVENSER med bpm og trin(i, tid, længde).
+const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+let sekvens = null, kæder = null;
+
+// Forvrængning (tanh-kurve): højere mængde = mere smadder
+function forvræng(mængde) {
+  const n = 2048, c = new Float32Array(n);
+  for (let i = 0; i < n; i++) { const x = i / (n - 1) * 2 - 1; c[i] = Math.tanh(x * mængde); }
+  const w = ac.createWaveShaper(); w.curve = c; w.oversample = "2x";
+  return w;
+}
+function filt(type, f, q = 0.7) { const b = ac.createBiquadFilter(); b.type = type; b.frequency.value = f; b.Q.value = q; return b; }
+function forstærk(v) { const g = ac.createGain(); g.gain.value = v; return g; }
+function kobl(...noder) { for (let i = 0; i < noder.length - 1; i++) noder[i].connect(noder[i + 1]); return noder[0]; }
+// Faste effektkæder, som tonerne sendes ind i
+function lavKæder() {
+  if (kæder) return kæder;
+  const lead = forstærk(1), ekkoL = ac.createDelay(1), igen = forstærk(0.3);
+  ekkoL.delayTime.value = 0.3;
+  lead.connect(musikG); lead.connect(ekkoL); ekkoL.connect(igen); igen.connect(ekkoL); igen.connect(musikG);
+  kæder = {
+    kick: kobl(forstærk(1), forvræng(9), filt("lowpass", 5000), filt("highpass", 30), forstærk(0.32), musikG),    // hardstyle-kick
+    guitar: kobl(forstærk(1), forvræng(28), filt("lowpass", 3800), filt("highpass", 90), forstærk(0.11), musikG), // el-guitar
+    lead,
+  };
+  return kæder;
+}
+function hylster(t, vol, anslag, hold, slip) {                    // lydstyrke: op, hold, ned
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + anslag);
+  g.gain.setValueAtTime(vol, t + anslag + hold); g.gain.exponentialRampToValueAtTime(0.0001, t + anslag + hold + slip);
+  return g;
+}
+function osc(type, f, t, slut, mål, detune = 0) {
+  const o = ac.createOscillator();
+  if (typeof type === "string") o.type = type; else o.setPeriodicWave(type);
+  o.frequency.value = f; o.detune.value = detune; o.connect(mål); o.start(t); o.stop(slut);
+  return o;
+}
+function støj(t, varighed, type, f, vol, q = 0.8, mål = musikG) {
+  const s = ac.createBufferSource(), g = hylster(t, vol, 0.002, 0, varighed);
+  s.buffer = støjBuf; kobl(s, filt(type, f, q), g, mål);
+  s.start(t, Math.random()); s.stop(t + varighed + 0.05);
+}
+
+// --- Trommer ---
+function stortromme(t, vol = 0.8) {
+  const g = hylster(t, vol, 0.002, 0.02, 0.25), o = osc("sine", 150, t, t + 0.3, g);
+  o.frequency.exponentialRampToValueAtTime(45, t + 0.1); g.connect(musikG);
+}
+function lilletromme(t, vol = 0.5) {
+  støj(t, 0.16, "bandpass", 1900, vol, 0.7);
+  const g = hylster(t, vol * 0.5, 0.002, 0, 0.1), o = osc("triangle", 200, t, t + 0.12, g);
+  o.frequency.exponentialRampToValueAtTime(150, t + 0.1); g.connect(musikG);
+}
+function hihat(t, vol = 0.08, åben = false) { støj(t, åben ? 0.22 : 0.04, "highpass", 7500, vol, 0.7); }
+function klap(t, vol = 0.35) { for (const d of [0, 0.011, 0.022]) støj(t + d, d === 0.022 ? 0.14 : 0.012, "bandpass", 1150, vol, 1.2); }
+function bækken(t, vol = 0.2) { støj(t, 1.3, "highpass", 5000, vol, 0.5); }
+
+// --- Hardstyle: et tungt, forvrænget kick med en tone i halen og en bred supersaw-melodi ---
+function hardKick(t, grund) {
+  const g = hylster(t, 1, 0.001, 0.16, 0.2), o = osc("sine", 260, t, t + 0.4, g);
+  o.frequency.exponentialRampToValueAtTime(grund * 2.2, t + 0.025);
+  o.frequency.exponentialRampToValueAtTime(grund, t + 0.1);
+  g.connect(kæder.kick);
+  støj(t, 0.012, "highpass", 3000, 0.25);                        // klik foran
+}
+function supersaw(t, midi, varighed, vol) {
+  const g = hylster(t, vol, 0.008, varighed * 0.6, varighed * 0.4), lp = filt("lowpass", 5200);
+  kobl(g, lp, kæder.lead);
+  for (const d of [-22, -9, 0, 9, 22]) osc("sawtooth", mtof(midi), t, t + varighed + 0.05, g, d);
+  osc("sawtooth", mtof(midi - 12), t, t + varighed + 0.05, g, 4);
+}
+// --- Rock: power chords (grundtone, kvint, oktav) gennem kraftig forvrængning ---
+function guitar(t, midi, varighed, dæmpet) {
+  const g = hylster(t, dæmpet ? 0.9 : 0.7, 0.004, varighed * 0.7, dæmpet ? 0.05 : varighed * 0.5), lp = filt("lowpass", dæmpet ? 900 : 3600);
+  kobl(g, lp, kæder.guitar);
+  for (const [iv, v] of [[0, 1], [7, 0.8], [12, 0.55]]) for (const d of [-7, 7]) {
+    const og = forstærk(v); og.connect(g); osc("sawtooth", mtof(midi + iv), t, t + varighed + 0.3, og, d);
+  }
+}
+function bas(t, midi, varighed, vol = 0.18) {
+  const g = hylster(t, vol, 0.005, varighed * 0.7, varighed * 0.3), lp = filt("lowpass", 420);
+  kobl(g, lp, musikG); osc("sawtooth", mtof(midi), t, t + varighed + 0.05, g);
+}
+// --- 8-bit: firkant- og trekantsbølger som i gamle spillemaskiner ---
+let pulsBølge = null;
+function puls() {                                                // smal firkantbølge (25 %) — den klassiske 8-bit-lyd
+  if (!pulsBølge) {
+    const n = 48, re = new Float32Array(n), im = new Float32Array(n);
+    for (let k = 1; k < n; k++) re[k] = (2 / (k * Math.PI)) * Math.sin(k * Math.PI * 0.25);
+    pulsBølge = ac.createPeriodicWave(re, im);
+  }
+  return pulsBølge;
+}
+function chip(t, midi, varighed, bølge, vol) {
+  const g = hylster(t, vol, 0.003, varighed * 0.5, varighed * 0.5);
+  g.connect(musikG); osc(bølge === "puls" ? puls() : bølge, mtof(midi), t, t + varighed + 0.05, g);
+}
+function chipKick(t) { const g = hylster(t, 0.35, 0.001, 0.02, 0.08), o = osc("square", 180, t, t + 0.12, g); o.frequency.exponentialRampToValueAtTime(45, t + 0.08); kobl(g, filt("lowpass", 1200), musikG); }
+function chipSnare(t) { støj(t, 0.09, "highpass", 1800, 0.22); chip(t, 60, 0.04, "square", 0.05); }
+
+// --- Numrene ---
+const HS = [                                                     // Am – F – C – G
+  { rod: 45, melodi: [69, 72, 76, 72, 81, 79, 76, 72] },
+  { rod: 41, melodi: [65, 69, 72, 69, 77, 76, 72, 69] },
+  { rod: 48, melodi: [67, 72, 76, 72, 79, 76, 72, 67] },
+  { rod: 43, melodi: [67, 71, 74, 71, 79, 74, 71, 74] },
+];
+const c = tone => ({ tone, lang: false }), l = tone => ({ tone, lang: true });
+const RIFF = [                                                   // E-mol: tunge "chugs" og lange akkorder
+  [c(40), c(40), c(40), null, c(40), c(40), l(43), null, c(40), c(40), l(45), null, c(40), c(40), c(46), c(45)],
+  [c(40), c(40), c(40), null, c(40), c(40), l(38), null, c(40), c(40), l(43), null, l(42), null, c(40), c(40)],
+];
+const CHIP = [                                                   // C – G – Am – F, glad og hurtig
+  { rod: 36, akkord: [60, 64, 67, 72], melodi: [76, 76, 79, 76, 72, 74, 76, null] },
+  { rod: 43, akkord: [59, 62, 67, 71], melodi: [74, 74, 79, 74, 71, 72, 74, null] },
+  { rod: 45, akkord: [57, 60, 64, 69], melodi: [72, 72, 76, 72, 69, 71, 72, 76] },
+  { rod: 41, akkord: [57, 60, 65, 69], melodi: [77, 76, 74, 72, 74, 76, 72, null] },
+];
+const SEKVENSER = {
+  hardstyle: { bpm: 150, trin(i, t, L) {
+    const takt = Math.floor(i / 16) % 8, s = i % 16, a = HS[Math.floor(i / 16) % 4];
+    const pause = takt === 7 && s >= 8;                          // et lille pust før næste runde
+    if (s % 4 === 0 && !pause) hardKick(t, mtof(a.rod - 12));
+    if (s % 4 === 2) hihat(t, 0.1, true);
+    if ((s === 4 || s === 12) && !pause) klap(t);
+    if (s % 2 === 0 && takt >= 2) { const n = a.melodi[s / 2]; if (n) supersaw(t, n, L * 1.8, 0.05); }
+    if (takt < 2 && s === 0) supersaw(t, a.rod + 24, L * 14, 0.035);
+    if (pause && s === 8) støj(t, L * 8, "bandpass", 800, 0.05, 0.5);   // sus op mod næste runde
+  } },
+  rock: { bpm: 138, trin(i, t, L) {
+    const takt = Math.floor(i / 16) % 4, s = i % 16, n = RIFF[takt % 2][s];
+    if ([0, 6, 8, 10].includes(s)) stortromme(t, 0.75);
+    if (s === 4 || s === 12) lilletromme(t, 0.5);
+    if (s % 2 === 0) hihat(t, 0.06);
+    if (s === 0 && takt === 0) bækken(t);
+    if (n) { const v = n.lang ? L * 2 : L * 0.9; guitar(t, n.tone, v, !n.lang); bas(t, n.tone - 12, v); }
+  } },
+  chip: { bpm: 160, trin(i, t, L) {
+    const s = i % 16, a = CHIP[Math.floor(i / 16) % 4];
+    if (s % 2 === 0) { const n = a.melodi[s / 2]; if (n) chip(t, n, L * 1.7, "puls", 0.06); }
+    chip(t, a.akkord[s % 4] + 12, L * 0.8, "square", 0.018);
+    if (s % 2 === 0) chip(t, a.rod + (s % 4 === 2 ? 12 : 0), L * 1.6, "triangle", 0.15);
+    if (s % 8 === 0) chipKick(t);
+    if (s % 8 === 4) chipSnare(t);
+    if (s % 2 === 1) hihat(t, 0.03);
+  } },
+};
+// Planlæg tonerne lidt forud, så rytmen holder, selv om spillet har travlt
+function startSekvens(stil) {
+  lavKæder();
+  sekvens = { s: SEKVENSER[stil], i: 0, næste: ac.currentTime + 0.1, timer: setInterval(planlæg, 25) };
+}
+function stopSekvens() { if (sekvens) clearInterval(sekvens.timer); sekvens = null; }
+function planlæg() {
+  if (!sekvens || !ac) return;
+  if (document.hidden || !musikTil || ac.state !== "running") { sekvens.næste = ac.currentTime + 0.1; return; }
+  const L = 60 / sekvens.s.bpm / 4;
+  if (sekvens.næste < ac.currentTime - 0.2) sekvens.næste = ac.currentTime + 0.05;    // efter en pause
+  while (sekvens.næste < ac.currentTime + 0.12) { sekvens.s.trin(sekvens.i, sekvens.næste, L); sekvens.næste += L; sekvens.i++; }
 }
 
 // ---------- Blokke, skridt og bevægelse ----------
