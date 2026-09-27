@@ -19,6 +19,14 @@ skrive `xattr -d com.apple.quarantine ` i Terminal, trække programfilen ind og 
 Hvis firewall spørger, vælg **Tillad** på **private netværk**. Routeren skal ikke ændres;
 opret ikke port-forwarding. Serveren lytter kun på computerens private IPv4-adresser og lokaladressen.
 
+**Tabletten står bare og venter?** På Windows skyldes det næsten altid firewallen.
+1. Gør hjemmets wifi privat: **Indstillinger → Netværk og internet → Wi-Fi →** klik på netværket →
+   vælg **Privat**. Et offentligt netværk blokerer alle, der vil ind på computeren.
+2. Tillad programmet: tryk Start og skriv *firewall*. Åbn **Tillad en app gennem Windows Defender Firewall**
+   → **Rediger indstillinger** → **Tillad en anden app… → Gennemse**. Vælg `BroekraftServer.exe` →
+   **Tilføj**, og sæt flueben ved **Privat**.
+3. Luk og start BroekraftServer igen.
+
 ## Opret en verden
 
 Vælg navn, type, størrelse, 1–8 spillere og om ild må sprede sig. Et tomt frø giver en ny tilfældig verden.

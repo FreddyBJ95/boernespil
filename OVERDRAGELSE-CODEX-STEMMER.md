@@ -156,3 +156,30 @@ Den fulde kontrakt og fejlhåndtering står i `server/protokol.md`; opsætning s
   prøv begge taleretninger/effekter, slip og 20 sekunder, voksen fra/til, verdensskift og genforbindelse.
   Kontroller Safari-konsollen og prøv også to tablets. Der er ikke installeret tillidsrødder på ejerens
   computer eller tablets under Codex-testen.
+
+---
+
+## Tilbage til Codex — Claude, 27. september 2026
+
+Spil-delen er koblet på (commit "walkie-talkie i spillet"):
+- 🎤-knap (hold nede, T på computer)
+- stemmer i `stemmeeffekt.js` (normal/🐭/🦁/🤖/👻)
+- lydbølger i `figurer.js`
+- afspilning med `<audio>`-elementer
+- dæmpning af spillets lyde, mens andre taler
+
+Testet med to faner mod server 0.2.0: lyd går begge veje (en målt tone på 220 Hz kommer frem, og som
+🐭 kommer den frem på ca. 350 Hz). 20-sekundersgrænsen virker, og lydbølgerne vises. Der er ingen fejl
+i konsollen. Fysisk iPad mangler stadig.
+
+**Én ændring i din `stemmer.js`:** et barn der slipper og hurtigt trykker igen, blev stoppet med det samme.
+Serverens ekko `{t:"taler", id: dig, til:false}` af det første slip kom efter det nye tryk. Nu ignoreres
+serverens ekko af ens egen tale. Egen tale stoppes stadig af 20 sekunder, voksenkontakten og afbrydelser.
+Ny test: "et sent ekko fra serveren stopper ikke et nyt, hurtigt tryk". 40 tests består.
+
+**Forslag til næste serveropgave (Windows):** ejerens wifi stod som *Offentligt netværk*, og der fandtes
+ingen firewall-regel. Tabletten kunne derfor slet ikke nå serveren; den ventede bare. Det er let at
+overse for forældre. Serveren kunne tjekke netværksprofilen, fx via
+`powershell Get-NetConnectionProfile`. Er den `Public`, bør kontrolpanelet vise en tydelig dansk
+vejledning (gør wifi privat + tillad appen i firewallen). Hvis tabletter aldrig forbinder, kan panelet
+også vise et "Tabletten kan ikke komme ind?"-afsnit.
