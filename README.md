@@ -33,7 +33,7 @@ Første gang skal der være internet. Bagefter virker spillene også offline.
 - 🚽 **Skibidi Toilet**
 - 🚜 **Vaskehallen**
 - 🎣 **Mærkelige fisk** (3D)
-- ⛏️ **Broekraft** (3D-byggespil i Minecraft-stil)
+- ⛏️ **Broekraft** (3D-byggespil i Minecraft-stil med 4 verdener, hammer og TNT)
 
 ## Kør lokalt
 Åbn `index.html` i en browser.

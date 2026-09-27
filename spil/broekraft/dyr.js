@@ -270,6 +270,7 @@ export class Dyr {
     this.pos = new THREE.Vector3(); this.vel = new THREE.Vector3();
     this.yaw = Math.random() * Math.PI * 2; this.målYaw = this.yaw;
     this.tid = Math.random() * 2; this.går = false; this.jord = false; this.fase = 0; this.t = Math.random() * 10;
+    this.skub = new THREE.Vector3();                     // skub fra en eksplosion
     this.flyv = 0; this.turbo = 0; this.hopTid = 0; this.klapTid = 0; this.lydTid = 4 + Math.random() * 10;
   }
 
@@ -301,6 +302,8 @@ export class Dyr {
       const luft = this.jord ? 0 : fart;
       this.vel.x = fx * luft; this.vel.z = fz * luft;
     } else { this.vel.x = fx * fart; this.vel.z = fz * fart; }
+    this.vel.x += this.skub.x; this.vel.z += this.skub.z;
+    this.skub.multiplyScalar(Math.pow(0.08, dt));
 
     const g = this.v.tyngde;
     if (d.evne === "svæver") {                            // spøgelset svæver over jorden

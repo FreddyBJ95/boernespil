@@ -15,7 +15,7 @@ export const VERDENER = [
     himmel: ["#4a9df5", "#cde8ff"], tåge: [30, 72], hav: "#3f8fe0", sol: "#fff6b0", skyer: "#ffffff",
     lys: ["#ffffff", "#7a9a5a", 2.2, 1.4], stemning: "rolig", tyngde: 28,
     dyr: ["ko", "gris", "faar", "hone", "fro", "and", "snegl"], antal: 10,
-    hotbar: ["Græs", "Planker", "Sten", "Glas", "Rød uld", "Gul uld", "Blå uld", "Regnbue", "æg:?"],
+    hotbar: ["Græs", "Planker", "Sten", "Glas", "Rød uld", "Gul uld", "Blå uld", "TNT", "æg:?"],
     vis: ["Græs", "Træstamme", "Blade"],
     hent: ["Planter træer…", "Sår blomster…", "Vækker dyrene…"],
     generer(a) {
@@ -50,7 +50,7 @@ export const VERDENER = [
     himmel: ["#2a1b4d", "#8a5a9c"], tåge: [20, 58], hav: "#3a2a5a", sol: "#f2f0e0", solStr: 44, stjerner: true, skyer: "#6a5a7a",
     lys: ["#c8b0ff", "#40305a", 1.7, 0.9], stemning: "uhyggelig", tyngde: 28,
     dyr: ["zombie", "zombie", "zombiehone", "spogelse"], antal: 9, genfød: true,
-    hotbar: ["Mørkt græs", "Gravsten", "Græskar", "Lygtemand", "Død stamme", "Spindelvæv", "Lilla uld", "Lampe", "æg:zombie"],
+    hotbar: ["Mørkt græs", "Gravsten", "Græskar", "Lygtemand", "Død stamme", "Spindelvæv", "Lilla uld", "TNT", "æg:zombie"],
     vis: ["Mørkt græs", "Gravsten", "Lygtemand"],
     hent: ["Graver gravsten ned…", "Tænder lygtemænd…", "Vækker zombierne… uuuh!"],
     generer(a) {
@@ -89,7 +89,7 @@ export const VERDENER = [
     himmel: ["#b58cff", "#ffd6f2"], tåge: [28, 70], hav: "#8a6fe0", sol: "#fff0a0", skyer: "#ffe0f5",
     lys: ["#fff0ff", "#9a7ab0", 2.2, 1.2], stemning: "glad", tyngde: 28,
     dyr: ["svampeko", "hoppesvamp", "hoppesvamp", "fro", "snegl"], antal: 10,
-    hotbar: ["Svampejord", "Rød svamp", "Blå svamp", "Svampestok", "Lille svamp", "Glødesvamp", "Lyserød uld", "Regnbue", "æg:hoppesvamp"],
+    hotbar: ["Svampejord", "Rød svamp", "Blå svamp", "Svampestok", "Lille svamp", "Glødesvamp", "Lyserød uld", "TNT", "æg:hoppesvamp"],
     vis: ["Rød svamp", "Svampestok", "Blå svamp"],
     hent: ["Gror kæmpe svampe…", "Pumper trampoliner op…", "Boing boing…"],
     generer(a) {
@@ -117,7 +117,7 @@ export const VERDENER = [
     himmel: ["#05051a", "#1c1c44"], tåge: [45, 110], hav: null, sol: "#ffffff", solStr: 26, stjerner: true, jordklode: true, skyer: null,
     lys: ["#ffffff", "#6a6a9a", 2.0, 1.6], stemning: "rum", tyngde: 9,
     dyr: ["rumvaesen", "rumvaesen", "ostemus", "ostemus"], antal: 10,
-    hotbar: ["Ost", "Månesten", "Stjerneblok", "Krystal", "Hvid uld", "Rød uld", "Glas", "Lampe", "æg:rumvaesen"],
+    hotbar: ["Ost", "Månesten", "Stjerneblok", "Krystal", "Hvid uld", "Rød uld", "Glas", "TNT", "æg:rumvaesen"],
     vis: ["Ost", "Stjerneblok", "Månesten"],
     hent: ["Smelter osten…", "Tænder stjernerne…", "Lander raketten…"],
     generer(a) {

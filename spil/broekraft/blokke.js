@@ -5,6 +5,7 @@
 //  gennemsigtig: man kan se igennem (glas) · kryds: tynd plante man kan gå igennem (blomster)
 //  lyser:        altid fuldt oplyst · uknuselig: kan ikke hakkes · skjult: vises ikke i inventaret
 //  hopper:       man hopper højt når man lander på den (som en trampolin)
+//  tnt:          kan tændes med hammeren og sprænger så et hul (se spil.js)
 //  Nye blokke skal altid tilføjes NEDERST, så gemte verdener stadig passer.
 //  lyd:          "græs" | "sten" | "træ" | "sand" | "glas" | "uld" | "metal"
 // Et nyt mønster er en funktion i MØNSTRE der tegner 16×16 pixels med set(x, y, farve).
@@ -57,6 +58,8 @@ export const BLOKKE = [
   { navn: "Månesten", tekstur: "månesten", lyd: "sten" },
   { navn: "Stjerneblok", tekstur: "stjerner", lyser: true, lyd: "glas" },
   { navn: "Krystal", tekstur: "krystal", kryds: true, lyser: true, lyd: "glas" },
+  // --- TNT ---
+  { navn: "TNT", tekstur: { top: "tntTop", side: "tntSide", bund: "tntBund" }, tnt: true, lyd: "græs" },
 ];
 
 export const ID = {};
@@ -207,6 +210,22 @@ const MØNSTRE = {
     fyld(set, r, "#141438", 0.25); prik(set, r, ["#ffffff", "#fff3a0", "#b0c8ff"], 14);
     for (const [cx, cy] of [[4, 11], [11, 4]]) for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) set(cx + dx, cy + dy, hex("#ffffff"));
   },
+  tntSide: (set, r) => {
+    alle((x, y) => set(x, y, lys(hex("#d62d20"), (x % 4 === 1 ? 0.8 : 1) * (y < 2 || y > 13 ? 0.85 : 1) * (1 + (r() - 0.5) * 0.1))));
+    for (let x = 0; x < T; x++) for (let y = 5; y <= 10; y++) set(x, y, hex(y === 5 || y === 10 ? "#c8c8c8" : "#f2f2f2"));
+    const bogstaver = { T: ["###", ".#.", ".#.", ".#."], N: ["#..#", "##.#", "#.##", "#..#"] };
+    let x0 = 2;
+    for (const b of "TNT") {
+      bogstaver[b].forEach((række, dy) => [...række].forEach((c, dx) => { if (c === "#") set(x0 + dx, 6 + dy, hex("#1a1a1a")); }));
+      x0 += bogstaver[b][0].length + 1;
+    }
+  },
+  tntTop: (set, r) => {
+    fyld(set, r, "#9a9a9a", 0.15);
+    alle((x, y) => { if (x === 0 || y === 0 || x === 15 || y === 15) set(x, y, hex("#d62d20")); });
+    alle((x, y) => { if (x >= 6 && x <= 9 && y >= 6 && y <= 9) set(x, y, hex(x >= 7 && x <= 8 && y >= 7 && y <= 8 ? "#1a1a1a" : "#555555")); });
+  },
+  tntBund: (set, r) => fyld(set, r, "#8a8a8a", 0.15),
   krystal: set => alle((x, y) => {
     const a = y >= 4 && Math.abs(x - 4.5) <= (y - 4) * 0.28, b = y >= 7 && Math.abs(x - 11) <= (y - 7) * 0.3, c = y >= 1 && Math.abs(x - 7.5) <= (y - 1) * 0.2;
     if (c) set(x, y, hex(x < 7.5 ? "#e2d0ff" : "#c9a8ff")); else if (a || b) set(x, y, hex(x % 2 ? "#b98cff" : "#9b6ae8")); else set(x, y, [0, 0, 0], 0);

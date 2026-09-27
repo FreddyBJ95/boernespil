@@ -3,6 +3,7 @@
 // tryk = sæt en blok, 🔨 hammer = tryk for at fjerne en blok (eller hold fingeren på blokken),
 // hop-knap (dobbelttryk = flyv). På computer: WASD/pile, mellemrum = hop (to gange = flyv),
 // shift = ned, 1–9 = vælg blok, 0/Q = hammer, E = inventar.
+// 🧨 TNT: sæt den, og slå på den med hammeren — så sprænger den efter et par sekunder.
 // Blokkene står i blokke.js, dyrene i dyr.js og verdenerne i verdener.js — tilføj flere dér.
 
 import * as THREE from "./three.js";
@@ -36,6 +37,9 @@ const gyldig = s => s && (s.æg ? s.æg === "?" || DYR.some(d => d.id === s.æg)
 if (!Array.isArray(gemt.hotbar) || gemt.hotbar.length !== 9 || !gemt.hotbar.every(gyldig)) gemt.hotbar = STANDARD.map(s => ({ ...s }));
 if (!(gemt.valgt >= -1 && gemt.valgt < 9)) gemt.valgt = 0;
 if (gemt.musik === undefined) gemt.musik = true;
+if (!gemt.tnt && !gemt.hotbar.some(s => s.blok === ID.TNT)) gemt.hotbar[7] = { blok: ID.TNT };   // nyt: TNT!
+const nyTNT = !gemt.tnt;
+gemt.tnt = true;
 
 // ---------- 3D-scene: himmel, lys, sol, stjerner, hav og skyer efter verdenens farver ----------
 const renderer = new THREE.WebGLRenderer({ canvas: $("scene"), antialias: true });
@@ -215,34 +219,38 @@ const revne = new THREE.Mesh(new THREE.BoxGeometry(1.012, 1.012, 1.012), new THR
 markør.visible = revne.visible = false;
 scene.add(markør, revne);
 
-const STYK = 160, stykMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.12, 0.12, 0.12), new THREE.MeshBasicMaterial(), STYK);
+const STYK = 400, stykMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.12, 0.12, 0.12), new THREE.MeshBasicMaterial(), STYK);
 stykMesh.frustumCulled = false;
 scene.add(stykMesh);
 const styk = Array.from({ length: STYK }, () => ({ liv: 0 }));
-let stykNr = 0;
+let stykNr = 0, nyeFarver = false;
 const dummy = new THREE.Object3D(), tmp = new THREE.Vector3();
-function stykker(x, y, z, farve) {
-  for (let i = 0; i < 16; i++) {
-    const n = stykNr; stykNr = (stykNr + 1) % STYK;
-    Object.assign(styk[n], {
-      x: x + (Math.random() - 0.5) * 0.6, y: y + (Math.random() - 0.5) * 0.6, z: z + (Math.random() - 0.5) * 0.6,
-      vx: (Math.random() - 0.5) * 4, vy: 1 + Math.random() * 4, vz: (Math.random() - 0.5) * 4, liv: 0.6 + Math.random() * 0.4,
-    });
-    stykMesh.setColorAt(n, farve.clone().multiplyScalar(0.8 + Math.random() * 0.4));
+// Et lille stykke der flyver: g = tyngde (negativ = stiger op som røg), str = størrelse
+function partikel(x, y, z, farve, vx, vy, vz, liv, g = 1, str = 1) {
+  const n = stykNr; stykNr = (stykNr + 1) % STYK;
+  Object.assign(styk[n], { x, y, z, vx, vy, vz, liv, g, str });
+  stykMesh.setColorAt(n, farve);
+  nyeFarver = true;
+}
+function stykker(x, y, z, farve, antal = 16, fart = 4) {
+  for (let i = 0; i < antal; i++) {
+    partikel(x + (Math.random() - 0.5) * 0.6, y + (Math.random() - 0.5) * 0.6, z + (Math.random() - 0.5) * 0.6,
+      farve.clone().multiplyScalar(0.8 + Math.random() * 0.4),
+      (Math.random() - 0.5) * fart, 1 + Math.random() * fart, (Math.random() - 0.5) * fart, 0.6 + Math.random() * 0.4);
   }
-  stykMesh.instanceColor.needsUpdate = true;
 }
 function opdaterStykker(dt) {
+  if (nyeFarver) { stykMesh.instanceColor.needsUpdate = true; nyeFarver = false; }
   for (let i = 0; i < STYK; i++) {
     const s = styk[i];
     if (s.liv > 0) {
-      s.liv -= dt; s.vy -= 20 * (TYNGDE / 28) * dt;
+      s.liv -= dt; s.vy -= 20 * s.g * (TYNGDE / 28) * dt;
       s.x += s.vx * dt; s.z += s.vz * dt;
       const ny = s.y + s.vy * dt;
-      if (verden.erFast(Math.floor(s.x), Math.floor(ny), Math.floor(s.z))) { s.vy = 0; s.vx *= 0.8; s.vz *= 0.8; } else s.y = ny;
+      if (s.g > 0 && verden.erFast(Math.floor(s.x), Math.floor(ny), Math.floor(s.z))) { s.vy = 0; s.vx *= 0.8; s.vz *= 0.8; } else s.y = ny;
     }
     dummy.position.set(s.x || 0, s.y || 0, s.z || 0);
-    dummy.scale.setScalar(s.liv > 0 ? Math.min(1, s.liv * 3) : 0);
+    dummy.scale.setScalar(s.liv > 0 ? Math.min(1, s.liv * 3) * s.str : 0);
     dummy.updateMatrix();
     stykMesh.setMatrixAt(i, dummy.matrix);
   }
@@ -278,6 +286,7 @@ function tryk(x, y) {
   }
   if (!hit) return;
   if (valgtTing().hammer) {                                      // hammeren fjerner blokken med det samme
+    if (BLOKKE[hit.id].tnt) { tændTNT(hit.x, hit.y, hit.z); sving = 1; return; }   // … men TNT bliver tændt!
     if (!BLOKKE[hit.id].uknuselig) { knus(hit, true); sving = 1; }
     return;
   }
@@ -311,6 +320,7 @@ function sætBlok(hit) {
   if (!b.kryds && (overlap(tx, ty, tz, sp.pos, B, HØJ) || dyr.some(d => overlap(tx, ty, tz, d.pos, d.b, d.h)))) return;
   verden.sæt(tx, ty, tz, s.blok);
   Lyd.sæt(b.lyd);
+  if (b.tnt && !tntTip) { tntTip = true; besked("Slå på TNT med 🔨 hammeren! 💥", 3500); }
   sving = 1;
   gemSnart();
 }
@@ -333,6 +343,96 @@ function knus(hit, hammer = false) {
   if (over && BLOKKE[over].kryds) verden.sæt(hit.x, hit.y + 1, hit.z, 0);          // blomsten ovenpå ryger med
   stykker(hit.x + 0.5, hit.y + 0.5, hit.z + 0.5, atlas.farve(hit.id));
   if (hammer) Lyd.bank(BLOKKE[hit.id].lyd); else Lyd.knus(BLOKKE[hit.id].lyd);
+  gemSnart();
+}
+
+// ---------- TNT ----------
+const tændte = [];
+let rystelse = 0, tntTip = false;
+const RØG = new THREE.Color("#8f8f8f"), ILD = ["#fff3a0", "#ffd23f", "#ff8c1a", "#ff4d2e"].map(f => new THREE.Color(f));
+function tændTNT(x, y, z, lunte = 2.2) {
+  verden.sæt(x, y, z, 0);
+  if (tændte.length >= 40) return;
+  const g = new THREE.Group();
+  g.add(atlas.blokMesh(ID.TNT));
+  const hvid = new THREE.Mesh(new THREE.BoxGeometry(1.02, 1.02, 1.02), new THREE.MeshBasicMaterial({ color: "#ffffff", transparent: true, opacity: 0, depthWrite: false }));
+  g.add(hvid);
+  scene.add(g);
+  tændte.push({ g, hvid, pos: new THREE.Vector3(x + 0.5, y, z + 0.5), vel: new THREE.Vector3(0, lunte < 1 ? 3 : 2, 0), tid: 0, lunte, røgT: 0 });
+  Lyd.tænd();
+  gemSnart();
+}
+function opdaterTNT(dt) {
+  for (let i = tændte.length - 1; i >= 0; i--) {
+    const t = tændte[i];
+    t.tid += dt;
+    t.vel.y = Math.max(-30, t.vel.y - TYNGDE * dt);
+    const r = verden.bevæg(t.pos, tmp.copy(t.vel).multiplyScalar(dt), 0.49, 0.98);
+    if (r.jord) { t.vel.set(0, 0, 0); }
+    const rest = t.lunte - t.tid;
+    t.hvid.material.opacity = Math.sin(t.tid * (8 + (t.tid / t.lunte) * 30)) > 0.2 ? 0.75 : 0;   // blinker hurtigere og hurtigere
+    t.g.scale.setScalar(rest < 0.3 ? 1 + (0.3 - rest) * 0.7 : 1);
+    t.g.position.set(t.pos.x, t.pos.y + 0.5, t.pos.z);
+    t.røgT -= dt;
+    if (t.røgT <= 0) {                                         // lunten ryger og hvæser
+      t.røgT = 0.08;
+      partikel(t.pos.x, t.pos.y + 1.05, t.pos.z, RØG, (Math.random() - 0.5) * 0.5, 1.2, (Math.random() - 0.5) * 0.5, 0.9, -0.12, 1.6);
+      if (i < 2) Lyd.lunte();
+    }
+    if (rest <= 0) {
+      tændte.splice(i, 1);
+      scene.remove(t.g);
+      t.g.traverse(c => { if (c.isMesh) { c.geometry.dispose(); c.material.dispose(); } });
+      eksploder(t.pos.x, t.pos.y + 0.5, t.pos.z);
+    }
+  }
+}
+function eksploder(cx, cy, cz) {
+  const R = 3.3;
+  for (let x = Math.floor(cx - R); x <= cx + R; x++) for (let y = Math.floor(cy - R); y <= cy + R; y++) for (let z = Math.floor(cz - R); z <= cz + R; z++) {
+    const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy, z + 0.5 - cz);
+    if (d > R || (d > R - 0.9 && Math.random() < 0.5)) continue;
+    const id = verden.inde(x, y, z) ? verden.hent(x, y, z) : 0;
+    if (!id || BLOKKE[id].uknuselig) continue;
+    if (BLOKKE[id].tnt) { tændTNT(x, y, z, 0.25 + Math.random() * 0.5); continue; }   // kædereaktion!
+    verden.sæt(x, y, z, 0);
+    if (Math.random() < 0.4) {
+      const f = atlas.farve(id), a = Math.max(0.3, d);
+      for (let k = 0; k < 3; k++) partikel(x + 0.5, y + 0.5, z + 0.5, f.clone().multiplyScalar(0.8 + Math.random() * 0.4),
+        (x + 0.5 - cx) / a * 7 + (Math.random() - 0.5) * 3, 3 + Math.random() * 6, (z + 0.5 - cz) / a * 7 + (Math.random() - 0.5) * 3, 0.9 + Math.random() * 0.6);
+    }
+  }
+  for (let i = 0; i < 45; i++) {                                // ild
+    const v = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.3, Math.random() - 0.5).normalize().multiplyScalar(3 + Math.random() * 7);
+    partikel(cx, cy, cz, ILD[i % ILD.length], v.x, v.y, v.z, 0.4 + Math.random() * 0.5, -0.1, 2.2);
+  }
+  for (let i = 0; i < 25; i++) {                                // røg
+    partikel(cx + (Math.random() - 0.5) * 3, cy + (Math.random() - 0.5) * 2, cz + (Math.random() - 0.5) * 3, RØG,
+      (Math.random() - 0.5) * 2, 1 + Math.random() * 2, (Math.random() - 0.5) * 2, 1.2 + Math.random() * 0.8, -0.1, 3.5);
+  }
+  verden.opdater(40);                                           // vis hullet med det samme
+  // dyr bliver blæst væk (zombier og spøgelser siger puf), og man selv får et skub
+  for (const d of [...dyr]) {
+    const dx = d.pos.x - cx, dz = d.pos.z - cz, a = Math.max(0.5, Math.hypot(dx, d.pos.y - cy, dz));
+    if (a > R + 3) continue;
+    if (d.def.klap === "puf") { puf(d); continue; }
+    const k = (R + 3 - a) * 2.5;
+    d.skub.set(dx / a * k, 0, dz / a * k);
+    d.vel.y = 6 + k;
+    d.klapTid = 0.5;
+  }
+  const px = sp.pos.x - cx, py = sp.pos.y + 0.9 - cy, pz = sp.pos.z - cz, afst = Math.max(0.5, Math.hypot(px, py, pz));
+  if (afst < R + 4) {
+    const k = (R + 4 - afst) * 2;
+    sp.vel.x += px / afst * k; sp.vel.z += pz / afst * k;
+    sp.vel.y = Math.max(sp.vel.y, 4 + k * 0.6);
+    sp.jord = false;
+  }
+  rystelse = Math.min(1.2, rystelse + Math.max(0, 1 - afst / 30));
+  Lyd.bum(afst);
+  if (afst < 30) E.flash("#fff1b8");
+  const p = tmp.set(cx, cy, cz).project(kamera);
+  if (p.z < 1 && Math.abs(p.x) < 1 && Math.abs(p.y) < 1) E.tekstPop((p.x + 1) / 2 * window.innerWidth, (1 - p.y) / 2 * window.innerHeight, "BOOM!", { s: 80 });
   gemSnart();
 }
 
@@ -637,11 +737,14 @@ function størrelse() {
 window.addEventListener("resize", størrelse);
 størrelse();
 
-let tid = 0, sidst = performance.now();
+let tid = 0, sidst = performance.now(), fejlVist = false;
 renderer.setAnimationLoop(nu => {
+  try { tegnFrame(nu); } catch (fejl) { if (!fejlVist) { fejlVist = true; console.error(fejl); } }   // spillet kører videre selv hvis noget går galt
+});
+function tegnFrame(nu) {
   const dt = Math.min(0.05, (nu - sidst) / 1000);
   sidst = nu; tid += dt;
-  if (iGang && !pause) { opdaterSpiller(dt); opdaterHak(dt); genfød(dt); }
+  if (iGang && !pause) { opdaterSpiller(dt); opdaterHak(dt); genfød(dt); opdaterTNT(dt); }
   else if (!iGang) sp.yaw += dt * 0.06;                                           // titelskærm: kig langsomt rundt
   for (const d of dyr) d.opdater(dt, sp.pos);
   verden.opdater(4);
@@ -650,6 +753,12 @@ renderer.setAnimationLoop(nu => {
 
   const bob = sp.jord && !sp.flyver ? Math.abs(Math.sin(gangFase * Math.PI)) * 0.06 : 0;
   kamera.position.set(sp.pos.x, sp.pos.y + ØJE + bob, sp.pos.z);
+  if (rystelse > 0) {                                                             // skærmen ryster efter et brag
+    rystelse = Math.max(0, rystelse - dt * 1.6);
+    kamera.position.x += (Math.random() - 0.5) * rystelse * 0.3;
+    kamera.position.y += (Math.random() - 0.5) * rystelse * 0.3;
+    kamera.position.z += (Math.random() - 0.5) * rystelse * 0.3;
+  }
   kamera.rotation.set(sp.pitch, sp.yaw, 0);
   himmel.position.copy(kamera.position);
   if (stjerner) stjerner.position.copy(kamera.position);
@@ -661,7 +770,7 @@ renderer.setAnimationLoop(nu => {
   hånd.rotation.x = -s * 0.8;
   hånd.visible = iGang;
   renderer.render(scene, kamera);
-});
+}
 
 // ---------- Start ----------
 function startSpil() {
@@ -672,7 +781,7 @@ function startSpil() {
   luk("start");
   document.body.classList.add("i-gang");
   besked(`${cfg.ikon} ${cfg.navn}`, 2400);
-  setTimeout(() => { if (iGang) besked("Tryk = byg 🧱   🔨 = fjern   Træk = kig 👀", 5000); }, 2500);
+  setTimeout(() => { if (iGang) besked(nyTNT ? "NYT: 🧨 TNT! Sæt den og slå på den med 🔨" : "Tryk = byg 🧱   🔨 = fjern   Træk = kig 👀", 5000); }, 2500);
 }
 tegnHotbar();
 opdaterHånd();

@@ -157,6 +157,7 @@ export class Verden {
       const id = this.data[this.i(x, y, z)];
       if (!id) continue;
       const b = BLOKKE[id];
+      if (!b) continue;                                            // ukendt blok — spring over
       if (b.kryds) { this.kryds(x, y, z, id, pos, uv, farve, idx); continue; }
       for (const F of FLADER) {
         const nid = this.hent(x + F.n[0], y + F.n[1], z + F.n[2]);

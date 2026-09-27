@@ -5,7 +5,9 @@ let ac = null, ud = null, musikG = null, ekko = null, støjBuf = null, musikTil 
 export function klar() {
   if (ac) { if (ac.state === "suspended") ac.resume(); return; }
   ac = window.Effekter.audio();
-  ud = ac.createGain(); ud.gain.value = 0.9; ud.connect(ac.destination);
+  ud = ac.createGain(); ud.gain.value = 0.9;
+  const komp = ac.createDynamicsCompressor();          // så store brag ikke skratter
+  ud.connect(komp); komp.connect(ac.destination);
   musikG = ac.createGain(); musikG.gain.value = musikTil ? 1 : 0; musikG.connect(ud);
   // ekko til rum-musikken
   const forsink = ac.createDelay(1), tilbage = ac.createGain();
@@ -153,6 +155,21 @@ export function puf() {           // zombier og spøgelser der forsvinder i konf
   if (!ac) return;
   sus(nu(), 0.3, 3000, 400, 0.4, "bandpass", 0.8);
   [1047, 1319, 1568].forEach((f, i) => tone(f, nu() + 0.08 + i * 0.06, 0.2, "triangle", 0.12));
+}
+// ---------- TNT ----------
+export function tænd() { if (ac) sus(nu(), 0.35, 800, 5000, 0.25, "bandpass", 1.5); }
+export function lunte() {
+  if (!ac) return;
+  sus(nu(), 0.09, 6000, 4000, 0.06, "highpass", 0.7);
+  if (Math.random() < 0.3) tone(2000 + Math.random() * 1500, nu(), 0.02, "square", 0.03);
+}
+export function bum(afstand = 0) {
+  if (!ac) return;
+  const v = Math.max(0.25, 1 - afstand / 35), t = nu();
+  sus(t, 1.4, 1500, 50, 0.9 * v, "lowpass", 0.6);
+  tone(80, t, 0.7, "sine", 0.8 * v, 28);
+  tone(45, t, 1.0, "sine", 0.5 * v, 25);
+  for (let i = 0; i < 8; i++) sus(t + 0.05 + Math.random() * 0.6, 0.07, 3500, 1800, 0.18 * v, "bandpass", 1.2);
 }
 export function boing() { if (ac) glid(180, 620, nu(), 0.35, { vol: 0.22, vibHz: 14, vib: 50 }); }
 export function bank(m) {         // hammerslag
