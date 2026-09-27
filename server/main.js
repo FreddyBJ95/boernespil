@@ -4,6 +4,7 @@ import { Verdenslager, metadata, VERSION } from "./verdener.js";
 import { Rum } from "./rum.js";
 import { FIGURER, læsBesked, send } from "./protokol.js";
 import { hentCertifikater, certifikatSvar } from "./certifikat.js";
+import { Netværkstjek } from "./netvaerk.js";
 
 const ROD = fileURLToPath(new URL("../", import.meta.url));
 const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".ico": "image/x-icon", ".webmanifest": "application/manifest+json", ".mp3": "audio/mpeg", ".woff2": "font/woff2" };
@@ -15,8 +16,9 @@ export function privat(ip) {
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { "content-type": MIME[".json"], "cache-control": "no-store" } });
 
 export class BroekraftServer {
-  constructor({ lager = new Verdenslager(), adresser = [] } = {}) {
+  constructor({ lager = new Verdenslager(), adresser = [], netværkstjek = new Netværkstjek() } = {}) {
     Object.assign(this, { lager, adresser });
+    this.netværkstjek = netværkstjek; this.tabletSet = false;
     this.rum = new Map(); this.job = new Map(); this.spillere = new Set(); this.låse = new Map();
     this.token = crypto.randomUUID();
     this.værter = new Set(["localhost", "127.0.0.1", "[::1]", ...adresser]);
@@ -120,6 +122,7 @@ export class BroekraftServer {
       if (!this.værter.has(url.hostname) || (!lokal(ip) && !privat(ip))) return new Response("Kun lokalnettet", { status: 403 });
       const kontrol = sti === "/kontrol" || sti.startsWith("/kontrol/") || sti.startsWith("/api/");
       if (kontrol && !lokal(ip)) return new Response("Kun på serverens computer", { status: 403 });
+      if (!lokal(ip) && !kontrol) this.tabletSet = true;
       if (this.certifikater && (sti === "/certifikat" || sti.startsWith("/certifikat/"))) {
         if (!["GET", "HEAD"].includes(req.method)) return new Response("Metoden er ikke tilladt", { status: 405 });
         const svar = certifikatSvar(sti, this.certifikater, `https://${url.hostname}:${this.httpsPort}/`);
@@ -151,6 +154,7 @@ export class BroekraftServer {
   async api(req, sti) {
     if (sti === "/api/status" && req.method === "GET") return json({
       token: this.token, version: VERSION, adresser: this.adresser.map(ip => this.certifikater ? `https://${ip}:${this.httpsPort}/` : `http://${ip}:${this.port}/`), datamappe: this.lager.rod,
+      netværk: await this.netværkstjek.hent(this.adresser), tabletSet: this.tabletSet,
       certifikatAdresser: this.certifikater ? this.adresser.map(ip => `http://${ip}:${this.port}/certifikat`) : [], aftryk: this.certifikater?.aftryk,
       verdener: [...this.metadata.values()].map(m => ({ ...m, startet: this.rum.has(m.id), spillere: this.rum.get(m.id)?.spillere.size || 0 })),
       spillere: [...this.spillere].filter(s => s.rum).map(s => ({ figur: s.figur, verden: s.rum.meta.navn })),

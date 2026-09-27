@@ -19,9 +19,14 @@ skrive `xattr -d com.apple.quarantine ` i Terminal, trække programfilen ind og 
 Hvis firewall spørger, vælg **Tillad** på **private netværk**. Routeren skal ikke ændres;
 opret ikke port-forwarding. Serveren lytter kun på computerens private IPv4-adresser og lokaladressen.
 
-**Tabletten står bare og venter?** På Windows skyldes det næsten altid firewallen.
+**Tabletten står bare og venter?** Kontrollér wifi og firewall med afsnittet **Tabletten kan ikke komme ind?**
+i kontrolpanelet. På Windows læser serveren netværksprofilen for de adresser, den lytter på, cirka hvert
+minut. Ved **Offentligt netværk** åbnes vejledningen automatisk. Et ukendt tjek betyder, at profilen ikke
+kunne læses; det stopper ikke serveren. Der ændres ingen indstillinger automatisk, og profiltjekket
+beviser ikke, at firewallen tillader adgang. Panelet viser også, om en anden enhed har nået serveren.
+
 1. Gør hjemmets wifi privat: **Indstillinger → Netværk og internet → Wi-Fi →** klik på netværket →
-   vælg **Privat**. Et offentligt netværk blokerer alle, der vil ind på computeren.
+   vælg **Privat**. Brug kun Privat på et netværk, du stoler på. En offentlig profil kan blokere indgående forbindelser.
 2. Tillad programmet: tryk Start og skriv *firewall*. Åbn **Tillad en app gennem Windows Defender Firewall**
    → **Rediger indstillinger** → **Tillad en anden app… → Gennemse**. Vælg `BroekraftServer.exe` →
    **Tilføj**, og sæt flueben ved **Privat**.

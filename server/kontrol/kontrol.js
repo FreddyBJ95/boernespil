@@ -1,6 +1,6 @@
 // Panelet bruger textContent til verdensnavne og viser aldrig indtastninger som HTML.
 const $ = s => document.querySelector(s);
-let token, sidsteAdresser = "", sidsteVerdener = "", sidsteCertifikater = "";
+let token, sidsteAdresser = "", sidsteVerdener = "", sidsteCertifikater = "", sidsteNetstatus = "";
 const figurer = { gris: "🐷", ko: "🐮", faar: "🐑", hone: "🐔", fro: "🐸", and: "🦆", snegl: "🐌", zombie: "🧟" };
 const tekst = (tag, indhold) => { const e = document.createElement(tag); e.textContent = indhold; return e; };
 
@@ -54,6 +54,7 @@ async function opdater() {
   const svar = await fetch("/api/status"), b = await svar.json();
   if (!svar.ok) throw new Error(b.fejl || "Kan ikke hente status");
   token = b.token;
+  visNetværk(b.netværk, b.tabletSet);
   $("#aftryk").textContent = b.aftryk || "Certifikatet er ikke klar.";
   if (JSON.stringify(b.certifikatAdresser) !== sidsteCertifikater) {
     sidsteCertifikater = JSON.stringify(b.certifikatAdresser);
@@ -88,6 +89,24 @@ async function opdater() {
   $("#opret button").disabled = arbejder;
   // Når verdenen er klar, forsvinder "bliver oprettet…" igen (listen ovenfor viser "Klar")
   if (!arbejder && $("#besked").textContent === OPRETTER) $("#besked").textContent = "";
+}
+
+// Privat Windows-profil er ikke en garanti for adgang gennem firewallen.
+function visNetværk(netværk, tabletSet) {
+  const offentlige = (netværk?.profiler || []).filter(p => p.profil === "Public");
+  const tekst = offentlige.length
+    ? `Windows bruger Offentligt netværk ved ${offentlige.flatMap(p => p.adresser).join(", ")}. Det kan blokere tabletten. Se hjælpen nedenfor.`
+    : netværk?.status === "klar"
+    ? "Windows-netværksprofilen er kontrolleret. Ingen af serverens fundne forbindelser står som Offentlig. Hvis tabletten stadig venter, se firewall-hjælpen nedenfor."
+    : netværk?.status === "ikke-windows"
+    ? "Det automatiske netværkstjek er til Windows. Brug hjælpen nedenfor, hvis tabletten ikke kan forbinde."
+    : "Netværksprofilen kunne ikke læses. Serveren kan stadig bruges. Kontrollér wifi og firewall med hjælpen nedenfor.";
+  $("#netstatus").textContent = tekst;
+  if (offentlige.length && tekst !== sidsteNetstatus) $("#netguide").open = true;
+  sidsteNetstatus = tekst;
+  $("#tabletstatus").textContent = tabletSet
+    ? "En anden enhed på netværket har nået serveren siden opstart."
+    : "Serveren har endnu ikke modtaget besøg fra en anden enhed på netværket.";
 }
 
 const OPRETTER = "Verdenen bliver oprettet…";

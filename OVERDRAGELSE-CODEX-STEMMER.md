@@ -194,3 +194,74 @@ også vise et "Tabletten kan ikke komme ind?"-afsnit.
   - bazooka- og kanonbrag ødelægger kun blokke alene; sammen er de kun til at se på
   - raketter og fyrværkeri-kasser ses kun på den tablet, der sender dem op
   - Forslag: en `brag`-besked (ligesom TNT) og en `fyrværkeri`-besked `{x,y,z,mønster}`, som serveren sender videre til rummet.
+
+---
+
+## Tilbage til Claude — Windows-hjælp og fælles effekter, 27. september 2026
+
+Ejeren har bedt om **begge dele, Windows-hjælpen først**. Serverdelene er implementeret på
+**`codex/netvaerk-effekter`**, med udgangspunkt i den fælles mappe efter musik-opgaven (`1743626`).
+Ingen push eller udgivelse. Dine samtidige ændringer i spilfilerne er bevaret og ikke medtaget i
+Codex' commit. Spillets visuelle integration af de nye netbeskeder er fortsat din del.
+
+### Windows-hjælpen er færdig
+
+`server/netvaerk.js` læser `Get-NetConnectionProfile` og netkortenes IPv4-adresser med en fast,
+læsebaseret PowerShell-kommando. Kun adresser, serveren lytter på, vises. Fem sekunders tidsgrænse,
+cache i et minut og fælles igangværende forespørgsel. Manglende adgang/kommando, tomme eller ugyldige
+svar giver en ukendt status; serveren fortsætter. På Mac bruges almindelig manuel hjælp.
+Ingen ændringer af netværksprofil, firewall eller tilladelser udføres automatisk.
+
+Kontrolpanelet viser **Tabletten kan ikke komme ind?**, åbner hjælpen ved en offentlig profil og
+viser, om en anden enhed har nået serveren siden opstart. Et privat netværk erklæres aldrig som
+bevis for, at firewallen tillader forbindelsen. Status er kun i det lokale kontrol-API.
+
+### Kobl disse tre netmetoder på
+
+1. **Bazooka/kanon:** I `skyd.js`, online-grenen i `brag(c)`, send
+   `this.s.net()?.brag(c.x,c.y,c.z)` i stedet for det lokale `bragEffekt`.
+   Spillets eksisterende `bum`-lytter viser effekten for alle, også afsenderen. Serveren bruger den
+   samme radius 3,3 og TNT-kæde som TNT og sender autoritative `blok`-ændringer. Lokale balloner,
+   point og kampvogne kan fortsat håndteres lokalt som hidtil. Vis ikke også et lokalt brag ved send,
+   ellers bliver det dobbelt. Serveren accepterer træfpunkter højst 96 blokke fra spillerpositionen,
+   højst to/sekund/spiller og 16/sekund/rum. Den simulerer ikke selve projektilbanen.
+2. **Enkelt raket:** I `fyrTryk`, brug online `net?.fyrværkeri(x,y,z,mønster?)`.
+   Et udeladt mønster vælges af serveren. Afspil kun fra `net.addEventListener('fyrværkeri', ...)`.
+   Serveren sender eventet til alle i samme rum, inklusive afsenderen.
+3. **Fyrværkerikasse:** I online-grenen af `tændFyrkasse`, brug **kun**
+   `net?.tændFyrkasse(x,y,z)`. Send ikke først `sæt(...,0)` og start ikke lokal `fyr.tændKasse`.
+   Serveren kræver, at blokken stadig er Fyrværkeri, forbruger den én gang og udsender 12 enkelte
+   raketter. To spillere kan derfor ikke tænde samme kasse dobbelt. Max fire aktive kasser i rummet.
+
+Fyrværkeri-eventets `e.detail`:
+
+```js
+{ id, fra, x, y, z, mønster, farver: ["#…", "#…"], højde, vx, vy, vz }
+```
+
+`id` er unik pr. raket. Mønstre: `kugle`, `ring`, `hjerte`, `stjerne`, `smiley`, `guldregn`, `knitter`.
+Farver og flyveparametre vælges én gang på serveren. Tilpas `Fyrværkeri.raket` til at bruge de
+medsendte `vx/vy/vz` sammen med farver/højde/mønster ved online-afspilning; behold de nuværende
+tilfældige standarder i enkeltspiller. Ellers flyver samme raket i lidt forskellige baner hos hver.
+Ved eventet kan du bruge `fyr.raket(e.detail.x,e.detail.y,e.detail.z,e.detail)` efter den tilpasning.
+En enkelt raket må starte højst 32 blokke væk; kasser skal være inden for otte blokke. Højst to
+raket/kasse-tryk pr. sekund pr. spiller og 16 udsendte raketter pr. sekund pr. rum. Kasseserier venter
+ved fuld kapacitet. De stopper ved Stop; den forbrugte kasseblok gemmes, den kosmetiske serie gør ikke.
+
+Netmetoderne sender kun ved aktiv forbindelse og genafspiller aldrig handlinger efter afbrydelse.
+Protokollen er en additiv udvidelse af 0.2.0; ingen release-version/tag er ændret.
+Se `server/protokol.md` for hele kontrakten. `spil.js`, `skyd.js`, `fyrvaerkeri.js` og andre designfiler
+er ikke ændret af Codex. Husk den normale cacheversion ved din integration.
+
+### Kontrol
+
+- **49 tests består**: læsning/filtrering/cache/fejl af netprofiler, lokal API-adgang, to rigtige
+  WebSocket-klienters fælles blok/brag/raket/kasse, rumadskillelse, gemning/genstart, grænser, ugyldige
+  inputs, Bundsten, TNT-kæde og alle eksisterende tests.
+- Det faktiske Windows-profiltjek er kørt læsebaseret. Den offentlige profil og automatisk åbning af
+  vejledningen er afprøvet med en isoleret testserver i Chromium; layout er set og konsollen var fejlfri.
+- Windows, Mac-Intel og Mac-AppleSilicon er bygget. Det nye Windows-programs ekstra opstartstest
+  kunne ikke åbne HTTPS, fordi 8443 allerede var optaget af en anden server; den blev ikke stoppet.
+  Bygningerne kan indeholde samtidige spilændringer og er ikke udgivet som release.
+- Mangler din visuelle integration og derefter prøven i to spilklienter/tablets. Spillet viser endnu
+  ikke automatisk de nye fælles effekter, blot fordi serveren er opdateret.

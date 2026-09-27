@@ -13,12 +13,12 @@ function hændelse(f, type, vælg = () => true) {
   });
 }
 
-async function opsæt() {
+async function opsæt({ netværkstjek } = {}) {
   const rod = await Deno.makeTempDir({ prefix: "broekraft-test-" }), lager = new Verdenslager(rod);
   const meta = metadata({ navn: "Familiens verden", type: "græsø", bredde: 128, maksSpillere: 2 });
   const data = new Uint8Array(128 * 128 * 64); data.fill(26, 0, 128 * 128);
   await lager.gem(meta, data);
-  const app = new BroekraftServer({ lager }); await app.init(); await app.start(meta.id);
+  const app = new BroekraftServer({ lager, netværkstjek }); await app.init(); await app.start(meta.id);
   const http = Deno.serve({ hostname: "127.0.0.1", port: 0, onListen() {} }, (req, info) => app.håndter(req, info));
   app.port = http.addr.port; app.kørTimere();
   const base = `http://127.0.0.1:${http.addr.port}`;
@@ -130,5 +130,48 @@ Deno.test("Stemmer: voksenkontakt gemmes og virker straks; 0.1.0 spiller stadig"
     await v.app.start(v.meta.id);
     assert.equal(v.app.rum.get(v.meta.id).meta.stemmer, false);
     assert.equal(v.app.rum.get(v.meta.id).hent(66, 10, 64), 7);
+  } finally { for (const k of klienter) k.luk(); await vent(30); await v.luk(); }
+});
+
+Deno.test("HTTP: netværksdiagnose er kun lokal og skelner mellem server og anden enhed", async () => {
+  const v = await opsæt({ netværkstjek: { hent: async () => ({ status: "klar", profiler: [{ profil: "Public", adresser: ["192.168.1.2"] }] }) } });
+  const req = (sti, ip) => v.app.håndter(new Request(v.base + sti), { remoteAddr: { hostname: ip } });
+  try {
+    let status = await (await req("/api/status", "127.0.0.1")).json();
+    assert.equal(status.netværk.profiler[0].profil, "Public"); assert.equal(status.tabletSet, false);
+    assert.equal((await req("/api/status", "192.168.1.3")).status, 403);
+    const lokalSide = await req("/certifikat", "127.0.0.1"); await lokalSide.text();
+    assert.equal(v.app.tabletSet, false);
+    const tablet = await req("/verdensliste", "192.168.1.3"); await tablet.text();
+    status = await (await req("/api/status", "127.0.0.1")).json(); assert.equal(status.tabletSet, true);
+  } finally { await v.luk(); }
+});
+
+Deno.test("WS: fælles brag gemmes, raketter og kasser deles kun i samme verden", async () => {
+  const v = await opsæt(), klienter = [];
+  try {
+    const anden = metadata({ navn: "Andet rum", type: "fyrvaerkeri", bredde: 128 });
+    await v.lager.gem(anden, new Uint8Array(128 * 128 * 64)); await v.app.start(anden.id);
+    for (const figur of ["gris", "ko", "and"]) klienter.push(await forbind(v.base.replace("http", "ws") + "/ws", { figur }));
+    const [a, b, c] = klienter;
+    await a.vælg(v.meta.id); await b.vælg(v.meta.id); await c.vælg(anden.id);
+    const fremmede = []; for (const type of ["bum", "fyrværkeri"]) c.addEventListener(type, e => fremmede.push(e.detail));
+    let blok = hændelse(b, "blok", e => e.x === 66 && e.id === 7);
+    a.sæt(66, 2, 64, 7); await blok;
+    const bragA = hændelse(a, "bum"), bragB = hændelse(b, "bum");
+    blok = hændelse(b, "blok", e => e.x === 66 && e.id === 0);
+    a.brag(66.5, 2.5, 64.5); await blok; assert.deepEqual(await bragA, await bragB);
+    let raketA = hændelse(a, "fyrværkeri"), raketB = hændelse(b, "fyrværkeri");
+    a.fyrværkeri(65, 3, 64, "ring"); assert.deepEqual(await raketA, await raketB);
+    blok = hændelse(b, "blok", e => e.x === 67 && e.id === 61);
+    a.sæt(67, 2, 64, 61); await blok;
+    raketA = hændelse(a, "fyrværkeri"); raketB = hændelse(b, "fyrværkeri");
+    a.tændFyrkasse(67, 2, 64); assert.deepEqual(await raketA, await raketB);
+    assert.equal(v.app.rum.get(v.meta.id).hent(67, 2, 64), 0);
+    await c.verdener(); assert.deepEqual(fremmede, []);
+    for (const k of klienter) k.luk(); await vent(30);
+    await v.app.stop(v.meta.id); await v.app.start(v.meta.id);
+    assert.equal(v.app.rum.get(v.meta.id).hent(66, 2, 64), 0);
+    assert.equal(v.app.rum.get(v.meta.id).hent(67, 2, 64), 0);
   } finally { for (const k of klienter) k.luk(); await vent(30); await v.luk(); }
 });

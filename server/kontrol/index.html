@@ -17,6 +17,21 @@
 
   <main>
     <p id="besked" role="status" aria-live="polite"></p>
+    <section>
+      <h2>Tabletten kan ikke komme ind?</h2>
+      <p id="netstatus" role="status" aria-live="polite">Kontrollerer computerens netværk…</p>
+      <p id="tabletstatus"></p>
+      <details id="netguide">
+        <summary>Vis hjælp til wifi og firewall</summary>
+        <ol class="trin">
+          <li>Computer og tablet skal være på samme hjemmenetværk. Undgå gæstenetværk, der kan holde enheder adskilt.</li>
+          <li>På Windows: Åbn <b>Indstillinger → Netværk og internet → Wi-Fi</b> (eller <b>Ethernet</b>), vælg hjemmets forbindelse og vælg <b>Privat</b>. Gør kun et netværk privat, hvis du kender og stoler på det.</li>
+          <li>Søg efter <b>Tillad en app gennem Windows Defender Firewall</b>. Vælg <b>Rediger indstillinger → Tillad en anden app → Gennemse</b>, vælg den <b>BroekraftServer.exe</b>, du starter, og sæt flueben ved <b>Privat</b>.</li>
+          <li>Genstart serveren, og scan den nye QR-kode. Hvis siden åbner, men viser certifikatfejl, følg certifikattrinnet nedenfor.</li>
+        </ol>
+        <p>Netværkstjekket opdateres cirka hvert minut. Det kan ikke afgøre, om firewallen tillader forbindelsen. På Mac kontrolleres appens adgang under Systemindstillinger → Netværk → Firewall. Routerens porte skal ikke åbnes.</p>
+      </details>
+    </section>
 
     <section class="forbind">
       <div>

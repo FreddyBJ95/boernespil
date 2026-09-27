@@ -40,6 +40,51 @@ Bundsten kan hverken sættes eller fjernes. Blokke kan ikke placeres i en spille
 Maksimum gælder pr. verden. Afvist verdensskift bevarer den gamle tilslutning.
 Der er ingen navne eller chat i protokollen. Dyrene simuleres lokalt på hver tablet.
 
+## Fælles brag og fyrværkeri (tilføjelse på codex/netvaerk-effekter)
+
+De nye metoder på `net` sender kun, mens `net.klar` er sand. De lægges aldrig i kø efter afbrydelse.
+Spillets visuelle integration udføres af Claude. Den eksisterende version 0.2.0 er bevaret; udvidelsen
+ændrer ingen eksisterende beskeder. Gamle klienter ignorerer nye hændelser og modtager stadig blok/bum.
+
+| Klientmetode | Besked | Serverens handling |
+|---|---|---|
+| `brag(x,y,z)` | `{t:"brag",x,y,z}` | Samme faste radius 3,3 og TNT-kæde som TNT; udsender `blok` og `bum` |
+| `fyrværkeri(x,y,z,mønster?)` | `{t:"fyrværkeri",x,y,z,mønster?}` | Vælger fælles farver/flyveparametre og sender én raket til alle i rummet |
+| `tændFyrkasse(x,y,z)` | `{t:"fyrkasse",x,y,z}` | Kræver Fyrværkeri-blok, fjerner den én gang og sender en serie med 12 raketter |
+
+Alle koordinater skal være endelige tal inden for verdens x/z-grænser og y=0…højde+64.
+Brag må være højst 96 blokke fra seneste spillerposition; klienten angiver træfpunktet, mens serveren
+bestemmer selve eksplosionen. Den simulerer ikke projektilbanen. Højst to brag/sekund pr. spiller og 16
+pr. rum. Klientens foreslåede radius eller øvrige felter ignoreres. Bundsten bevares.
+
+En enkelt raket må starte højst 32 blokke fra spilleren. En kasse kræver heltalskoordinater inde i
+verdenen og en afstand på højst otte blokke. Raketter og kassetændinger deler grænsen to/sekund pr.
+spiller. Højst fire aktive kasser pr. rum. Rummet sender højst 16 raketter/sekund; kasseserier venter
+på ledig kapacitet. Hvert kassetryk forbruger blokken før serien oprettes, så samtidige tryk ikke duplikerer.
+Kasseserier følger serverens tick, fortsætter efter afsenderen forlader rummet og ophører ved Stop.
+Den forbrugte blok gemmes; uafsluttede kosmetiske serier gemmes ikke.
+
+Server → alle i samme rum, **inklusive afsenderen**:
+
+```js
+{ t: "fyrværkeri", id, fra, x, y, z, mønster, farver: ["#…", "#…"], højde, vx, vy, vz }
+```
+
+`id` er serverens UUID pr. raket. Mønster vælges fra `kugle`, `ring`, `hjerte`, `stjerne`, `smiley`,
+`guldregn`, `knitter`; udeladt mønster vælges af serveren, ukendte mønstre afvises. Højde er 16…26 over
+startpunktet; vy=22…27 og vx/vz=−1,25…1,25. Afspil fra eventet og brug de medsendte værdier, så samme
+raket har samme bane, mønster og farver hos alle. Ingen skader eller blokændringer fra raketter.
+
+Kontrolpanelets lokale `GET /api/status` har desuden `netværk: {status,profiler}` og `tabletSet`.
+Status er `klar`, `ukendt` eller `ikke-windows`. En profil er `{adresser,profil}` med profil
+`Public`, `Private`, `DomainAuthenticated` eller `Unknown`. Kun adresser, serveren lytter på, medtages;
+SSID/netværksnavne indsamles ikke. Profiler læses højst én gang/minut via en fast PowerShell-kommando,
+med fem sekunders tidsgrænse. `tabletSet` betyder en godkendt forespørgsel fra en anden lokal IPv4-enhed
+siden opstart, ikke en garanti for HTTPS, lyd eller gennemført verdensvalg. Data er kun tilgængelige
+via det eksisterende loopback-beskyttede kontrol-API.
+
+Kilde til Windows-profiltjek: [Microsofts Get-NetConnectionProfile](https://learn.microsoft.com/en-us/powershell/module/netconnection/get-netconnectionprofile).
+
 ## Binære klumper
 
 Header på 11 bytes: type uint8=1, cx int32, cz int32, højde uint16. **Little endian**.

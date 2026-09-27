@@ -3,11 +3,23 @@ import { Simulering } from "../spil/broekraft/simulering.js";
 import { EMOJIER, pakKlump, send } from "./protokol.js";
 import { rensSignal } from "../spil/broekraft/stemmesignal.js";
 
+export const FYRMØNSTRE = ["kugle", "ring", "hjerte", "stjerne", "smiley", "guldregn", "knitter"];
+const FYRFARVER = ["#ff3b5c", "#ffd23f", "#4cd964", "#3aa8ff", "#c86bff", "#ff8c1a", "#ffffff", "#ff6fd0", "#5ff0ff"];
+const vælg = liste => liste[Math.floor(Math.random() * liste.length)];
+
+// Rullende grænser begrænser både én spiller og hele rummets effekter.
+function plads(ejer, nøgle, maks, nu) {
+  ejer[nøgle] = (ejer[nøgle] || []).filter(t => nu - t < 1000);
+  if (ejer[nøgle].length >= maks) return false;
+  ejer[nøgle].push(nu); return true;
+}
+
 export class Rum {
   constructor(meta, data) {
     Object.assign(this, { meta, data });
     this.spillere = new Map();
     this.lunter = [];
+    this.fyrkasser = [];
     this.revision = 0;
     this.gemtRevision = 0;
     this.posTid = 0;
@@ -112,6 +124,7 @@ export class Rum {
 
   // Alle ændringer og positioner valideres på serveren.
   besked(s, b, nu = performance.now()) {
+    if (["brag", "fyrværkeri", "fyrkasse"].includes(b.t)) { this.effektBesked(s, b, nu); return; }
     if (b.t === "rtc" || b.t === "taler") { this.stemmeBesked(s, b, nu); return; }
     if (b.t === "udsyn" && Number.isInteger(b.r)) s.r = Math.max(1, Math.min(8, b.r));
     if (b.t === "pos" && nu - (s.sidstePos ?? -Infinity) >= 100) {
@@ -135,6 +148,36 @@ export class Rum {
     }
   }
 
+  // Klienten angiver træfpunktet; radius, blokændringer og fælles brag bestemmes af serveren.
+  effektBesked(s, b, nu) {
+    if (!this.spillere.has(s.id)) return;
+    const { x, y, z } = b;
+    if (![x, y, z].every(Number.isFinite) || x < 0 || x >= this.meta.bredde || z < 0 || z >= this.meta.dybde || y < 0 || y > this.meta.højde + 64) return;
+    const afstand = Math.hypot(x - s.x, y - s.y, z - s.z);
+    if (b.t === "brag") {
+      if (afstand > 96 || !plads(s, "bragTider", 2, nu) || !plads(this, "bragTider", 16, nu)) return;
+      this.eksploder(x, y, z); return;
+    }
+    if (b.t === "fyrkasse") {
+      if (afstand > 8 || !this.inde(x, y, z) || this.hent(x, y, z) !== ID.Fyrværkeri || this.fyrkasser.length >= 4 || !plads(s, "fyrTider", 2, nu)) return;
+      // Fjern kassen først, så to samtidige tændinger aldrig starter to serier.
+      this.sæt(x, y, z, 0);
+      this.fyrkasser.push({ x: x + 0.5, y: y + 1, z: z + 0.5, fra: s.id, antal: 12, tid: 0.3 });
+      return;
+    }
+    if (afstand > 32 || (b.mønster !== undefined && !FYRMØNSTRE.includes(b.mønster)) || !plads(s, "fyrTider", 2, nu)) return;
+    this.fyrRaket(x, y, z, s.id, b.mønster, nu);
+  }
+
+  // Alle får samme mønster, farver og flyveparametre; ingen blokke ødelægges af fyrværkeri.
+  fyrRaket(x, y, z, fra, mønster, nu) {
+    if (!plads(this, "fyrTider", 16, nu)) return false;
+    this.alle({ t: "fyrværkeri", id: crypto.randomUUID(), fra, x, y, z, mønster: mønster || vælg(FYRMØNSTRE),
+      farver: [vælg(FYRFARVER), vælg(FYRFARVER)], højde: 16 + Math.random() * 10,
+      vx: (Math.random() - 0.5) * 2.5, vy: 22 + Math.random() * 5, vz: (Math.random() - 0.5) * 2.5 });
+    return true;
+  }
+
   tænd(x, y, z, lunte = 2.2) {
     if (this.hent(x, y, z) !== ID.TNT || this.lunter.length >= 40) return;
     this.sæt(x, y, z, 0);
@@ -154,7 +197,13 @@ export class Rum {
     this.alle({ t: "bum", x: cx, y: cy, z: cz });
   }
 
-  tick(dt) {
+  tick(dt, nu = performance.now()) {
+    for (const f of [...this.fyrkasser]) {
+      f.tid -= dt;
+      if (f.tid > 0 || !this.fyrRaket(f.x, f.y, f.z, f.fra, undefined, nu)) continue;
+      f.tid = 0.35 + Math.random() * 0.45;
+      if (--f.antal <= 0) this.fyrkasser.splice(this.fyrkasser.indexOf(f), 1);
+    }
     for (const s of this.spillere.values()) if (s.taler && performance.now() >= s.taleSlut) this.taleStatus(s, false);
     this.sim.tick(dt);
     for (const t of [...this.lunter]) {
@@ -179,6 +228,7 @@ export class Rum {
 
   // Afslut lunter før stop/gemning, så tændt TNT ikke blot forsvinder ved genstart.
   afslut() {
+    this.fyrkasser.length = 0;
     while (this.lunter.length) {
       const t = this.lunter.shift();
       this.eksploder(t.x, t.y + 0.5, t.z);
