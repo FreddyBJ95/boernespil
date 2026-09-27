@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Mærkelige fisk 🎣</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; }
+    body {
+      font-family: ui-rounded, "SF Pro Rounded", "Baloo 2", system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: #cfeeff; color: #10324a;
+      -webkit-user-select: none; user-select: none;
+      -webkit-tap-highlight-color: transparent; touch-action: none;
+    }
+    #scene { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; touch-action: none; }
+    .skjult { display: none !important; }
+
+    .top {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 12px 14px; pointer-events: none;
+    }
+    .top > * { pointer-events: auto; }
+    .hoejre { display: flex; gap: 10px; }
+    .rund {
+      font-size: 26px; text-decoration: none; background: rgba(255,255,255,.92); border-radius: 50%;
+      width: 52px; height: 52px; min-width: 52px; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 14px rgba(0,0,0,.2); border: none; padding: 0; cursor: pointer; color: inherit;
+    }
+    .rund:active { transform: scale(.92); }
+    .taeller {
+      font-size: 26px; font-weight: 900; background: rgba(255,255,255,.92); border-radius: 999px;
+      padding: 8px 18px; box-shadow: 0 4px 14px rgba(0,0,0,.18);
+    }
+    .taeller.hop { animation: hop .5s cubic-bezier(.2,1.6,.4,1); }
+    @keyframes hop { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
+
+    .besked {
+      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 9;
+      width: max-content; max-width: calc(100vw - 32px); text-align: center;
+      font-size: clamp(18px, 3.2vw, 26px); font-weight: 800;
+      background: rgba(255,255,255,.9); padding: 8px 20px; border-radius: 999px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.18); pointer-events: none;
+    }
+
+    /* Hvor tæt er fisken? */
+    .kampbar {
+      position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 9;
+      width: min(380px, 70vw); height: 20px; border-radius: 10px; pointer-events: none;
+      background: rgba(255,255,255,.85); box-shadow: 0 4px 14px rgba(0,0,0,.2), inset 0 1px 3px rgba(0,0,0,.2);
+    }
+    .kampfyld { height: 100%; width: 0; border-radius: 10px; background: linear-gradient(90deg, #4cc9f0, #06d6a0); }
+    .kampfisk { position: absolute; top: -12px; left: -18px; font-size: 34px; transform: scaleX(-1); }
+    .kampmaal { position: absolute; top: -10px; right: -18px; font-size: 30px; }
+
+    /* Fangstkortet */
+    .kort {
+      position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 12;
+      width: min(440px, calc(100vw - 32px)); text-align: center; padding: 16px 20px 18px;
+      background: rgba(255,255,255,.95); border-radius: 28px; box-shadow: 0 14px 40px rgba(0,0,0,.35);
+      animation: ind .5s cubic-bezier(.2,1.4,.4,1);
+    }
+    @keyframes ind { from { transform: translate(-50%, 140%); } to { transform: translate(-50%, 0); } }
+    .kortOver { font-size: 16px; font-weight: 700; opacity: .7; }
+    .kortNavn {
+      font-size: clamp(30px, 7vw, 42px); font-weight: 900; line-height: 1.1; margin: 2px 0 4px;
+      background: linear-gradient(90deg, #ff477e, #ff9f1c, #06d6a0, #3a86ff, #b15bff);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .kortInfo { font-size: 20px; font-weight: 800; display: flex; gap: 14px; justify-content: center; }
+    .kortTekst { font-size: 17px; margin: 6px 0 12px; opacity: .85; }
+    .ny {
+      position: absolute; top: -16px; right: -8px; transform: rotate(10deg);
+      background: #ff477e; color: #fff; font-weight: 900; font-size: 18px; padding: 6px 12px; border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,.25); animation: blink 1s ease-in-out infinite;
+    }
+    @keyframes blink { 50% { transform: rotate(10deg) scale(1.12); } }
+    .knap {
+      font: 900 24px ui-rounded, "SF Pro Rounded", system-ui, sans-serif; color: #fff; cursor: pointer;
+      border: none; border-radius: 22px; padding: 14px 32px;
+      background: linear-gradient(180deg, #ff9f1c, #ff477e); box-shadow: 0 8px 20px rgba(255,71,126,.45);
+    }
+    .knap:active { transform: translateY(3px); }
+    .knap:disabled { opacity: .6; }
+
+    /* Overlays */
+    .overlay {
+      position: fixed; inset: 0; z-index: 20; display: flex; padding: 20px; overflow-y: auto; touch-action: pan-y;
+      background: rgba(6,32,56,.72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    }
+    .indhold { margin: auto; width: 100%; max-width: 900px; display: flex; flex-direction: column; align-items: center; }
+    .titel {
+      font-size: clamp(40px, 9vw, 70px); font-weight: 900; margin: 0 0 6px; text-align: center;
+      background: linear-gradient(90deg, #4cc9f0, #ffffff, #ffd23f);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      filter: drop-shadow(0 3px 10px rgba(0,0,0,.35));
+    }
+    .titel.lille { font-size: clamp(30px, 6vw, 44px); }
+    .undertitel { color: #fff; font-size: 20px; margin: 0 0 22px; opacity: .92; text-align: center; }
+    .start-fisk { font-size: 70px; margin-bottom: 6px; animation: svøm 2.4s ease-in-out infinite; }
+    @keyframes svøm { 50% { transform: translateY(-10px) rotate(-6deg); } }
+    .luk { position: fixed; top: 14px; right: 14px; z-index: 21; }
+
+    .bog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; width: 100%; }
+    .bog-celle {
+      background: rgba(255,255,255,.95); border-radius: 20px; padding: 8px 8px 10px; text-align: center;
+      box-shadow: 0 6px 16px rgba(0,0,0,.25);
+    }
+    .bog-celle img { width: 100%; aspect-ratio: 3 / 2; object-fit: contain; }
+    .bog-celle.ukendt { background: rgba(255,255,255,.55); }
+    .bog-navn { font-weight: 900; font-size: 16px; }
+    .bog-info { font-size: 13px; opacity: .75; }
+
+    .stang-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; width: 100%; }
+    .stang-kort {
+      background: rgba(255,255,255,.95); border-radius: 22px; padding: 14px; text-align: center; cursor: pointer;
+      border: 4px solid transparent; box-shadow: 0 6px 16px rgba(0,0,0,.25); color: inherit;
+      font: inherit; display: flex; flex-direction: column; gap: 6px; align-items: center;
+    }
+    .stang-kort.valgt { border-color: #ffd23f; }
+    .stang-kort:active { transform: scale(.96); }
+    .stang-farve { width: 100%; height: 16px; border-radius: 8px; box-shadow: inset 0 -3px 0 rgba(0,0,0,.15); }
+    .stang-navn { font-weight: 900; font-size: 20px; }
+    .stang-evner { font-size: 15px; white-space: pre-line; line-height: 1.4; }
+    .stang-tekst { font-size: 14px; opacity: .75; }
+
+    @media (max-width: 480px) {
+      .rund { width: 46px; height: 46px; min-width: 46px; font-size: 22px; }
+      .taeller { font-size: 22px; padding: 6px 14px; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+
+  <div class="top">
+    <a class="rund" href="../../" aria-label="Til forsiden">🏠</a>
+    <div class="taeller">🐟 <span id="tal">0</span></div>
+    <div class="hoejre">
+      <button class="rund" id="stangKnap" aria-label="Vælg fiskestang">🎣</button>
+      <button class="rund" id="bogKnap" aria-label="Fangstbog">📖</button>
+    </div>
+  </div>
+
+  <div class="kampbar skjult" id="kampbar">
+    <div class="kampfyld" id="kampfyld"></div>
+    <span class="kampfisk" id="kampfisk">🐟</span>
+    <span class="kampmaal">🙂</span>
+  </div>
+  <div class="besked skjult" id="besked"></div>
+
+  <div class="kort skjult" id="kort">
+    <div class="ny" id="kortNy">NY!</div>
+    <div class="kortOver">Du fangede</div>
+    <div class="kortNavn" id="kortNavn"></div>
+    <div class="kortInfo"><span id="kortStjerner"></span><span id="kortCm"></span></div>
+    <div class="kortTekst" id="kortTekst"></div>
+    <button class="knap" id="iSpanden">👍 I spanden!</button>
+  </div>
+
+  <div class="overlay" id="start">
+    <div class="indhold">
+      <div class="start-fisk">🐡</div>
+      <h1 class="titel">Mærkelige fisk</h1>
+      <p class="undertitel" id="startTekst">Tryk for at kaste — hold fingeren nede for at spole ind.<br>Hvad mon der bider? 🐟</p>
+      <button class="knap" id="startKnap" disabled>Henter…</button>
+    </div>
+  </div>
+
+  <div class="overlay skjult" id="bog">
+    <button class="rund luk" data-luk="bog" aria-label="Luk">✖️</button>
+    <div class="indhold">
+      <h2 class="titel lille">📖 Fangstbog</h2>
+      <p class="undertitel" id="bogTal"></p>
+      <div class="bog-grid" id="bogGrid"></div>
+    </div>
+  </div>
+
+  <div class="overlay skjult" id="staenger">
+    <button class="rund luk" data-luk="staenger" aria-label="Luk">✖️</button>
+    <div class="indhold">
+      <h2 class="titel lille">🎣 Vælg fiskestang</h2>
+      <p class="undertitel">Hver stang har sine egne kræfter</p>
+      <div class="stang-grid" id="stangGrid"></div>
+    </div>
+  </div>
+
+  <script src="../../effekter.js"></script>
+  <script>
+    // Hvis 3D-motoren ikke kan hentes (fx ingen internet første gang), så sig det pænt
+    setTimeout(function () {
+      if (window.fiskKlar) return;
+      document.getElementById("startTekst").textContent = "Kunne ikke hente 3D-motoren 😕 Tjek at der er internet, og prøv igen.";
+      var k = document.getElementById("startKnap");
+      k.textContent = "🔄 Prøv igen"; k.disabled = false; k.onclick = function () { location.reload(); };
+    }, 15000);
+  </script>
+  <script type="module" src="spil.js"></script>
+</body>
+</html>

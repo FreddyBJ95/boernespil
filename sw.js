@@ -1,10 +1,16 @@
 // ===== Service Worker — gør spillene installerbare og tilgængelige offline =====
 // Bump dette tal når der ændres filer, så de gamle bliver hentet på ny.
-const CACHE = "boernespil-v6";
+const CACHE = "boernespil-v7";
 
 const SPIL = [
   "tryk-paa-dyret", "slange", "tegne", "balloner", "find-par", "fang",
-  "muldvarp", "tael", "simon", "piano", "undvig", "puslespil", "skibidi", "vask"
+  "muldvarp", "tael", "simon", "piano", "undvig", "puslespil", "skibidi", "vask", "fisk"
+];
+
+// Spil der består af flere filer end index.html
+const EKSTRA = [
+  ...["three.js", "spil.js", "fisk.js", "staenger.js", "verden.js", "lyd.js"].map(f => `spil/fisk/${f}`),
+  "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",   // 3D-motoren (se spil/fisk/three.js)
 ];
 
 const FILER = [
@@ -15,7 +21,8 @@ const FILER = [
   "manifest.json",
   "icon-192.png",
   "icon-512.png",
-  ...SPIL.flatMap(s => [`spil/${s}/`, `spil/${s}/index.html`])
+  ...SPIL.flatMap(s => [`spil/${s}/`, `spil/${s}/index.html`]),
+  ...EKSTRA
 ];
 
 // Gem alt ved installation

@@ -32,6 +32,7 @@ Første gang skal der være internet. Bagefter virker spillene også offline.
 - 🧩 **Skydepuslespil**
 - 🚽 **Skibidi Toilet**
 - 🚜 **Vaskehallen**
+- 🎣 **Mærkelige fisk** (3D)
 
 ## Kør lokalt
 Åbn `index.html` i en browser.
@@ -40,3 +41,19 @@ Første gang skal der være internet. Bagefter virker spillene også offline.
 1. Lav en ny mappe under `spil/`, fx `spil/mit-spil/` med en `index.html`.
 2. Tilføj et nyt "spil-kort" i forsidens `index.html`.
 3. Tilføj mappenavnet til `SPIL` i `sw.js` og sæt tallet i `CACHE` én op.
+
+## Mærkelige fisk: flere fisk og stænger
+Fiskespillet ligger i `spil/fisk/` og er delt op, så det er nemt at bygge videre på:
+
+| Fil | Indhold |
+|---|---|
+| `fisk.js` | Alle fiskene (`FISKE`) — kopiér en blok for at lave en ny fisk |
+| `staenger.js` | Fiskestængerne (`STÆNGER`) — kopiér en blok for en ny stang |
+| `verden.js` | Søen, broen, himlen, træer og anden |
+| `lyd.js` | Alle lydene (Web Audio, ingen lydfiler) |
+| `spil.js` | Selve spillet: kast, bid, kamp og fangst |
+| `three.js` | Hvilken version af 3D-motoren three.js der bruges |
+
+Øverst i `fisk.js` og `staenger.js` står hvad hver værdi betyder.
+Test en ny fisk ved at åbne `spil/fisk/?fisk=<id>` — så bider den fisk hver gang.
+Nye filer skal også skrives ind i `EKSTRA` i `sw.js`.
