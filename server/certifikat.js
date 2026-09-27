@@ -1,5 +1,6 @@
 // Certifikater laves lokalt med node-forge; nøglemateriale sendes aldrig til en tjeneste.
 import { join } from "node:path";
+import { certifikatSide } from "./certifikat-side.js";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const forge = require("./vendor/node-forge/lib/forge.js");
@@ -114,14 +115,6 @@ export function certifikatSvar(sti, cert, spilUrl) {
   if (sti === "/certifikat/broekraft.mobileconfig") return new Response(cert.profil, { headers: { ...headers, "content-type": "application/x-apple-aspen-config", "content-disposition": 'attachment; filename="Broekraft-hjemme.mobileconfig"' } });
   if (sti === "/certifikat/broekraft.crt") return new Response(cert.der, { headers: { ...headers, "content-type": "application/x-x509-ca-cert", "content-disposition": 'attachment; filename="Broekraft-hjemme.crt"' } });
   if (sti !== "/certifikat" && sti !== "/certifikat/") return new Response("Ikke fundet", { status: 404 });
-  return new Response(`<!doctype html><html lang="da"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Gør tabletten klar · Broekraft</title><link rel="stylesheet" href="/tilslut/tilslut.css"></head>
-<body><main><section class="kort"><h1>Gør tabletten klar til mikrofon</h1><p>En voksen gør dette én gang på hver tablet. Certifikatet skal komme fra familiens egen computer.</p>
-<ol><li>Åbn denne side i Safari. <a href="/certifikat/broekraft.mobileconfig">Hent profilen til iPad/iPhone</a>.</li>
-<li>Åbn <strong>Indstillinger → Profil hentet → Installer</strong>.</li>
-<li>Åbn <strong>Indstillinger → Generelt → Om → Certifikattillid</strong>, og slå tillid til <strong>${NAVN}</strong> til.</li>
-<li>Gå tilbage til Safari, og <a href="${xml(spilUrl)}">åbn Broekraft</a>. Hvis der stadig vises en certifikatadvarsel, kontroller trinnene ovenfor.</li></ol>
-<h2>Mac, Windows eller Android</h2><p><a href="/certifikat/broekraft.crt">Hent certifikatet (.crt)</a>, og følg vejledningen i LÆSMIG.md på computeren.</p>
-<h2>Kontrollér, at det er jeres certifikat</h2><p>Sammenlign dette SHA-256-aftryk med kontrolpanelet på familiens computer:</p><p style="overflow-wrap:anywhere">${cert.aftryk}</p>
-<p>En betroet rod kan godkende certifikater på enheden. Installer kun jeres eget. Profilen kan fjernes igen i Indstillinger → Generelt → VPN og administration af enhed.</p>
-<p>Mikrofonen er fra, indtil en voksen tillader tale i verdenen og barnet holder taleknappen nede. Der optages eller gemmes ingen lyd.</p></section></main></body></html>`, { headers: { ...headers, "content-type": "text/html; charset=utf-8" } });
+  const vært = new URL(spilUrl).hostname;
+  return new Response(certifikatSide({ spilUrl, aftryk: cert.aftryk, navn: NAVN, vært }), { headers: { ...headers, "content-type": "text/html; charset=utf-8" } });
 }

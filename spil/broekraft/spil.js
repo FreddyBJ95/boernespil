@@ -365,7 +365,6 @@ function tryk(x, y) {
 function puf(d) {                                                // zombier og spøgelser bliver til konfetti og en blomst
   const p = tilSkærm(d.pos, d.h * 0.6);
   E.konfetti(p.x, p.y, { antal: 40 });
-  E.tekstPop(p.x, p.y - 30, "PUF!", { s: 52 });
   Lyd.puf();
   const x = Math.floor(d.pos.x), y = Math.floor(d.pos.y + 0.05), z = Math.floor(d.pos.z);
   if (verden.hent(x, y, z) === 0 && verden.fast[verden.hent(x, y - 1, z)]) {
@@ -485,7 +484,7 @@ function opdaterGløder(dt) {
     }
   }
 }
-// Lava og ild: "Av, varmt!" — man hopper op og baglæns, men kommer ikke til skade
+// Lava og ild: man hopper blødt op og baglæns ud af det og kommer ikke til skade
 let varmeTid = 0;
 function tjekVarme(fod, krop, dt) {
   varmeTid -= dt;
@@ -495,7 +494,6 @@ function tjekVarme(fod, krop, dt) {
   sp.vel.set(Math.sin(sp.yaw) * 5, 10, Math.cos(sp.yaw) * 5);
   sp.jord = false;
   Lyd.av();
-  E.tekstPop(window.innerWidth / 2, window.innerHeight * 0.35, "Av, varmt! 🔥", { s: 56 });
   for (let i = 0; i < 12; i++) partikel(sp.pos.x, sp.pos.y + 0.3, sp.pos.z, ILD[i % ILD.length], (Math.random() - 0.5) * 3, 2 + Math.random() * 3, (Math.random() - 0.5) * 3, 0.5, -0.1, 1.4);
 }
 // De levende teksturer: vandet glider, lavaen gløder, ilden blafrer
@@ -605,8 +603,6 @@ function bragEffekt(cx, cy, cz) {
   rystelse = Math.min(1.2, rystelse + Math.max(0, 1 - afst / 30));
   Lyd.bum(afst);
   if (afst < 30) E.flash("#fff1b8");
-  const p = tmp.set(cx, cy, cz).project(kamera);
-  if (p.z < 1 && Math.abs(p.x) < 1 && Math.abs(p.y) < 1) E.tekstPop((p.x + 1) / 2 * window.innerWidth, (1 - p.y) / 2 * window.innerHeight, "BOOM!", { s: 80 });
 }
 
 // ---------- Styring ----------

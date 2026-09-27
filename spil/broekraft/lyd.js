@@ -218,7 +218,7 @@ export function tændIld() {                // wuusj — ilden blusser op
   sus(nu(), 0.5, 300, 1800, 0.35, "bandpass", 0.8);
   knitre(0);
 }
-export function av() {                     // "Av, varmt!" — en lille hoppende tone, ingen skade
+export function av() {                     // lava eller ild: en lille hoppende tone, ingen skade
   if (!ac) return;
   const t = nu();
   glid(900, 500, t, 0.14, { type: "triangle", vol: 0.2 });

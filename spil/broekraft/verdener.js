@@ -46,7 +46,7 @@ export const VERDENER = [
   },
 
   {
-    id: "zombie", navn: "Zombieverdenen", ikon: "🧟", tekst: "Skumringsland med fjollede zombier og spøgelser. Tryk på dem — PUF!",
+    id: "zombie", navn: "Zombieverdenen", ikon: "🧟", tekst: "Skumringsland med fjollede zombier og spøgelser. Tryk på dem, så bliver de til konfetti.",
     himmel: ["#2a1b4d", "#8a5a9c"], tåge: [20, 58], hav: "#3a2a5a", sol: "#f2f0e0", solStr: 44, stjerner: true, skyer: "#6a5a7a",
     lys: ["#c8b0ff", "#40305a", 1.7, 0.9], stemning: "uhyggelig", tyngde: 28,
     dyr: ["zombie", "zombie", "zombiehone", "spogelse"], antal: 9, genfød: true,
