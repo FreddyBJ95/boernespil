@@ -5,6 +5,8 @@
 // shift = ned, 1–9 = vælg blok, 0/Q = hammer, E = inventar.
 // 🧨 TNT: sæt den, og slå på den med hammeren — så sprænger den efter et par sekunder.
 // Blokkene står i blokke.js, dyrene i dyr.js og verdenerne i verdener.js — tilføj flere dér.
+// 👥 Spil sammen: åbnes siden fra familiens Broekraft Server med ?server=1&verden=<id>, hentes verdenen
+// stykke for stykke fra serveren (net.js), og de andre børn vises som dyr (figurer.js).
 
 import * as THREE from "./three.js";
 import { BLOKKE, ID, lavAtlas } from "./blokke.js";
@@ -12,6 +14,8 @@ import { Verden, BX, BY, BZ, HAV, rng } from "./verden.js";
 import { DYR, Dyr, ægIkon } from "./dyr.js";
 import { VERDENER } from "./verdener.js";
 import * as Lyd from "./lyd.js";
+import { forbind } from "./net.js";
+import { Figur, FIGURER, figurIkon } from "./figurer.js";
 
 const E = window.Effekter, $ = id => document.getElementById(id);
 const RÆKKE = 7, HAKTID = 0.4;                                  // hvor langt man når, og hvor længe en blok tager at hakke
@@ -20,7 +24,21 @@ const B = 0.3, HØJ = 1.7, ØJE = 1.55, HOP = 8.6, GÅ = 4.3, FLYV = 9;
 // ---------- Hvilken verden spiller vi i? ----------
 const læs = (k, std) => { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? std; } catch (_) { return std; } };
 const skriv = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} };
-const cfg = VERDENER.find(v => v.id === læs("broekraft-verden", "græsø")) || VERDENER[0];
+// Spil sammen? Så spørger vi serveren, hvilken slags verden det er, før 3D-scenen bygges.
+const PARAM = new URLSearchParams(location.search);
+const ONLINE = PARAM.get("server") === "1";
+const ONLINE_ID = PARAM.get("verden") || "";
+let onlineInfo = null;
+if (ONLINE) {
+  document.body.classList.add("online");
+  try { onlineInfo = (await (await fetch("/verdensliste", { cache: "no-store" })).json()).find(v => v.id === ONLINE_ID) || null; } catch (_) {}
+}
+const cfg = (ONLINE ? VERDENER.find(v => v.id === onlineInfo?.type) : VERDENER.find(v => v.id === læs("broekraft-verden", "græsø"))) || VERDENER[0];
+const MÅL = ONLINE ? { BX: onlineInfo?.bredde || 128, BY: 64, BZ: onlineInfo?.dybde || 128, online: true } : {};
+const VX = MÅL.BX || BX, VZ = MÅL.BZ || BZ;
+// Hvor langt man kan se, når man spiller sammen (store verdener)
+const UDSYN = [{ navn: "Kort", r: 3, tåge: [18, 44] }, { navn: "Mellem", r: 5, tåge: [30, 74] }, { navn: "Langt", r: 7, tåge: [45, 106] }];
+let udsynNr = Math.max(0, Math.min(2, læs("broekraft-udsyn", 1) | 0));
 let hentet = læs("broekraft-hentet", ["græsø"]);
 if (!Array.isArray(hentet)) hentet = [];
 if (!hentet.includes("græsø")) hentet.push("græsø");
@@ -28,7 +46,7 @@ const TYNGDE = cfg.tyngde || 28;
 Lyd.sætStemning(cfg.stemning);
 
 // ---------- Gemt verden (kun på denne enhed — hver verden for sig) ----------
-const GEM = cfg.id === "græsø" ? "broekraft-v1" : `broekraft-v1-${cfg.id}`;
+const GEM = ONLINE ? `broekraft-online-${ONLINE_ID}` : cfg.id === "græsø" ? "broekraft-v1" : `broekraft-v1-${cfg.id}`;
 const tilTing = n => (n.startsWith("æg:") ? { æg: n.slice(3) } : { blok: ID[n] });
 const STANDARD = cfg.hotbar.map(tilTing);
 let gemt = læs(GEM, null);
@@ -48,6 +66,7 @@ const scene = new THREE.Scene();
 const HORISONT = new THREE.Color(cfg.himmel[1]);
 scene.background = HORISONT;
 scene.fog = new THREE.Fog(HORISONT, cfg.tåge[0], cfg.tåge[1]);
+if (ONLINE) [scene.fog.near, scene.fog.far] = UDSYN[udsynNr].tåge;
 const kamera = new THREE.PerspectiveCamera(70, 1, 0.05, 500);
 kamera.rotation.order = "YXZ";
 scene.add(kamera);
@@ -96,8 +115,9 @@ if (cfg.stjerner) {
   scene.add(stjerner);
 }
 if (cfg.hav) {
-  const hav = new THREE.Mesh(new THREE.PlaneGeometry(900, 900).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: cfg.hav }));
-  hav.position.set(BX / 2, HAV, BZ / 2);
+  const str = Math.max(900, Math.max(VX, VZ) * 3);
+  const hav = new THREE.Mesh(new THREE.PlaneGeometry(str, str).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: cfg.hav }));
+  hav.position.set(VX / 2, HAV, VZ / 2);
   scene.add(hav);
 }
 const skyer = [];
@@ -105,7 +125,7 @@ if (cfg.skyer) {
   const skyR = rng(gemt.frø + 7), skyMat = new THREE.MeshBasicMaterial({ color: cfg.skyer, transparent: true, opacity: 0.85, fog: false });
   for (let i = 0; i < 16; i++) {
     const s = new THREE.Mesh(new THREE.BoxGeometry(6 + skyR() * 14, 1.5, 4 + skyR() * 10), skyMat);
-    s.position.set(-60 + skyR() * 184, 44 + skyR() * 4, -60 + skyR() * 184);
+    s.position.set(VX / 2 - 92 + skyR() * 184, 44 + skyR() * 4, VZ / 2 - 92 + skyR() * 184);
     scene.add(s); skyer.push(s);
   }
 }
@@ -113,28 +133,36 @@ if (cfg.skyer) {
 // ---------- Verdenen ----------
 const atlas = lavAtlas();
 const blokMat = new THREE.MeshBasicMaterial({ map: atlas.tekstur, vertexColors: true, alphaTest: 0.5 });
-const verden = new Verden(gemt.frø, atlas, blokMat, scene);
+const verden = new Verden(gemt.frø, atlas, blokMat, scene, MÅL);
 verden.tyngde = TYNGDE;
-verden.generer(cfg.generer);
-verden.anvend(gemt.ændringer);
-verden.bygAlle();
+if (!ONLINE) {                                    // alene: lav øen her. Sammen: serveren sender verdenen
+  verden.generer(cfg.generer);
+  verden.anvend(gemt.ændringer);
+  verden.bygAlle();
+}
 
 // ---------- Spilleren ----------
 const sp = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), yaw: 0.6, pitch: -0.25, jord: false, flyver: false };
+let ventPåJord = false;                          // online: jorden under en er ikke hentet endnu
 function startSted() {
-  const x = Math.floor(BX / 2), z = Math.floor(BZ / 2);
-  sp.pos.set(x + 0.5, verden.topY(x, z) + 1, z + 0.5);
+  const x = Math.floor(verden.BX / 2), z = Math.floor(verden.BZ / 2);
   sp.vel.set(0, 0, 0);
+  if (!verden.hentet(x, z)) { sp.pos.set(x + 0.5, verden.BY, z + 0.5); ventPåJord = true; return; }
+  sp.pos.set(x + 0.5, verden.topY(x, z) + 1, z + 0.5);
 }
-if (Array.isArray(gemt.spiller) && gemt.spiller.every(Number.isFinite)) {
+if (!ONLINE && Array.isArray(gemt.spiller) && gemt.spiller.every(Number.isFinite)) {
   const [x, y, z, yaw, pitch, fly] = gemt.spiller;
   sp.pos.set(x, y, z); sp.yaw = yaw; sp.pitch = pitch; sp.flyver = !!fly;
 } else startSted();
-while (verden.kolliderer(sp.pos, B, HØJ) && sp.pos.y < BY + 2) sp.pos.y += 1;
+if (!ONLINE) while (verden.kolliderer(sp.pos, B, HØJ) && sp.pos.y < verden.BY + 2) sp.pos.y += 1;
 document.body.classList.toggle("flyver", sp.flyver);
 
 function gem() {
   try {
+    if (ONLINE) {                                  // verdenen gemmes på computeren — her kun hotbaren
+      localStorage.setItem(GEM, JSON.stringify({ frø: gemt.frø, hotbar: gemt.hotbar, valgt: gemt.valgt, musik: gemt.musik, tnt: true }));
+      return;
+    }
     gemt.ændringer = Object.fromEntries(verden.ændringer);
     gemt.spiller = [sp.pos.x, sp.pos.y, sp.pos.z, sp.yaw, sp.pitch, sp.flyver ? 1 : 0];
     localStorage.setItem(GEM, JSON.stringify(gemt));
@@ -151,26 +179,29 @@ const dyrDef = id => DYR.find(d => d.id === id) || DYR[0];
 function nytDyr(def, x, y, z) {
   const d = new Dyr(def, verden, scene);
   d.pos.set(x, y, z);
-  while (verden.kolliderer(d.pos, d.b, d.h) && d.pos.y < BY) d.pos.y += 1;
+  while (verden.kolliderer(d.pos, d.b, d.h) && d.pos.y < verden.BY) d.pos.y += 1;
   dyr.push(d);
   while (dyr.length > 30) dyr.shift().fjern();
   return d;
 }
-{
+function lavStartDyr(cx, cz) {                  // dyrene bor lokalt på hver tablet
   const R = rng(gemt.frø + 99);
   for (let i = 0; i < cfg.antal; i++) {
-    const x = Math.floor(BX / 2 + (R() - 0.5) * 26), z = Math.floor(BZ / 2 + (R() - 0.5) * 26);
+    const x = Math.floor(cx + (R() - 0.5) * 26), z = Math.floor(cz + (R() - 0.5) * 26);
+    if (!verden.hentet(x, z) || !verden.inde(x, 0, z)) continue;
     nytDyr(dyrDef(cfg.dyr[i % cfg.dyr.length]), x + 0.5, verden.topY(x, z) + 1, z + 0.5);
   }
 }
+if (!ONLINE) lavStartDyr(BX / 2, BZ / 2);
 let genfødTid = 6;
 function genfød(dt) {                                            // nye zombier og spøgelser dukker op langt væk
   if (!cfg.genfød || (genfødTid -= dt) > 0) return;
   genfødTid = 5;
   if (dyr.filter(d => cfg.dyr.includes(d.def.id)).length >= cfg.antal) return;
   for (let f = 0; f < 12; f++) {
-    const x = 2 + Math.floor(Math.random() * (BX - 4)), z = 2 + Math.floor(Math.random() * (BZ - 4));
-    if (Math.hypot(x - sp.pos.x, z - sp.pos.z) < 10) continue;
+    const x = ONLINE ? Math.floor(sp.pos.x + (Math.random() - 0.5) * 50) : 2 + Math.floor(Math.random() * (verden.BX - 4));
+    const z = ONLINE ? Math.floor(sp.pos.z + (Math.random() - 0.5) * 50) : 2 + Math.floor(Math.random() * (verden.BZ - 4));
+    if (Math.hypot(x - sp.pos.x, z - sp.pos.z) < 10 || !verden.inde(x, 0, z) || !verden.hentet(x, z)) continue;
     nytDyr(dyrDef(cfg.dyr[Math.floor(Math.random() * cfg.dyr.length)]), x + 0.5, verden.topY(x, z) + 1, z + 0.5);
     return;
   }
@@ -286,7 +317,10 @@ function tryk(x, y) {
   }
   if (!hit) return;
   if (valgtTing().hammer) {                                      // hammeren fjerner blokken med det samme
-    if (BLOKKE[hit.id].tnt) { tændTNT(hit.x, hit.y, hit.z); sving = 1; return; }   // … men TNT bliver tændt!
+    if (BLOKKE[hit.id].tnt) {                                     // … men TNT bliver tændt!
+      if (ONLINE) { net?.tænd(hit.x, hit.y, hit.z); tændTNT(hit.x, hit.y, hit.z, 2.2, true); } else tændTNT(hit.x, hit.y, hit.z);
+      sving = 1; return;
+    }
     if (!BLOKKE[hit.id].uknuselig) { knus(hit, true); sving = 1; }
     return;
   }
@@ -300,8 +334,8 @@ function puf(d) {                                                // zombier og s
   Lyd.puf();
   const x = Math.floor(d.pos.x), y = Math.floor(d.pos.y + 0.05), z = Math.floor(d.pos.z);
   if (verden.hent(x, y, z) === 0 && verden.fast[verden.hent(x, y - 1, z)]) {
-    verden.sæt(x, y, z, Math.random() < 0.5 ? ID["Rød blomst"] : ID["Gul blomst"]);
-    gemSnart();
+    const blomst = Math.random() < 0.5 ? ID["Rød blomst"] : ID["Gul blomst"];
+    if (ONLINE) net?.sæt(x, y, z, blomst); else { verden.sæt(x, y, z, blomst); gemSnart(); }
   }
   d.fjern();
   dyr.splice(dyr.indexOf(d), 1);
@@ -318,7 +352,8 @@ function sætBlok(hit) {
   const b = BLOKKE[s.blok];
   if (b.kryds && !verden.fast[verden.hent(tx, ty - 1, tz)]) return;             // blomster skal stå på noget
   if (!b.kryds && (overlap(tx, ty, tz, sp.pos, B, HØJ) || dyr.some(d => overlap(tx, ty, tz, d.pos, d.b, d.h)))) return;
-  verden.sæt(tx, ty, tz, s.blok);
+  if (ONLINE) net?.sæt(tx, ty, tz, s.blok);                                        // serveren bestemmer
+  else verden.sæt(tx, ty, tz, s.blok);
   Lyd.sæt(b.lyd);
   if (b.tnt && !tntTip) { tntTip = true; besked("Slå på TNT med 🔨 hammeren! 💥", 3500); }
   sving = 1;
@@ -326,7 +361,7 @@ function sætBlok(hit) {
 }
 
 function lavDyr(s, x, y, z) {
-  if (x < 0 || x >= BX || z < 0 || z >= BZ || y >= BY) return;
+  if (x < 0 || x >= verden.BX || z < 0 || z >= verden.BZ || y >= verden.BY) return;
   const def = s.æg === "?" ? DYR[Math.floor(Math.random() * DYR.length)] : dyrDef(s.æg);
   const d = nytDyr(def, x + 0.5, y + 0.01, z + 0.5);
   d.klapTid = 0.5;
@@ -338,9 +373,14 @@ function lavDyr(s, x, y, z) {
 }
 
 function knus(hit, hammer = false) {
-  verden.sæt(hit.x, hit.y, hit.z, 0);
   const over = verden.hent(hit.x, hit.y + 1, hit.z);
-  if (over && BLOKKE[over].kryds) verden.sæt(hit.x, hit.y + 1, hit.z, 0);          // blomsten ovenpå ryger med
+  if (ONLINE) {
+    net?.sæt(hit.x, hit.y, hit.z, 0);
+    if (over && BLOKKE[over].kryds) net?.sæt(hit.x, hit.y + 1, hit.z, 0);
+  } else {
+    verden.sæt(hit.x, hit.y, hit.z, 0);
+    if (over && BLOKKE[over].kryds) verden.sæt(hit.x, hit.y + 1, hit.z, 0);        // blomsten ovenpå ryger med
+  }
   stykker(hit.x + 0.5, hit.y + 0.5, hit.z + 0.5, atlas.farve(hit.id));
   if (hammer) Lyd.bank(BLOKKE[hit.id].lyd); else Lyd.knus(BLOKKE[hit.id].lyd);
   gemSnart();
@@ -350,17 +390,17 @@ function knus(hit, hammer = false) {
 const tændte = [];
 let rystelse = 0, tntTip = false;
 const RØG = new THREE.Color("#8f8f8f"), ILD = ["#fff3a0", "#ffd23f", "#ff8c1a", "#ff4d2e"].map(f => new THREE.Color(f));
-function tændTNT(x, y, z, lunte = 2.2) {
-  verden.sæt(x, y, z, 0);
+function tændTNT(x, y, z, lunte = 2.2, kunVis = false) {
+  if (!kunVis) verden.sæt(x, y, z, 0);
   if (tændte.length >= 40) return;
   const g = new THREE.Group();
   g.add(atlas.blokMesh(ID.TNT));
   const hvid = new THREE.Mesh(new THREE.BoxGeometry(1.02, 1.02, 1.02), new THREE.MeshBasicMaterial({ color: "#ffffff", transparent: true, opacity: 0, depthWrite: false }));
   g.add(hvid);
   scene.add(g);
-  tændte.push({ g, hvid, pos: new THREE.Vector3(x + 0.5, y, z + 0.5), vel: new THREE.Vector3(0, lunte < 1 ? 3 : 2, 0), tid: 0, lunte, røgT: 0 });
+  tændte.push({ g, hvid, pos: new THREE.Vector3(x + 0.5, y, z + 0.5), vel: new THREE.Vector3(0, lunte < 1 ? 3 : 2, 0), tid: 0, lunte, røgT: 0, kunVis });
   Lyd.tænd();
-  gemSnart();
+  if (!kunVis) gemSnart();
 }
 function opdaterTNT(dt) {
   for (let i = tændte.length - 1; i >= 0; i--) {
@@ -383,7 +423,7 @@ function opdaterTNT(dt) {
       tændte.splice(i, 1);
       scene.remove(t.g);
       t.g.traverse(c => { if (c.isMesh) { c.geometry.dispose(); c.material.dispose(); } });
-      eksploder(t.pos.x, t.pos.y + 0.5, t.pos.z);
+      if (!t.kunVis) eksploder(t.pos.x, t.pos.y + 0.5, t.pos.z);
     }
   }
 }
@@ -411,6 +451,20 @@ function eksploder(cx, cy, cz) {
       (Math.random() - 0.5) * 2, 1 + Math.random() * 2, (Math.random() - 0.5) * 2, 1.2 + Math.random() * 0.8, -0.1, 3.5);
   }
   verden.opdater(40);                                           // vis hullet med det samme
+  bragEffekt(cx, cy, cz);
+  gemSnart();
+}
+// Ild, røg, skub, rystelser og lyd — bruges både alene og når serveren sender "bum"
+function bragEffekt(cx, cy, cz) {
+  const R = 3.3;
+  if (ONLINE) {
+    for (let i = 0; i < 45; i++) {
+      const v = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.3, Math.random() - 0.5).normalize().multiplyScalar(3 + Math.random() * 7);
+      partikel(cx, cy, cz, ILD[i % ILD.length], v.x, v.y, v.z, 0.4 + Math.random() * 0.5, -0.1, 2.2);
+    }
+    for (let i = 0; i < 25; i++) partikel(cx + (Math.random() - 0.5) * 3, cy + (Math.random() - 0.5) * 2, cz + (Math.random() - 0.5) * 3, RØG,
+      (Math.random() - 0.5) * 2, 1 + Math.random() * 2, (Math.random() - 0.5) * 2, 1.2 + Math.random() * 0.8, -0.1, 3.5);
+  }
   // dyr bliver blæst væk (zombier og spøgelser siger puf), og man selv får et skub
   for (const d of [...dyr]) {
     const dx = d.pos.x - cx, dz = d.pos.z - cz, a = Math.max(0.5, Math.hypot(dx, d.pos.y - cy, dz));
@@ -433,7 +487,6 @@ function eksploder(cx, cy, cz) {
   if (afst < 30) E.flash("#fff1b8");
   const p = tmp.set(cx, cy, cz).project(kamera);
   if (p.z < 1 && Math.abs(p.x) < 1 && Math.abs(p.y) < 1) E.tekstPop((p.x + 1) / 2 * window.innerWidth, (1 - p.y) / 2 * window.innerHeight, "BOOM!", { s: 80 });
-  gemSnart();
 }
 
 // ---------- Styring ----------
@@ -540,7 +593,13 @@ function opdaterHak(dt) {
 
 // ---------- Spillerens bevægelse ----------
 let gangFase = 0;
+let venteBesked = 0;
 function opdaterSpiller(dt) {
+  if (ONLINE) {                                     // stå stille, til jorden under en er hentet
+    const x = Math.floor(sp.pos.x), z = Math.floor(sp.pos.z);
+    if (!verden.hentet(x, z)) { if ((venteBesked -= dt) <= 0) { besked("Henter verden… 🌍", 1500); venteBesked = 1.6; } return; }
+    if (ventPåJord) { ventPåJord = false; sp.pos.y = verden.topY(x, z) + 1; sp.vel.set(0, 0, 0); }
+  }
   const frem = tast.frem - tast.tilbage, side = tast.hoejre - tast.venstre;
   const fx = -Math.sin(sp.yaw), fz = -Math.cos(sp.yaw), rx = Math.cos(sp.yaw), rz = -Math.sin(sp.yaw);
   let mx = fx * frem + rx * side, mz = fz * frem + rz * side;
@@ -708,6 +767,14 @@ $("musikKnap").addEventListener("click", () => {
   $("musikKnap").textContent = gemt.musik ? "🎵 Musik: TIL" : "🔇 Musik: FRA";
 });
 $("hjemStart").addEventListener("click", () => { Lyd.klik(); startSted(); if (sp.flyver) skiftFlyv(); luk("menu"); gemSnart(); });
+$("udsynKnap").textContent = `👀 Udsyn: ${UDSYN[udsynNr].navn}`;
+$("udsynKnap").addEventListener("click", () => {                  // hvor langt kan man se (online)
+  udsynNr = (udsynNr + 1) % UDSYN.length; skriv("broekraft-udsyn", udsynNr); Lyd.klik();
+  [scene.fog.near, scene.fog.far] = UDSYN[udsynNr].tåge;
+  net?.udsyn(UDSYN[udsynNr].r);
+  $("udsynKnap").textContent = `👀 Udsyn: ${UDSYN[udsynNr].navn}`;
+});
+$("forladKnap").addEventListener("click", () => { Lyd.klik(); net?.luk(); location.href = "/"; });
 let nyTryk = 0;
 $("nyVerden").addEventListener("click", () => {
   Lyd.klik();
@@ -747,9 +814,14 @@ function tegnFrame(nu) {
   if (iGang && !pause) { opdaterSpiller(dt); opdaterHak(dt); genfød(dt); opdaterTNT(dt); }
   else if (!iGang) sp.yaw += dt * 0.06;                                           // titelskærm: kig langsomt rundt
   for (const d of dyr) d.opdater(dt, sp.pos);
-  verden.opdater(4);
+  if (ONLINE) opdaterOnline(dt);
+  verden.opdater(ONLINE ? 6 : 4);
   opdaterStykker(dt);
-  for (const s of skyer) { s.position.x += dt * 0.8; if (s.position.x > 130) s.position.x = -70; }
+  for (const s of skyer) {                                                        // skyerne driver og følger med
+    s.position.x += dt * 0.8;
+    if (s.position.x - kamera.position.x > 120) s.position.x -= 240; else if (s.position.x - kamera.position.x < -120) s.position.x += 240;
+    if (s.position.z - kamera.position.z > 120) s.position.z -= 240; else if (s.position.z - kamera.position.z < -120) s.position.z += 240;
+  }
 
   const bob = sp.jord && !sp.flyver ? Math.abs(Math.sin(gangFase * Math.PI)) * 0.06 : 0;
   kamera.position.set(sp.pos.x, sp.pos.y + ØJE + bob, sp.pos.z);
@@ -773,26 +845,149 @@ function tegnFrame(nu) {
 }
 
 // ---------- Start ----------
-function startSpil() {
+async function startSpil() {
   Lyd.sætStemning(cfg.stemning);
   Lyd.klar(); Lyd.sætMusik(gemt.musik); Lyd.klik();
+  if (ONLINE && !(await forbindOnline())) return;
   try { if ("speechSynthesis" in window) speechSynthesis.cancel(); } catch (_) {}
   iGang = true;
   luk("start");
   document.body.classList.add("i-gang");
-  besked(`${cfg.ikon} ${cfg.navn}`, 2400);
-  setTimeout(() => { if (iGang) besked(nyTNT ? "NYT: 🧨 TNT! Sæt den og slå på den med 🔨" : "Tryk = byg 🧱   🔨 = fjern   Træk = kig 👀", 5000); }, 2500);
+  besked(ONLINE ? `${figurIkon(minFigur)} Velkommen til ${onlineInfo?.navn || cfg.navn}!` : `${cfg.ikon} ${cfg.navn}`, 2400);
+  setTimeout(() => { if (iGang) besked(nyTNT && !ONLINE ? "NYT: 🧨 TNT! Sæt den og slå på den med 🔨" : "Tryk = byg 🧱   🔨 = fjern   Træk = kig 👀", 5000); }, 2500);
 }
 tegnHotbar();
 opdaterHånd();
 $("verdenNavn").textContent = `${cfg.ikon} ${cfg.navn}`;
 $("verdenNy").classList.toggle("skjult", hentet.length >= VERDENER.length);
 const startKnap = $("startKnap");
-startKnap.textContent = "▶ Spil";
+startKnap.textContent = ONLINE ? "▶ Spil sammen" : "▶ Spil";
 startKnap.disabled = false;
 startKnap.addEventListener("click", startSpil);
 let autoStart = false;
-try { autoStart = sessionStorage.getItem("broekraft-start") === "1"; sessionStorage.removeItem("broekraft-start"); } catch (_) {}
+try { autoStart = !ONLINE && sessionStorage.getItem("broekraft-start") === "1"; sessionStorage.removeItem("broekraft-start"); } catch (_) {}
 if (autoStart) startSpil();
+// ---------- Spil sammen: forbindelsen til familiens Broekraft Server ----------
+let net = null, minId = null, førsteVelkommen = true, dyrLavet = false, sidsteBum = null;
+let minFigur = læs("broekraft-figur", "gris");
+if (!FIGURER.some(f => f.id === minFigur)) minFigur = "gris";
+const andre = new Map();                                          // id → Figur
+
+function status(tekst) { $("status").textContent = tekst; }
+function opdaterStatus() {
+  const alle = [figurIkon(minFigur), ...[...andre.values()].map(f => figurIkon(f.figur))];
+  status(`🟢 ${alle.join(" ")}`);
+}
+
+// Titelskærmen: vælg dit dyr, før du går ind
+function forberedOnline() {
+  $("verdenNavn").textContent = onlineInfo ? `${cfg.ikon} ${onlineInfo.navn} · ${onlineInfo.spillere}/${onlineInfo.maks} spillere` : "";
+  document.querySelector(".splash").textContent = "Spil sammen!";
+  const grid = $("figurValg");
+  for (const f of FIGURER) {
+    const b = document.createElement("button");
+    b.className = "figur" + (f.id === minFigur ? " valgt" : "");
+    b.innerHTML = `<span class="figur-ikon">${f.ikon}</span><span>${f.navn}</span>`;
+    b.addEventListener("click", () => {
+      minFigur = f.id; skriv("broekraft-figur", f.id); Lyd.klar(); Lyd.vælg();
+      grid.querySelectorAll(".figur").forEach(x => x.classList.toggle("valgt", x === b));
+    });
+    grid.appendChild(b);
+  }
+  if (!onlineInfo) visFejl("Verdenen er ikke startet 😕", "Bed en voksen om at starte den på computeren.");
+}
+function visFejl(titel, tekst) {
+  vis("start");
+  iGang = false; document.body.classList.remove("i-gang");
+  $("onlineFejl").textContent = `${titel} ${tekst}`;
+  $("onlineFejl").classList.remove("skjult");
+  startKnap.disabled = !onlineInfo; startKnap.textContent = "🔄 Prøv igen";
+}
+
+async function forbindOnline() {
+  startKnap.disabled = true; startKnap.textContent = "Forbinder…";
+  $("onlineFejl").classList.add("skjult");
+  if (net) { net.luk(); net = null; }
+  try {
+    net = await forbind(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`, { figur: minFigur });
+  } catch (fejl) { visFejl("Kunne ikke finde computeren 😕", "Er den tændt, og er I på samme wifi?"); return false; }
+  net.addEventListener("velkommen", e => velkommen(e.detail));
+  net.addEventListener("klump", e => verden.søjle(e.detail.cx, e.detail.cz, e.detail.data));
+  net.addEventListener("glem", e => verden.glemSøjle(e.detail.cx, e.detail.cz));
+  net.addEventListener("blok", e => blokFraServer(e.detail));
+  net.addEventListener("ind", e => {
+    if (e.detail.id === minId || andre.has(e.detail.id)) return;
+    nyFigur(e.detail); Lyd.æg(); besked(`${figurIkon(e.detail.figur)} er kommet ind!`); opdaterStatus();
+  });
+  net.addEventListener("ud", e => {
+    const f = andre.get(e.detail.id);
+    if (f) { besked(`${figurIkon(f.figur)} er gået 👋`); f.fjern(); andre.delete(e.detail.id); opdaterStatus(); }
+  });
+  net.addEventListener("pos", e => {
+    for (const p of e.detail.liste) if (p.id !== minId) (andre.get(p.id) || nyFigur(p)).sæt(p.x, p.y, p.z, p.yaw);
+  });
+  net.addEventListener("bum", e => { sidsteBum = { ...e.detail, tid: performance.now() }; bragEffekt(e.detail.x, e.detail.y, e.detail.z); });
+  net.addEventListener("emoji", e => visEmoji(e.detail.id, e.detail.e));
+  net.addEventListener("lukket", e => status(e.detail.genforbinder ? "🟡 Forbinder igen…" : "🔴 Afbrudt"));
+  net.addEventListener("fejl", e => besked(`⚠️ ${e.detail.besked}`, 3000));
+  net.udsyn(UDSYN[udsynNr].r);
+  try { await net.vælg(ONLINE_ID); }
+  catch (fejl) {
+    net.luk(); net = null;
+    visFejl(fejl.message === "fuld" ? "Verdenen er fuld 😕" : "Kunne ikke komme ind i verdenen 😕",
+      fejl.message === "fuld" ? "Vent lidt, eller vælg en anden verden." : "Prøv igen om lidt.");
+    return false;
+  }
+  startKnap.textContent = "▶ Spil sammen"; startKnap.disabled = false;
+  return true;
+}
+
+// Serveren siger velkommen — også når forbindelsen kommer igen efter et hul
+function velkommen(v) {
+  minId = v.dig;
+  verden.rydAlt();
+  for (const f of andre.values()) f.fjern();
+  andre.clear();
+  for (const p of v.spillere) {
+    if (p.id !== minId) { nyFigur(p); continue; }
+    if (førsteVelkommen) { sp.pos.set(p.x, p.y, p.z); sp.vel.set(0, 0, 0); ventPåJord = false; }
+  }
+  førsteVelkommen = false;
+  opdaterStatus();
+}
+function nyFigur(p) {
+  const f = new Figur(p.id, p.figur, scene);
+  andre.set(p.id, f);
+  if (Number.isFinite(p.x)) f.sæt(p.x, p.y, p.z, p.yaw || 0);
+  return f;
+}
+function blokFraServer({ x, y, z, id }) {
+  const før = verden.hent(x, y, z);
+  if (!verden.sæt(x, y, z, id)) return;
+  // blokke der ryger i et brag, flyver som småstykker
+  if (!id && før && sidsteBum && performance.now() - sidsteBum.tid < 700 && Math.random() < 0.4) {
+    const a = Math.max(0.3, Math.hypot(x + 0.5 - sidsteBum.x, z + 0.5 - sidsteBum.z)), f = atlas.farve(før);
+    for (let k = 0; k < 3; k++) partikel(x + 0.5, y + 0.5, z + 0.5, f.clone().multiplyScalar(0.8 + Math.random() * 0.4),
+      (x + 0.5 - sidsteBum.x) / a * 7 + (Math.random() - 0.5) * 3, 3 + Math.random() * 6, (z + 0.5 - sidsteBum.z) / a * 7 + (Math.random() - 0.5) * 3, 0.9 + Math.random() * 0.6);
+  }
+}
+function visEmoji(id, e) {
+  if (id === minId) E.tekstPop(window.innerWidth / 2, window.innerHeight * 0.3, e, { s: 90 });
+  else andre.get(id)?.visEmoji(e);
+  Lyd.vælg();
+}
+function opdaterOnline(dt) {
+  for (const f of andre.values()) f.opdater(dt);
+  if (!iGang || !net) return;
+  net.pos(sp.pos.x, sp.pos.y, sp.pos.z, sp.yaw, sp.pitch);
+  if (!dyrLavet && verden.hentet(Math.floor(sp.pos.x), Math.floor(sp.pos.z)) && !ventPåJord) { dyrLavet = true; lavStartDyr(sp.pos.x, sp.pos.z); }
+}
+// Emoji-knapperne
+$("emojiKnap").addEventListener("click", () => { Lyd.klar(); Lyd.klik(); $("emojiBar").classList.toggle("skjult"); });
+$("emojiBar").querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+  net?.emoji(b.textContent); $("emojiBar").classList.add("skjult");
+}));
+
+if (ONLINE) forberedOnline();
 window.broekraftKlar = true;
-if (location.search.includes("debug")) window.bk = { sp, verden, dyr, tast, cfg };
+if (location.search.includes("debug")) window.bk = { sp, verden, dyr, tast, cfg, andre, get net() { return net; } };

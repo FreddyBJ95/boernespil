@@ -159,6 +159,35 @@
     #henterTekst { font-weight: 800; font-size: 18px; }
 
     @media (max-width: 520px) { .besked { top: 70px; max-width: calc(100vw - 32px); } }
+
+    /* Spil sammen (online) */
+    body:not(.online) .kun-online { display: none !important; }
+    .online .kun-alene { display: none !important; }
+    .top-hoejre { position: fixed; top: 10px; right: 10px; z-index: 6; display: none; gap: 8px; align-items: center; }
+    .i-gang.online .top-hoejre { display: flex; }
+    .status {
+      font-weight: 800; font-size: 20px; padding: 8px 12px; background: rgba(0,0,0,.45); border-radius: 6px;
+      text-shadow: 1px 1px 0 #000; white-space: nowrap; max-width: 46vw; overflow: hidden; text-overflow: ellipsis;
+    }
+    .emoji-bar {
+      position: fixed; top: 68px; right: 10px; z-index: 7; display: flex; gap: 6px; padding: 8px;
+      background: #c6c6c6; border: 3px solid #1e1e1e; box-shadow: inset -3px -3px 0 #555, inset 3px 3px 0 #fff;
+    }
+    .emoji-bar button { width: 58px; height: 58px; font-size: 34px; padding: 0; background: #8b8b8b; border: 2px solid #373737; }
+    .emoji-bar button:active { background: #7aa6e0; }
+    .figur-valg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-width: 460px; width: 100%; margin: 4px 0 6px; }
+    .figur {
+      display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; color: #fff;
+      background: rgba(60,60,60,.55); border: 3px solid rgba(255,255,255,.35); font-weight: 800; font-size: 15px;
+      text-shadow: 1px 1px 0 #000;
+    }
+    .figur-ikon { font-size: 40px; line-height: 1.1; }
+    .figur.valgt { border-color: #ffff3f; background: rgba(122,166,224,.7); transform: scale(1.06); }
+    .figur-titel { font-weight: 800; font-size: 18px; text-shadow: 2px 2px 0 #000; }
+    .online-fejl {
+      max-width: 460px; text-align: center; font-weight: 800; font-size: 18px; padding: 10px 14px;
+      background: rgba(180,40,40,.75); border: 3px solid #1e1e1e; text-shadow: 1px 1px 0 #000;
+    }
     @media (max-width: 700px), (max-height: 560px) {
       .dpad { grid-template: repeat(3, 54px) / repeat(3, 54px); }
       #hopKnap { width: 76px; height: 76px; font-size: 30px; }
@@ -175,6 +204,13 @@
     <button class="mc lille" id="menuKnap" aria-label="Menu">⏸</button>
   </div>
   <div class="besked" id="besked"></div>
+  <div class="top-hoejre">
+    <div class="status" id="status">🟡 Forbinder…</div>
+    <button class="mc lille" id="emojiKnap" aria-label="Send en emoji">😀</button>
+  </div>
+  <div class="emoji-bar skjult" id="emojiBar">
+    <button>❤️</button><button>😂</button><button>👍</button><button>🎉</button><button>😮</button><button>👋</button>
+  </div>
 
   <div class="styring">
     <div class="dpad">
@@ -197,9 +233,13 @@
       <h1 class="logo">BROEKRAFT</h1>
       <div class="splash">Nu med mærkelige dyr!</div>
       <div class="verden-her" id="verdenNavn"></div>
+      <div class="figur-titel kun-online">Hvilket dyr vil du være?</div>
+      <div class="figur-valg kun-online" id="figurValg"></div>
+      <div class="online-fejl skjult" id="onlineFejl"></div>
       <div class="knaprække">
         <button class="mc" id="startKnap" disabled>Henter…</button>
-        <button class="mc" id="verdenKnap">🌍 Verdener<span class="ny" id="verdenNy">NY!</span></button>
+        <button class="mc kun-alene" id="verdenKnap">🌍 Verdener<span class="ny" id="verdenNy">NY!</span></button>
+        <a class="mc kun-online" href="/" style="text-decoration:none; text-align:center">⬅ Tilbage</a>
       </div>
       <div class="hjaelp" id="startTekst">
         ▲◀▶▼ gå &nbsp;·&nbsp; træk for at kigge rundt<br>
@@ -226,8 +266,10 @@
       <button class="mc" data-luk="menu">▶ Fortsæt</button>
       <button class="mc" id="hjemStart">🏡 Tilbage til start</button>
       <button class="mc" id="musikKnap">🎵 Musik: TIL</button>
-      <button class="mc" id="skiftVerden">🌍 Skift verden</button>
-      <button class="mc" id="nyVerden">🔄 Start forfra</button>
+      <button class="mc kun-online" id="udsynKnap">👀 Udsyn: Mellem</button>
+      <button class="mc kun-alene" id="skiftVerden">🌍 Skift verden</button>
+      <button class="mc kun-alene" id="nyVerden">🔄 Start forfra</button>
+      <button class="mc kun-online" id="forladKnap">🚪 Forlad verdenen</button>
       <a class="mc" href="../../" style="text-decoration:none; text-align:center">🏠 Til forsiden</a>
     </div>
   </div>

@@ -46,9 +46,14 @@ const AO = [0.5, 0.68, 0.84, 1];                                      // mørker
 const lin = l => Math.pow(l, 2.2);
 
 export class Verden {
-  constructor(frø, atlas, materiale, scene) {
+  // mål: { BX, BY, BZ } — standard er den lille ø. online: true gemmer verdenen som søjler på 16×16,
+  // som serveren sender én ad gangen (se søjle() og glemSøjle()).
+  constructor(frø, atlas, materiale, scene, mål = {}) {
     Object.assign(this, { frø, atlas, mat: materiale, scene });
-    this.data = new Uint8Array(BX * BY * BZ);
+    this.BX = mål.BX || BX; this.BY = mål.BY || BY; this.BZ = mål.BZ || BZ;
+    this.online = !!mål.online;
+    this.søjler = this.online ? new Array((this.BX >> 4) * (this.BZ >> 4)) : null;
+    this.data = this.online ? null : new Uint8Array(this.BX * this.BY * this.BZ);
     this.klumper = new Map();
     this.snavset = new Set();
     this.ændringer = new Map();
@@ -58,30 +63,77 @@ export class Verden {
     this.tyngde = 28;
   }
 
-  i(x, y, z) { return x + z * BX + y * BX * BZ; }
-  inde(x, y, z) { return x >= 0 && x < BX && y >= 0 && y < BY && z >= 0 && z < BZ; }
+  i(x, y, z) { return x + z * this.BX + y * this.BX * this.BZ; }
+  inde(x, y, z) { return x >= 0 && x < this.BX && y >= 0 && y < this.BY && z >= 0 && z < this.BZ; }
+  søjleAf(x, z) { return this.søjler[(x >> 4) + (z >> 4) * (this.BX >> 4)]; }
   hent(x, y, z) {
     if (y < 0) return ID.Bundsten;
-    return this.inde(x, y, z) ? this.data[this.i(x, y, z)] : 0;
+    if (!this.inde(x, y, z)) return 0;
+    if (this.online) { const s = this.søjleAf(x, z); return s ? s[(x & 15) + (z & 15) * 16 + y * 256] : 0; }
+    return this.data[this.i(x, y, z)];
   }
+  // Er søjlen hentet? (online: ellers venter spilleren på, at jorden under en er kommet)
+  hentet(x, z) { return !this.online || !!(this.inde(x, 0, z) && this.søjleAf(x, z)); }
   erFast(x, y, z) {
-    if (y < 0 || x < 0 || x >= BX || z < 0 || z >= BZ) return true;   // usynlige vægge ved kanten
-    if (y >= BY) return false;
-    return this.fast[this.data[this.i(x, y, z)]];
+    if (y < 0 || x < 0 || x >= this.BX || z < 0 || z >= this.BZ) return true;   // usynlige vægge ved kanten
+    if (y >= this.BY) return false;
+    if (this.online && !this.søjleAf(x, z)) return true;                         // ikke hentet endnu
+    return this.fast[this.hent(x, y, z)];
   }
   sæt(x, y, z, id) {
     if (!this.inde(x, y, z)) return false;
-    const i = this.i(x, y, z);
-    if (this.data[i] === id) return false;
-    this.data[i] = id;
-    this.ændringer.set(i, id);
-    const m = (a, b, c) => { if (a >= 0 && b >= 0 && c >= 0 && a < BX / CS && b < BY / CS && c < BZ / CS) this.snavset.add(`${a},${b},${c}`); };
+    if (this.online) {
+      const s = this.søjleAf(x, z), j = (x & 15) + (z & 15) * 16 + y * 256;
+      if (!s || s[j] === id) return false;
+      s[j] = id;
+    } else {
+      const i = this.i(x, y, z);
+      if (this.data[i] === id) return false;
+      this.data[i] = id;
+      this.ændringer.set(i, id);
+    }
     const cx = x >> 4, cy = y >> 4, cz = z >> 4;
-    m(cx, cy, cz);
-    if ((x & 15) === 0) m(cx - 1, cy, cz); if ((x & 15) === 15) m(cx + 1, cy, cz);
-    if ((y & 15) === 0) m(cx, cy - 1, cz); if ((y & 15) === 15) m(cx, cy + 1, cz);
-    if ((z & 15) === 0) m(cx, cy, cz - 1); if ((z & 15) === 15) m(cx, cy, cz + 1);
+    this.snavs(cx, cy, cz);
+    if ((x & 15) === 0) this.snavs(cx - 1, cy, cz); if ((x & 15) === 15) this.snavs(cx + 1, cy, cz);
+    if ((y & 15) === 0) this.snavs(cx, cy - 1, cz); if ((y & 15) === 15) this.snavs(cx, cy + 1, cz);
+    if ((z & 15) === 0) this.snavs(cx, cy, cz - 1); if ((z & 15) === 15) this.snavs(cx, cy, cz + 1);
     return true;
+  }
+  // Markér en 16×16×16-klump til at blive bygget om
+  snavs(cx, cy, cz) {
+    if (cx >= 0 && cy >= 0 && cz >= 0 && cx < this.BX / CS && cy < this.BY / CS && cz < this.BZ / CS) this.snavset.add(`${cx},${cy},${cz}`);
+  }
+
+  // ---------- Online: søjler fra serveren ----------
+  søjle(cx, cz, data) {
+    if (cx < 0 || cz < 0 || cx >= this.BX >> 4 || cz >= this.BZ >> 4) return;
+    const højde = data.length / 256;
+    const s = højde === this.BY ? data : new Uint8Array(256 * this.BY);
+    if (s !== data) s.set(data.subarray(0, Math.min(data.length, s.length)));
+    this.søjler[cx + cz * (this.BX >> 4)] = s;
+    // byg søjlen og kanten af naboerne om (de viste sider ud mod "ingenting" før)
+    for (let cy = 0; cy < this.BY / CS; cy++) {
+      this.snavs(cx, cy, cz);
+      this.snavs(cx - 1, cy, cz); this.snavs(cx + 1, cy, cz); this.snavs(cx, cy, cz - 1); this.snavs(cx, cy, cz + 1);
+    }
+  }
+  glemSøjle(cx, cz) {
+    if (cx < 0 || cz < 0 || cx >= this.BX >> 4 || cz >= this.BZ >> 4) return;
+    this.søjler[cx + cz * (this.BX >> 4)] = undefined;
+    for (let cy = 0; cy < this.BY / CS; cy++) {
+      this.fjernKlump(`${cx},${cy},${cz}`);
+      this.snavset.delete(`${cx},${cy},${cz}`);
+      this.snavs(cx - 1, cy, cz); this.snavs(cx + 1, cy, cz); this.snavs(cx, cy, cz - 1); this.snavs(cx, cy, cz + 1);
+    }
+  }
+  rydAlt() {                                    // ny tilslutning: glem alt og vent på nye søjler
+    if (this.online) this.søjler.fill(undefined);
+    for (const k of [...this.klumper.keys()]) this.fjernKlump(k);
+    this.snavset.clear();
+  }
+  fjernKlump(nøgle) {
+    const m = this.klumper.get(nøgle);
+    if (m) { this.scene.remove(m); m.geometry.dispose(); this.klumper.delete(nøgle); }
   }
   // Står kassen (med fødderne i p) på en trampolin-blok?
   hopperUnder(p, b) {
@@ -90,7 +142,7 @@ export class Verden {
     return false;
   }
   topY(x, z) {
-    for (let y = BY - 1; y >= 0; y--) if (this.fast[this.hent(x, y, z)]) return y;
+    for (let y = this.BY - 1; y >= 0; y--) if (this.fast[this.hent(x, y, z)]) return y;
     return 0;
   }
 
@@ -98,6 +150,7 @@ export class Verden {
   // Hver verden har sin egen opskrift (se verdener.js). Den får et lille værktøjssæt:
   // sæt/hent blokke, tilfældige tal (R), bløde bakker (støj), terræn(), pynt() og top[] = højeste blok.
   generer(opskrift) {
+    const { BX, BY, BZ } = this;
     const R = rng(this.frø), støj = lavStøj(this.frø), top = new Int16Array(BX * BZ);
     const a = {
       R, støj, ID, BX, BY, BZ, top,
@@ -126,13 +179,13 @@ export class Verden {
   anvend(ændringer) {
     for (const [i, id] of Object.entries(ændringer || {})) {
       const n = +i;
-      if (n >= 0 && n < this.data.length && BLOKKE[id] !== undefined) { this.data[n] = id; this.ændringer.set(n, id); }
+      if (this.data && n >= 0 && n < this.data.length && BLOKKE[id] !== undefined) { this.data[n] = id; this.ændringer.set(n, id); }
     }
   }
 
   // ---------- 3D-model af blokkene (bygges i klumper på 16×16×16) ----------
   bygAlle() {
-    for (let cx = 0; cx < BX / CS; cx++) for (let cy = 0; cy < BY / CS; cy++) for (let cz = 0; cz < BZ / CS; cz++) this.bygKlump(cx, cy, cz);
+    for (let cx = 0; cx < this.BX / CS; cx++) for (let cy = 0; cy < this.BY / CS; cy++) for (let cz = 0; cz < this.BZ / CS; cz++) this.bygKlump(cx, cy, cz);
   }
   opdater(maks = 4) {
     let n = 0;
@@ -155,7 +208,7 @@ export class Verden {
   bygKlump(cx, cy, cz) {
     const pos = [], uv = [], farve = [], idx = [];
     for (let y = cy * CS; y < cy * CS + CS; y++) for (let z = cz * CS; z < cz * CS + CS; z++) for (let x = cx * CS; x < cx * CS + CS; x++) {
-      const id = this.data[this.i(x, y, z)];
+      const id = this.hent(x, y, z);
       if (!id) continue;
       const b = BLOKKE[id];
       if (!b) continue;                                            // ukendt blok — spring over
@@ -179,10 +232,7 @@ export class Verden {
     }
     const nøgle = `${cx},${cy},${cz}`;
     let m = this.klumper.get(nøgle);
-    if (!pos.length) {
-      if (m) { this.scene.remove(m); m.geometry.dispose(); this.klumper.delete(nøgle); }
-      return;
-    }
+    if (!pos.length) { this.fjernKlump(nøgle); return; }
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
     g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
