@@ -1,0 +1,41 @@
+name: Broekraft Server
+on:
+  push:
+    tags: ['server-v*']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  byg:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.7
+      - name: Afprøv generator, protokol og simulering
+        working-directory: server
+        run: deno task test
+      - name: Byg Windows og begge Mac-programmer
+        working-directory: server
+        run: deno task byg
+      - name: Pak programmer og vejledning
+        working-directory: server/dist
+        run: |
+          chmod +x Mac-Intel/BroekraftServer Mac-AppleSilicon/BroekraftServer
+          for platform in Windows Mac-Intel Mac-AppleSilicon; do
+            (cd "$platform" && zip "../BroekraftServer-$platform.zip" BroekraftServer* LÆSMIG.md)
+          done
+      - name: Gem pakker til manuel afprøvning
+        uses: actions/upload-artifact@v4
+        with:
+          name: BroekraftServer
+          path: server/dist/*.zip
+      - name: Udgiv tag som GitHub Release
+        if: startsWith(github.ref, 'refs/tags/server-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release create "$TAG" server/dist/*.zip --verify-tag --title "Broekraft Server $TAG" --notes-file server/UDGIVELSE.md

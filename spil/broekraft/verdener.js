@@ -27,7 +27,7 @@ export const VERDENER = [
         const sand = støj(x / 11 + 200, z / 11 + 100) > 0.7;
         return y === 0 ? ID.Bundsten : y < h - 3 ? ID.Sten : y < h ? (sand ? ID.Sand : ID.Jord) : (sand ? ID.Sand : ID["Græs"]);
       });
-      for (let n = 0; n < 28; n++) {
+      for (let n = 0; n < a.antal(28); n++) {
         const x = 3 + Math.floor(R() * (BX - 6)), z = 3 + Math.floor(R() * (BZ - 6)), h = top[x + z * BX];
         if (a.hent(x, h, z) !== ID["Græs"] || a.nærStart(x, z, 5)) continue;
         const hs = 4 + Math.floor(R() * 2);
@@ -41,7 +41,7 @@ export const VERDENER = [
           }
         }
       }
-      a.pynt(70, () => (R() < 0.5 ? ID["Rød blomst"] : ID["Gul blomst"]), [ID["Græs"]]);
+      a.pynt(a.antal(70), () => (R() < 0.5 ? ID["Rød blomst"] : ID["Gul blomst"]), [ID["Græs"]]);
     },
   },
 
@@ -58,7 +58,7 @@ export const VERDENER = [
       a.terræn((x, z) => Math.round(9 + støj(x / 16, z / 16) * 6 + støj(x / 6 + 30, z / 6) * 2 - 3),
         (x, z, y, h) => (y === 0 ? ID.Bundsten : y < h - 3 ? ID.Sten : y < h ? ID.Jord : ID["Mørkt græs"]));
       // små kirkegårde
-      for (let g = 0; g < 5; g++) {
+      for (let g = 0; g < a.antal(5); g++) {
         const cx = 4 + Math.floor(R() * (BX - 12)), cz = 4 + Math.floor(R() * (BZ - 12));
         if (a.nærStart(cx + 2, cz + 2, 7)) continue;
         for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
@@ -67,7 +67,7 @@ export const VERDENER = [
         }
       }
       // døde træer med spindelvæv
-      for (let n = 0; n < 22; n++) {
+      for (let n = 0; n < a.antal(22); n++) {
         const x = 3 + Math.floor(R() * (BX - 6)), z = 3 + Math.floor(R() * (BZ - 6)), h = top[x + z * BX];
         if (a.hent(x, h, z) !== ID["Mørkt græs"] || a.hent(x, h + 1, z) !== 0 || a.nærStart(x, z, 5)) continue;
         const hs = 4 + Math.floor(R() * 3);
@@ -79,8 +79,8 @@ export const VERDENER = [
           } else if (R() < 0.35) a.sæt(x + dx, h + 1 + Math.floor(R() * 3), z + dz, ID.Spindelvæv);
         }
       }
-      a.pynt(40, () => (R() < 0.5 ? ID.Græskar : ID.Lygtemand), [ID["Mørkt græs"]]);
-      a.pynt(30, ID["Lille svamp"], [ID["Mørkt græs"]]);
+      a.pynt(a.antal(40), () => (R() < 0.5 ? ID.Græskar : ID.Lygtemand), [ID["Mørkt græs"]]);
+      a.pynt(a.antal(30), ID["Lille svamp"], [ID["Mørkt græs"]]);
     },
   },
 
@@ -96,7 +96,7 @@ export const VERDENER = [
       const { R, støj, ID, BX, BZ, top } = a;
       a.terræn((x, z) => Math.round(10 + støj(x / 20, z / 20) * 6 + støj(x / 8 + 10, z / 8) * 2 - 4),
         (x, z, y, h) => (y === 0 ? ID.Bundsten : y < h - 3 ? ID.Sten : y < h ? ID.Jord : ID.Svampejord));
-      for (let n = 0; n < 24; n++) {
+      for (let n = 0; n < a.antal(24); n++) {
         const x = 4 + Math.floor(R() * (BX - 8)), z = 4 + Math.floor(R() * (BZ - 8)), h = top[x + z * BX];
         if (a.hent(x, h, z) !== ID.Svampejord || a.hent(x, h + 1, z) !== 0 || a.nærStart(x, z, 5)) continue;
         const hs = 3 + Math.floor(R() * 5), hat = R() < 0.5 ? ID["Rød svamp"] : ID["Blå svamp"], r = 2 + (R() < 0.45 ? 1 : 0);
@@ -107,8 +107,8 @@ export const VERDENER = [
           if (d > r * r - 2 && d <= r * r + 1) a.sæt(x + dx, h + hs, z + dz, hat);      // kanten der hænger ned
         }
       }
-      a.pynt(70, () => (R() < 0.7 ? ID["Lille svamp"] : ID.Glødesvamp), [ID.Svampejord]);
-      a.pynt(14, () => (R() < 0.5 ? ID["Rød svamp"] : ID["Blå svamp"]), [ID.Svampejord]);
+      a.pynt(a.antal(70), () => (R() < 0.7 ? ID["Lille svamp"] : ID.Glødesvamp), [ID.Svampejord]);
+      a.pynt(a.antal(14), () => (R() < 0.5 ? ID["Rød svamp"] : ID["Blå svamp"]), [ID.Svampejord]);
     },
   },
 
@@ -125,7 +125,7 @@ export const VERDENER = [
       a.terræn((x, z) => Math.round(9 + støj(x / 22, z / 22) * 3 + støj(x / 9, z / 9) * 1.5 - 1),
         (x, z, y, h) => (y === 0 ? ID.Bundsten : y < h - 4 ? ID.Månesten : ID.Ost));
       // kratere
-      for (let n = 0; n < 11; n++) {
+      for (let n = 0; n < a.antal(11); n++) {
         const cx = Math.floor(R() * BX), cz = Math.floor(R() * BZ), r = 2 + R() * 3.5;
         if (a.nærStart(cx, cz, r + 5)) continue;
         for (let x = Math.floor(cx - r - 2); x <= cx + r + 2; x++) for (let z = Math.floor(cz - r - 2); z <= cz + r + 2; z++) {
@@ -138,8 +138,8 @@ export const VERDENER = [
           } else if (d < r + 1.2) a.sæt(x, ++top[i], z, ID.Ost);                       // kraterkant
         }
       }
-      a.pynt(34, ID.Krystal, [ID.Ost, ID.Månesten]);
-      a.pynt(10, ID.Stjerneblok, [ID.Ost]);
+      a.pynt(a.antal(34), ID.Krystal, [ID.Ost, ID.Månesten]);
+      a.pynt(a.antal(10), ID.Stjerneblok, [ID.Ost]);
       // en raket ved siden af startstedet
       const rx = BX / 2 + 4, rz = BZ / 2 + 2, rh = top[rx + rz * BX];
       for (let y = 1; y <= 5; y++) a.sæt(rx, rh + y, rz, y === 3 ? ID.Glas : ID["Hvid uld"]);

@@ -1,0 +1,35 @@
+/* En rolig opsætning med store trykflader til tablets. */
+:root { font: 18px/1.5 ui-rounded, "SF Pro Rounded", system-ui, sans-serif; color: #241b39; background: #211443; }
+* { box-sizing: border-box; }
+body { margin: 0; background: radial-gradient(ellipse at top left, #553271, transparent 70%); }
+main { max-width: 860px; margin: auto; padding: 28px 24px 64px; }
+.tilbage { color: #e8dcff; text-decoration: none; display: inline-block; padding: 8px 0; }
+header { color: white; margin: 30px 0; }
+.mærke { color: #c4f0c1; font-size: .78rem; font-weight: 800; letter-spacing: .12em; }
+h1 { font-size: clamp(2rem, 6vw, 3rem); line-height: 1.1; margin: 14px 0; }
+h2 { font-size: 1.4rem; margin: 8px 0; }
+h3 { font-size: 1.05rem; }
+p { margin: 8px 0 18px; }
+header p { color: #ddd4ed; max-width: 600px; }
+.trin { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; color: white; list-style: none; padding: 0; margin: 26px 0; }
+.trin li { display: flex; gap: 10px; }
+.trin span { display: grid; place-items: center; flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: #a6e3a0; color: #213d26; font-weight: 800; }
+.trin p { color: #ddd4ed; font-size: .85rem; }
+.kort { background: #fffdf9; padding: 28px; border-radius: 22px; margin: 18px 0; }
+.ikon { font-size: 2.3rem; }
+button, .primær, .sekundær { display: inline-block; font: inherit; font-weight: 750; line-height: 1.3; min-height: 52px; padding: 16px 22px; border: 0; border-radius: 14px; background: #eee7f6; color: #352044; cursor: pointer; text-align: center; text-decoration: none; }
+.primær { background: #366846; color: white; }
+button:disabled { opacity: .6; cursor: wait; }
+:focus-visible { outline: 3px solid #a660e0; outline-offset: 4px; }
+.lille { font-size: .8rem; color: #655d70; margin-top: 14px; }
+[hidden] { display: none !important; }
+video { display: block; background: #18151e; border-radius: 16px; width: 100%; max-height: 360px; object-fit: cover; margin: 18px 0; }
+.fundet { padding: 20px; background: #eaf4e9; border-radius: 16px; margin-top: 20px; }
+#besked, #adresse-fejl { margin: 16px 0 0; }
+#fundet-adresse, #seneste-link { overflow-wrap: anywhere; }
+summary { font-weight: 750; cursor: pointer; padding: 4px 0; }
+details[open] summary { margin-bottom: 18px; }
+form { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+label { width: 100%; font-weight: 650; }
+input { flex: 1; min-width: 180px; width: 100%; padding: 15px; font: inherit; border: 2px solid #c7bbd2; border-radius: 12px; }
+@media (max-width: 620px) { main { padding: 20px 16px 40px; } .trin { grid-template-columns: 1fr; gap: 4px; } .kort { padding: 22px; } form button { width: 100%; } }

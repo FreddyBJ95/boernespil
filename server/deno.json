@@ -1,0 +1,9 @@
+{
+  "tasks": {
+    "start": "deno run --allow-net --allow-read --allow-write --allow-env --allow-sys=networkInterfaces --allow-run main.js",
+    "test": "deno test --allow-read --allow-write --allow-env --allow-net tests/",
+    "byg": "deno run --allow-read --allow-write --allow-run byg.js"
+  },
+  "fmt": { "indentWidth": 2, "lineWidth": 130 },
+  "exclude": ["dist", "vendor"]
+}

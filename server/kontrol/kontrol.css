@@ -1,0 +1,14 @@
+/* Enkel grundstil; Claude står for det endelige design. */
+:root { font: 18px system-ui, sans-serif; color: #202e32; background: #f5f7f8; }
+body { max-width: 1000px; margin: auto; padding: 24px; }
+section { background: white; border: 1px solid #d3dce0; border-radius: 12px; padding: 20px; margin: 20px 0; }
+form, #adresser { display: flex; flex-wrap: wrap; gap: 20px; }
+label { display: flex; flex-direction: column; gap: 5px; }
+input, select, button { font: inherit; padding: 10px; }
+button { cursor: pointer; margin: 4px; }
+button:disabled { cursor: wait; }
+article { border-bottom: 1px solid #d3dce0; padding: 12px 0; }
+#besked { white-space: pre-wrap; overflow-wrap: anywhere; }
+#adresser a { display: block; }
+#adresser svg { width: 190px; height: 190px; }
+progress { margin: 10px; }

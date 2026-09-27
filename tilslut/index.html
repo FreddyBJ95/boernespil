@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#211443">
+  <title>Spil sammen · Forbind tablet</title>
+  <link rel="stylesheet" href="tilslut.css">
+</head>
+<body>
+  <main>
+    <a class="tilbage" href="../index.html">← Tilbage til spillene</a>
+    <header><span class="mærke">BROEKRAFT · SPIL SAMMEN</span><h1>Find familiens verden</h1><p>En voksen hjælper med at forbinde tabletten. Så kan I bygge sammen.</p></header>
+    <ol class="trin" aria-label="Sådan kommer I i gang">
+      <li><span>1</span><div><strong>Start på computeren</strong><p>Åbn Broekraft Server, og start en verden.</p></div></li>
+      <li><span>2</span><div><strong>Brug samme wifi</strong><p>Tabletten og computeren skal være på samme netværk.</p></div></li>
+      <li><span>3</span><div><strong>Scan koden</strong><p>Find QR-koden i computerens kontrolpanel.</p></div></li>
+    </ol>
+    <section class="kort" aria-labelledby="scan-titel">
+      <div class="ikon" aria-hidden="true">📷</div><h2 id="scan-titel">Scan fra tabletten</h2>
+      <p>Ret kameraet mod QR-koden på computeren.</p>
+      <button id="scan" class="primær" type="button">Scan QR-kode</button>
+      <p class="lille">Kameraet bruges kun til koden. Ingen billeder gemmes eller sendes.</p>
+      <div id="kamera" hidden><video id="video" playsinline muted autoplay aria-label="Kamera til QR-scanning"></video><button id="stop" type="button">Luk kamera</button></div>
+      <p id="besked" role="status" aria-live="polite"></p>
+      <div id="fundet" class="fundet" hidden><h3>Serveradresse fundet</h3><p id="fundet-adresse"></p><a id="åbn" class="primær">Åbn familiens server →</a><p class="lille">Her vælger I den verden, I vil spille i.</p></div>
+    </section>
+    <section id="seneste" class="kort" hidden><h2>Brug samme computer igen</h2><a id="seneste-link" class="sekundær"></a></section>
+    <details class="kort"><summary>Skriv adressen i stedet</summary><p>Adressen står under QR-koden på computeren.</p>
+      <form id="manuel"><label for="adresse">Serveradresse</label><input id="adresse" name="adresse" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="192.168.0.123:8080" required maxlength="200"><button type="submit">Brug adressen</button></form>
+      <p id="adresse-fejl" role="status"></p>
+    </details>
+    <details class="kort"><summary>Hjælp til at forbinde</summary><h3>Brug tablettens almindelige kamera</h3><p>Åbn appen Kamera, ret det mod koden på computeren, og tryk på linket, der vises. Det åbner serveren direkte.</p><h3>Hvis kameraet ikke åbner</h3><p>Åbn den almindelige Børnespil-hjemmeside i Safari, og tillad kameraet, når du trykker på Scan QR-kode. Du kan altid bruge appen Kamera eller skrive adressen i stedet.</p><h3>Hvis serveren ikke åbner</h3><p>Lad computeren være tændt og Broekraft Server være åben. Tjek, at begge enheder bruger samme wifi. Et gæstenetværk kan forhindre forbindelsen. Scan en ny kode, hvis computerens adresse er ændret.</p><h3>Gem til næste gang</h3><p>Når serveren er åbnet i Safari, kan en voksen vælge Del → Føj til hjemmeskærm.</p></details>
+  </main>
+  <script src="vendor/jsQR.js" defer></script>
+  <script type="module" src="tilslut.js"></script>
+</body>
+</html>

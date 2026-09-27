@@ -6,6 +6,8 @@
 //  lyser:        altid fuldt oplyst · uknuselig: kan ikke hakkes · skjult: vises ikke i inventaret
 //  hopper:       man hopper højt når man lander på den (som en trampolin)
 //  tnt:          kan tændes med hammeren og sprænger så et hul (se spil.js)
+//  væske:        "vand" eller "lava" · niveau: 0 = kilde, højere = tyndere strøm
+//  ild:          flammer styret af simulering.js
 //  Nye blokke skal altid tilføjes NEDERST, så gemte verdener stadig passer.
 //  lyd:          "græs" | "sten" | "træ" | "sand" | "glas" | "uld" | "metal"
 // Et nyt mønster er en funktion i MØNSTRE der tegner 16×16 pixels med set(x, y, farve).
@@ -60,6 +62,21 @@ export const BLOKKE = [
   { navn: "Krystal", tekstur: "krystal", kryds: true, lyser: true, lyd: "glas" },
   // --- TNT ---
   { navn: "TNT", tekstur: { top: "tntTop", side: "tntSide", bund: "tntBund" }, tnt: true, lyd: "græs" },
+  // --- Vand, lava og ild (Claude tilføjer visningen) ---
+  { navn: "Vand", tekstur: "uld:#3a6fe0", væske: "vand", niveau: 0, gennemsigtig: true, skjult: true, lyd: "sten" },
+  { navn: "Vand 1", tekstur: "uld:#3a6fe0", væske: "vand", niveau: 1, gennemsigtig: true, skjult: true, lyd: "sten" },
+  { navn: "Vand 2", tekstur: "uld:#3a6fe0", væske: "vand", niveau: 2, gennemsigtig: true, skjult: true, lyd: "sten" },
+  { navn: "Vand 3", tekstur: "uld:#3a6fe0", væske: "vand", niveau: 3, gennemsigtig: true, skjult: true, lyd: "sten" },
+  { navn: "Vand 4", tekstur: "uld:#3a6fe0", væske: "vand", niveau: 4, gennemsigtig: true, skjult: true, lyd: "sten" },
+  { navn: "Vand 5", tekstur: "uld:#3a6fe0", væske: "vand", niveau: 5, gennemsigtig: true, skjult: true, lyd: "sten" },
+  { navn: "Vand 6", tekstur: "uld:#3a6fe0", væske: "vand", niveau: 6, gennemsigtig: true, skjult: true, lyd: "sten" },
+  { navn: "Vand 7", tekstur: "uld:#3a6fe0", væske: "vand", niveau: 7, gennemsigtig: true, skjult: true, lyd: "sten" },
+  { navn: "Lava", tekstur: "uld:#f28a1e", væske: "lava", niveau: 0, lyser: true, skjult: true, lyd: "sten" },
+  { navn: "Lava 1", tekstur: "uld:#f28a1e", væske: "lava", niveau: 1, lyser: true, skjult: true, lyd: "sten" },
+  { navn: "Lava 2", tekstur: "uld:#f28a1e", væske: "lava", niveau: 2, lyser: true, skjult: true, lyd: "sten" },
+  { navn: "Lava 3", tekstur: "uld:#f28a1e", væske: "lava", niveau: 3, lyser: true, skjult: true, lyd: "sten" },
+  { navn: "Ild", tekstur: "blomst:#f28a1e", ild: true, kryds: true, lyser: true, skjult: true, lyd: "græs" },
+  { navn: "Obsidian", tekstur: "bundsten", skjult: true, lyd: "sten" },
 ];
 
 export const ID = {};

@@ -17,7 +17,7 @@ export function rng(frø) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-function lavStøj(frø) {
+export function lavStøj(frø) {
   const h = (x, z) => {
     let n = (Math.imul(x, 374761393) + Math.imul(z, 668265263) + Math.imul(frø, 1442695041)) | 0;
     n = Math.imul(n ^ (n >>> 13), 1274126177);
@@ -101,6 +101,7 @@ export class Verden {
     const R = rng(this.frø), støj = lavStøj(this.frø), top = new Int16Array(BX * BZ);
     const a = {
       R, støj, ID, BX, BY, BZ, top,
+      antal: n => Math.round(n * (BX * BZ) / 4096),
       sæt: (x, y, z, id) => { if (this.inde(x, y, z)) this.data[this.i(x, y, z)] = id; },
       hent: (x, y, z) => this.hent(x, y, z),
       nærStart: (x, z, r) => Math.abs(x - BX / 2) < r && Math.abs(z - BZ / 2) < r,

@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="da">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Broekraft testklient</title></head>
+<body>
+  <h1>Test af fællesspil</h1><p>Åbn siden i to faner for at afprøve forbindelsen.</p>
+  <label>Figur <select id="figur"><option>gris</option><option>ko</option><option>faar</option><option>hone</option><option>fro</option><option>and</option><option>snegl</option><option>zombie</option></select></label>
+  <button id="forbind">Forbind</button><select id="verdener" aria-label="Verden"></select><button id="vælg">Vælg verden</button>
+  <p><label>X <input id="x" type="number" value="65"></label><label>Y <input id="y" type="number" value="20"></label><label>Z <input id="z" type="number" value="64"></label><label>Blok-id <input id="blok" type="number" value="7" min="0" max="56"></label></p>
+  <button id="pos">Flyt spiller</button><button id="sæt">Sæt blok</button><button id="fjern">Fjern blok</button><button id="tænd">Tænd TNT</button><button id="emoji">🎉</button>
+  <h2>Spillere</h2><pre id="spillere"></pre><h2>Seneste hændelser</h2><pre id="log" aria-live="polite"></pre>
+  <script type="module" src="/test-klient.js"></script>
+</body></html>
