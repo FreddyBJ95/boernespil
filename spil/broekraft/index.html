@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Broekraft ⛏️</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; }
+    body {
+      font-family: ui-rounded, "SF Pro Rounded", "Baloo 2", system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: #cde8ff; color: #fff;
+      -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent; touch-action: none;
+      --s: min(58px, calc((100vw - 64px) / 10.3));
+    }
+    #scene { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; touch-action: none; }
+    button { font-family: inherit; touch-action: none; cursor: pointer; }
+    .skjult { display: none !important; }
+
+    /* Minecraft-agtige knapper */
+    .mc {
+      color: #fff; font-weight: 800; font-size: 22px; padding: 12px 26px; min-width: 260px;
+      background: #8b8b8b; border: 3px solid #1e1e1e; border-radius: 2px;
+      box-shadow: inset -3px -4px 0 #5a5a5a, inset 3px 3px 0 #b8b8b8;
+      text-shadow: 2px 2px 0 #3f3f3f;
+    }
+    .mc:active, .mc.aktiv { background: #7aa6e0; box-shadow: inset -3px -4px 0 #4f78b0, inset 3px 3px 0 #a9c8f0; }
+    .mc:disabled { opacity: .6; }
+
+    /* Knapper i hjørnerne */
+    .top { position: fixed; top: 10px; left: 10px; gap: 8px; z-index: 6; }
+    .i-gang .top.styring { display: flex; }
+    .lille {
+      width: 50px; height: 50px; min-width: 0; padding: 0; font-size: 24px; display: grid; place-items: center;
+      text-decoration: none;
+    }
+
+    /* Pile til at gå (som i Minecraft på tablet) */
+    .styring { display: none; }
+    .i-gang .styring { display: block; }
+    .dpad {
+      position: fixed; left: 14px; bottom: calc(var(--s) + 34px); z-index: 5;
+      display: grid; grid-template: repeat(3, 66px) / repeat(3, 66px); gap: 4px;
+    }
+    .pil {
+      background: rgba(60,60,60,.42); border: 2px solid rgba(255,255,255,.6); border-radius: 8px;
+      color: #fff; font-size: 26px; padding: 0; text-shadow: 0 1px 3px rgba(0,0,0,.5);
+    }
+    .pil.aktiv { background: rgba(255,255,255,.45); }
+    .op { grid-area: 1 / 2; } .venstre { grid-area: 2 / 1; } .hoejre { grid-area: 2 / 3; } .ned-pil { grid-area: 3 / 2; }
+    .hopknapper {
+      position: fixed; right: 18px; bottom: calc(var(--s) + 34px); z-index: 5;
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+    }
+    .rund { border-radius: 50%; }
+    #hopKnap { width: 92px; height: 92px; font-size: 38px; }
+    #nedKnap { width: 72px; height: 72px; font-size: 28px; display: none; }
+    #flyKnap { width: 60px; height: 60px; font-size: 26px; }
+    .flyver #nedKnap { display: block; }
+    .flyver #flyKnap { background: rgba(122,166,224,.75); }
+
+    /* Hotbar */
+    .hotbar {
+      position: fixed; left: 50%; bottom: 8px; transform: translateX(-50%); z-index: 5;
+      display: flex; gap: 2px; padding: 3px; background: rgba(0,0,0,.5); border: 2px solid rgba(0,0,0,.7);
+    }
+    .slot {
+      width: var(--s); height: var(--s); padding: 0; display: grid; place-items: center;
+      background: rgba(139,139,139,.55); border: 3px solid rgba(60,60,60,.9); border-radius: 0;
+      box-shadow: inset 2px 2px 0 rgba(255,255,255,.25);
+    }
+    .slot img { width: 84%; height: 84%; image-rendering: pixelated; pointer-events: none; }
+    .slot.valgt { border-color: #fff; outline: 3px solid #000; transform: scale(1.1); z-index: 1; }
+    .slot.mere { color: #fff; font-size: calc(var(--s) * 0.5); font-weight: 900; line-height: 1; }
+    .ting-navn {
+      position: fixed; left: 50%; bottom: calc(var(--s) + 22px); transform: translateX(-50%); z-index: 5;
+      font-weight: 800; font-size: 20px; text-shadow: 2px 2px 0 #3f3f3f; opacity: 0; transition: opacity .3s;
+      pointer-events: none; white-space: nowrap;
+    }
+    .ting-navn.vis { opacity: 1; }
+    .besked {
+      position: fixed; left: 50%; top: 14px; transform: translateX(-50%); z-index: 6; pointer-events: none;
+      max-width: calc(100vw - 150px); text-align: center; font-weight: 800; font-size: clamp(16px, 2.6vw, 22px);
+      padding: 8px 16px; background: rgba(0,0,0,.45); border-radius: 6px; text-shadow: 1px 1px 0 #000;
+      opacity: 0; transition: opacity .4s;
+    }
+    .besked.vis { opacity: 1; }
+
+    /* Overlays */
+    .overlay {
+      position: fixed; inset: 0; z-index: 20; display: flex; padding: 20px; overflow-y: auto; touch-action: pan-y;
+      background: rgba(0,0,0,.55);
+    }
+    .indhold { margin: auto; display: flex; flex-direction: column; align-items: center; gap: 12px; max-width: 900px; width: 100%; }
+    #start { background: radial-gradient(ellipse at center, rgba(0,0,0,.15), rgba(0,0,0,.5)); }
+    .logo {
+      font-size: clamp(52px, 13vw, 110px); font-weight: 900; letter-spacing: 3px; margin: 0; line-height: 1;
+      background: linear-gradient(180deg, #f2f2f2 0%, #bdbdbd 45%, #8a8a8a 50%, #a8a8a8 100%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      filter: drop-shadow(4px 5px 0 #2b2b2b);
+    }
+    .splash {
+      color: #ffff3f; font-weight: 900; font-size: clamp(18px, 3.5vw, 26px); text-shadow: 2px 2px 0 #3f3f00;
+      transform: rotate(-12deg); margin: -6px 0 18px 45%; animation: pust .6s ease-in-out infinite alternate; white-space: nowrap;
+    }
+    @keyframes pust { to { transform: rotate(-12deg) scale(1.1); } }
+    .hjaelp { font-size: 17px; opacity: .9; text-align: center; text-shadow: 1px 1px 0 #000; margin-top: 8px; line-height: 1.6; }
+
+    .panel {
+      background: #c6c6c6; border: 3px solid #1e1e1e; padding: 14px; color: #3f3f3f; width: 100%;
+      box-shadow: inset -4px -4px 0 #555, inset 4px 4px 0 #fff;
+    }
+    .panel h2 { margin: 0 0 10px; font-size: 24px; }
+    .inv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; }
+    .inv-ting {
+      background: #8b8b8b; border: 2px solid #373737; padding: 6px 4px; display: flex; flex-direction: column; align-items: center; gap: 2px;
+      box-shadow: inset 2px 2px 0 #b8b8b8; color: #fff; font-size: 13px; font-weight: 700; text-shadow: 1px 1px 0 #333;
+    }
+    .inv-ting img { width: 54px; height: 54px; image-rendering: pixelated; pointer-events: none; }
+    .inv-ting:active { background: #7aa6e0; }
+    .luk { position: fixed; top: 12px; right: 12px; z-index: 21; }
+
+    @media (max-width: 520px) { .besked { top: 70px; max-width: calc(100vw - 32px); } }
+    @media (max-width: 700px), (max-height: 560px) {
+      .dpad { grid-template: repeat(3, 54px) / repeat(3, 54px); }
+      #hopKnap { width: 76px; height: 76px; font-size: 30px; }
+      #nedKnap { width: 60px; height: 60px; }
+      #flyKnap { width: 50px; height: 50px; font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+
+  <div class="top styring">
+    <a class="mc lille" href="../../" aria-label="Til forsiden">🏠</a>
+    <button class="mc lille" id="menuKnap" aria-label="Menu">⏸</button>
+  </div>
+  <div class="besked" id="besked"></div>
+
+  <div class="styring">
+    <div class="dpad">
+      <button class="pil op" data-tast="frem" aria-label="Frem">▲</button>
+      <button class="pil venstre" data-tast="venstre" aria-label="Til venstre">◀</button>
+      <button class="pil hoejre" data-tast="hoejre" aria-label="Til højre">▶</button>
+      <button class="pil ned-pil" data-tast="tilbage" aria-label="Tilbage">▼</button>
+    </div>
+    <div class="hopknapper">
+      <button class="pil rund" id="flyKnap" aria-label="Flyv">🕊️</button>
+      <button class="pil rund" id="hopKnap" data-tast="hop" aria-label="Hop">⬆</button>
+      <button class="pil rund" id="nedKnap" data-tast="ned" aria-label="Flyv ned">⬇</button>
+    </div>
+    <div class="ting-navn" id="tingNavn"></div>
+    <div class="hotbar" id="hotbar"></div>
+  </div>
+
+  <div class="overlay" id="start">
+    <div class="indhold">
+      <h1 class="logo">BROEKRAFT</h1>
+      <div class="splash">Nu med mærkelige dyr!</div>
+      <button class="mc" id="startKnap" disabled>Henter…</button>
+      <div class="hjaelp" id="startTekst">
+        ▲◀▶▼ gå &nbsp;·&nbsp; træk for at kigge rundt<br>
+        tryk = byg 🧱 &nbsp;·&nbsp; hold fingeren = hak ⛏️<br>
+        ⬆ hop &nbsp;·&nbsp; 🕊️ flyv
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay skjult" id="inventar">
+    <button class="mc lille luk" data-luk="inventar" aria-label="Luk">✖</button>
+    <div class="indhold">
+      <div class="panel">
+        <h2>Vælg en blok eller et dyre-æg</h2>
+        <div class="inv-grid" id="invGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay skjult" id="menu">
+    <div class="indhold">
+      <h1 class="logo" style="font-size: clamp(40px, 9vw, 70px)">BROEKRAFT</h1>
+      <button class="mc" data-luk="menu">▶ Fortsæt</button>
+      <button class="mc" id="hjemStart">🏡 Tilbage til start</button>
+      <button class="mc" id="musikKnap">🎵 Musik: TIL</button>
+      <button class="mc" id="nyVerden">🌍 Ny verden</button>
+      <a class="mc" href="../../" style="text-decoration:none; text-align:center">🏠 Til forsiden</a>
+    </div>
+  </div>
+
+  <script src="../../effekter.js"></script>
+  <script>
+    // Hvis 3D-motoren ikke kan hentes (fx ingen internet første gang), så sig det pænt
+    setTimeout(function () {
+      if (window.broekraftKlar) return;
+      document.getElementById("startTekst").textContent = "Kunne ikke hente 3D-motoren 😕 Tjek at der er internet, og prøv igen.";
+      var k = document.getElementById("startKnap");
+      k.textContent = "🔄 Prøv igen"; k.disabled = false; k.onclick = function () { location.reload(); };
+    }, 15000);
+  </script>
+  <script type="module" src="spil.js"></script>
+</body>
+</html>

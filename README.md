@@ -33,6 +33,7 @@ Første gang skal der være internet. Bagefter virker spillene også offline.
 - 🚽 **Skibidi Toilet**
 - 🚜 **Vaskehallen**
 - 🎣 **Mærkelige fisk** (3D)
+- ⛏️ **Broekraft** (3D-byggespil i Minecraft-stil)
 
 ## Kør lokalt
 Åbn `index.html` i en browser.
@@ -57,3 +58,18 @@ Fiskespillet ligger i `spil/fisk/` og er delt op, så det er nemt at bygge vider
 Øverst i `fisk.js` og `staenger.js` står hvad hver værdi betyder.
 Test en ny fisk ved at åbne `spil/fisk/?fisk=<id>` — så bider den fisk hver gang.
 Nye filer skal også skrives ind i `EKSTRA` i `sw.js`.
+
+## Broekraft: flere blokke og dyr
+Byggespillet ligger i `spil/broekraft/` og er delt op på samme måde:
+
+| Fil | Indhold |
+|---|---|
+| `blokke.js` | Alle blokkene (`BLOKKE`) og deres 16×16 pixel-mønstre (`MØNSTRE`) |
+| `dyr.js` | De mærkelige dyr (`DYR`) — bygget af klodser målt i pixels, ligesom i Minecraft |
+| `verden.js` | Terrænet, 3D-modellen af blokkene og kollision |
+| `lyd.js` | Lyde og den rolige klavermusik |
+| `spil.js` | Spilleren, styringen, hotbar, inventar og gemning |
+
+Øverst i `blokke.js` og `dyr.js` står hvad hver værdi betyder. Verdenen gemmes på enheden,
+og "Ny verden" i menuen (⏸) laver en helt ny ø. `spil/broekraft/?debug` giver adgang til
+spilleren i konsollen (`bk.sp`), hvis man vil fejlsøge.
