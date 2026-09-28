@@ -114,16 +114,26 @@ if (cfg.jordklode) {                                           // Jorden set fra
   t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.colorSpace = THREE.SRGBColorSpace;
   påHimlen(new THREE.Mesh(new THREE.PlaneGeometry(46, 46), new THREE.MeshBasicMaterial({ map: t, fog: false })), new THREE.Vector3(-0.6, 0.35, -0.75), 240);
 }
-// Sne, der falder stille omkring barnet (verdener med sne: true)
+// Sne, der falder stille omkring barnet (sne: true) — eller gløder, der stiger op, slik der drysser, eller bobler
+const SNEARTER = {
+  sne: { farver: ["#ffffff"], fart: 1.2, str: 0.16, antal: 1400 },
+  gløder: { farver: ["#ff8c1a", "#ffd23f", "#ff4d2e", "#ffb020"], fart: -0.7, str: 0.12, antal: 700, glød: true },
+};
 let sne = null;
 if (cfg.sne) {
-  const N = 1400, pos = new Float32Array(N * 3), fart = new Float32Array(N);
-  for (let i = 0; i < N; i++) { pos[i * 3] = (Math.random() - 0.5) * 60; pos[i * 3 + 1] = Math.random() * 30; pos[i * 3 + 2] = (Math.random() - 0.5) * 60; fart[i] = 1.2 + Math.random() * 1.2; }
-  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  const art = SNEARTER[cfg.sne === true ? "sne" : cfg.sne] || SNEARTER.sne;
+  const N = art.antal, pos = new Float32Array(N * 3), fart = new Float32Array(N), farve = new Float32Array(N * 3), c3 = new THREE.Color();
+  for (let i = 0; i < N; i++) {
+    pos[i * 3] = (Math.random() - 0.5) * 60; pos[i * 3 + 1] = Math.random() * 30; pos[i * 3 + 2] = (Math.random() - 0.5) * 60;
+    fart[i] = art.fart * (1 + Math.random());
+    c3.set(art.farver[i % art.farver.length]); farve.set([c3.r, c3.g, c3.b], i * 3);
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.BufferAttribute(farve, 3));
   const c = document.createElement("canvas"); c.width = c.height = 16;
   const k = c.getContext("2d"), grad = k.createRadialGradient(8, 8, 0, 8, 8, 8);
   grad.addColorStop(0, "rgba(255,255,255,1)"); grad.addColorStop(1, "rgba(255,255,255,0)"); k.fillStyle = grad; k.fillRect(0, 0, 16, 16);
-  sne = new THREE.Points(g, new THREE.PointsMaterial({ size: 0.16, map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false, opacity: 0.9 }));
+  sne = new THREE.Points(g, new THREE.PointsMaterial({ size: art.str, map: new THREE.CanvasTexture(c), vertexColors: true, transparent: true, depthWrite: false, opacity: 0.9,
+    blending: art.glød ? THREE.AdditiveBlending : THREE.NormalBlending }));
   sne.frustumCulled = false; sne.userData.fart = fart;
   scene.add(sne);
 }
@@ -567,7 +577,8 @@ let varmeTid = 0;
 function tjekVarme(fod, krop, dt) {
   varmeTid -= dt;
   const hed = id => verden.væske[id] === "lava" || !!BLOKKE[id]?.ild;
-  if (varmeTid > 0 || !(hed(fod) || hed(krop))) return;
+  const iLavahav = cfg.lavahav && !sp.flyver && sp.pos.y < HAV + 0.3;          // havet i Underverdenen er lava
+  if (varmeTid > 0 || !(hed(fod) || hed(krop) || iLavahav)) return;
   varmeTid = 0.9;
   sp.vel.set(Math.sin(sp.yaw) * 5, 10, Math.cos(sp.yaw) * 5);
   sp.jord = false;

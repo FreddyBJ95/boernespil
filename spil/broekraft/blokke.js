@@ -97,6 +97,15 @@ export const BLOKKE = [
   { navn: "Gave", tekstur: { top: "gaveTop", side: "gaveSide", bund: "gaveBund" }, lyd: "uld" },
   // --- Portalen (som i Minecraft: byg en ramme af obsidian og tænd den med 🔥) ---
   { navn: "Portal", tekstur: "portal", portal: true, gennemsigtig: true, lyser: true, skjult: true, lyd: "glas" },
+  // --- Underverdenen ---
+  { navn: "Rødsten", tekstur: "rødsten", lyd: "sten" },
+  { navn: "Glødesten", tekstur: "glødesten", lyser: true, lyd: "glas" },
+  { navn: "Sjælesand", tekstur: "sjælesand", lyd: "sand" },
+  { navn: "Borgsten", tekstur: "borgsten", lyd: "sten" },
+  { navn: "Basalt", tekstur: { top: "basaltTop", side: "basalt", bund: "basaltTop" }, lyd: "sten" },
+  { navn: "Rødt mos", tekstur: { top: "rødtMos", side: "rødtMosSide", bund: "rødsten" }, lyd: "græs" },
+  { navn: "Rødstilk", tekstur: { top: "rødstilkTop", side: "rødstilk", bund: "rødstilkTop" }, lyd: "træ" },
+  { navn: "Vortesvamp", tekstur: "vortesvamp", lyd: "uld" },
 ];
 
 export const ID = {};
@@ -361,6 +370,47 @@ const MØNSTRE = {
     set(x, y, lys(hex(sløjfe || bånd ? "#f5c542" : "#e03a3a"), 1 + (r() - 0.5) * 0.1));
   }),
   gaveBund: (set, r) => fyld(set, r, "#b82a2a", 0.1),
+
+  // --- Underverdenen ---
+  rødsten: (set, r) => { fyld(set, r, "#7a2a2a", 0.3); prik(set, r, ["#5a1a1a", "#9a3a36", "#6a2020", "#8a3030"], 44); },
+  glødesten: (set, r) => {
+    fyld(set, r, "#e8a83a", 0.2);
+    prik(set, r, ["#fff3b0", "#ffe27a", "#fff8d8"], 30);
+    prik(set, r, ["#a8641e", "#c98f2a"], 16);
+  },
+  sjælesand: (set, r) => {
+    fyld(set, r, "#5a4232", 0.25); prik(set, r, ["#3f2e22", "#6e5242", "#4a3628"], 30);
+    for (const [fx, fy] of [[3, 3], [10, 9]]) {                   // svage, søde ansigter i sandet
+      set(fx, fy, hex("#2a1e16")); set(fx + 3, fy, hex("#2a1e16"));
+      set(fx + 1, fy + 3, hex("#2a1e16")); set(fx + 2, fy + 3, hex("#2a1e16"));
+    }
+  },
+  borgsten: (set, r) => {
+    const sten = hex("#4a1c26"), mørtel = hex("#240c12");
+    alle((x, y) => {
+      const skel = y % 5 === 4 || x === (Math.floor(y / 5) % 2 ? 3 : 11);
+      set(x, y, skel ? lys(mørtel, 1 + (r() - 0.5) * 0.1) : lys(sten, (y % 5 === 0 ? 1.18 : 1) * (1 + (r() - 0.5) * 0.18)));
+    });
+  },
+  basalt: (set, r) => alle((x, y) => set(x, y, lys(hex(x % 4 === 0 ? "#34343a" : x % 4 === 2 ? "#55555e" : "#46464e"), 1 + (r() - 0.5) * 0.14))),
+  basaltTop: (set, r) => alle((x, y) => {
+    const d = Math.max(Math.abs(x - 7.5), Math.abs(y - 7.5));
+    set(x, y, lys(hex(Math.floor(d) % 3 === 0 ? "#3a3a42" : "#50505a"), 1 + (r() - 0.5) * 0.12));
+  }),
+  rødtMos: (set, r) => { fyld(set, r, "#b0243a", 0.3); prik(set, r, ["#d8405a", "#8a1a2a", "#ff6a7a"], 30); },
+  rødtMosSide: (set, r) => {
+    MØNSTRE.rødsten(set, r);
+    for (let x = 0; x < T; x++) {
+      const h = 3 + (r() < 0.5 ? 1 : 0) + (r() < 0.2 ? 2 : 0);
+      for (let y = 0; y < h; y++) set(x, y, lys(hex("#b0243a"), 1 + (r() - 0.5) * 0.3));
+    }
+  },
+  rødstilk: (set, r) => alle((x, y) => set(x, y, lys(hex((x + Math.floor(y / 3)) % 5 === 0 ? "#5a1a4a" : "#8a2a5a"), 1 + (r() - 0.5) * 0.2))),
+  rødstilkTop: (set, r) => alle((x, y) => {
+    const d = Math.max(Math.abs(x - 7.5), Math.abs(y - 7.5));
+    set(x, y, lys(hex(d > 6.5 ? "#8a2a5a" : Math.floor(d) % 2 ? "#c8506a" : "#a83a5a"), 1 + (r() - 0.5) * 0.12));
+  }),
+  vortesvamp: (set, r) => { fyld(set, r, "#9a1420", 0.3); prik(set, r, ["#6a0a14", "#c82a36", "#ff5a4a"], 36); },
 };
 
 // Portalens lilla hvirvler. fase 0–2π flytter mønstret blødt, og det går i ét fra blok til blok.

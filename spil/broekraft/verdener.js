@@ -9,6 +9,7 @@
 //  størrelse: [bredde, højde, dybde], når man spiller alene (højden skal gå op i 16) — ellers 64 × 32 × 64
 //  hotbar:  det man starter med: bloknavne fra blokke.js, "v:gevær" = værktøj (vaerktoej.js), "æg:ko" = dyre-æg
 //  vis:     tre blokke der vises på verdens-kortet · skyd: balloner, kampvogne og point · fyrværkeri: nytårsnat
+//  sne:     true = sne der falder · "gløder" = gnister der stiger op · lavahav: havet er lava (man hopper ud af det)
 //  generer: opskriften på terrænet — får værktøjer fra verden.js (terræn, pynt, sæt, hent, R, støj …)
 
 export const VERDENER = [
@@ -430,6 +431,109 @@ export const VERDENER = [
         a.sæt(x, h + hs + 2, z, ID.Sne);
       }
       a.pynt(a.antal(8), ID.Gave, [ID.Sne]);
+    },
+  },
+
+  {
+    id: "underverden", navn: "Underverdenen", ikon: "🔥", tekst: "Den varme verden med lavasøer, glødesten og hoppende lavaklumper. Portalen står klar ved startstedet!",
+    himmel: ["#1a0303", "#6a1a0a"], tåge: [22, 68], hav: "#ff5a1a", sol: null, skyer: null,
+    lys: ["#ffb080", "#5a1a10", 1.9, 0.7], stemning: "uhyggelig", tyngde: 28,
+    størrelse: [128, 48, 128],
+    dyr: ["lavaklump", "lavaklump", "guldgris", "guldgris", "spogelse"], antal: 11,
+    sne: "gløder", lavahav: true,                                // gnister der stiger op, og havet er lava
+    hotbar: ["Rødsten", "Glødesten", "Borgsten", "Basalt", "Obsidian", "v:lava", "v:tænder", "TNT", "æg:lavaklump"],
+    vis: ["Rødsten", "Glødesten", "Borgsten"],
+    hent: ["Varmer lavaen op…", "Tænder glødestenene…", "Bygger borgen…", "Åbner portalen…"],
+    generer(a) {
+      const { R, støj, ID, BX, BZ, top } = a, cx = BX / 2, cz = BZ / 2, h0 = (x, z) => top[x + z * BX];
+      const biom = (x, z) => støj(x / 38 + 500, z / 38 + 500);   // lav: sjæledal · høj: basaltland · midt: den røde skov
+      a.terræn((x, z) => {
+        const kant = Math.min(1, Math.min(x, z, BX - 1 - x, BZ - 1 - z) / 12);        // ud mod kanten: ned i lavahavet
+        const midt = Math.max(0, 1 - Math.hypot(x - cx, z - cz) / 11);                  // fladt omkring startstedet
+        const h = 12 + (støj(x / 20, z / 20) * 10 + støj(x / 7 + 40, z / 7) * 3 - 6.5) * (1 - midt);
+        return Math.round(5 + (h - 5) * kant);
+      }, (x, z, y, h) => {
+        if (y === 0) return ID.Bundsten;
+        const b = biom(x, z);
+        if (y === h) return b < 0.36 ? ID.Sjælesand : b > 0.64 ? ID.Basalt : ID["Rødt mos"];
+        if (y > h - 3 && b < 0.36) return ID.Sjælesand;
+        return y > h - 3 && b > 0.64 ? ID.Basalt : ID.Rødsten;
+      });
+      const søjle = (x, z, y0, y1, blok) => { for (let y = y0; y <= y1; y++) a.sæt(x, y, z, blok); };
+
+      // Pladsen ved startstedet med glødesten i hjørnerne og en tændt portal
+      const hP = h0(cx, cz);
+      for (let x = cx - 5; x <= cx + 5; x++) for (let z = cz - 5; z <= cz + 5; z++) {
+        for (let y = hP + 1; y <= hP + 6; y++) a.sæt(x, y, z, 0);
+        a.sæt(x, hP, z, Math.abs(x - cx) === 5 && Math.abs(z - cz) === 5 ? ID.Glødesten : ID.Borgsten);
+        top[x + z * BX] = hP;
+      }
+      for (let dx = -1; dx <= 2; dx++) for (let dy = 1; dy <= 5; dy++) {
+        const kant = dx === -1 || dx === 2 || dy === 1 || dy === 5;
+        a.sæt(cx + dx, hP + dy, cz - 5, kant ? ID.Obsidian : ID.Portal);
+      }
+
+      // Små lavasøer (rigtig lava, som gløder og bobler)
+      for (let n = 0; n < a.antal(5); n++) {
+        const sx = 8 + Math.floor(R() * (BX - 16)), sz = 8 + Math.floor(R() * (BZ - 16)), r = 2 + R() * 2.5;
+        if (a.nærStart(sx, sz, 14)) continue;
+        let lav = 99;
+        for (let x = Math.floor(sx - r); x <= sx + r; x++) for (let z = Math.floor(sz - r); z <= sz + r; z++) if (Math.hypot(x - sx, z - sz) <= r) lav = Math.min(lav, h0(x, z));
+        for (let x = Math.floor(sx - r); x <= sx + r; x++) for (let z = Math.floor(sz - r); z <= sz + r; z++) {
+          const d = Math.hypot(x - sx, z - sz);
+          if (d > r + 1.5) continue;
+          const i = x + z * BX;
+          if (d <= r) { for (let y = lav; y <= h0(x, z); y++) a.sæt(x, y, z, 0); a.sæt(x, lav - 1, z, ID.Lava); a.sæt(x, lav - 2, z, ID.Rødsten); top[i] = lav - 2; }
+          else if (h0(x, z) >= lav) a.sæt(x, lav - 1, z, ID.Basalt);                      // en kant rundt om søen
+        }
+      }
+
+      // Den røde skov: kæmpesvampe med rød stilk, vortesvamp-hat og glødesten under hatten
+      for (let n = 0; n < a.antal(26); n++) {
+        const x = 4 + Math.floor(R() * (BX - 8)), z = 4 + Math.floor(R() * (BZ - 8)), h = h0(x, z);
+        if (a.hent(x, h, z) !== ID["Rødt mos"] || a.hent(x, h + 1, z) !== 0 || a.nærStart(x, z, 8)) continue;
+        const hs = 4 + Math.floor(R() * 5), r = 2 + (R() < 0.4 ? 1 : 0);
+        søjle(x, z, h + 1, h + hs, ID.Rødstilk);
+        for (let dx = -r; dx <= r; dx++) for (let dz = -r; dz <= r; dz++) {
+          const d = dx * dx + dz * dz;
+          if (d <= r * r + 1) a.sæt(x + dx, h + hs + 1, z + dz, ID.Vortesvamp);
+          if (d > r * r - 2 && d <= r * r + 1) { a.sæt(x + dx, h + hs, z + dz, ID.Vortesvamp); if (R() < 0.3) a.sæt(x + dx, h + hs - 1, z + dz, ID.Vortesvamp); }
+        }
+        a.sæt(x + 1, h + hs, z, ID.Glødesten); a.sæt(x - 1, h + hs, z + 1, ID.Glødesten);
+      }
+      // Basaltsøjler og spir af rødsten med glødesten på toppen
+      for (let n = 0; n < a.antal(30); n++) {
+        const x = 3 + Math.floor(R() * (BX - 6)), z = 3 + Math.floor(R() * (BZ - 6)), h = h0(x, z);
+        if (a.hent(x, h + 1, z) !== 0 || a.nærStart(x, z, 9)) continue;
+        const basalt = a.hent(x, h, z) === ID.Basalt, hs = 2 + Math.floor(R() * (basalt ? 6 : 9));
+        søjle(x, z, h + 1, h + hs, basalt ? ID.Basalt : ID.Rødsten);
+        if (!basalt) { a.sæt(x, h + hs + 1, z, ID.Glødesten); if (hs > 5) { a.sæt(x + 1, h + 1, z, ID.Rødsten); a.sæt(x, h + 1, z - 1, ID.Rødsten); } }
+      }
+
+      // Borgen: en bro af borgsten fra pladsen ud til et tårn med glødesten og guld
+      { const længde = Math.min(26, BX / 2 - 12), bx = cx + 6 + længde, hB = hP + 2;
+        for (let x = cx + 6; x < bx; x++) for (let dz = -1; dz <= 1; dz++) {
+          a.sæt(x, hB, cz + dz, ID.Borgsten);
+          for (let y = hB + 1; y <= hB + 3; y++) a.sæt(x, y, cz + dz, 0);
+          if (dz !== 0) a.sæt(x, hB + 1, cz + dz, (x - cx) % 4 === 0 ? ID.Glødesten : ID.Borgsten);
+          if ((x - cx) % 6 === 0) søjle(x, cz + dz, Math.max(1, h0(x, cz + dz) + 1), hB - 1, ID.Borgsten);   // bropiller
+        }
+        for (let x = cx + 5; x <= cx + 6; x++) for (let y = hP + 1; y < hB; y++) a.sæt(x, y, cz, ID.Borgsten);   // trappe op
+        a.sæt(cx + 5, hP + 1, cz, ID.Borgsten);
+        const hT = Math.max(hB, h0(bx + 3, cz));
+        for (let x = bx; x < bx + 7; x++) for (let z = cz - 3; z <= cz + 3; z++) {
+          søjle(x, z, Math.max(1, h0(x, z) + 1), hB - 1, ID.Borgsten);
+          const væg = x === bx || x === bx + 6 || z === cz - 3 || z === cz + 3;
+          a.sæt(x, hB, z, ID.Borgsten);
+          for (let y = hB + 1; y <= hB + 7; y++) a.sæt(x, y, z, væg && !(x === bx && Math.abs(z - cz) <= 1 && y <= hB + 3) ? (y === hB + 3 && (x + z) % 2 ? ID.Glødesten : ID.Borgsten) : 0);
+          a.sæt(x, hB + 8, z, væg && (x + z) % 2 ? ID.Borgsten : væg ? 0 : ID.Borgsten);
+        }
+        for (const [dx, dz] of [[2, -1], [4, 1], [3, 0]]) a.sæt(bx + dx, hB + 1, cz + dz, ID.Guld);
+        a.sæt(bx + 3, hB + 7, cz, ID.Glødesten);
+        void hT;
+      }
+      a.pynt(a.antal(40), () => (R() < 0.6 ? ID.Glødesvamp : ID["Lille svamp"]), [ID["Rødt mos"], ID.Sjælesand]);
+      a.pynt(a.antal(16), ID.Glødesten, [ID.Basalt, ID.Rødsten]);
     },
   },
 ];
