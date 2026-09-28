@@ -39,10 +39,22 @@
     /* Pile til at gå (som i Minecraft på tablet) */
     .styring { display: none; }
     .i-gang .styring { display: block; }
-    .dpad {
-      position: fixed; left: 14px; bottom: calc(var(--s) + 34px); z-index: 5;
-      display: grid; grid-template: repeat(3, 66px) / repeat(3, 66px); gap: 4px;
+    /* Joystick: træk knappen i den retning, du vil gå — jo længere ud, jo hurtigere */
+    .joystick {
+      position: fixed; left: 18px; bottom: calc(var(--s) + 34px); z-index: 5; width: 156px; height: 156px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,255,.22) 0 30%, rgba(60,60,60,.38) 31%);
+      border: 3px solid rgba(255,255,255,.6); box-shadow: 0 4px 14px rgba(0,0,0,.25); touch-action: none;
     }
+    .joystick::before, .joystick::after {          /* små pile i kanten, så man kan se, hvad den gør */
+      content: "▲"; position: absolute; left: 50%; top: 4px; transform: translateX(-50%); color: rgba(255,255,255,.7); font-size: 16px;
+    }
+    .joystick::after { content: "▼"; top: auto; bottom: 4px; }
+    .joystick .knop {
+      position: absolute; left: 50%; top: 50%; width: 66px; height: 66px; margin: -33px 0 0 -33px; border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #ffffff, #d4dde6 55%, #9aa8b8); border: 3px solid rgba(40,40,40,.55);
+      box-shadow: 0 5px 12px rgba(0,0,0,.4); transition: transform .12s ease-out; pointer-events: none;
+    }
+    .joystick.aktiv .knop { transition: none; background: radial-gradient(circle at 35% 30%, #ffffff, #bcd8f5 55%, #7aa6e0); }
     .pil {
       background: rgba(60,60,60,.42); border: 2px solid rgba(255,255,255,.6); border-radius: 8px;
       color: #fff; font-size: 26px; padding: 0; text-shadow: 0 1px 3px rgba(0,0,0,.5);
@@ -203,6 +215,16 @@
     .klat svg { width: 100%; height: 100%; display: block; }
     @keyframes klat { 12% { transform: translate(-50%, -50%) scale(1.05); opacity: .92; } 70% { opacity: .75; } 100% { transform: translate(-50%, -38%) scale(1); opacity: 0; } }
     #himmelBlink { position: fixed; inset: 0; pointer-events: none; z-index: 1; opacity: 0; }
+    /* Portalen: skærmen hvirvler lilla, når man står i den */
+    #portalSlør {
+      position: fixed; inset: -30vmax; pointer-events: none; z-index: 4; opacity: 0; display: none;
+      background: radial-gradient(circle, rgba(200,150,255,.1) 0 12%, rgba(120,40,220,.55) 45%, rgba(60,10,130,.92) 75%),
+        repeating-conic-gradient(rgba(210,160,255,.45) 0 10deg, rgba(90,20,180,.45) 10deg 20deg);
+    }
+    #portalSlør.aktiv { display: block; animation: portalHvirvel 2.4s linear infinite; }
+    @keyframes portalHvirvel { to { transform: rotate(360deg); } }
+    #portalValg { background: radial-gradient(ellipse at center, rgba(110,35,200,.9), rgba(20,5,45,.96)); }
+    .portal-tom { font-weight: 800; font-size: 20px; text-align: center; text-shadow: 2px 2px 0 #000; max-width: 460px; }
     #mikKnap.taler { background: rgba(226,58,58,.85); border-color: #fff; animation: mikPuls .5s ease-in-out infinite alternate; }
     @keyframes mikPuls { from { box-shadow: 0 0 0 0 rgba(255,90,90,.7); transform: scale(1); } to { box-shadow: 0 0 0 16px rgba(255,90,90,0); transform: scale(1.08); } }
     .figur-valg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-width: 460px; width: 100%; margin: 4px 0 6px; }
@@ -219,7 +241,8 @@
       background: rgba(180,40,40,.75); border: 3px solid #1e1e1e; text-shadow: 1px 1px 0 #000;
     }
     @media (max-width: 700px), (max-height: 560px) {
-      .dpad { grid-template: repeat(3, 54px) / repeat(3, 54px); }
+      .joystick { width: 128px; height: 128px; left: 12px; }
+      .joystick .knop { width: 54px; height: 54px; margin: -27px 0 0 -27px; }
       #hopKnap { width: 76px; height: 76px; font-size: 30px; }
       #nedKnap { width: 60px; height: 60px; }
       #flyKnap { width: 50px; height: 50px; font-size: 22px; }
@@ -250,13 +273,10 @@
   </div>
   <div class="emoji-bar stemme-bar skjult" id="stemmeBar"></div>
 
+  <div id="portalSlør"></div>
+
   <div class="styring">
-    <div class="dpad">
-      <button class="pil op" data-tast="frem" aria-label="Frem">▲</button>
-      <button class="pil venstre" data-tast="venstre" aria-label="Til venstre">◀</button>
-      <button class="pil hoejre" data-tast="hoejre" aria-label="Til højre">▶</button>
-      <button class="pil ned-pil" data-tast="tilbage" aria-label="Tilbage">▼</button>
-    </div>
+    <div class="joystick" id="joystick" role="application" aria-label="Joystick: træk for at gå"><div class="knop" id="knop"></div></div>
     <div class="hopknapper">
       <button class="pil rund kun-tale" id="mikKnap" aria-label="Hold nede for at tale">🎤</button>
       <button class="pil rund" id="flyKnap" aria-label="Flyv">🕊️</button>
@@ -281,7 +301,7 @@
         <a class="mc kun-online" href="/" style="text-decoration:none; text-align:center">⬅ Tilbage</a>
       </div>
       <div class="hjaelp" id="startTekst">
-        ▲◀▶▼ gå &nbsp;·&nbsp; træk for at kigge rundt<br>
+        🕹️ træk joysticket for at gå &nbsp;·&nbsp; træk for at kigge rundt<br>
         tryk = byg 🧱 &nbsp;·&nbsp; 🔨 hammer = fjern en blok<br>
         ⬆ hop &nbsp;·&nbsp; 🕊️ flyv
       </div>
@@ -319,6 +339,16 @@
     <div class="indhold">
       <h1 class="logo" style="font-size: clamp(34px, 7vw, 56px)">VERDENER</h1>
       <div class="verden-grid" id="verdenGrid"></div>
+    </div>
+  </div>
+
+  <div class="overlay skjult" id="portalValg">
+    <button class="mc lille luk" data-luk="portalValg" aria-label="Luk">✖</button>
+    <div class="indhold">
+      <h1 class="logo" style="font-size: clamp(34px, 7vw, 56px)">PORTAL</h1>
+      <div class="verden-her">Hvor skal portalen føre dig hen?</div>
+      <div class="portal-tom skjult" id="portalTom">Der er ingen andre verdener at rejse til lige nu. Bed en voksen om at starte en mere på computeren.</div>
+      <div class="verden-grid" id="portalGrid"></div>
     </div>
   </div>
 

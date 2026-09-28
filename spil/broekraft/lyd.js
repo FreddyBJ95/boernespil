@@ -392,6 +392,32 @@ export function knitre(afstand = 0) {      // ild der knitrer
   for (let i = 0; i < 3; i++) sus(t + Math.random() * 0.25, 0.03, 3000 + Math.random() * 2000, 1500, 0.14 * v, "bandpass", 2);
   sus(t, 0.3, 500, 300, 0.05 * v, "lowpass");
 }
+export function portalTænd() {            // portalen åbner sig: en dyb brummen, der stiger, og klokker
+  if (!ac) return;
+  const t = nu();
+  glid(70, 140, t, 1.6, { type: "sawtooth", vol: 0.16, vibHz: 7, vib: 6, filter: 380, q: 2 });
+  sus(t, 1.4, 300, 2600, 0.22, "bandpass", 1.2);
+  [784, 988, 1175, 1568].forEach((f, i) => tone(f, t + 0.35 + i * 0.12, 0.7, "sine", 0.07));
+}
+export function portalSummen(afstand = 0) { // den stille, hvislende brummen tæt på en portal
+  if (!ac) return;
+  const v = nær(afstand * 2);
+  if (v <= 0) return;
+  glid(95 + Math.random() * 20, 80, nu(), 1.8, { type: "sawtooth", vol: 0.05 * v, vibHz: 5, vib: 5, filter: 300, q: 3 });
+  sus(nu(), 1.6, 900, 500, 0.04 * v, "bandpass", 2);
+}
+export function portalRejse() {            // man står i portalen: lyden stiger og stiger
+  if (!ac) return;
+  const t = nu();
+  glid(110, 880, t, 1.5, { type: "triangle", vol: 0.14, vibHz: 9, vib: 30 });
+  sus(t, 1.5, 400, 6000, 0.18, "bandpass", 1);
+}
+export function portalAnkomst() {          // wuuusj — man er kommet frem
+  if (!ac) return;
+  const t = nu();
+  sus(t, 0.9, 5000, 300, 0.25, "bandpass", 0.8);
+  [1568, 1175, 988].forEach((f, i) => tone(f, t + 0.1 + i * 0.1, 0.5, "sine", 0.06));
+}
 export function tændIld() {                // wuusj — ilden blusser op
   if (!ac) return;
   sus(nu(), 0.5, 300, 1800, 0.35, "bandpass", 0.8);

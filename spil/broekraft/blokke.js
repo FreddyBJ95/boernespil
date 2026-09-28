@@ -11,6 +11,7 @@
 //  skive:        skydeskive — bliver til konfetti, når den bliver skudt, og kommer igen (skyd.js)
 //  fyrværkeri:   tændes med 🔥 tænderen eller 🔨 hammeren: true = kasse (12 raketter), "show" = stort show, "fontæne" = fontæne
 //  glat:         man glider på den (is)
+//  portal:       lilla portal man kan gå igennem — tændes i en ramme af obsidian med 🔥 tænderen (spil.js)
 //  Nye blokke skal altid tilføjes NEDERST, så gemte verdener stadig passer.
 //  lyd:          "græs" | "sten" | "træ" | "sand" | "glas" | "uld" | "metal" | "vand" | "lava" | "ild"
 // Et nyt mønster er en funktion i MØNSTRE der tegner 16×16 pixels med set(x, y, farve).
@@ -94,6 +95,8 @@ export const BLOKKE = [
   { navn: "Fontæne", tekstur: { top: "fontæneTop", side: "fontæneSide", bund: "fyrBund" }, fyrværkeri: "fontæne", lyd: "metal" },
   { navn: "Lyskæde", tekstur: "lyskæde", lyser: true, lyd: "glas" },
   { navn: "Gave", tekstur: { top: "gaveTop", side: "gaveSide", bund: "gaveBund" }, lyd: "uld" },
+  // --- Portalen (som i Minecraft: byg en ramme af obsidian og tænd den med 🔥) ---
+  { navn: "Portal", tekstur: "portal", portal: true, gennemsigtig: true, lyser: true, skjult: true, lyd: "glas" },
 ];
 
 export const ID = {};
@@ -284,6 +287,7 @@ const MØNSTRE = {
     for (const [cx, cy] of [[10, 5], [2, 10], [15, 13]]) alle((x, y) => { if (Math.hypot(om(x, cx), om(y, cy)) < 1.3) set(x, y, hex("#b8360f")); });
   },
   ild: (set, r) => ildRamme(set, r),
+  portal: (set, r) => portalRamme(set, 0, r),
   obsidian: (set, r) => { fyld(set, r, "#1f1433", 0.3); prik(set, r, ["#3b2566", "#5a3d8f", "#0f0a1a", "#6e4fb0"], 34); },
 
   // --- Skydebanen ---
@@ -358,6 +362,19 @@ const MØNSTRE = {
   }),
   gaveBund: (set, r) => fyld(set, r, "#b82a2a", 0.1),
 };
+
+// Portalens lilla hvirvler. fase 0–2π flytter mønstret blødt, og det går i ét fra blok til blok.
+const PORTALFARVER = ["#2a0660", "#4a12a0", "#7128d0", "#9c52ff", "#caa0ff"].map(hex);
+function portalRamme(set, fase, r) {
+  const k = Math.PI * 2 / T;
+  alle((x, y) => {
+    const u = x * k, v = y * k;
+    const s = Math.sin(u + v + fase) + Math.sin(2 * u - v - fase) * 0.7 + Math.sin(u - 2 * v + 2 * fase) * 0.5 + Math.cos(u + 3 * v - fase) * 0.3;
+    const t = Math.max(0, Math.min(0.999, (s + 2.3) / 4.6));
+    set(x, y, PORTALFARVER[Math.floor(t * PORTALFARVER.length)], 185 + Math.round(t * 65));
+  });
+  for (let i = 0; i < 4; i++) set(Math.floor(r() * T), Math.floor(r() * T), hex("#f4e4ff"), 255);   // små stjerneglimt
+}
 
 // Én flamme-tegning (16×16). Hver ramme får sin egen tilfældighed, så ilden blafrer.
 function ildRamme(set, r) {
@@ -510,14 +527,16 @@ export function lavAtlas() {
     t.colorSpace = THREE.SRGBColorSpace;
     return t;
   }
-  const RAMMER = 4;
+  const RAMMER = 4, PORTALRAMMER = 8;
   const anim = {
     vand: flise(T, set => MØNSTRE.vand(set, rng(navnFrø("vand")))),
     lava: flise(T, set => MØNSTRE.lava(set, rng(navnFrø("lava")))),
     ild: flise(T * RAMMER, set => { for (let f = 0; f < RAMMER; f++) ildRamme((x, y, c, a) => set(x, y + f * T, c, a), rng(navnFrø("ild") + f)); }),
-    rammer: RAMMER,
+    portal: flise(T * PORTALRAMMER, set => { for (let f = 0; f < PORTALRAMMER; f++) portalRamme((x, y, c, a) => set(x, y + f * T, c, a), f / PORTALRAMMER * Math.PI * 2, rng(navnFrø("portal") + f)); }),
+    rammer: RAMMER, portalRammer: PORTALRAMMER,
   };
   anim.ild.repeat.set(1, 1 / RAMMER);
+  anim.portal.repeat.set(1, 1 / PORTALRAMMER);
 
   return { tekstur, uv: (id, side) => uvTab[id][side], farve: id => farver[id], ikon, blokMesh, feltBillede, lin, anim };
 }

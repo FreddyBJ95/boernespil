@@ -44,8 +44,8 @@ const FLADER = [
 for (const F of FLADER) F.t = [0, 1, 2].filter(a => F.n[a] === 0);   // de to akser langs fladen
 const AO = [0.5, 0.68, 0.84, 1];                                      // mørkere i hjørner og kroge
 const lin = l => Math.pow(l, 2.2);
-// Hver klump tegnes i fire lag: faste blokke, vand (gennemsigtigt), lava (gløder) og ild (blafrer).
-const LAG = ["fast", "vand", "lava", "ild"];
+// Hver klump tegnes i fem lag: faste blokke, vand (gennemsigtigt), lava (gløder), ild (blafrer) og portaler (hvirvler).
+const LAG = ["fast", "vand", "lava", "ild", "portal"];
 const lagNøgle = (nøgle, lag) => (lag === "fast" ? nøgle : `${nøgle}|${lag}`);
 const nytLag = () => ({ pos: [], uv: [], farve: [], idx: [] });
 const HJØRNER = [[-1, -1], [0, -1], [-1, 0], [0, 0]];
@@ -62,11 +62,12 @@ export class Verden {
     this.klumper = new Map();
     this.snavset = new Set();
     this.ændringer = new Map();
-    this.fast = BLOKKE.map(b => !!b && !b.kryds && !b.væske);          // kan ikke gå igennem
+    this.fast = BLOKKE.map(b => !!b && !b.kryds && !b.væske && !b.portal);   // kan ikke gå igennem
     this.dækker = BLOKKE.map(b => !!b && !b.gennemsigtig && !b.kryds && !b.væske); // skjuler naboens side
     this.væske = BLOKKE.map(b => b?.væske || null);                    // "vand", "lava" eller null
-    this.animMat = null;                                               // { vand, lava, ild } — sættes af spil.js
-    this.gløder = new Map();                                           // klump → ild og lava (til gnister og bobler)
+    this.portal = BLOKKE.map(b => !!b?.portal);                        // lilla portal (spil.js sender en videre)
+    this.animMat = null;                                               // { vand, lava, ild, portal } — sættes af spil.js
+    this.gløder = new Map();                                           // klump → ild, lava og portaler (til gnister og bobler)
     this.vedÆndring = null;                                            // kaldes efter hver sæt() (simuleringen)
     this.hopper = BLOKKE.map(b => !!b && !!b.hopper);                 // trampolin
     this.tyngde = 28;
@@ -229,7 +230,7 @@ export class Verden {
     return s1 && s2 ? 0 : 3 - s1 - s2 - hj;
   }
   bygKlump(cx, cy, cz) {
-    const lag = { fast: nytLag(), vand: nytLag(), lava: nytLag(), ild: nytLag() }, gløder = { ild: [], lava: [] };
+    const lag = { fast: nytLag(), vand: nytLag(), lava: nytLag(), ild: nytLag(), portal: nytLag() }, gløder = { ild: [], lava: [], portal: [] };
     const { pos, uv, farve, idx } = lag.fast;
     for (let y = cy * CS; y < cy * CS + CS; y++) for (let z = cz * CS; z < cz * CS + CS; z++) for (let x = cx * CS; x < cx * CS + CS; x++) {
       const id = this.hent(x, y, z);
@@ -242,6 +243,7 @@ export class Verden {
         continue;
       }
       if (b.ild) { this.flammer(x, y, z, lag.ild); gløder.ild.push([x, y, z]); continue; }
+      if (b.portal) { this.portalFlade(x, y, z, lag.portal); gløder.portal.push([x, y, z]); continue; }
       if (b.kryds) { this.kryds(x, y, z, id, pos, uv, farve, idx); continue; }
       for (const F of FLADER) {
         const nid = this.hent(x + F.n[0], y + F.n[1], z + F.n[2]);
@@ -262,7 +264,7 @@ export class Verden {
     }
     const nøgle = `${cx},${cy},${cz}`;
     for (const navn of LAG) this.sætLag(nøgle, navn, lag[navn]);
-    if (gløder.ild.length || gløder.lava.length) this.gløder.set(nøgle, gløder); else this.gløder.delete(nøgle);
+    if (gløder.ild.length || gløder.lava.length || gløder.portal.length) this.gløder.set(nøgle, gløder); else this.gløder.delete(nøgle);
   }
   sætLag(nøgle, navn, { pos, uv, farve, idx }) {
     const k = lagNøgle(nøgle, navn);
@@ -276,7 +278,7 @@ export class Verden {
     g.computeBoundingSphere();
     if (m) { m.geometry.dispose(); m.geometry = g; return; }
     m = new THREE.Mesh(g, navn === "fast" ? this.mat : this.animMat?.[navn] || this.mat);
-    if (navn === "vand") m.renderOrder = 1;                      // gennemsigtigt vand tegnes efter alt det faste
+    if (navn === "vand" || navn === "portal") m.renderOrder = navn === "vand" ? 1 : 2;   // det gennemsigtige tegnes efter alt det faste
     this.scene.add(m); this.klumper.set(k, m);
   }
 
@@ -335,6 +337,20 @@ export class Verden {
       idx.push(s, s + 1, s + 2, s, s + 2, s + 3);
     }
   }
+  // Portal: en tynd, lilla hinde midt i blokken, på langs af rammen (materialet får den til at hvirvle)
+  portalLangsX(x, y, z) {
+    const p = (a, b, c) => this.portal[this.hent(a, b, c)];
+    if (p(x - 1, y, z) || p(x + 1, y, z)) return true;
+    if (p(x, y, z - 1) || p(x, y, z + 1)) return false;
+    return this.fast[this.hent(x - 1, y, z)] && this.fast[this.hent(x + 1, y, z)];   // én blok bred: rammen står på siderne
+  }
+  portalFlade(x, y, z, { pos, uv, farve, idx }) {
+    const langsX = this.portalLangsX(x, y, z), s = pos.length / 3;
+    const hjørner = langsX ? [[0, 0, 0.5], [1, 0, 0.5], [1, 1, 0.5], [0, 1, 0.5]] : [[0.5, 0, 1], [0.5, 0, 0], [0.5, 1, 0], [0.5, 1, 1]];
+    for (const c of hjørner) { pos.push(x + c[0], y + c[1], z + c[2]); farve.push(1, 1, 1); }
+    uv.push(0, 0.01, 1, 0.01, 1, 0.99, 0, 0.99);
+    idx.push(s, s + 1, s + 2, s, s + 2, s + 3);
+  }
   kryds(x, y, z, id, pos, uv, farve, idx) {     // blomster: to skrå flader på kryds
     const [u0, v0, u1, v1] = this.atlas.uv(id, "side");
     const kvadrater = [
@@ -350,7 +366,7 @@ export class Verden {
   }
 
   // ---------- Stråle: hvilken blok peger man på? ----------
-  stråle(o, d, maks = 8, medVæske = false) {          // vand og lava rammes kun med medVæske
+  stråle(o, d, maks = 8, medVæske = false) {          // vand, lava og portaler rammes kun med medVæske
     let x = Math.floor(o.x), y = Math.floor(o.y), z = Math.floor(o.z);
     const sx = Math.sign(d.x), sy = Math.sign(d.y), sz = Math.sign(d.z);
     const tdx = sx ? Math.abs(1 / d.x) : Infinity, tdy = sy ? Math.abs(1 / d.y) : Infinity, tdz = sz ? Math.abs(1 / d.z) : Infinity;
@@ -360,7 +376,7 @@ export class Verden {
     let t = 0, n = [0, 0, 0];
     while (t <= maks) {
       const id = this.hent(x, y, z);
-      if (id && t > 0 && (medVæske || !this.væske[id])) return { x, y, z, id, n, t };
+      if (id && t > 0 && (medVæske || (!this.væske[id] && !this.portal[id]))) return { x, y, z, id, n, t };
       if (tx < ty && tx < tz) { x += sx; t = tx; tx += tdx; n = [-sx, 0, 0]; }
       else if (ty < tz) { y += sy; t = ty; ty += tdy; n = [0, -sy, 0]; }
       else { z += sz; t = tz; tz += tdz; n = [0, 0, -sz]; }

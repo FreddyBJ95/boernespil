@@ -201,6 +201,7 @@ const animMat = {                                               // vand er genne
   vand: new THREE.MeshBasicMaterial({ map: atlas.anim.vand, vertexColors: true, transparent: true, opacity: 0.72, depthWrite: false, side: THREE.DoubleSide }),
   lava: new THREE.MeshBasicMaterial({ map: atlas.anim.lava, vertexColors: true }),
   ild: new THREE.MeshBasicMaterial({ map: atlas.anim.ild, alphaTest: 0.4, side: THREE.DoubleSide }),
+  portal: new THREE.MeshBasicMaterial({ map: atlas.anim.portal, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide }),
 };
 const verden = new Verden(gemt.frø, atlas, blokMat, scene, MÅL);
 verden.animMat = animMat;
@@ -218,7 +219,7 @@ const sim = ONLINE ? null : new Simulering({
   tændTNT: (x, y, z) => tændTNT(x, y, z), lyd: (navn, x, y, z) => simLyd(navn, x, y, z),
 });
 if (sim) {
-  verden.vedÆndring = (x, y, z) => { sim.blokÆndret(x, y, z); gemSnart(); };
+  verden.vedÆndring = (x, y, z) => { sim.blokÆndret(x, y, z); portalTjek(x, y, z); gemSnart(); };
   const lag = verden.BX * verden.BZ;                              // væk gemt vand, lava og ild én gang
   for (let i = 0; i < verden.data.length; i++) {
     if (verden.data[i] >= ID.Vand && verden.data[i] <= ID.Ild) sim.blokÆndret(i % verden.BX, Math.floor(i / lag), Math.floor((i % lag) / verden.BX));
@@ -400,7 +401,7 @@ function tryk(x, y) {
   const kv = skyd.kampvognVed(ray.ray, RÆKKE + 4);                           // tryk på en grøn kampvogn = stig ind
   if (kv && (!hit || kv.afst < hit.t)) {
     skyd.stigInd(kv.kv); Lyd.vælg();
-    besked("Du sidder i kampvognen! Kør med pilene, og tryk for at skyde 🎯", 4000);
+    besked("Du sidder i kampvognen! Kør med joysticket, og tryk for at skyde 🎯", 4000);
     return;
   }
   if (værk?.våben) { if (skyd.skydMod(værk.våben, kamera.position, ray.ray.direction)) sving = 1; return; }
@@ -508,6 +509,7 @@ function brugVærktøj(v, hit) {
   let tx = hit.x + hit.n[0], ty = hit.y + hit.n[1], tz = hit.z + hit.n[2];
   if (b.kryds) { tx = hit.x; ty = hit.y; tz = hit.z; }                         // en blomst eller ild bliver skiftet ud
   if (!verden.inde(tx, ty, tz)) return;
+  if (v === "tænder" && tændPortal(tx, ty, tz)) return;                       // inde i en ramme af obsidian: portal!
   const der = verden.hent(tx, ty, tz), ny = v === "tænder" ? ID.Ild : VÆRKTØJ[v].blok;
   if (der === ny || (der && !BLOKKE[der].kryds && !BLOKKE[der].væske)) return;
   if (v === "tænder" && verden.væske[der]) return;                             // ild kan ikke brænde i vand og lava
@@ -547,6 +549,12 @@ function opdaterGløder(dt) {
       if (Math.random() < 0.25) partikel(x + 0.5, y + 1.2, z + 0.5, RØG, (Math.random() - 0.5) * 0.4, 1, (Math.random() - 0.5) * 0.4, 1.5, -0.06, 2.2);
       if (Math.random() < 0.04) simLyd("knitre", x, y, z);
     }
+    if (g.portal?.length && Math.random() < 0.5) {
+      const [x, y, z] = g.portal[Math.floor(Math.random() * g.portal.length)];
+      partikel(x + Math.random(), y + Math.random(), z + Math.random(), PORTALLILLA[Math.floor(Math.random() * PORTALLILLA.length)],
+        (Math.random() - 0.5) * 0.8, 0.2 + Math.random() * 0.8, (Math.random() - 0.5) * 0.8, 1.1, -0.08, 0.7);
+      if (Math.random() < 0.02) Lyd.portalSummen(Math.hypot(x - px, z - pz));
+    }
     if (g.lava.length && Math.random() < 0.15) {
       const [x, y, z] = g.lava[Math.floor(Math.random() * g.lava.length)];
       for (let i = 0; i < 3; i++) partikel(x + 0.3 + Math.random() * 0.4, y + 0.9, z + 0.3 + Math.random() * 0.4, ILD[i + 1], (Math.random() - 0.5) * 1.5, 2.5 + Math.random() * 2, (Math.random() - 0.5) * 1.5, 0.7, 0.7, 0.8);
@@ -572,6 +580,205 @@ function animerVæsker() {
   atlas.anim.lava.offset.set(tid * 0.03, tid * 0.06);
   atlas.anim.ild.offset.y = (Math.floor(tid * 9) % atlas.anim.rammer) / atlas.anim.rammer;
   animMat.lava.color.setScalar(0.9 + Math.sin(tid * 2.2) * 0.1);
+  atlas.anim.portal.offset.set(tid * 0.15, (Math.floor(tid * 8) % atlas.anim.portalRammer) / atlas.anim.portalRammer);
+  animMat.portal.opacity = 0.78 + Math.sin(tid * 3) * 0.08;
+}
+
+// ---------- Portalen: byg en ramme af obsidian, tænd den med 🔥 — og gå ind i den ----------
+// Hullet i rammen fyldes med lilla portal. Står man i den lidt, kan man vælge en anden verden,
+// og man kommer ud af en portal dér (der bygges en, hvis der ikke er nogen). Går rammen i stykker, slukker portalen.
+const PORTAL_MAKS = 120, REJSETID = 1.5;
+const PORTALLILLA = ["#b36bff", "#d9a8ff", "#7a2fd6", "#f4e4ff"].map(f => new THREE.Color(f));
+const NABO6 = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+// Sammen: portalens blokke sendes lidt ad gangen, for serveren tager højst 20 blokke i sekundet fra hver
+const netKø = [];
+let netKøT = 0;
+const sætHer = (x, y, z, id) => { if (ONLINE) netKø.push([x, y, z, id]); else verden.sæt(x, y, z, id); };
+function sendKø(dt) {
+  netKøT = Math.max(0, netKøT - dt);
+  if (!netKø.length || !net || netKøT > 0) return;
+  net.sæt(...netKø.shift()); netKøT = 0.08;
+}
+let portalTid = 0, portalVent = true, ankomstSlør = 0, portalTip = false, brydes = false;
+
+// Find det lukkede hul i en ramme omkring (x, y, z) — på langs af x eller af z.
+// Siderne og toppen skal være obsidian; bunden må være alt, man kan stå på (så er det lettere for de små).
+function findPortalHul(x, y, z) {
+  const tom = id => id === 0 || id === ID.Ild;
+  if (!tom(verden.hent(x, y, z))) return null;
+  for (const langsX of [true, false]) {
+    const hul = new Map([[`${x},${y},${z}`, [x, y, z]]]), kø = [[x, y, z]];
+    let ok = true;
+    while (ok && kø.length) {
+      const [a, b, c] = kø.pop();
+      for (const [dh, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const p = langsX ? [a + dh, b + dy, c] : [a, b + dy, c + dh], k = p.join(",");
+        if (hul.has(k)) continue;
+        if (!verden.inde(...p)) { ok = false; break; }
+        const id = verden.hent(...p);
+        if (tom(id)) { hul.set(k, p); kø.push(p); if (hul.size > PORTAL_MAKS) { ok = false; break; } }
+        else if (id !== ID.Obsidian && !(dy === -1 && verden.fast[id])) { ok = false; break; }
+      }
+    }
+    const højNok = [...hul.values()].some(([a, b, c]) => hul.has(`${a},${b + 1},${c}`));   // mindst to blokke højt
+    if (ok && højNok) return [...hul.values()];
+  }
+  return null;
+}
+function tændPortal(x, y, z) {
+  const hul = findPortalHul(x, y, z);
+  if (!hul) return false;
+  for (const [a, b, c] of hul) sætHer(a, b, c, ID.Portal);
+  Lyd.portalTænd(); sving = 1;
+  for (const [a, b, c] of hul) for (let i = 0; i < 5; i++) partikel(a + Math.random(), b + Math.random(), c + Math.random(), PORTALLILLA[i % PORTALLILLA.length],
+    (Math.random() - 0.5) * 3, Math.random() * 2.5, (Math.random() - 0.5) * 3, 0.9 + Math.random() * 0.5, -0.1, 1.1);
+  if (!portalTip) { portalTip = true; besked("🌀 Portalen er åben! Gå ind i den for at rejse til en anden verden", 4500); }
+  gemSnart();
+  return true;
+}
+
+// Når en blok ved siden af en portal forsvinder, tjekkes det, om rammen stadig er hel
+function portalTjek(x, y, z) {
+  const id = verden.hent(x, y, z);
+  if (brydes || verden.fast[id] || verden.portal[id]) return;
+  for (const [dx, dy, dz] of NABO6) {
+    if (!verden.portal[verden.hent(x + dx, y + dy, z + dz)]) continue;
+    const område = portalOmråde(x + dx, y + dy, z + dz);
+    if (!portalHel(område)) brydPortal(område);
+  }
+}
+function portalOmråde(x, y, z) {                              // alle portal-blokke, der hænger sammen
+  const set = new Map([[`${x},${y},${z}`, [x, y, z]]]), kø = [[x, y, z]];
+  while (kø.length && set.size < 400) {
+    const [a, b, c] = kø.pop();
+    for (const [dx, dy, dz] of NABO6) {
+      const p = [a + dx, b + dy, c + dz], k = p.join(",");
+      if (!set.has(k) && verden.portal[verden.hent(...p)]) { set.set(k, p); kø.push(p); }
+    }
+  }
+  return [...set.values()];
+}
+function portalHel(område) {
+  const i = new Set(område.map(p => p.join(","))), xs = new Set(område.map(p => p[0])), zs = new Set(område.map(p => p[2]));
+  const kant = (a, b, c) => i.has(`${a},${b},${c}`) || verden.erFast(a, b, c);
+  const prøv = langsX => område.every(([x, y, z]) => kant(x, y + 1, z) && kant(x, y - 1, z) && (langsX ? kant(x - 1, y, z) && kant(x + 1, y, z) : kant(x, y, z - 1) && kant(x, y, z + 1)));
+  return (zs.size === 1 && prøv(true)) || (xs.size === 1 && prøv(false));
+}
+function brydPortal(område) {
+  brydes = true;
+  for (const [x, y, z] of område) {
+    sætHer(x, y, z, 0);
+    for (let k = 0; k < 3; k++) partikel(x + Math.random(), y + Math.random(), z + Math.random(), PORTALLILLA[k], (Math.random() - 0.5) * 2, Math.random() * 2, (Math.random() - 0.5) * 2, 0.7, 0.3, 0.9);
+  }
+  brydes = false;
+  Lyd.knus("glas");
+}
+
+// Står man i portalen, bliver skærmen lilla — og så kan man vælge, hvor man vil hen
+function portalCelle() {
+  const x = Math.floor(sp.pos.x), z = Math.floor(sp.pos.z);
+  for (const dy of [0.1, 0.9, 1.5]) { const y = Math.floor(sp.pos.y + dy); if (verden.portal[verden.hent(x, y, z)]) return { x, y, z }; }
+  return null;
+}
+function opdaterPortal(dt) {
+  if (!portalCelle()) { portalVent = false; portalTid = Math.max(0, portalTid - dt * 2); }
+  else if (!portalVent) {
+    if (portalTid === 0) Lyd.portalRejse();
+    portalTid += dt;
+    if (portalTid >= REJSETID) { portalTid = 0; portalVent = true; visPortalValg(); }
+  }
+}
+const portalSlør = $("portalSlør");
+function tegnPortalSlør(dt) {
+  ankomstSlør = Math.max(0, ankomstSlør - dt * 0.7);
+  const s = Math.max(portalTid / REJSETID, ankomstSlør);
+  portalSlør.style.opacity = s.toFixed(3);
+  portalSlør.classList.toggle("aktiv", s > 0.01);
+}
+async function visPortalValg() {
+  const grid = $("portalGrid");
+  grid.replaceChildren();
+  $("portalTom").classList.add("skjult");
+  vis("portalValg");
+  if (!ONLINE) {                                               // alene: alle de andre verdener
+    for (const v of VERDENER) if (v.id !== cfg.id) grid.appendChild(verdenKort(v, v.navn, v.tekst, "🌀 Rejs", () => portalTil(v)));
+    return;
+  }
+  let liste = [];                                              // sammen: de andre verdener, der kører på computeren
+  try { liste = await (await fetch("/verdensliste", { cache: "no-store" })).json(); } catch (_) {}
+  for (const w of liste) {
+    if (w.id === ONLINE_ID) continue;
+    const v = VERDENER.find(x => x.id === w.type) || VERDENER[0], fuld = w.spillere >= w.maks;
+    grid.appendChild(verdenKort(v, w.navn, `${v.ikon} ${v.navn} · ${w.spillere}/${w.maks} spillere`, fuld ? "😕 Fuld" : "🌀 Rejs", fuld ? null : () => portalTil(w)));
+  }
+  if (!grid.children.length) $("portalTom").classList.remove("skjult");
+}
+function portalTil(v) {
+  Lyd.klar(); Lyd.portalTænd();
+  luk("portalValg");
+  pause = true; ankomstSlør = 1.4;                            // skærmen bliver helt lilla, mens vi rejser
+  try { sessionStorage.setItem("broekraft-portal", "1"); sessionStorage.setItem("broekraft-start", "1"); } catch (_) {}
+  setTimeout(() => {
+    if (ONLINE) { stopTale(); net?.luk(); PARAM.set("verden", v.id); location.search = PARAM.toString(); return; }
+    if (!hentet.includes(v.id)) { hentet.push(v.id); skriv("broekraft-hentet", hentet); }
+    skiftTil(v);
+  }, 900);
+}
+
+// Man kommer frem i den nye verden: find den nærmeste portal — eller byg en — og stil barnet i den
+let portalKom = false;
+try { portalKom = sessionStorage.getItem("broekraft-portal") === "1"; sessionStorage.removeItem("broekraft-portal"); } catch (_) {}
+function ankomVedPortal() {
+  const r = ONLINE ? 16 : Infinity, px = Math.floor(sp.pos.x), pz = Math.floor(sp.pos.z);
+  let bedst = null;
+  for (let x = Math.max(0, px - r); x < Math.min(verden.BX, px + r + 1); x++) for (let z = Math.max(0, pz - r); z < Math.min(verden.BZ, pz + r + 1); z++) {
+    for (let y = 1; y < verden.BY; y++) {
+      if (!verden.portal[verden.hent(x, y, z)] || verden.portal[verden.hent(x, y - 1, z)]) continue;   // kun de nederste
+      const afst = Math.hypot(x - px, z - pz);
+      if (!bedst || afst < bedst.afst) bedst = { x, y, z, afst };
+    }
+  }
+  if (!bedst) bedst = bygPortal(px, pz);
+  const langt = Math.hypot(bedst.x - sp.pos.x, bedst.z - sp.pos.z) > 24;
+  stilForanPortal(bedst, verden.portalLangsX(bedst.x, bedst.y, bedst.z) || bedst.langsX);
+  if (sp.flyver) skiftFlyv();
+  if (langt && !ONLINE) verden.bygOmkring(sp.pos.x, sp.pos.z);
+  portalVent = true; ankomstSlør = 1.2;
+  Lyd.portalAnkomst();
+  for (let i = 0; i < 40; i++) partikel(sp.pos.x, sp.pos.y + 1, sp.pos.z, PORTALLILLA[i % PORTALLILLA.length],
+    (Math.random() - 0.5) * 6, Math.random() * 4, (Math.random() - 0.5) * 6, 0.8 + Math.random() * 0.6, 0.2, 1.2);
+  setTimeout(() => besked("🌀 Du kom gennem portalen! Gå ind i den igen for at rejse videre", 4000), 2600);
+}
+// Stil barnet lige foran portalen og kig på den — så kan man se, hvor man kom fra
+function stilForanPortal({ x, y, z }, langsX) {
+  sp.vel.set(0, 0, 0);
+  for (const afst of [2, 1]) for (const side of [-1, 1]) {
+    const p = tmp.set(x + 0.5 + (langsX ? 0 : side * afst), y, z + 0.5 + (langsX ? side * afst : 0));
+    if (verden.kolliderer(p, B, HØJ)) continue;
+    sp.pos.copy(p);
+    sp.yaw = langsX ? (side < 0 ? Math.PI : 0) : (side < 0 ? -Math.PI / 2 : Math.PI / 2);
+    sp.pitch = -0.1;
+    return;
+  }
+  sp.pos.set(x + 0.5, y, z + 0.5); sp.yaw = langsX ? 0 : Math.PI / 2;                   // ellers: midt i portalen
+}
+// En ramme på 4 × 5 obsidian med portal i midten, på jorden der hvor man står
+function bygPortal(px, pz) {
+  const x0 = Math.max(2, Math.min(verden.BX - 6, px - 1)), z = Math.max(2, Math.min(verden.BZ - 3, pz));
+  let y0 = 1;
+  for (let dx = 0; dx < 4; dx++) y0 = Math.max(y0, verden.topY(x0 + dx, z));
+  y0 = Math.min(y0, verden.BY - 7);
+  const hul = [];
+  for (let dx = 0; dx < 4; dx++) {
+    for (let y = y0 - 1; y > 0 && !verden.fast[verden.hent(x0 + dx, y, z)]; y--) sætHer(x0 + dx, y, z, ID.Sten);     // fyld hullet under rammen
+    for (let dy = 0; dy <= 4; dy++) {
+      if (dx === 0 || dx === 3 || dy === 0 || dy === 4) sætHer(x0 + dx, y0 + dy, z, ID.Obsidian); else hul.push([x0 + dx, y0 + dy, z]);
+    }
+    for (const dz of [-1, 1]) for (let dy = 1; dy <= 3; dy++) if (verden.fast[verden.hent(x0 + dx, y0 + dy, z + dz)]) sætHer(x0 + dx, y0 + dy, z + dz, 0);   // plads foran og bagved
+  }
+  for (const [x, y, z2] of hul) sætHer(x, y, z2, ID.Portal);   // portalen tændes til sidst, når hele rammen står
+  gemSnart();
+  return { x: x0 + 1, y: y0 + 1, z, langsX: true };
 }
 
 // ---------- TNT ----------
@@ -802,6 +1009,31 @@ window.addEventListener("keyup", e => { if (TASTER[e.code]) tast[TASTER[e.code]]
 window.addEventListener("blur", () => { for (const k in tast) tast[k] = 0; });
 
 // Knapper på skærmen (pile, hop, ned, flyv)
+// Joysticket: træk knappen, og man går i den retning (jo længere ud, jo hurtigere). Også i kampvognen.
+const joy = $("joystick"), knop = $("knop");
+let joyId = null;
+function joyFlyt(e) {
+  const r = joy.getBoundingClientRect(), maks = r.width / 2 - 12;
+  let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+  const l = Math.hypot(dx, dy);
+  if (l > maks) { dx *= maks / l; dy *= maks / l; }
+  knop.style.transform = `translate(${dx}px, ${dy}px)`;
+  let x = dx / maks, y = dy / maks;
+  if (Math.hypot(x, y) < 0.18) x = y = 0;                        // lidt dødt i midten, så man kan stå stille
+  tast.hoejre = Math.max(0, x); tast.venstre = Math.max(0, -x); tast.frem = Math.max(0, -y); tast.tilbage = Math.max(0, y);
+}
+function joySlip() {
+  joyId = null; joy.classList.remove("aktiv"); knop.style.transform = "";
+  tast.frem = tast.tilbage = tast.venstre = tast.hoejre = 0;
+}
+joy.addEventListener("pointerdown", e => {
+  e.preventDefault(); Lyd.klar();
+  joyId = e.pointerId; try { joy.setPointerCapture(e.pointerId); } catch (_) {}
+  joy.classList.add("aktiv"); joyFlyt(e);
+});
+joy.addEventListener("pointermove", e => { if (e.pointerId === joyId) joyFlyt(e); });
+for (const n of ["pointerup", "pointercancel", "lostpointercapture"]) joy.addEventListener(n, e => { if (e.pointerId === joyId) joySlip(); });
+
 document.querySelectorAll("[data-tast]").forEach(k => {
   const t = k.dataset.tast;
   const op = () => { tast[t] = 0; k.classList.remove("aktiv"); };
@@ -886,6 +1118,9 @@ function opdaterSpiller(dt) {
     const x = Math.floor(sp.pos.x), z = Math.floor(sp.pos.z);
     if (!verden.hentet(x, z)) { if ((venteBesked -= dt) <= 0) { besked("Henter verden… 🌍", 1500); venteBesked = 1.6; } return; }
     if (ventPåJord) { ventPåJord = false; sp.pos.y = verden.topY(x, z) + 1; sp.vel.set(0, 0, 0); }
+    if (portalKom && [[-18, -18], [18, -18], [-18, 18], [18, 18]].every(([dx, dz]) => verden.hentet(Math.max(0, Math.min(verden.BX - 1, x + dx)), Math.max(0, Math.min(verden.BZ - 1, z + dz))))) {
+      portalKom = false; ankomVedPortal();
+    }
   }
   const frem = tast.frem - tast.tilbage, side = tast.hoejre - tast.venstre;
   const fx = -Math.sin(sp.yaw), fz = -Math.cos(sp.yaw), rx = Math.cos(sp.yaw), rz = -Math.sin(sp.yaw);
@@ -905,6 +1140,11 @@ function opdaterSpiller(dt) {
   const fart = sp.flyver ? FLYV : iVand ? GÅ * 0.65 : glat ? GÅ * 1.5 : GÅ, greb = glat ? 0.9 : sp.jord || sp.flyver || iVand ? 12 : 3;
   sp.vel.x += (mx * fart - sp.vel.x) * Math.min(1, dt * greb);
   sp.vel.z += (mz * fart - sp.vel.z) * Math.min(1, dt * greb);
+  const pc = portalVent ? null : portalCelle();
+  if (pc) {                                                                    // portalen holder en blødt fast i midten
+    if (verden.portalLangsX(pc.x, pc.y, pc.z)) { sp.vel.z = (pc.z + 0.5 - sp.pos.z) * 5; sp.vel.x *= 0.3; }
+    else { sp.vel.x = (pc.x + 0.5 - sp.pos.x) * 5; sp.vel.z *= 0.3; }
+  }
   if (sp.flyver) {
     const op = (tast.hop || tast.op ? 1 : 0) - (tast.ned ? 1 : 0);
     sp.vel.y += (op * 7 - sp.vel.y) * Math.min(1, dt * 8);
@@ -942,6 +1182,7 @@ function opdaterSpiller(dt) {
     }
   }
   if (sp.pos.y < -10) startSted();
+  opdaterPortal(dt);
 }
 
 // ---------- Hotbar, inventar og menu ----------
@@ -984,7 +1225,7 @@ function vælgSlot(i) {
   gemSnart();
 }
 
-function vis(id) { $(id).classList.remove("skjult"); pause = true; for (const k in tast) tast[k] = 0; fingre.clear(); }
+function vis(id) { $(id).classList.remove("skjult"); pause = true; joySlip(); for (const k in tast) tast[k] = 0; fingre.clear(); }
 function luk(id) { $(id).classList.add("skjult"); pause = !!document.querySelector(".overlay:not(.skjult)"); }
 document.querySelectorAll("[data-luk]").forEach(b => b.addEventListener("click", () => { Lyd.klik(); luk(b.dataset.luk); }));
 
@@ -1018,22 +1259,28 @@ function visVerdener() {
   const grid = $("verdenGrid");
   grid.innerHTML = "";
   for (const v of VERDENER) {
-    const kort = document.createElement("div");
-    kort.className = "verden-kort" + (v.id === cfg.id ? " her" : "");
-    kort.style.background = `linear-gradient(165deg, ${v.himmel[0]}, ${v.himmel[1]})`;
-    const top = document.createElement("div"); top.className = "verden-top";
-    const ikon = document.createElement("span"); ikon.className = "verden-ikon"; ikon.textContent = v.ikon;
-    top.appendChild(ikon);
-    for (const n of v.vis) { const img = new Image(); img.src = atlas.ikon(ID[n]); img.alt = ""; top.appendChild(img); }
-    const navn = document.createElement("div"); navn.className = "verden-navn"; navn.textContent = v.navn;
-    const tekst = document.createElement("div"); tekst.className = "verden-tekst"; tekst.textContent = v.tekst;
-    const knap = document.createElement("button"); knap.className = "mc";
-    knap.textContent = v.id === cfg.id ? "▶ Du er her" : hentet.includes(v.id) ? "▶ Spil" : "⬇ Hent";
-    knap.addEventListener("click", () => vælgVerden(v));
-    kort.append(top, navn, tekst, knap);
+    const kort = verdenKort(v, v.navn, v.tekst, v.id === cfg.id ? "▶ Du er her" : hentet.includes(v.id) ? "▶ Spil" : "⬇ Hent", () => vælgVerden(v));
+    if (v.id === cfg.id) kort.classList.add("her");
     grid.appendChild(kort);
   }
   vis("verdener");
+}
+// Ét kort med verdenens farver, ikon, et par af dens blokke, navn, tekst og en knap
+function verdenKort(v, navnTekst, tekstTekst, knapTekst, vedTryk) {
+  const kort = document.createElement("div");
+  kort.className = "verden-kort";
+  kort.style.background = `linear-gradient(165deg, ${v.himmel[0]}, ${v.himmel[1]})`;
+  const top = document.createElement("div"); top.className = "verden-top";
+  const ikon = document.createElement("span"); ikon.className = "verden-ikon"; ikon.textContent = v.ikon;
+  top.appendChild(ikon);
+  for (const n of v.vis) { const img = new Image(); img.src = atlas.ikon(ID[n]); img.alt = ""; top.appendChild(img); }
+  const navn = document.createElement("div"); navn.className = "verden-navn"; navn.textContent = navnTekst;
+  const tekst = document.createElement("div"); tekst.className = "verden-tekst"; tekst.textContent = tekstTekst;
+  const knap = document.createElement("button"); knap.className = "mc";
+  knap.textContent = knapTekst; knap.disabled = !vedTryk;
+  if (vedTryk) knap.addEventListener("click", vedTryk);
+  kort.append(top, navn, tekst, knap);
+  return kort;
 }
 function vælgVerden(v) {
   Lyd.klar(); Lyd.klik();
@@ -1143,6 +1390,7 @@ function tegnFrame(nu) {
   if (ONLINE) opdaterOnline(dt);
   verden.opdater(ONLINE ? 6 : verden.snavset.size > 40 ? 12 : 4);
   animerVæsker();
+  tegnPortalSlør(dt);
   opdaterVærktøj(håndFlamme, tid);
   opdaterStykker(dt);
   for (const s of skyer) {                                                        // skyerne driver og følger med
@@ -1194,6 +1442,8 @@ async function startSpil() {
   setTimeout(() => { if (iGang) besked(cfg.skyd ? "🎯 Tryk for at skyde · hold fingeren nede for at skyde mange · tryk på en grøn kampvogn for at køre"
     : cfg.fyrværkeri ? "🎆 Tryk for at sende en raket op · tænd fyrværkeri-kasserne med 🔥 tænderen"
     : nyVæske ? "NYT: 🪣 Vand, 🌋 lava og 🔥 ild! Find dem i ⋯" : nyTNT && !ONLINE ? "NYT: 🧨 TNT! Sæt den og slå på den med 🔨" : "Tryk = byg 🧱   🔨 = fjern   Træk = kig 👀", 5000); }, 2500);
+  const tip = læs("broekraft-portaltip", 0);                      // de første par gange: sådan laver man en portal
+  if (tip < 3 && !portalKom) { skriv("broekraft-portaltip", tip + 1); setTimeout(() => { if (iGang) besked("NYT: 🌀 Byg en ramme af obsidian, og tænd den med 🔥 — så får du en portal!", 5500); }, 8500); }
 }
 tegnHotbar();
 opdaterHånd();
@@ -1204,8 +1454,9 @@ startKnap.textContent = ONLINE ? "▶ Spil sammen" : "▶ Spil";
 startKnap.disabled = false;
 startKnap.addEventListener("click", startSpil);
 let autoStart = false;
-try { autoStart = !ONLINE && sessionStorage.getItem("broekraft-start") === "1"; sessionStorage.removeItem("broekraft-start"); } catch (_) {}
-if (autoStart) startSpil();
+try { autoStart = (!ONLINE || portalKom) && sessionStorage.getItem("broekraft-start") === "1"; sessionStorage.removeItem("broekraft-start"); } catch (_) {}
+if (portalKom && !ONLINE) ankomVedPortal();
+if (autoStart) setTimeout(startSpil, 0);                          // når hele filen er læst (så forbindelsen til serveren er klar)
 // ---------- Spil sammen: forbindelsen til familiens Broekraft Server ----------
 let net = null, minId = null, førsteVelkommen = true, dyrLavet = false, sidsteBum = null;
 let minFigur = læs("broekraft-figur", "gris");
@@ -1306,6 +1557,7 @@ function nyFigur(p) {
 function blokFraServer({ x, y, z, id }) {
   const før = verden.hent(x, y, z);
   if (!verden.sæt(x, y, z, id)) return;
+  portalTjek(x, y, z);
   if (verden.væske[før] === "lava" && (id === ID.Sten || id === ID.Obsidian)) simLyd("tss", x, y, z);
   else if (id === ID.Ild) simLyd("knitre", x, y, z);
   // blokke der ryger i et brag, flyver som småstykker
@@ -1324,6 +1576,7 @@ function opdaterOnline(dt) {
   for (const f of andre.values()) f.opdater(dt);
   if (!iGang || !net) return;
   net.pos(sp.pos.x, sp.pos.y, sp.pos.z, sp.yaw, sp.pitch);
+  sendKø(dt);
   if (!dyrLavet && verden.hentet(Math.floor(sp.pos.x), Math.floor(sp.pos.z)) && !ventPåJord) { dyrLavet = true; lavStartDyr(sp.pos.x, sp.pos.z); }
 }
 // Emoji-knapperne
@@ -1458,4 +1711,4 @@ if (ONLINE) {
 
 if (ONLINE) forberedOnline();
 window.broekraftKlar = true;
-if (location.search.includes("debug")) window.bk = { sp, verden, dyr, tast, cfg, andre, sim, get net() { return net; }, get tale() { return tale; }, get graf() { return graf; }, afspillere, skyd, fyr };
+if (location.search.includes("debug")) window.bk = { sp, verden, dyr, tast, cfg, andre, sim, get net() { return net; }, get tale() { return tale; }, get graf() { return graf; }, afspillere, skyd, fyr, tændPortal, visPortalValg };
