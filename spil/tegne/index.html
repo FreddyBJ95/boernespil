@@ -152,6 +152,7 @@
     });
 
     window.addEventListener("resize", tilpas);
+    window.addEventListener("orientationchange", () => setTimeout(tilpas, 300));   // telefonen er færdig med at dreje
     tilpas();
   </script>
 </body>

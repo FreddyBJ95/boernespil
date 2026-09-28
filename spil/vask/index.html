@@ -13,7 +13,7 @@
       -webkit-user-select: none; user-select: none;
       -webkit-tap-highlight-color: transparent; touch-action: none;
     }
-    #scene { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; touch-action: none; }
+    #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 
     /* Topbar: hjem · faser + fremskridt · tæller + skift maskine */
     .top {
@@ -532,7 +532,7 @@
     // ---------- Opsætning af skærm og lag ----------
     function layout() {
       dpr = Math.min(window.devicePixelRatio || 1, 2);
-      W = window.innerWidth; H = window.innerHeight;
+      W = cv.clientWidth || window.innerWidth; H = cv.clientHeight || window.innerHeight;   // selve fladen — også når telefonen vendes
       cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       const top = H < 520 ? 80 : 140, bund = Math.max(64, H * 0.11);
@@ -1155,7 +1155,7 @@
     });
     lukEl.addEventListener("click", () => vaelgEl.classList.add("skjult"));
 
-    window.addEventListener("resize", layout);
+    Effekter.vedStørrelse(layout);
     layout();
     opdaterUI();
     requestAnimationFrame(loop);

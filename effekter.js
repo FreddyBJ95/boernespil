@@ -2,6 +2,7 @@
 // <script src="../../effekter.js"></script>
 // Effekter.konfetti(x,y) · .stjerner(x,y) · .tekstPop(x,y,tekst) · .boelge(x,y)
 // .flash() · .ding() · .pop() · .fanfare() · .fejl() · .fest(x,y) · .skibidi()
+// Effekter.vedStørrelse(fn) — kalder fn når skærmen ændrer størrelse, også når en telefon vendes
 
 (function () {
   let canvas, ctx, dele = [], kører = false, sidste = 0;
@@ -10,17 +11,25 @@
     if (canvas) return;
     canvas = document.createElement("canvas");
     canvas.style.cssText =
-      "position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:99999";
+      "position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:99999";
     document.body.appendChild(canvas);
     str();
-    window.addEventListener("resize", str);
+    vedStørrelse(str);
   }
   function str() {
     const d = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = window.innerWidth * d;
-    canvas.height = window.innerHeight * d;
+    canvas.width = (canvas.clientWidth || window.innerWidth) * d;
+    canvas.height = (canvas.clientHeight || window.innerHeight) * d;
     ctx = canvas.getContext("2d");
     ctx.setTransform(d, 0, 0, d, 0, 0);
+  }
+  // Telefoner melder først den rigtige størrelse lidt efter, at de er vendt — så vi måler et par gange
+  function vedStørrelse(fn) {
+    let t1 = 0, t2 = 0;
+    const kør = () => { fn(); clearTimeout(t1); clearTimeout(t2); t1 = setTimeout(fn, 150); t2 = setTimeout(fn, 600); };
+    window.addEventListener("resize", kør);
+    window.addEventListener("orientationchange", kør);
+    if (window.visualViewport) window.visualViewport.addEventListener("resize", kør);
   }
   function start() {
     if (!kører) { kører = true; sidste = performance.now(); requestAnimationFrame(loop); }
@@ -257,5 +266,5 @@
     blip(180, n, 0.18, "square", 0.12);
   }
 
-  window.Effekter = { konfetti, stjerner, tekstPop, boelge, flash, fest, ding, pop, fanfare, fejl, skibidi, audio };
+  window.Effekter = { konfetti, stjerner, tekstPop, boelge, flash, fest, ding, pop, fanfare, fejl, skibidi, audio, vedStørrelse };
 })();

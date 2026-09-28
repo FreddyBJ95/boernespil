@@ -1038,14 +1038,15 @@ function besked(tekst, ms = 2200) {
 }
 
 // ---------- Tegn hver frame ----------
+// Mål selve billedfladen (ikke vinduet), så billedet aldrig bliver strakt — heller ikke når telefonen vendes
 function størrelse() {
-  const w = window.innerWidth, h = window.innerHeight;
+  const el = renderer.domElement, w = el.clientWidth || window.innerWidth, h = el.clientHeight || window.innerHeight;
   renderer.setSize(w, h, false);
   kamera.aspect = w / h;
   kamera.fov = w / h < 1 ? 80 : 70;
   kamera.updateProjectionMatrix();
 }
-window.addEventListener("resize", størrelse);
+window.Effekter.vedStørrelse(størrelse);
 størrelse();
 
 let tid = 0, sidst = performance.now(), fejlVist = false;

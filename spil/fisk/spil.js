@@ -45,14 +45,15 @@ kamera.rotation.x = -0.14;
 scene.add(kamera);
 const verden = byggVerden(scene, renderer);
 
+// Mål selve billedfladen (ikke vinduet), så billedet aldrig bliver strakt — heller ikke når telefonen vendes
 function størrelse() {
-  const w = window.innerWidth, h = window.innerHeight;
+  const el = renderer.domElement, w = el.clientWidth || window.innerWidth, h = el.clientHeight || window.innerHeight;
   renderer.setSize(w, h, false);
   kamera.aspect = w / h;
   kamera.fov = w / h < 1 ? 72 : 60;       // lidt bredere udsyn når skærmen står på højkant
   kamera.updateProjectionMatrix();
 }
-window.addEventListener("resize", størrelse);
+window.Effekter.vedStørrelse(størrelse);
 størrelse();
 
 // ---------- Fiskestangen (sidder fast foran kameraet, som om man holder den) ----------
