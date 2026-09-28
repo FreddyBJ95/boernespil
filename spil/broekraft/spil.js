@@ -502,6 +502,7 @@ function sætBlok(hit) {
   else verden.sæt(tx, ty, tz, s.blok);
   Lyd.sæt(b.lyd);
   if (b.tnt && !tntTip) { tntTip = true; besked("Slå på TNT med 🔨 hammeren! 💥", 3500); }
+  if (s.blok === ID.Spire) plantSpire(tx, ty, tz);
   sving = 1;
   gemSnart();
 }
@@ -529,6 +530,7 @@ function knus(hit, hammer = false) {
   }
   const b = BLOKKE[hit.id];
   if (b.skat) skatFundet(hit);                                   // en skattekiste springer op!
+  if (b.afgrøde) høstet(hit);                                    // hvede, gulerod eller solsikke
   if (b.væske || b.ild) {
     stænk(hit.x + 0.5, hit.y + 0.7, hit.z + 0.5, atlas.farve(hit.id));
     if (b.væske) Lyd.plask(); else Lyd.knitre();
@@ -565,6 +567,31 @@ function brugVærktøj(v, hit) {
   else { Lyd.plask(); stænk(tx + 0.5, ty + 0.9, tz + 0.5, v === "vand" ? VANDFARVE : ILD[2], 12); }
   gemSnart();
 }
+// ---------- Bondegården: spirer gror af sig selv til hvede, gulerødder, solsikker eller græskar ----------
+const AFGRØDER = [ID.Hvede, ID.Gulerod, ID.Solsikke, ID.Hvede, ID.Gulerod, ID.Græskar];
+const GRØNNE = ["#4cb748", "#6ad05a", "#ffd23f"].map(f => new THREE.Color(f));
+const spirer = [];
+function plantSpire(x, y, z) { spirer.push({ x, y, z, t: 15 + Math.random() * 20 }); }
+function opdaterSpirer(dt) {
+  for (let i = spirer.length - 1; i >= 0; i--) {
+    const s = spirer[i];
+    if ((s.t -= dt) > 0) continue;
+    spirer.splice(i, 1);
+    if (verden.hent(s.x, s.y, s.z) !== ID.Spire) continue;                     // den er blevet fjernet
+    sætHer(s.x, s.y, s.z, AFGRØDER[Math.floor(Math.random() * AFGRØDER.length)]);
+    for (let k = 0; k < 10; k++) partikel(s.x + 0.5, s.y + 0.4, s.z + 0.5, GRØNNE[k % 3], (Math.random() - 0.5) * 2, 2 + Math.random() * 2, (Math.random() - 0.5) * 2, 0.7, 0.6, 0.8);
+    Lyd.groet(Math.hypot(s.x - sp.pos.x, s.z - sp.pos.z));
+  }
+}
+function høstet({ x, y, z }) {
+  nyePoint(1);
+  for (let k = 0; k < 12; k++) partikel(x + 0.5, y + 0.5, z + 0.5, GRØNNE[k % 3], (Math.random() - 0.5) * 3, 3 + Math.random() * 2, (Math.random() - 0.5) * 3, 0.8, 1, 0.9);
+}
+if (!ONLINE) for (let i = 0; i < verden.data.length; i++) if (verden.data[i] === ID.Spire) {   // spirer fra sidst gror videre
+  const lag = verden.BX * verden.BZ;
+  plantSpire(i % verden.BX, Math.floor(i / lag), Math.floor((i % lag) / verden.BX));
+}
+
 // ---------- Piratøen: skattekister fulde af guld, og kanoner der skyder kanonkugler ud over vandet ----------
 const GULDMØNT = ["#ffd23f", "#f5c542", "#fff3b0"].map(f => new THREE.Color(f));
 function skatFundet({ x, y, z }) {
@@ -1518,7 +1545,7 @@ function tegnFrame(nu) {
   if (iGang && !pause) {
     if (skyd.kører) { skyd.styr(tast, sp.yaw, dt); sp.pitch = Math.max(-1.1, Math.min(0.45, sp.pitch)); } else opdaterSpiller(dt);
     opdaterHak(dt); genfød(dt); opdaterTNT(dt); sim?.tick(dt); opdaterGløder(dt);
-    skyd.opdater(dt); fyr.opdater(dt); brand?.opdater(dt, sp.pos); opdaterKugler(dt);
+    skyd.opdater(dt); fyr.opdater(dt); brand?.opdater(dt, sp.pos); opdaterKugler(dt); opdaterSpirer(dt);
     if (valgtTing().v === "stjernekaster" && !skyd.kører) {
       stjernedrys(3, 1.6);
       if ((gnistLyd -= dt) <= 0) { gnistLyd = 0.15; Lyd.gnistre(); }
@@ -1578,7 +1605,8 @@ async function startSpil() {
   luk("start");
   document.body.classList.add("i-gang");
   besked(ONLINE ? `${figurIkon(minFigur)} Velkommen til ${onlineInfo?.navn || cfg.navn}!` : `${cfg.ikon} ${cfg.navn}`, 2400);
-  setTimeout(() => { if (iGang) besked(cfg.id === "sky" ? "☁️ Hop på skyerne og trampolinerne · falder du ned, så hop op igen på trampolinerne"
+  setTimeout(() => { if (iGang) besked(cfg.id === "bondegaard" ? "🌱 Plant spirer, og se dem gro · høst med 🔨 hammeren for ⭐"
+    : cfg.id === "sky" ? "☁️ Hop på skyerne og trampolinerne · falder du ned, så hop op igen på trampolinerne"
     : cfg.id === "slik" ? "🍭 Hop på skumfiduserne · pas på, floden er af chokolade!"
     : cfg.undervand ? "🐠 Du kan svømme overalt! ⬆ svøm op · ⬇ dyk ned · find skattekisterne"
     : cfg.id === "pirat" ? "🏴‍☠️ Find de røde krydser i sandet, og grav skatten op med 🔨 hammeren · tryk på kanonerne!"

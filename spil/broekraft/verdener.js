@@ -1019,4 +1019,113 @@ export const VERDENER = [
       a.pynt(a.antal(50), () => (R() < 0.5 ? ID["Rød blomst"] : ID["Gul blomst"]), [ID["Græs"]]);
     },
   },
+
+  {
+    id: "bondegaard", navn: "Bondegården", ikon: "🚜", tekst: "Marker, en rød lade, en vindmølle og en traktor. Plant spirer, se dem gro — og høst dem med hammeren!",
+    himmel: ["#5aa8f0", "#e0f2ff"], tåge: [36, 92], hav: "#3f8fe0", sol: "#fff6b0", skyer: "#ffffff",
+    lys: ["#ffffff", "#8a9a5a", 2.2, 1.4], stemning: "rolig", tyngde: 28,
+    størrelse: [128, 48, 128],
+    dyr: ["ko", "hone", "hone", "hest", "kanin", "kanin", "faar", "gris"], antal: 13,
+    point: true,                                                 // ⭐ når man høster
+    hotbar: ["Spire", "Muld", "Høballe", "Hegn", "Ladetræ", "Planker", "v:vand", "Græskar", "æg:hest"],
+    vis: ["Hvede", "Høballe", "Ladetræ"],
+    hent: ["Pløjer markerne…", "Sår frø…", "Maler laden rød…", "Fylder brændstof på traktoren…"],
+    generer(a) {
+      const { R, støj, ID, BX, BZ, top } = a, cx = BX / 2, cz = BZ / 2, H = 10;
+      a.terræn((x, z) => {
+        const ud = Math.min(1, Math.max(0, (Math.hypot(x - cx, z - cz) - 40) / 16));
+        const kant = Math.min(1, Math.min(x, z, BX - 1 - x, BZ - 1 - z) / 8);
+        return Math.round(6 + (H - 6 + (støj(x / 18, z / 18) * 8 - 3) * ud) * kant);
+      }, (x, z, y, h) => (y === 0 ? ID.Bundsten : y < h - 3 ? ID.Sten : y < h ? ID.Jord : ID["Græs"]));
+      const søjle = (x, z, y0, y1, blok) => { for (let y = y0; y <= y1; y++) a.sæt(x, y, z, blok); };
+      const kasse = (x0, z0, b, d, y0, y1, blok) => { for (let x = x0; x < x0 + b; x++) for (let z = z0; z < z0 + d; z++) søjle(x, z, y0, y1, blok); };
+      const tag = (x0, z0, b, d, y0, blok) => { for (let k = 0; ; k++) { const x1 = x0 - 1 + k, x2 = x0 + b - k, z1 = z0 - 1 + k, z2 = z0 + d - k; if (x1 > x2 || z1 > z2) break; kasse(x1, z1, x2 - x1 + 1, z2 - z1 + 1, y0 + k, y0 + k, blok); } };
+
+      // Gårdspladsen: grusstier i et kors
+      for (let i = -30; i <= 30; i++) for (let j = -1; j <= 1; j++) { a.sæt(cx + i, H, cz + j, ID.Sand); a.sæt(cx + j, H, cz + i, ID.Sand); }
+      // Stuehuset: hvide mure, røde tagsten og en skorsten
+      { const x0 = cx - 17, z0 = cz - 14, b = 9, d = 7;
+        for (let x = x0; x < x0 + b; x++) for (let z = z0; z < z0 + d; z++) {
+          const væg = x === x0 || x === x0 + b - 1 || z === z0 || z === z0 + d - 1;
+          a.sæt(x, H, z, ID.Planker);
+          for (let y = 1; y <= 4; y++) a.sæt(x, H + y, z, !væg ? 0 : y === 2 && ((x - x0) % 3 === 1 || (z - z0) % 3 === 1) && !(x === x0 && z === z0) ? ID.Glas : ID["Hvid puds"]);
+        }
+        tag(x0, z0, b, d, H + 5, ID.Tagsten);
+        a.sæt(x0 + 4, H + 1, z0 + d - 1, 0); a.sæt(x0 + 4, H + 2, z0 + d - 1, 0);
+        søjle(x0 + 1, z0 + 1, H + 5, H + 8, ID.Mursten); a.sæt(x0 + 2, H + 1, z0 + 1, ID.Lampe);
+      }
+      // Den røde lade med høballer indenfor og en silo ved siden af
+      { const x0 = cx + 5, z0 = cz - 19, b = 11, d = 9;
+        for (let x = x0; x < x0 + b; x++) for (let z = z0; z < z0 + d; z++) {
+          const væg = x === x0 || x === x0 + b - 1 || z === z0 || z === z0 + d - 1;
+          a.sæt(x, H, z, ID.Planker);
+          for (let y = 1; y <= 6; y++) a.sæt(x, H + y, z, væg ? ((x === x0 || x === x0 + b - 1 || z === z0 + d - 1) && (y === 1 || y === 6) ? ID["Hvid puds"] : ID.Ladetræ) : 0);
+        }
+        for (let k = 0; k <= Math.floor(b / 2); k++) for (let z = z0 - 1; z <= z0 + d; z++) { a.sæt(x0 + k, H + 7 + k, z, ID.Tagsten); a.sæt(x0 + b - 1 - k, H + 7 + k, z, ID.Tagsten); }
+        for (let x = x0 + 1; x < x0 + b - 1; x++) for (let k = 0; k < Math.min(x - x0, x0 + b - 1 - x); k++) { a.sæt(x, H + 7 + k, z0, ID.Ladetræ); a.sæt(x, H + 7 + k, z0 + d - 1, ID.Ladetræ); }
+        for (let x = x0 + 4; x <= x0 + 6; x++) for (let y = 1; y <= 4; y++) a.sæt(x, H + y, z0 + d - 1, 0);                     // den store port
+        for (const [dx, dz, hh] of [[1, 1, 3], [2, 1, 2], [1, 2, 2], [8, 1, 2], [9, 1, 3], [9, 2, 1]]) søjle(x0 + dx, z0 + dz, H + 1, H + hh, ID.Høballe);
+        a.sæt(x0 + 5, H + 5, z0 + 1, ID.Lampe);
+        const sx = x0 + b + 3, sz = z0 + 3;                                                                               // siloen
+        for (let x = sx - 2; x <= sx + 2; x++) for (let z = sz - 2; z <= sz + 2; z++) {
+          const d2 = (x - sx) ** 2 + (z - sz) ** 2;
+          if (d2 <= 5) søjle(x, z, H + 1, H + 11, d2 >= 4 ? ID.Himmelsten : 0);
+          if (d2 <= 5) a.sæt(x, H + 12, z, ID["Blå puds"]);
+        }
+        a.sæt(sx, H + 13, sz, ID["Blå puds"]);
+      }
+      // Markerne: rækker af muld med hvede, gulerødder og solsikker — og vandrender imellem
+      const AFGRØDE = [ID.Hvede, ID.Gulerod, ID.Solsikke, ID.Hvede];
+      [[-26, 6], [-12, 6], [2, 6], [-26, 20]].forEach(([dx, dz], i) => {
+        const x0 = cx + dx, z0 = cz + dz;
+        for (let x = x0; x < x0 + 11; x++) for (let z = z0; z < z0 + 11; z++) {
+          if ((x - x0) % 4 === 3) { a.sæt(x, H, z, ID.Vand); a.sæt(x, H - 1, z, ID.Jord); continue; }        // vandrende
+          a.sæt(x, H, z, ID.Muld);
+          a.sæt(x, H + 1, z, R() < 0.12 ? ID.Spire : i === 3 && R() < 0.2 ? ID.Græskar : AFGRØDE[i]);
+        }
+        for (let x = x0 - 1; x <= x0 + 11; x++) for (const z of [z0 - 1, z0 + 11]) if (a.hent(x, H, z) === ID["Græs"]) a.sæt(x, H + 1, z, ID.Hegn);
+        for (let z = z0; z <= z0 + 10; z++) for (const x of [x0 - 1, x0 + 11]) if (a.hent(x, H, z) === ID["Græs"] && z !== z0 + 5) a.sæt(x, H + 1, z, ID.Hegn);
+      });
+      // Folden til dyrene med hegn rundt om og en låge
+      { const x0 = cx + 8, z0 = cz + 20, b = 18, d = 14;
+        for (let x = x0; x <= x0 + b; x++) for (let z = z0; z <= z0 + d; z++) {
+          const kant = x === x0 || x === x0 + b || z === z0 || z === z0 + d;
+          if (kant && !(z === z0 && x >= x0 + 8 && x <= x0 + 9)) a.sæt(x, H + 1, z, ID.Hegn);
+        }
+        søjle(x0 + 3, z0 + 3, H + 1, H + 1, ID.Høballe); søjle(x0 + 4, z0 + 3, H + 1, H + 2, ID.Høballe);
+      }
+      // Vindmøllen med vinger af planker
+      { const mx = cx + 24, mz = cz + 4;
+        kasse(mx - 1, mz - 1, 3, 3, H + 1, H + 12, ID["Hvid puds"]);
+        tag(mx - 1, mz - 1, 3, 3, H + 13, ID.Tagsten);
+        a.sæt(mx, H + 1, mz + 1, 0); a.sæt(mx, H + 2, mz + 1, 0);
+        for (let i = 1; i <= 5; i++) { a.sæt(mx, H + 10 + i, mz + 2, ID.Planker); a.sæt(mx, H + 10 - i, mz + 2, ID.Planker); a.sæt(mx + i, H + 10, mz + 2, ID.Planker); a.sæt(mx - i, H + 10, mz + 2, ID.Planker); }
+        a.sæt(mx, H + 10, mz + 2, ID.Træstamme);
+      }
+      // Traktoren holder på gårdspladsen
+      { const x0 = cx + 3, z0 = cz + 3;
+        for (const x of [x0, x0 + 2]) { søjle(x, z0, H + 1, H + 2, ID.Obsidian); a.sæt(x, H + 1, z0 + 3, ID.Obsidian); }
+        for (let z = z0; z <= z0 + 3; z++) søjle(x0 + 1, z, H + 1, H + 2, ID["Grøn uld"]);
+        for (let x = x0; x <= x0 + 2; x++) { a.sæt(x, H + 2, z0 + 2, ID["Grøn uld"]); a.sæt(x, H + 2, z0 + 3, ID["Grøn uld"]); a.sæt(x, H + 3, z0, ID.Glas); a.sæt(x, H + 3, z0 + 1, ID.Glas); a.sæt(x, H + 4, z0, ID["Grøn uld"]); a.sæt(x, H + 4, z0 + 1, ID["Grøn uld"]); }
+        søjle(x0 + 1, z0 + 3, H + 3, H + 4, ID.Sten); a.sæt(x0 + 1, H + 2, z0 + 4, ID.Lampe);
+      }
+      // Andedammen
+      { const px = cx - 20, pz = cz + 38 > BZ - 12 ? cz - 30 : cz + 38;
+        for (let x = px - 5; x <= px + 5; x++) for (let z = pz - 4; z <= pz + 4; z++) {
+          const d = ((x - px) / 5) ** 2 + ((z - pz) / 4) ** 2;
+          if (d < 1) { a.sæt(x, H, z, ID.Vand); a.sæt(x, H - 1, z, d < 0.5 ? ID.Vand : ID.Sand); a.sæt(x, H - 2, z, ID.Sand); }
+          else if (d < 1.4) a.sæt(x, H, z, ID.Sand);
+        }
+      }
+      // Træer uden for gården og blomster i græsset
+      for (let n = 0; n < a.antal(26); n++) {
+        const x = 3 + Math.floor(R() * (BX - 6)), z = 3 + Math.floor(R() * (BZ - 6)), h = top[x + z * BX];
+        if (Math.hypot(x - cx, z - cz) < 34 || a.hent(x, h, z) !== ID["Græs"] || a.hent(x, h + 1, z)) continue;
+        søjle(x, z, h + 1, h + 4, ID.Træstamme);
+        for (let ix = -1; ix <= 1; ix++) for (let iz = -1; iz <= 1; iz++) for (let y = 4; y <= 5; y++) if (!a.hent(x + ix, h + y, z + iz)) a.sæt(x + ix, h + y, z + iz, ID.Blade);
+        a.sæt(x, h + 6, z, ID.Blade);
+      }
+      a.pynt(a.antal(50), () => (R() < 0.5 ? ID["Rød blomst"] : ID["Gul blomst"]), [ID["Græs"]]);
+    },
+  },
 ];

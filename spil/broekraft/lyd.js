@@ -400,6 +400,12 @@ export function skat() {                    // kling-kling: guldmønter springer
   [1568, 2093, 1760, 2349, 2637, 3136].forEach((f, i) => tone(f, t + i * 0.07, 0.25, "triangle", 0.09));
   sus(t, 0.6, 6000, 9000, 0.06, "highpass", 0.7);
 }
+// ---------- Bondegården ----------
+export function groet(afstand = 0) {       // plop — spiren er blevet til en afgrøde
+  if (!ac) return;
+  const v = nær(afstand);
+  if (v > 0) { glid(500, 1100, nu(), 0.15, { vol: 0.12 * v }); tone(1320, nu() + 0.12, 0.2, "triangle", 0.06 * v); }
+}
 export function sirene() {                  // ba-bu ba-bu — brandbilen er på vej
   if (!ac) return;
   const t = nu();

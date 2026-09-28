@@ -10,7 +10,7 @@
 //  ild:          flammer styret af simulering.js
 //  skive:        skydeskive — bliver til konfetti, når den bliver skudt, og kommer igen (skyd.js)
 //  fyrværkeri:   tændes med 🔥 tænderen eller 🔨 hammeren: true = kasse (12 raketter), "show" = stort show, "fontæne" = fontæne
-//  glat:         man glider på den (is)
+//  glat:         man glider på den (is) · afgrøde: høstes med 🔨 og giver ⭐ (en spire gror til en afgrøde)
 //  portal:       lilla portal man kan gå igennem — tændes i en ramme af obsidian med 🔥 tænderen (spil.js)
 //  skat:         en skattekiste — slå den op med 🔨, så springer guldet ud · kanon: tryk med 🔨 eller 🔥, så skyder den
 //  Nye blokke skal altid tilføjes NEDERST, så gemte verdener stadig passer.
@@ -148,6 +148,15 @@ export const BLOKKE = [
   { navn: "Sky", tekstur: "sky", hopper: true, lyd: "uld" },
   { navn: "Trampolin", tekstur: { top: "trampolinTop", side: "trampolinSide", bund: "trampolinSide" }, hopper: true, superhop: true, lyd: "uld" },
   { navn: "Himmelsten", tekstur: "himmelsten", lyd: "sten" },
+  // --- Bondegården (en spire gror af sig selv til en afgrøde — se spil.js) ---
+  { navn: "Muld", tekstur: { top: "muld", side: "jord", bund: "jord" }, lyd: "græs" },
+  { navn: "Spire", tekstur: "spire", kryds: true, lyd: "græs" },
+  { navn: "Hvede", tekstur: "hvede", kryds: true, afgrøde: true, lyd: "græs" },
+  { navn: "Gulerod", tekstur: "gulerod", kryds: true, afgrøde: true, lyd: "græs" },
+  { navn: "Solsikke", tekstur: "solsikke", kryds: true, afgrøde: true, lyd: "græs" },
+  { navn: "Høballe", tekstur: { top: "høballeTop", side: "høballe", bund: "høballeTop" }, lyd: "græs" },
+  { navn: "Hegn", tekstur: "hegn", gennemsigtig: true, lyd: "træ" },
+  { navn: "Ladetræ", tekstur: "ladetræ", lyd: "træ" },
 ];
 
 export const ID = {};
@@ -474,6 +483,41 @@ const MØNSTRE = {
     for (let x = 4; x <= 11; x++) set(x, 14, hex("#a81e16"));
     set(7, 11, hex("#ffd23f")); set(8, 11, hex("#ffd23f"));
   },
+  // --- Bondegården ---
+  muld: (set, r) => alle((x, y) => set(x, y, lys(hex(y % 4 === 0 ? "#3a2412" : y % 4 === 1 ? "#6e4424" : "#5a3a1e"), 1 + (r() - 0.5) * 0.18))),
+  spire: set => {
+    alle((x, y) => set(x, y, [0, 0, 0], 0));
+    for (let y = 10; y < T; y++) set(7, y, hex("#4cb748"));
+    for (const [x, y] of [[5, 10], [4, 9], [6, 10], [9, 10], [10, 9], [11, 9], [8, 10], [5, 9], [10, 10]]) set(x, y, hex("#6ad05a"));
+  },
+  hvede: (set, r) => {
+    alle((x, y) => set(x, y, [0, 0, 0], 0));
+    for (const x of [2, 5, 8, 11, 14]) {
+      const top = 1 + Math.floor(r() * 3);
+      for (let y = top + 4; y < T; y++) set(x, y, lys(hex("#c8a040"), 1 + (r() - 0.5) * 0.1));
+      for (let y = top; y < top + 5; y++) { set(x, y, lys(hex("#f0c858"), 1 + (r() - 0.5) * 0.1)); set(x + (y % 2 ? 1 : -1), y, hex("#e0b040")); }
+    }
+  },
+  gulerod: (set, r) => {
+    alle((x, y) => set(x, y, [0, 0, 0], 0));
+    for (const x of [3, 7, 11]) {
+      for (let y = 4; y < 13; y++) { set(x + ((y >> 1) % 2), y, lys(hex("#4cb748"), 1 + (r() - 0.5) * 0.2)); if (y % 3 === 0) { set(x - 1, y, hex("#6ad05a")); set(x + 2, y, hex("#6ad05a")); } }
+      for (let y = 13; y < T; y++) for (let dx = 0; dx < 2; dx++) set(x + dx, y, hex(y === 13 ? "#ff9a3a" : "#f27a1a"));
+    }
+  },
+  solsikke: set => {
+    alle((x, y) => set(x, y, [0, 0, 0], 0));
+    for (let y = 7; y < T; y++) { set(7, y, hex("#3f9b35")); set(8, y, hex("#2d7a26")); }
+    for (const [x, y] of [[5, 11], [4, 10], [10, 12], [11, 11]]) set(x, y, hex("#4cb748"));
+    alle((x, y) => { const d = Math.hypot(x - 7.5, y - 4); if (d < 4.5) set(x, y, hex(d < 2.2 ? (x + y) % 2 ? "#5a3a1e" : "#7a4a24" : "#ffd23f")); });
+  },
+  høballe: (set, r) => alle((x, y) => set(x, y, lys(hex(x === 4 || x === 11 ? "#c83a2a" : y % 3 === 0 ? "#c8a040" : "#e8c860"), 1 + (r() - 0.5) * 0.14))),
+  høballeTop: (set, r) => alle((x, y) => { const d = Math.hypot(x - 7.5, y - 7.5); set(x, y, lys(hex(Math.floor(d) % 2 ? "#e8c860" : "#c8a040"), 1 + (r() - 0.5) * 0.12)); }),
+  hegn: (set, r) => alle((x, y) => {
+    const stolpe = (x >= 1 && x <= 3) || (x >= 12 && x <= 14), lægte = (y >= 3 && y <= 5) || (y >= 9 && y <= 11);
+    if (stolpe || lægte) set(x, y, lys(hex(stolpe ? "#8a6232" : "#b8894f"), 1 + (r() - 0.5) * 0.14)); else set(x, y, [0, 0, 0], 0);
+  }),
+  ladetræ: (set, r) => alle((x, y) => set(x, y, lys(hex(x % 4 === 3 ? "#7a1a14" : "#b8322a"), (y % 7 === 0 ? 0.9 : 1) * (1 + (r() - 0.5) * 0.14)))),
   // --- Skyøerne ---
   sky: (set, r) => alle((x, y) => {
     const b = Math.sin(x * 0.8) + Math.cos(y * 0.9) + Math.sin((x + y) * 0.5);
