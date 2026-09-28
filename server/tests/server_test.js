@@ -72,6 +72,21 @@ Deno.test("Kontrolpanel: lokal adgang, origin, token, statiske filer og dobbelt 
   } finally { await v.luk(); }
 });
 
+Deno.test("Verdener, der kører, starter selv igen efter en genstart — stoppede forbliver stoppet", async () => {
+  const v = await opsæt();
+  const req = (sti, init = {}) => v.app.håndter(new Request(v.base + sti, init), { remoteAddr: { hostname: "127.0.0.1" } });
+  try {
+    const { token } = await (await req("/api/status")).json();
+    const post = (sti, body) => req(sti, { method: "POST", headers: { origin: v.base, "x-broekraft-token": token }, body: JSON.stringify(body) });
+    const genstart = async () => { const ny = new BroekraftServer({ lager: v.lager }); await ny.init(); const kører = ny.rum.has(v.meta.id); await ny.luk(); return kører; };
+    assert.equal(await genstart(), true);                          // ingen besked endnu: starter af sig selv
+    assert.equal((await post("/api/stop", { id: v.meta.id })).status, 200);
+    assert.equal(await genstart(), false);                         // stoppet af en voksen: bliver stoppet
+    assert.equal((await post("/api/start", { id: v.meta.id })).status, 200);
+    assert.equal(await genstart(), true);
+  } finally { await v.luk(); }
+});
+
 Deno.test("Generering i worker viser fremgang og gemmer en spillbar verden", async () => {
   const v = await opsæt();
   try {

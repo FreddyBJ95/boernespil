@@ -1,5 +1,10 @@
 Broekraft Server lader 1–8 børn bygge i samme Broekraft-verden på familiens eget wifi.
 
+**Nyt i 0.3.1**
+- 💾 Verdenerne starter selv igen, når serveren startes, så børnene kan fortsætte, hvor de slap.
+  En verden, som en voksen har stoppet, forbliver stoppet.
+- 📱 Billedet bliver ikke længere strakt, når man vender telefonen eller tabletten.
+
 **Nyt i 0.3.0**
 - 🎯 **Skydebanen**: gevær, bazooka og malingspistol, skydeskiver, balloner, legetøjsrobotter,
   turbo-dinoer, kampvogne man kan køre og hoppe med, og bygninger (hangar, kaserner, vagttårne,

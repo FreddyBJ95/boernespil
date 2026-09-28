@@ -36,7 +36,8 @@ beviser ikke, at firewallen tillader adgang. Panelet viser også, om en anden en
 
 Vælg navn, type, størrelse, 1–8 spillere og om ild må sprede sig. Et tomt frø giver en ny tilfældig verden.
 En stor verden kan tage lidt tid; følg fremgangen i panelet. Nye verdener starter automatisk.
-Efter en genstart trykker du **Start** ved de verdener, børnene vil bruge.
+Verdenerne gemmes på computeren, og de verdener, der kørte, starter selv igen, når programmet startes.
+Trykker du **Stop** ved en verden, bliver den stoppet, indtil du trykker **Start** igen.
 
 ## Forbind tablets
 

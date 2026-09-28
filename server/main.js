@@ -24,7 +24,21 @@ export class BroekraftServer {
     this.værter = new Set(["localhost", "127.0.0.1", "[::1]", ...adresser]);
   }
 
-  async init() { this.metadata = new Map((await this.lager.liste()).map(m => [m.id, m])); }
+  // Verdener, der kørte sidst (eller aldrig er stoppet af en voksen), starter af sig selv igen
+  async init() {
+    this.metadata = new Map((await this.lager.liste()).map(m => [m.id, m]));
+    for (const m of this.metadata.values()) if (m.kører !== false) {
+      try { await this.start(m.id); } catch (fejl) { console.error(`Kunne ikke starte "${m.navn}":`, fejl.message); }
+    }
+  }
+  // Husk i meta.json, om en voksen har startet eller stoppet verdenen
+  async husk(id, kører) {
+    const meta = { ...this.metadata.get(id), kører };
+    await this.lager.gemMeta(meta);
+    this.metadata.set(id, meta);
+    const r = this.rum.get(id);
+    if (r) r.meta = meta;
+  }
   liste() {
     return [...this.rum.values()].map(r => ({ id: r.meta.id, navn: r.meta.navn, type: r.meta.type, bredde: r.meta.bredde, dybde: r.meta.dybde, spillere: r.spillere.size, maks: r.meta.maksSpillere }));
   }
@@ -72,6 +86,7 @@ export class BroekraftServer {
         if (data.procent != null) job.procent = Math.min(99, data.procent);
         if (data.data) {
           try {
+            meta.kører = true;                                     // nye verdener starter — også efter en genstart
             await this.lager.gem(meta, data.data);
             this.metadata.set(meta.id, meta);
             if (!this.lukker) this.rum.set(meta.id, new Rum(meta, data.data));
@@ -175,7 +190,7 @@ export class BroekraftServer {
     if (sti === "/api/opret") return json({ id: this.opret(b) }, 202);
     if (!this.metadata.has(b.id)) return json({ fejl: "Ukendt verden" }, 404);
     return await this.lås(b.id, async () => {
-      if (sti === "/api/start") await this.start(b.id);
+      if (sti === "/api/start") { await this.start(b.id); await this.husk(b.id, true); }
       else if (sti === "/api/stemmer") {
         if (typeof b.til !== "boolean") return json({ fejl: "Vælg til eller fra" }, 400);
         const meta = { ...this.metadata.get(b.id), stemmer: b.til };
@@ -184,7 +199,7 @@ export class BroekraftServer {
         const r = this.rum.get(b.id);
         if (r) { r.meta = meta; r.skiftStemmer(b.til); }
       }
-      else if (sti === "/api/stop") await this.stop(b.id);
+      else if (sti === "/api/stop") { await this.stop(b.id); await this.husk(b.id, false); }
       else if (sti === "/api/backup") {
         const r = this.rum.get(b.id); if (r) await this.gem(r);
         return json({ mappe: await this.lager.backup(b.id) });
