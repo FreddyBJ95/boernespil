@@ -420,6 +420,46 @@ export const DYR = [
       { s: [3, 1, 3], p: [0, 19.5, 15], f: "#2f4a74" },
     ] },
   ] },
+  // Slikland: vingummibamser, man næsten kan se igennem — de hopper rundt
+  { id: "gummibjorn", navn: "Rød vingummibamse", lyd: "boing", fart: 1.8, evne: "hopper", æg: ["#ff3b5c", "#ffffff"], dele: [
+    { s: [2.5, 3, 3], p: [-2, 1.5, 0], f: "#d82a48", gennemsigtig: 0.85, rolle: "ben", fase: 0 }, { s: [2.5, 3, 3], p: [2, 1.5, 0], f: "#d82a48", gennemsigtig: 0.85, rolle: "ben", fase: Math.PI },
+    { s: [7, 7, 6], p: [0, 6.5, 0], f: "#ff3b5c", gennemsigtig: 0.85 },
+    { s: [3, 3, 0.4], p: [-1.2, 7.5, 3.1], f: "#ff9aaa", gennemsigtig: 0.7 },
+    { s: [2, 4, 2], p: [-4.2, 7, 0.5], f: "#d82a48", gennemsigtig: 0.85, rolle: "vinge" }, { s: [2, 4, 2], p: [4.2, 7, 0.5], f: "#d82a48", gennemsigtig: 0.85, rolle: "vinge" },
+    { s: [6, 5.5, 5], p: [0, 12.5, 0.5], f: "#ff3b5c", gennemsigtig: 0.85, rolle: "hoved", børn: [
+      { s: [2, 2, 1.5], p: [-2.5, 15.8, 0.5], f: "#ff3b5c", gennemsigtig: 0.85 }, { s: [2, 2, 1.5], p: [2.5, 15.8, 0.5], f: "#ff3b5c", gennemsigtig: 0.85 },
+      { s: [2.6, 1.8, 1.2], p: [0, 11.3, 3.4], f: "#ff9aaa", gennemsigtig: 0.85 },
+      { s: [1, 0.8, 0.4], p: [0, 12, 4.1], f: "#1a1a1a" },
+      ...øjne(1.4, 13.6, 3.1, 1.2),
+    ] },
+  ] },
+  { id: "gummibjorngron", navn: "Grøn vingummibamse", lyd: "boing", fart: 1.8, evne: "hopper", æg: ["#3fd35a", "#ffffff"], dele: [
+    { s: [2.5, 3, 3], p: [-2, 1.5, 0], f: "#2aa848", gennemsigtig: 0.85, rolle: "ben", fase: 0 }, { s: [2.5, 3, 3], p: [2, 1.5, 0], f: "#2aa848", gennemsigtig: 0.85, rolle: "ben", fase: Math.PI },
+    { s: [7, 7, 6], p: [0, 6.5, 0], f: "#3fd35a", gennemsigtig: 0.85 },
+    { s: [3, 3, 0.4], p: [-1.2, 7.5, 3.1], f: "#a8ffb0", gennemsigtig: 0.7 },
+    { s: [2, 4, 2], p: [-4.2, 7, 0.5], f: "#2aa848", gennemsigtig: 0.85, rolle: "vinge" }, { s: [2, 4, 2], p: [4.2, 7, 0.5], f: "#2aa848", gennemsigtig: 0.85, rolle: "vinge" },
+    { s: [6, 5.5, 5], p: [0, 12.5, 0.5], f: "#3fd35a", gennemsigtig: 0.85, rolle: "hoved", børn: [
+      { s: [2, 2, 1.5], p: [-2.5, 15.8, 0.5], f: "#3fd35a", gennemsigtig: 0.85 }, { s: [2, 2, 1.5], p: [2.5, 15.8, 0.5], f: "#3fd35a", gennemsigtig: 0.85 },
+      { s: [2.6, 1.8, 1.2], p: [0, 11.3, 3.4], f: "#a8ffb0", gennemsigtig: 0.85 },
+      { s: [1, 0.8, 0.4], p: [0, 12, 4.1], f: "#1a1a1a" },
+      ...øjne(1.4, 13.6, 3.1, 1.2),
+    ] },
+  ] },
+  // Slikland: en hvid enhjørning med regnbuemanke og et gyldent horn
+  { id: "enhjorning", navn: "Enhjørning", lyd: "vrinsk", fart: 1.6, æg: ["#ffffff", "#ff7eb6"], dele: [
+    { s: [9, 9, 17], p: [0, 16, 0], f: "#ffffff" },
+    ...fireBen([3, 12, 3], 3, 6, 6, "#f4f0ff"),
+    { s: [2, 10, 3], p: [0, 16, -9.5], f: "#ff7eb6", regnbue: true, rolle: "hale" },
+    { s: [4, 8, 5], p: [0, 22, 8], f: "#ffffff" },
+    { s: [6, 7, 10], p: [0, 26, 12], f: "#ffffff", rolle: "hoved", børn: [
+      { s: [5, 4, 4], p: [0, 24, 17], f: "#fff0f6" },
+      { s: [1, 1, 0.4], p: [-1.2, 24, 19.1], f: "#c8a0b0" }, { s: [1, 1, 0.4], p: [1.2, 24, 19.1], f: "#c8a0b0" },
+      ...øjne(2.2, 27.5, 14.8, 1.8),
+      { s: [1.4, 6, 1.4], p: [0, 33, 13], f: "#ffd23f", lys: true },
+      { s: [1.5, 2.5, 1], p: [-2, 30.5, 10], f: "#ffffff" }, { s: [1.5, 2.5, 1], p: [2, 30.5, 10], f: "#ffffff" },
+      { s: [2, 9, 3], p: [0, 25, 7.5], f: "#c86bff", regnbue: true },
+    ] },
+  ] },
 ];
 // ---------- Byg et dyr af klodser ----------
 const kasse = new THREE.BoxGeometry(1, 1, 1);

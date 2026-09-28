@@ -529,6 +529,7 @@ export function dyrLyd(type, afstand = 0) {
     case "knips": [0, 0.12, 0.24].forEach(d => tone(2400, t + d, 0.04, "square", 0.08 * v)); break;
     case "blub": for (const d of [0, 0.15]) glid(380, 900, t + d, 0.12, { vol: 0.12 * v }); break;
     case "hval": glid(180, 120, t, 1.8, { type: "sine", vol: 0.25 * v, vibHz: 3, vib: 8 }); glid(240, 300, t + 1.2, 1.2, { type: "sine", vol: 0.15 * v, vibHz: 4, vib: 10 }); break;
+    case "vrinsk": glid(700, 1300, t, 0.3, { type: "triangle", vol: 0.14 * v, vibHz: 18, vib: 60 }); glid(1300, 600, t + 0.3, 0.5, { type: "triangle", vol: 0.12 * v, vibHz: 14, vib: 50 }); break;
     default: tone(600, t, 0.1, "sine", 0.2 * v, 900);
   }
 }

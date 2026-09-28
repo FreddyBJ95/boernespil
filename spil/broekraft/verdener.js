@@ -12,6 +12,7 @@
 //  sne:     true = sne der falder · "gløder" = gnister der stiger op · lavahav: havet er lava (man hopper ud af det)
 //  brand:   huse, der af og til brænder (brand.js) · point: vis ⭐-tælleren
 //  undervand: hele verdenen er under vandet — man svømmer overalt, og overfladen er langt oppe
+//  vand:    "chokolade" = floderne og havet er af chokolade
 //  generer: opskriften på terrænet — får værktøjer fra verden.js (terræn, pynt, sæt, hent, R, støj …)
 
 export const VERDENER = [
@@ -839,6 +840,92 @@ export const VERDENER = [
       // Havlygter hist og her, så man kan finde vej
       a.pynt(a.antal(10), ID.Havlygte, [ID.Sand, ID.Sten]);
       a.pynt(a.antal(40), () => (R() < 0.6 ? ID.Tang : KORALLER[Math.floor(R() * 3)]), [ID.Sand]);
+    },
+  },
+
+  {
+    id: "slik", navn: "Slikland", ikon: "🍭", tekst: "Bakker af glasur, en chokoladeflod, honningkagehuse og skumfiduser, man kan hoppe på. Og det regner med slik!",
+    himmel: ["#ff9ad0", "#ffe6f5"], tåge: [34, 88], hav: "#6a3a18", sol: "#fff6b0", skyer: "#ffd6ee",
+    lys: ["#fff0f8", "#b07aa0", 2.3, 1.3], stemning: "glad", tyngde: 28,
+    størrelse: [128, 48, 128],
+    dyr: ["gummibjorn", "gummibjorngron", "gummibjorn", "enhjorning", "enhjorning"], antal: 10,
+    sne: "slik", vand: "chokolade",                              // slikregn, og floden er af chokolade
+    hotbar: ["Glasur", "Chokolade", "Slikstok", "Slikkepind", "Skumfidus", "Honningkage", "Vingummi", "Kage", "æg:enhjorning"],
+    vis: ["Slikkepind", "Slikstok", "Skumfidus"],
+    hent: ["Bager kagen…", "Smelter chokoladen…", "Drysser krymmel…", "Puster skumfiduserne op…"],
+    generer(a) {
+      const { R, støj, ID, BX, BZ, top } = a, cx = BX / 2, cz = BZ / 2, h0 = (x, z) => top[x + z * BX];
+      const flodZ = x => cz + 18 + Math.sin(x / 14) * 6 + Math.sin(x / 5.3) * 1.5;   // chokoladefloden bugter sig på tværs
+      a.terræn((x, z) => {
+        const kant = Math.min(1, Math.min(x, z, BX - 1 - x, BZ - 1 - z) / 8);
+        const midt = Math.max(0, 1 - Math.hypot(x - cx, z - cz) / 10);
+        let h = 11 + (støj(x / 16, z / 16) * 7 + støj(x / 6 + 30, z / 6) * 1.5 - 4) * (1 - midt);
+        const d = Math.abs(z - flodZ(x));
+        if (d < 5 && kant >= 1) h = Math.max(9, Math.min(h, 9 + (d - 2.6) * 1.5));      // flodbredden
+        return Math.round(5 + (h - 5) * kant);
+      }, (x, z, y, h) => (y === 0 ? ID.Bundsten : y < h - 4 ? ID.Chokolade : y < h ? ID.Kagebund : ID.Glasur));
+      const søjle = (x, z, y0, y1, blok) => { for (let y = y0; y <= y1; y++) a.sæt(x, y, z, blok); };
+
+      // Chokoladefloden (rigtigt vand, bare af chokolade) med broer af honningkage
+      for (let x = 9; x < BX - 9; x++) {
+        const fz = flodZ(x);
+        for (let z = Math.floor(fz - 3); z <= fz + 3; z++) {
+          if (Math.abs(z - fz) >= 2.6) continue;
+          for (let y = 7; y <= h0(x, z) + 1; y++) a.sæt(x, y, z, 0);
+          a.sæt(x, 6, z, ID.Chokolade); a.sæt(x, 7, z, ID.Vand); a.sæt(x, 8, z, ID.Vand);
+          top[x + z * BX] = 6;
+        }
+        if (x % 28 === 14) for (let z = Math.floor(fz - 4); z <= fz + 4; z++) for (let dx = 0; dx < 3; dx++) a.sæt(x + dx, 9, z, ID.Honningkage);
+      }
+      // Den store lagkage med lys på toppen
+      { const kx = cx + 9, kz = cz - 8, h = h0(kx, kz);
+        for (const [r, y0, y1] of [[3, 1, 3], [2, 4, 6], [1, 7, 8]]) for (let x = -r; x <= r; x++) for (let z = -r; z <= r; z++) søjle(kx + x, kz + z, h + y0, h + y1, ID.Kage);
+        for (const [dx, dz] of [[-1, -1], [1, 1], [-1, 1], [1, -1]]) a.sæt(kx + dx, h + 9, kz + dz, ID.Lampe);
+        a.sæt(kx, h + 9, kz, ID["Rød uld"]);
+      }
+      // Honningkagehuse med vingummivinduer, tag af skumfidus og slikstokke ved døren
+      for (let n = 0; n < a.antal(6); n++) {
+        const x0 = 8 + Math.floor(R() * (BX - 20)), z0 = 8 + Math.floor(R() * (BZ - 20));
+        if (a.nærStart(x0 + 3, z0 + 3, 9) || Math.abs(z0 + 3 - flodZ(x0 + 3)) < 9) continue;
+        let h = 0; for (let x = x0; x < x0 + 7; x++) for (let z = z0; z < z0 + 7; z++) h = Math.max(h, h0(x, z));
+        for (let x = x0; x < x0 + 7; x++) for (let z = z0; z < z0 + 7; z++) {
+          søjle(x, z, h0(x, z) + 1, h, ID.Kagebund);
+          const væg = x === x0 || x === x0 + 6 || z === z0 || z === z0 + 6;
+          for (let y = 1; y <= 4; y++) a.sæt(x, h + y, z, !væg ? 0 : y === 2 && (x === x0 + 3 || z === z0 + 3) ? ID.Vingummi : ID.Honningkage);
+        }
+        for (let k = 0; k < 4; k++) for (let x = x0 - 1 + k; x <= x0 + 7 - k; x++) for (let z = z0 - 1 + k; z <= z0 + 7 - k; z++) a.sæt(x, h + 5 + k, z, ID.Skumfidus);
+        a.sæt(x0 + 3, h + 1, z0, 0); a.sæt(x0 + 3, h + 2, z0, 0);
+        søjle(x0 + 2, z0 - 1, h + 1, h + 3, ID.Slikstok); søjle(x0 + 4, z0 - 1, h + 1, h + 3, ID.Slikstok);
+        a.sæt(x0 + 1, h + 1, z0 + 5, ID.Lampe);
+      }
+      // Slikkepinde-træer og kæmpe slikstokke
+      for (let n = 0; n < a.antal(26); n++) {
+        const x = 3 + Math.floor(R() * (BX - 6)), z = 3 + Math.floor(R() * (BZ - 6)), h = h0(x, z);
+        if (a.hent(x, h, z) !== ID.Glasur || a.hent(x, h + 1, z) || a.nærStart(x, z, 5)) continue;
+        if (R() < 0.6) {
+          const hs = 3 + Math.floor(R() * 3), langsX = R() < 0.5;
+          søjle(x, z, h + 1, h + hs, ID["Hvid uld"]);
+          for (let i = -1; i <= 1; i++) for (let j = 0; j <= 2; j++) a.sæt(x + (langsX ? i : 0), h + hs + j, z + (langsX ? 0 : i), ID.Slikkepind);
+        } else {
+          const hs = 4 + Math.floor(R() * 3), dx = R() < 0.5 ? 1 : -1;
+          søjle(x, z, h + 1, h + hs, ID.Slikstok);
+          a.sæt(x + dx, h + hs + 1, z, ID.Slikstok); a.sæt(x + 2 * dx, h + hs, z, ID.Slikstok); a.sæt(x, h + hs + 1, z, ID.Slikstok);
+        }
+      }
+      // Skumfidusbakker, man kan hoppe på, og bunker af vingummi
+      for (let n = 0; n < a.antal(4); n++) {
+        const bx = 8 + Math.floor(R() * (BX - 16)), bz = 8 + Math.floor(R() * (BZ - 16)), r = 2 + Math.floor(R() * 2);
+        if (a.nærStart(bx, bz, 8) || Math.abs(bz - flodZ(bx)) < 7) continue;
+        for (let x = bx - r; x <= bx + r; x++) for (let z = bz - r; z <= bz + r; z++) {
+          const hh = Math.round(Math.sqrt(Math.max(0, r * r - (x - bx) ** 2 - (z - bz) ** 2)));
+          søjle(x, z, h0(x, z) + 1, h0(x, z) + hh, ID.Skumfidus);
+        }
+      }
+      for (let n = 0; n < a.antal(10); n++) {
+        const x = 3 + Math.floor(R() * (BX - 6)), z = 3 + Math.floor(R() * (BZ - 6)), h = h0(x, z);
+        if (a.hent(x, h, z) === ID.Glasur && !a.hent(x, h + 1, z) && !a.nærStart(x, z, 5)) { a.sæt(x, h + 1, z, ID.Vingummi); if (R() < 0.5) a.sæt(x, h + 2, z, ID.Vingummi); }
+      }
+      a.pynt(a.antal(60), ID.Slikblomst, [ID.Glasur]);
     },
   },
 ];

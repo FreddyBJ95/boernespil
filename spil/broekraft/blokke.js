@@ -134,6 +134,16 @@ export const BLOKKE = [
   { navn: "Tang", tekstur: "tang", kryds: true, lyd: "græs" },
   { navn: "Havlygte", tekstur: "havlygte", lyser: true, lyd: "glas" },
   { navn: "Prismarin", tekstur: "prismarin", lyd: "sten" },
+  // --- Slikland ---
+  { navn: "Glasur", tekstur: { top: "glasurTop", side: "glasurSide", bund: "kagebund" }, lyd: "uld" },
+  { navn: "Kagebund", tekstur: "kagebund", lyd: "uld" },
+  { navn: "Chokolade", tekstur: "chokolade", lyd: "træ" },
+  { navn: "Slikstok", tekstur: "slikstok", lyd: "glas" },
+  { navn: "Slikkepind", tekstur: "slikkepind", lyd: "glas" },
+  { navn: "Skumfidus", tekstur: "skumfidus", hopper: true, lyd: "uld" },
+  { navn: "Honningkage", tekstur: "honningkage", lyd: "træ" },
+  { navn: "Vingummi", tekstur: "vingummi", lyd: "uld" },
+  { navn: "Slikblomst", tekstur: "slikblomst", kryds: true, lyd: "glas" },
 ];
 
 export const ID = {};
@@ -460,6 +470,56 @@ const MØNSTRE = {
     for (let x = 4; x <= 11; x++) set(x, 14, hex("#a81e16"));
     set(7, 11, hex("#ffd23f")); set(8, 11, hex("#ffd23f"));
   },
+  // --- Slikland ---
+  glasurTop: (set, r) => {
+    fyld(set, r, "#ff9ad0", 0.08);
+    const drys = ["#ffffff", "#ffe066", "#5fd3ff", "#8aff7a", "#c86bff", "#ff5f5f"];
+    for (let i = 0; i < 18; i++) { const x = Math.floor(r() * 15), y = Math.floor(r() * 15), c = hex(drys[i % drys.length]); set(x, y, c); if (r() < 0.5) set(x + 1, y, c); else set(x, y + 1, c); }
+  },
+  glasurSide: (set, r) => {
+    MØNSTRE.kagebund(set, r);
+    for (let x = 0; x < T; x++) {
+      const h = 3 + Math.round(Math.sin(x * 0.9) * 1.2 + 1) + (x % 5 === 2 ? 3 : 0);          // glasur, der drypper ned
+      for (let y = 0; y < h; y++) set(x, y, lys(hex("#ff9ad0"), 1 + (r() - 0.5) * 0.08));
+    }
+  },
+  kagebund: (set, r) => { fyld(set, r, "#f2d08a", 0.12); prik(set, r, ["#e0b868", "#fff0c0", "#d8a858"], 34); },
+  chokolade: (set, r) => alle((x, y) => {
+    const fuge = x % 8 === 0 || y % 8 === 0, glans = x % 8 === 1 || y % 8 === 1;
+    set(x, y, lys(hex(fuge ? "#3a200e" : glans ? "#8a5a32" : "#6a3f1e"), 1 + (r() - 0.5) * 0.08));
+  }),
+  slikstok: (set, r) => alle((x, y) => set(x, y, lys(hex(((x + y) >> 2) % 2 ? "#ffffff" : "#e8283c"), 1 + (r() - 0.5) * 0.05))),
+  slikkepind: set => {
+    const F = ["#ff3b5c", "#ffd23f", "#4cd964", "#3aa8ff", "#c86bff", "#ff8c1a"];
+    alle((x, y) => { const v = Math.atan2(y - 7.5, x - 7.5), d = Math.hypot(x - 7.5, y - 7.5); set(x, y, hex(F[Math.floor(((v / (Math.PI * 2) + 1) * 6 + d * 0.55)) % 6])); });
+  },
+  skumfidus: (set, r) => alle((x, y) => {
+    const d = Math.max(Math.abs(x - 7.5), Math.abs(y - 7.5));
+    set(x, y, lys(hex(d > 6.5 ? "#f0c8dc" : d > 5 ? "#ffe0ee" : "#fff6fa"), 1 + (r() - 0.5) * 0.04));
+  }),
+  honningkage: (set, r) => {
+    fyld(set, r, "#a8642a", 0.14); prik(set, r, ["#8a4e1e", "#c07a3a"], 20);
+    alle((x, y) => { if ((y === 2 || y === 13) && x % 3 !== 1) set(x, y, hex("#ffffff")); if ((x === 2 || x === 13) && y > 2 && y < 13 && y % 3 === 0) set(x, y, hex("#ffffff")); });
+  },
+  vingummi: (set, r) => alle((x, y) => {
+    const glans = (x - y === 3 || x - y === 4) && x < 10, kant = x === 0 || y === 0 || x === 15 || y === 15;
+    set(x, y, lys(hex(glans ? "#b8ffb0" : kant ? "#1f9a3a" : "#3fd35a"), 1 + (r() - 0.5) * 0.06));
+  }),
+  slikblomst: set => {
+    alle((x, y) => set(x, y, [0, 0, 0], 0));
+    for (let y = 7; y < T; y++) set(7, y, hex("#ffffff")), set(8, y, hex("#e8e8e8"));
+    const F = ["#ff3b5c", "#ffffff"];
+    alle((x, y) => { const d = Math.hypot(x - 7.5, y - 4); if (d < 4) set(x, y, hex(F[Math.floor(Math.atan2(y - 4, x - 7.5) * 1.3 + d) & 1])); });
+  },
+  chokoladeflod: (set, r) => {
+    fyld(set, r, "#6a3a18", 0.08);
+    for (let y = 1; y < T; y += 4) {
+      const x0 = (y * 5 + Math.floor(r() * 4)) % T;
+      for (let i = 0; i < 5; i++) set((x0 + i) % T, y, lys(hex("#9a6034"), 1 + (r() - 0.5) * 0.08));
+      set((x0 + 5) % T, (y + 1) % T, hex("#80481e"));
+    }
+    prik(set, r, ["#b87a48"], 5);
+  },
   // --- Havbunden ---
   koralblok: (set, r) => { fyld(set, r, "#f06a9a", 0.18); prik(set, r, ["#ff9ac0", "#c84a7a", "#ffd0e0"], 40); },
   tang: (set, r) => {
@@ -689,6 +749,7 @@ export function lavAtlas() {
   const RAMMER = 4, PORTALRAMMER = 8;
   const anim = {
     vand: flise(T, set => MØNSTRE.vand(set, rng(navnFrø("vand")))),
+    chokolade: flise(T, set => MØNSTRE.chokoladeflod(set, rng(navnFrø("chokoladeflod")))),
     lava: flise(T, set => MØNSTRE.lava(set, rng(navnFrø("lava")))),
     ild: flise(T * RAMMER, set => { for (let f = 0; f < RAMMER; f++) ildRamme((x, y, c, a) => set(x, y + f * T, c, a), rng(navnFrø("ild") + f)); }),
     portal: flise(T * PORTALRAMMER, set => { for (let f = 0; f < PORTALRAMMER; f++) portalRamme((x, y, c, a) => set(x, y + f * T, c, a), f / PORTALRAMMER * Math.PI * 2, rng(navnFrø("portal") + f)); }),

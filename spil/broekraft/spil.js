@@ -120,6 +120,7 @@ const SNEARTER = {
   sne: { farver: ["#ffffff"], fart: 1.2, str: 0.16, antal: 1400 },
   gløder: { farver: ["#ff8c1a", "#ffd23f", "#ff4d2e", "#ffb020"], fart: -0.7, str: 0.12, antal: 700, glød: true },
   bobler: { farver: ["#e8f8ff", "#bfe8ff", "#ffffff"], fart: -1.1, str: 0.13, antal: 450 },
+  slik: { farver: ["#ff5fa8", "#ffd23f", "#5fd3ff", "#8aff7a", "#c86bff", "#ffffff", "#ff8c1a"], fart: 1.6, str: 0.18, antal: 900 },
 };
 let sne = null;
 if (cfg.sne) {
@@ -243,6 +244,7 @@ const animMat = {                                               // vand er genne
 };
 const verden = new Verden(gemt.frø, atlas, blokMat, scene, MÅL);
 verden.animMat = animMat;
+if (cfg.vand === "chokolade") { animMat.vand.map = atlas.anim.chokolade; animMat.vand.opacity = 0.93; }   // Slikland: floden er af chokolade
 verden.tyngde = TYNGDE;
 if (!ONLINE) {                                    // alene: lav øen her. Sammen: serveren sender verdenen
   verden.generer(cfg.generer);
@@ -694,6 +696,7 @@ function tjekVarme(fod, krop, dt) {
 // De levende teksturer: vandet glider, lavaen gløder, ilden blafrer
 function animerVæsker() {
   atlas.anim.vand.offset.set(tid * 0.07, tid * 0.18);
+  atlas.anim.chokolade.offset.set(tid * 0.05, tid * 0.12);
   atlas.anim.lava.offset.set(tid * 0.03, tid * 0.06);
   atlas.anim.ild.offset.y = (Math.floor(tid * 9) % atlas.anim.rammer) / atlas.anim.rammer;
   animMat.lava.color.setScalar(0.9 + Math.sin(tid * 2.2) * 0.1);
@@ -1574,7 +1577,8 @@ async function startSpil() {
   luk("start");
   document.body.classList.add("i-gang");
   besked(ONLINE ? `${figurIkon(minFigur)} Velkommen til ${onlineInfo?.navn || cfg.navn}!` : `${cfg.ikon} ${cfg.navn}`, 2400);
-  setTimeout(() => { if (iGang) besked(cfg.undervand ? "🐠 Du kan svømme overalt! ⬆ svøm op · ⬇ dyk ned · find skattekisterne"
+  setTimeout(() => { if (iGang) besked(cfg.id === "slik" ? "🍭 Hop på skumfiduserne · pas på, floden er af chokolade!"
+    : cfg.undervand ? "🐠 Du kan svømme overalt! ⬆ svøm op · ⬇ dyk ned · find skattekisterne"
     : cfg.id === "pirat" ? "🏴‍☠️ Find de røde krydser i sandet, og grav skatten op med 🔨 hammeren · tryk på kanonerne!"
     : cfg.brand ? "🚒 Tag brandslangen, og hold fingeren nede for at sprøjte · følg røgen, når det brænder"
     : cfg.skyd ? "🎯 Tryk for at skyde · hold fingeren nede for at skyde mange · tryk på en grøn kampvogn for at køre"
