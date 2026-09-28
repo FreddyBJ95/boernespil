@@ -6,6 +6,7 @@
 //         "arm" (zombie-arme) · "flamme" (vises kun når turbosneglen drøner af sted)
 //  regnbue: true = klodsen skifter farve · lys: true = lyser selv · gennemsigtig: 0.8 = lidt gennemsigtig
 //  evne:  "flyver" | "hopper" | "turbo" | "flagrer" (falder langsomt) | "zombie" (følger efter dig) | "svæver"
+//         "svømmer" (svømmer rundt i sin egen højde over havbunden)
 //         "jæger" (spurter efter dig og skubber — se skyd.js) · liv: hvor mange skud der skal til (standard 1)
 //  klap:  "puf" = dyret forsvinder i konfetti og bliver til en blomst når man trykker på det
 //  skala: gør hele dyret større/mindre · fart: blokke pr. sekund
@@ -371,6 +372,54 @@ export const DYR = [
       { s: [2, 0.6, 0.4], p: [0, 4.8, 3.1], f: "#8a1a0a" },
     ] },
   ] },
+  // Havbunden: en klovnfisk med hvide striber
+  { id: "klovnfisk", navn: "Klovnfisk", lyd: "blub", fart: 1.8, evne: "svømmer", æg: ["#ff8c1a", "#ffffff"], dele: [
+    { s: [3, 5, 9], p: [0, 4, 0], f: "#ff8c1a" },
+    { s: [3.2, 5.2, 1.2], p: [0, 4, 1.5], f: "#ffffff" }, { s: [3.2, 4.6, 1.2], p: [0, 4, -2], f: "#ffffff" },
+    { s: [0.8, 4, 3], p: [0, 4, -5.5], f: "#ff8c1a", rolle: "hale" },
+    { s: [2.5, 1, 2.5], p: [-2, 3.5, 1], f: "#ff8c1a", rolle: "vinge" }, { s: [2.5, 1, 2.5], p: [2, 3.5, 1], f: "#ff8c1a", rolle: "vinge" },
+    { s: [1, 2, 4], p: [0, 7, 0], f: "#ff8c1a" },
+    { s: [3, 4, 2], p: [0, 4, 5.5], f: "#ff8c1a", rolle: "hoved", børn: [ ...øjne(1.2, 4.8, 6.6, 1.3), { s: [1.2, 0.6, 0.4], p: [0, 3, 6.6], f: "#1a1a1a" } ] },
+  ] },
+  // Havbunden: en blå fisk med gul hale
+  { id: "blaafisk", navn: "Blåfisk", lyd: "blub", fart: 2, evne: "svømmer", æg: ["#3a6fe0", "#ffd23f"], dele: [
+    { s: [3, 6, 9], p: [0, 4.5, 0], f: "#3a6fe0" },
+    { s: [3.2, 2, 5], p: [0, 6.5, -1], f: "#1a3a8a" },
+    { s: [0.8, 5, 3], p: [0, 4.5, -5.5], f: "#ffd23f", rolle: "hale" },
+    { s: [2.5, 1, 2.5], p: [-2, 4, 1], f: "#5a8aff", rolle: "vinge" }, { s: [2.5, 1, 2.5], p: [2, 4, 1], f: "#5a8aff", rolle: "vinge" },
+    { s: [3, 5, 2], p: [0, 4.5, 5.5], f: "#3a6fe0", rolle: "hoved", børn: [ ...øjne(1.2, 5.3, 6.6, 1.3), { s: [1.2, 0.6, 0.4], p: [0, 3.2, 6.6], f: "#1a1a1a" } ] },
+  ] },
+  // Havbunden: en havskildpadde, der padler langsomt af sted
+  { id: "skildpadde", navn: "Havskildpadde", lyd: "blub", fart: 0.9, evne: "svømmer", æg: ["#5a8a3a", "#c8b070"], dele: [
+    { s: [12, 5, 14], p: [0, 6, 0], f: "#6a8a3a" },
+    { s: [9, 2, 11], p: [0, 9.5, 0], f: "#8aa84a" }, { s: [4, 1, 4], p: [0, 10.8, 0], f: "#a8c05a" },
+    { s: [12.4, 2, 14.4], p: [0, 4, 0], f: "#d8c88a" },
+    { s: [8, 1.5, 4], p: [-9, 5, 3], f: "#8ab06a", rolle: "vinge" }, { s: [8, 1.5, 4], p: [9, 5, 3], f: "#8ab06a", rolle: "vinge" },
+    { s: [3, 1.5, 3], p: [-5, 4.5, -7], f: "#8ab06a", rolle: "ben", fase: 0 }, { s: [3, 1.5, 3], p: [5, 4.5, -7], f: "#8ab06a", rolle: "ben", fase: Math.PI },
+    { s: [4, 4, 5], p: [0, 6, 9.5], f: "#8ab06a", rolle: "hoved", børn: [ ...øjne(1.4, 7, 12.1, 1.3), { s: [2, 0.5, 0.4], p: [0, 5, 12.1], f: "#3a4a2a" } ] },
+  ] },
+  // Havbunden: en lilla blæksprutte med otte arme, der svinger
+  { id: "blaeksprutte", navn: "Blæksprutte", lyd: "blub", fart: 1, evne: "svømmer", æg: ["#b45aff", "#ffd0ff"], dele: [
+    ...[0, 1, 2, 3, 4, 5, 6, 7].map(i => { const v = i / 8 * Math.PI * 2; return { s: [1.4, 6, 1.4], p: [Math.cos(v) * 3, 3, Math.sin(v) * 3], f: "#9a4ae0", rolle: "ben", fase: i * 0.8 }; }),
+    { s: [9, 10, 9], p: [0, 11, 0], f: "#b45aff", rolle: "hoved", børn: [
+      ...øjne(2, 10, 4.6, 2.6),
+      { s: [1.4, 1.4, 0.4], p: [-3, 13, 4.6], f: "#ffd0ff" }, { s: [1, 1, 0.4], p: [3, 14, 4.6], f: "#ffd0ff" },
+      { s: [2, 1, 0.4], p: [0, 7.5, 4.6], f: "#5a1a8a" },
+    ] },
+  ] },
+  // Havbunden: en stor, venlig hval, der synger dybt
+  { id: "hval", navn: "Hval", lyd: "hval", fart: 1.1, evne: "svømmer", æg: ["#3a5a8a", "#dfe8f0"], dele: [
+    { s: [18, 16, 34], p: [0, 12, 0], f: "#3a5a8a" },
+    { s: [18.4, 5, 30], p: [0, 5.5, 2], f: "#dfe8f0" },
+    { s: [12, 10, 12], p: [0, 12, -22], f: "#3a5a8a" },
+    { s: [26, 2, 8], p: [0, 13, -30], f: "#2f4a74", rolle: "hale" },
+    { s: [10, 2, 6], p: [-13, 8, 6], f: "#2f4a74", rolle: "vinge" }, { s: [10, 2, 6], p: [13, 8, 6], f: "#2f4a74", rolle: "vinge" },
+    { s: [16, 14, 6], p: [0, 12, 19], f: "#3a5a8a", rolle: "hoved", børn: [
+      ...øjne(6, 13, 22.1, 2.2),
+      { s: [12, 1, 0.4], p: [0, 8, 22.1], f: "#1a2a44" },
+      { s: [3, 1, 3], p: [0, 19.5, 15], f: "#2f4a74" },
+    ] },
+  ] },
 ];
 // ---------- Byg et dyr af klodser ----------
 const kasse = new THREE.BoxGeometry(1, 1, 1);
@@ -466,7 +515,12 @@ export class Dyr {
     this.skub.multiplyScalar(Math.pow(0.08, dt));
 
     const g = this.v.tyngde;
-    if (d.evne === "svæver") {                            // spøgelset svæver over jorden
+    if (d.evne === "svømmer") {                           // fisk svømmer rundt i hver sin højde over bunden
+      if (this.svøm === undefined) this.svøm = 1 + Math.random() * 7;
+      const bund = this.v.topY(Math.floor(this.pos.x), Math.floor(this.pos.z));
+      const målY = Math.min(this.v.BY - 7, bund + 1 + this.svøm) + Math.sin(this.t * 0.8) * 0.4;
+      this.vel.y = (målY - this.pos.y) * 1.5;
+    } else if (d.evne === "svæver") {                     // spøgelset svæver over jorden
       const målY = this.v.topY(Math.floor(this.pos.x), Math.floor(this.pos.z)) + 1.4 + Math.sin(this.t * 2) * 0.3;
       this.vel.y = (målY - this.pos.y) * 3;
     } else if (this.flyv > 0) {                          // flyvegrisen letter

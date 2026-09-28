@@ -11,6 +11,7 @@
 //  vis:     tre blokke der vises på verdens-kortet · skyd: balloner, kampvogne og point · fyrværkeri: nytårsnat
 //  sne:     true = sne der falder · "gløder" = gnister der stiger op · lavahav: havet er lava (man hopper ud af det)
 //  brand:   huse, der af og til brænder (brand.js) · point: vis ⭐-tælleren
+//  undervand: hele verdenen er under vandet — man svømmer overalt, og overfladen er langt oppe
 //  generer: opskriften på terrænet — får værktøjer fra verden.js (terræn, pynt, sæt, hent, R, støj …)
 
 export const VERDENER = [
@@ -759,6 +760,85 @@ export const VERDENER = [
         a.sæt(x, h, z, ID.Skattekryds); a.sæt(x, h - 1, z, ID.Sand); a.sæt(x, h - 2, z, ID.Skattekiste);
       }
       a.pynt(a.antal(30), () => (R() < 0.5 ? ID["Rød blomst"] : ID["Gul blomst"]), [ID["Græs"]]);
+    },
+  },
+
+  {
+    id: "hav", navn: "Havbunden", ikon: "🐠", tekst: "Svøm rundt mellem koralrev, tangskove, et sunket skib og gamle ruiner. Her bor fisk, skildpadder og en stor hval!",
+    himmel: ["#0a3d70", "#1f78b8"], tåge: [12, 50], hav: null, sol: "#dff6ff", solStr: 18, skyer: null,
+    lys: ["#bfe8ff", "#1a4a6a", 2.1, 1.0], stemning: "rum", tyngde: 28,
+    størrelse: [128, 48, 128],
+    dyr: ["klovnfisk", "klovnfisk", "blaafisk", "blaafisk", "skildpadde", "blaeksprutte", "hval"], antal: 14,
+    undervand: true, sne: "bobler", point: true,                // man svømmer overalt, bobler stiger op, ⭐ for skatte
+    hotbar: ["Sand", "Koralblok", "Prismarin", "Havlygte", "Tang", "Rød koral", "Gul koral", "Skattekiste", "æg:klovnfisk"],
+    vis: ["Koralblok", "Prismarin", "Havlygte"],
+    hent: ["Fylder havet med vand…", "Planter koraller…", "Gemmer skattene…", "Vækker hvalen…"],
+    generer(a) {
+      const { R, støj, ID, BX, BY, BZ, top } = a, cx = BX / 2, cz = BZ / 2, h0 = (x, z) => top[x + z * BX];
+      const maks = Math.max(6, BY - 16);                               // der skal være masser af vand at svømme i
+      const rev = (x, z) => støj(x / 16 + 300, z / 16 + 300), skov = (x, z) => støj(x / 13 + 900, z / 13 + 100);
+      a.terræn((x, z) => {
+        const midt = Math.max(0, Math.min(1, 1.6 - Math.hypot(x - cx, z - cz) / 12));   // fladt sand omkring startstedet
+        let h = 8 + støj(x / 18, z / 18) * 5 + støj(x / 6 + 20, z / 6) * 1.5 - 2;
+        const grøft = støj(x / 30 + 50, z / 30 + 70);
+        if (grøft < 0.28) h -= (0.28 - grøft) * 20;                     // en dyb grøft
+        if (rev(x, z) > 0.62) h += (rev(x, z) - 0.62) * 14;             // klipper, hvor koralrevene gror
+        return Math.max(2, Math.min(maks, Math.round(h * (1 - midt) + 8 * midt)));
+      }, (x, z, y, h) => {
+        if (y === 0) return ID.Bundsten;
+        if (rev(x, z) > 0.62 && !a.nærStart(x, z, 12)) return y === h ? (støj(x / 3, z / 3) > 0.45 ? ID.Koralblok : ID.Sten) : ID.Sten;
+        return y > h - 3 ? ID.Sand : ID.Sten;
+      });
+      const søjle = (x, z, y0, y1, blok) => { for (let y = y0; y <= y1; y++) a.sæt(x, y, z, blok); };
+      const KORALLER = [ID["Rød koral"], ID["Gul koral"], ID["Lilla koral"]];
+
+      // Koralrev: koraller og koralblokke oven på klipperne
+      for (let n = 0; n < a.antal(150); n++) {
+        const x = 1 + Math.floor(R() * (BX - 2)), z = 1 + Math.floor(R() * (BZ - 2)), h = h0(x, z);
+        if (rev(x, z) < 0.55 || a.hent(x, h + 1, z) || a.nærStart(x, z, 5)) continue;
+        if (R() < 0.25) { søjle(x, z, h + 1, h + 1 + Math.floor(R() * 3), ID.Koralblok); a.sæt(x, h + 4, z, KORALLER[Math.floor(R() * 3)]); }
+        else a.sæt(x, h + 1, z, KORALLER[Math.floor(R() * 3)]);
+      }
+      // Tangskove: høje, grønne tangplanter
+      for (let n = 0; n < a.antal(170); n++) {
+        const x = 1 + Math.floor(R() * (BX - 2)), z = 1 + Math.floor(R() * (BZ - 2)), h = h0(x, z);
+        if (skov(x, z) < 0.6 || a.hent(x, h, z) !== ID.Sand || a.hent(x, h + 1, z) || a.nærStart(x, z, 5)) continue;
+        søjle(x, z, h + 1, Math.min(maks + 8, h + 3 + Math.floor(R() * 10)), ID.Tang);
+      }
+      // Det sunkne skib: skæv skrog, knækket mast, iturevet sejl og en kiste
+      { const sx = Math.min(BX - 12, cx + 20), sz = Math.min(BZ - 8, cz + 14), h = h0(sx, sz);
+        for (let lx = -8; lx <= 8; lx++) {
+          const w = lx > 4 ? Math.max(1, 3 - (lx - 4)) : 3, x = sx + lx, hæld = Math.floor((lx + 8) / 6);
+          for (let lz = -w; lz <= w; lz++) {
+            const z = sz + lz, side = Math.abs(lz) === w || lx === -8;
+            for (let y = h - 1 + hæld; y <= h + 3 + hæld; y++) a.sæt(x, y, z, side || y === h - 1 + hæld ? ((x + y) % 7 === 0 ? 0 : ID.Skibsplanker) : 0);
+          }
+        }
+        for (let i = 0; i < 8; i++) a.sæt(sx - 2 + i, h + 1, sz + 5 + (i > 4 ? 1 : 0), ID.Træstamme);   // masten ligger ned
+        for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) if ((i + j) % 3) a.sæt(sx + i, h + 1 + j, sz + 7, ID.Sejl);
+        a.sæt(sx - 5, h + 1, sz, ID.Skattekiste); a.sæt(sx - 5, h + 2, sz + 1, ID.Havlygte);
+      }
+      // Ruinerne af en gammel havby: søjler, buer og lysende havlygter
+      { const rx = Math.max(10, cx - 24), rz = Math.max(10, cz - 18), h = h0(rx, rz);
+        for (let x = rx - 7; x <= rx + 7; x++) for (let z = rz - 7; z <= rz + 7; z++) { a.sæt(x, h, z, ID.Prismarin); for (let y = h + 1; y <= h + 9; y++) a.sæt(x, y, z, 0); }
+        for (const [dx, dz] of [[-6, -6], [-6, 0], [-6, 6], [6, -6], [6, 0], [6, 6], [0, -6], [0, 6]]) {
+          const hs = 3 + Math.floor(R() * 6);
+          søjle(rx + dx, rz + dz, h + 1, h + hs, ID.Prismarin);
+          if (hs > 6) a.sæt(rx + dx, h + hs + 1, rz + dz, ID.Havlygte);
+        }
+        for (let x = rx - 6; x <= rx + 6; x++) if (x % 3) a.sæt(x, h + 7, rz - 6, ID.Prismarin);   // en bue
+        søjle(rx, rz, h + 1, h + 2, ID.Prismarin); a.sæt(rx, h + 3, rz, ID.Havlygte);
+        a.sæt(rx + 2, h + 1, rz + 2, ID.Skattekiste);
+      }
+      // Skattekister, der ligger halvt begravet rundt omkring
+      for (let n = 0; n < a.antal(4); n++) {
+        const x = 3 + Math.floor(R() * (BX - 6)), z = 3 + Math.floor(R() * (BZ - 6)), h = h0(x, z);
+        if (a.hent(x, h, z) !== ID.Sand || a.hent(x, h + 1, z) || a.nærStart(x, z, 8)) continue;
+        a.sæt(x, h, z, ID.Skattekiste);
+      }
+      // Havlygter hist og her, så man kan finde vej
+      a.pynt(a.antal(10), ID.Havlygte, [ID.Sand, ID.Sten]);
+      a.pynt(a.antal(40), () => (R() < 0.6 ? ID.Tang : KORALLER[Math.floor(R() * 3)]), [ID.Sand]);
     },
   },
 ];

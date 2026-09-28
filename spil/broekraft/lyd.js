@@ -527,6 +527,8 @@ export function dyrLyd(type, afstand = 0) {
     case "mjav": glid(600, 900, t, 0.25, { type: "sawtooth", vol: 0.13 * v, filter: 1500, q: 2 }); glid(900, 520, t + 0.25, 0.4, { type: "sawtooth", vol: 0.13 * v, vibHz: 7, vib: 20, filter: 1400, q: 2 }); break;
     case "kra": glid(1300, 850, t, 0.22, { type: "sawtooth", vol: 0.14 * v, filter: 1800, q: 2.5 }); glid(1400, 1000, t + 0.3, 0.16, { type: "sawtooth", vol: 0.12 * v, filter: 1800, q: 2.5 }); break;
     case "knips": [0, 0.12, 0.24].forEach(d => tone(2400, t + d, 0.04, "square", 0.08 * v)); break;
+    case "blub": for (const d of [0, 0.15]) glid(380, 900, t + d, 0.12, { vol: 0.12 * v }); break;
+    case "hval": glid(180, 120, t, 1.8, { type: "sine", vol: 0.25 * v, vibHz: 3, vib: 8 }); glid(240, 300, t + 1.2, 1.2, { type: "sine", vol: 0.15 * v, vibHz: 4, vib: 10 }); break;
     default: tone(600, t, 0.1, "sine", 0.2 * v, 900);
   }
 }

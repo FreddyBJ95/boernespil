@@ -119,6 +119,7 @@ if (cfg.jordklode) {                                           // Jorden set fra
 const SNEARTER = {
   sne: { farver: ["#ffffff"], fart: 1.2, str: 0.16, antal: 1400 },
   gløder: { farver: ["#ff8c1a", "#ffd23f", "#ff4d2e", "#ffb020"], fart: -0.7, str: 0.12, antal: 700, glød: true },
+  bobler: { farver: ["#e8f8ff", "#bfe8ff", "#ffffff"], fart: -1.1, str: 0.13, antal: 450 },
 };
 let sne = null;
 if (cfg.sne) {
@@ -174,6 +175,32 @@ function opdaterNordlys(t) {
     m.geometry.attributes.position.needsUpdate = true;
     m.position.set(kamera.position.x + dx, kamera.position.y + y, kamera.position.z + dz);
     m.material.opacity = 0.45 + Math.sin(t * 0.5 + fase) * 0.15;
+  }
+}
+// Havbunden: vandoverfladen langt oppe og lysstråler, der svajer ned gennem vandet
+const OVERFLADE = (MÅL.BY || BY) - 4;
+const lysstråler = [];
+if (cfg.undervand) {
+  const flade = new THREE.Mesh(new THREE.PlaneGeometry(900, 900).rotateX(Math.PI / 2),
+    new THREE.MeshBasicMaterial({ color: "#8fdcff", transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false }));
+  flade.position.set(VX / 2, OVERFLADE, VZ / 2);
+  scene.add(flade);
+  const c = document.createElement("canvas"); c.width = 4; c.height = 64;
+  const k = c.getContext("2d"), grad = k.createLinearGradient(0, 0, 0, 64);
+  grad.addColorStop(0, "rgba(255,255,255,0.9)"); grad.addColorStop(1, "rgba(255,255,255,0)"); k.fillStyle = grad; k.fillRect(0, 0, 4, 64);
+  const mat = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, opacity: 0.08, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+  for (let i = 0; i < 14; i++) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(2 + Math.random() * 3, 34), mat);
+    m.userData = { dx: Math.random() * 50, dz: Math.random() * 50, fase: Math.random() * 6 };
+    scene.add(m); lysstråler.push(m);
+  }
+}
+function opdaterLysstråler(t) {                                   // strålerne står stille i verdenen og flytter med, når man svømmer langt
+  for (const m of lysstråler) {
+    const u = m.userData;
+    const x = u.dx + Math.round((kamera.position.x - u.dx) / 50) * 50, z = u.dz + Math.round((kamera.position.z - u.dz) / 50) * 50;
+    m.position.set(x + Math.sin(t * 0.3 + u.fase) * 1.5, OVERFLADE - 17, z);
+    m.rotation.set(0, Math.atan2(kamera.position.x - m.position.x, kamera.position.z - m.position.z), Math.sin(t * 0.4 + u.fase) * 0.15);
   }
 }
 let stjerner = null;
@@ -517,6 +544,7 @@ function brugVærktøj(v, hit) {
   const b = BLOKKE[hit.id];
   if (v === "tænder" && b.fyrværkeri) { tændFyrkasse(hit); return; }
   if (v === "tænder" && b.kanon) { affyrKanon(hit); return; }
+  if (v === "tænder" && cfg.undervand) { besked("Ild kan ikke brænde under vandet 🫧", 2500); return; }
   if (v === "tænder" && b.tnt) {
     if (ONLINE) { net?.tænd(hit.x, hit.y, hit.z); tændTNT(hit.x, hit.y, hit.z, 2.2, true); } else tændTNT(hit.x, hit.y, hit.z);
     sving = 1; return;
@@ -1222,7 +1250,7 @@ function opdaterSpiller(dt) {
   if (l > 1) { mx /= l; mz /= l; }
   const fod = verden.hent(Math.floor(sp.pos.x), Math.floor(sp.pos.y + 0.1), Math.floor(sp.pos.z));
   const krop = verden.hent(Math.floor(sp.pos.x), Math.floor(sp.pos.y + 0.9), Math.floor(sp.pos.z));
-  const iVand = !sp.flyver && (verden.væske[fod] === "vand" || verden.væske[krop] === "vand");
+  const iVand = !sp.flyver && (cfg.undervand || verden.væske[fod] === "vand" || verden.væske[krop] === "vand");
   if (iVand !== svømmer) {                                                     // plask!
     svømmer = iVand;
     document.body.classList.toggle("svømmer", iVand);
@@ -1230,7 +1258,7 @@ function opdaterSpiller(dt) {
   }
   const underFod = verden.hent(Math.floor(sp.pos.x), Math.floor(sp.pos.y - 0.1), Math.floor(sp.pos.z));
   const glat = sp.jord && !sp.flyver && BLOKKE[underFod]?.glat;                  // på is glider man
-  const fart = sp.flyver ? FLYV : iVand ? GÅ * 0.65 : glat ? GÅ * 1.5 : GÅ, greb = glat ? 0.9 : sp.jord || sp.flyver || iVand ? 12 : 3;
+  const fart = sp.flyver ? FLYV : iVand ? GÅ * (cfg.undervand ? 0.9 : 0.65) : glat ? GÅ * 1.5 : GÅ, greb = glat ? 0.9 : sp.jord || sp.flyver || iVand ? 12 : 3;
   sp.vel.x += (mx * fart - sp.vel.x) * Math.min(1, dt * greb);
   sp.vel.z += (mz * fart - sp.vel.z) * Math.min(1, dt * greb);
   const pc = portalVent ? null : portalCelle();
@@ -1242,7 +1270,7 @@ function opdaterSpiller(dt) {
     const op = (tast.hop || tast.op ? 1 : 0) - (tast.ned ? 1 : 0);
     sp.vel.y += (op * 7 - sp.vel.y) * Math.min(1, dt * 8);
   } else if (iVand) {                                                          // man flyder op · ⬇ dykker · ⬆ svømmer op
-    const mål = tast.ned ? -3 : tast.hop || tast.op ? 3.5 : 1.2;
+    const mål = tast.ned ? -3 : tast.hop || tast.op ? 3.5 : cfg.undervand ? -0.6 : 1.2;   // på havbunden synker man stille
     sp.vel.y += (mål - sp.vel.y) * Math.min(1, dt * 3);
   } else {
     if (tast.hop && sp.jord) { sp.vel.y = HOP; Lyd.hop(); }
@@ -1275,6 +1303,7 @@ function opdaterSpiller(dt) {
     }
   }
   if (sp.pos.y < -10) startSted();
+  if (cfg.undervand && sp.pos.y > OVERFLADE - 1.9) { sp.pos.y = OVERFLADE - 1.9; sp.vel.y = Math.min(0, sp.vel.y); }   // man kan ikke svømme op af havet
   opdaterPortal(dt);
 }
 
@@ -1524,7 +1553,7 @@ function tegnFrame(nu) {
   if (underVand !== document.body.classList.contains("under-vand")) document.body.classList.toggle("under-vand", underVand);
   himmel.position.copy(kamera.position);
   if (stjerner) stjerner.position.copy(kamera.position);
-  opdaterSne(dt, tid); opdaterNordlys(tid);
+  opdaterSne(dt, tid); opdaterNordlys(tid); opdaterLysstråler(tid);
   for (const m of følgerKamera) { m.position.copy(kamera.position).addScaledVector(m.userData.retning, m.userData.afstand); m.lookAt(kamera.position); }
 
   sving = Math.max(0, sving - dt * 4);
@@ -1545,7 +1574,8 @@ async function startSpil() {
   luk("start");
   document.body.classList.add("i-gang");
   besked(ONLINE ? `${figurIkon(minFigur)} Velkommen til ${onlineInfo?.navn || cfg.navn}!` : `${cfg.ikon} ${cfg.navn}`, 2400);
-  setTimeout(() => { if (iGang) besked(cfg.id === "pirat" ? "🏴‍☠️ Find de røde krydser i sandet, og grav skatten op med 🔨 hammeren · tryk på kanonerne!"
+  setTimeout(() => { if (iGang) besked(cfg.undervand ? "🐠 Du kan svømme overalt! ⬆ svøm op · ⬇ dyk ned · find skattekisterne"
+    : cfg.id === "pirat" ? "🏴‍☠️ Find de røde krydser i sandet, og grav skatten op med 🔨 hammeren · tryk på kanonerne!"
     : cfg.brand ? "🚒 Tag brandslangen, og hold fingeren nede for at sprøjte · følg røgen, når det brænder"
     : cfg.skyd ? "🎯 Tryk for at skyde · hold fingeren nede for at skyde mange · tryk på en grøn kampvogn for at køre"
     : cfg.fyrværkeri ? "🎆 Tryk for at sende en raket op · tænd fyrværkeri-kasserne med 🔥 tænderen"

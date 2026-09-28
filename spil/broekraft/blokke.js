@@ -126,6 +126,14 @@ export const BLOKKE = [
   { navn: "Sejl", tekstur: "sejl", lyd: "uld" },
   { navn: "Piratflag", tekstur: "piratflag", lyd: "uld" },
   { navn: "Kanon", tekstur: { top: "kanonTop", side: "kanonSide", bund: "skibsplanker" }, kanon: true, lyd: "metal" },
+  // --- Havbunden ---
+  { navn: "Koralblok", tekstur: "koralblok", lyd: "sten" },
+  { navn: "Rød koral", tekstur: "koral:#ff4a6a", kryds: true, lyd: "græs" },
+  { navn: "Gul koral", tekstur: "koral:#ffc83a", kryds: true, lyd: "græs" },
+  { navn: "Lilla koral", tekstur: "koral:#b45aff", kryds: true, lyd: "græs" },
+  { navn: "Tang", tekstur: "tang", kryds: true, lyd: "græs" },
+  { navn: "Havlygte", tekstur: "havlygte", lyser: true, lyd: "glas" },
+  { navn: "Prismarin", tekstur: "prismarin", lyd: "sten" },
 ];
 
 export const ID = {};
@@ -452,6 +460,21 @@ const MØNSTRE = {
     for (let x = 4; x <= 11; x++) set(x, 14, hex("#a81e16"));
     set(7, 11, hex("#ffd23f")); set(8, 11, hex("#ffd23f"));
   },
+  // --- Havbunden ---
+  koralblok: (set, r) => { fyld(set, r, "#f06a9a", 0.18); prik(set, r, ["#ff9ac0", "#c84a7a", "#ffd0e0"], 40); },
+  tang: (set, r) => {
+    alle((x, y) => set(x, y, [0, 0, 0], 0));
+    for (let y = 0; y < T; y++) {
+      const m = 7.5 + Math.sin(y * 0.7) * 2;
+      for (let x = Math.floor(m - 1.5); x <= Math.ceil(m + 1.5); x++) set(x, y, lys(hex(x === Math.round(m) ? "#3a8a3a" : "#4cb04a"), 1 + (r() - 0.5) * 0.15));
+      if (y % 5 === 2) { set(Math.round(m) + 3, y, hex("#5fc05a")); set(Math.round(m) - 3, y + 1 < T ? y + 1 : y, hex("#5fc05a")); }
+    }
+  },
+  havlygte: (set, r) => alle((x, y) => {
+    const kant = x === 0 || y === 0 || x === 15 || y === 15, kors = (x >= 6 && x <= 9) || (y >= 6 && y <= 9);
+    set(x, y, lys(hex(kant ? "#6ab0a8" : kors ? "#f0fffc" : "#bdf0e6"), 1 + (r() - 0.5) * 0.06));
+  }),
+  prismarin: (set, r) => { fyld(set, r, "#4aa89a", 0.22); prik(set, r, ["#2f7a70", "#6ac8b8", "#3a9088", "#8ad8c8"], 44); },
   // --- Piratøen ---
   palmestamme: (set, r) => alle((x, y) => set(x, y, lys(hex(y % 5 === 4 ? "#8a6a3a" : x % 5 === 0 ? "#b89060" : "#c8a070"), 1 + (r() - 0.5) * 0.14))),
   palmeTop: (set, r) => alle((x, y) => { const d = Math.hypot(x - 7.5, y - 7.5); set(x, y, lys(hex(d > 6.5 ? "#8a6a3a" : Math.floor(d) % 2 ? "#d8b888" : "#c8a070"), 1 + (r() - 0.5) * 0.1)); }),
@@ -525,6 +548,15 @@ function maler(navn) {
     for (const [x, y] of [[6, 11], [5, 12], [9, 12], [10, 11]]) set(x, y, hex("#3f9b35"));
     alle((x, y) => { if ((x - 7.5) ** 2 + (y - 4.5) ** 2 < 11) set(x, y, lys(hex(farve), 1 + (r() - 0.5) * 0.25)); });
     for (const [x, y] of [[7, 4], [8, 4], [7, 5], [8, 5]]) set(x, y, hex("#fff3a0"));
+  };
+  if (type === "koral") return (set, r) => {
+    alle((x, y) => set(x, y, [0, 0, 0], 0));
+    const c = hex(farve), grene = [[7.5, 15, 7.5, 5], [7.5, 11, 3.5, 3], [7.5, 10, 12, 2], [5, 7, 2.5, 1], [10.5, 6, 13, 1.5]];
+    for (const [x0, y0, x1, y1] of grene) for (let i = 0; i <= 12; i++) {
+      const x = Math.round(x0 + (x1 - x0) * i / 12), y = Math.round(y0 + (y1 - y0) * i / 12);
+      set(x, y, lys(c, 1 + (r() - 0.5) * 0.2)); set(x + 1, y, lys(c, 0.85));
+    }
+    for (const [x, y] of [[7, 5], [3, 3], [12, 2], [2, 1], [13, 1]]) { set(x, y, lys(c, 1.25)); set(x + 1, y - 1 < 0 ? 0 : y - 1, lys(c, 1.2)); }
   };
   if (type === "puds") return (set, r) => {
     fyld(set, r, farve, 0.1);
