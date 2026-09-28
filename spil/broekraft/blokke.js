@@ -9,7 +9,8 @@
 //  væske:        "vand" eller "lava" · niveau: 0 = kilde, højere = tyndere strøm
 //  ild:          flammer styret af simulering.js
 //  skive:        skydeskive — bliver til konfetti, når den bliver skudt, og kommer igen (skyd.js)
-//  fyrværkeri:   tændes med 🔥 tænderen eller 🔨 hammeren og skyder raketter op (fyrvaerkeri.js)
+//  fyrværkeri:   tændes med 🔥 tænderen eller 🔨 hammeren: true = kasse (12 raketter), "show" = stort show, "fontæne" = fontæne
+//  glat:         man glider på den (is)
 //  Nye blokke skal altid tilføjes NEDERST, så gemte verdener stadig passer.
 //  lyd:          "græs" | "sten" | "træ" | "sand" | "glas" | "uld" | "metal" | "vand" | "lava" | "ild"
 // Et nyt mønster er en funktion i MØNSTRE der tegner 16×16 pixels med set(x, y, farve).
@@ -87,6 +88,12 @@ export const BLOKKE = [
   // --- Fyrværkeri (fyrværkeri: tænd den med 🔥 eller 🔨, så skyder den raketter op) ---
   { navn: "Fyrværkeri", tekstur: { top: "fyrTop", side: "fyrSide", bund: "fyrBund" }, fyrværkeri: true, lyd: "græs" },
   { navn: "Sne", tekstur: "sne", lyd: "sand" },
+  // --- Mere fyrværkeri og vinter (glat: man glider på den) ---
+  { navn: "Is", tekstur: "is", glat: true, lyd: "glas" },
+  { navn: "Show-kasse", tekstur: { top: "showTop", side: "showSide", bund: "fyrBund" }, fyrværkeri: "show", lyd: "græs" },
+  { navn: "Fontæne", tekstur: { top: "fontæneTop", side: "fontæneSide", bund: "fyrBund" }, fyrværkeri: "fontæne", lyd: "metal" },
+  { navn: "Lyskæde", tekstur: "lyskæde", lyser: true, lyd: "glas" },
+  { navn: "Gave", tekstur: { top: "gaveTop", side: "gaveSide", bund: "gaveBund" }, lyd: "uld" },
 ];
 
 export const ID = {};
@@ -314,6 +321,42 @@ const MØNSTRE = {
   },
   fyrBund: (set, r) => fyld(set, r, "#8a1a14", 0.1),
   sne: (set, r) => { fyld(set, r, "#f4f8ff", 0.05); prik(set, r, ["#dfe9fb", "#ffffff", "#cfdcf5"], 26); },
+  is: (set, r) => {
+    fyld(set, r, "#bfe3ff", 0.06);
+    alle((x, y) => { if ((x + y) % 9 === 0 || (x + y + 4) % 13 === 0) set(x, y, hex(x % 3 ? "#e8f6ff" : "#ffffff")); });
+    prik(set, r, ["#9fd0f5"], 10);
+  },
+  showSide: (set, r) => {
+    alle((x, y) => set(x, y, lys(hex(y < 2 || y > 13 ? "#f5c542" : "#6b3fb8"), 1 + (r() - 0.5) * 0.1)));
+    for (const [cx, cy, f] of [[4, 5, "#ffe066"], [11, 7, "#ff6fd0"], [6, 11, "#5ff0ff"], [12, 12, "#ffe066"]]) for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) set(cx + dx, cy + dy, hex(f));
+  },
+  showTop: (set, r) => {
+    fyld(set, r, "#f5c542", 0.08);
+    alle((x, y) => { if (x % 3 !== 0 && y % 3 !== 0) set(x, y, hex("#2a1a40")); });
+    for (let y = 2; y <= 8; y++) set(8, y, hex(y < 4 ? "#ff8c1a" : "#e8e8e8"));
+  },
+  fontæneSide: (set, r) => alle((x, y) => {
+    const kegle = Math.abs(x - 7.5) < 3 + y * 0.3;
+    set(x, y, lys(hex(!kegle ? "#3a6fe0" : y % 4 === 1 ? "#ffd23f" : "#c8d0d8"), 1 + (r() - 0.5) * 0.1));
+  }),
+  fontæneTop: (set, r) => alle((x, y) => {
+    const d = Math.hypot(x - 7.5, y - 7.5);
+    set(x, y, hex(d < 2 ? "#2a2a2a" : d < 3 ? "#ffd23f" : d < 7 ? "#c8d0d8" : "#3a6fe0"));
+  }),
+  lyskæde: (set, r) => {
+    fyld(set, r, "#1f4a2a", 0.2);
+    alle((x, y) => { if (Math.abs(y - (4 + Math.sin(x / 2.5) * 1.5)) < 0.8 || Math.abs(y - (11 + Math.sin(x / 2.5 + 2) * 1.5)) < 0.8) set(x, y, hex("#0f2a16")); });
+    const pærer = ["#ff3b5c", "#ffd23f", "#3aa8ff", "#4cd964", "#ff8c1a", "#c86bff"];
+    [[2, 5], [6, 3], [10, 5], [14, 4], [3, 12], [7, 10], [11, 12], [15, 11]].forEach(([x, y], i) => {
+      set(x, y, hex(pærer[i % pærer.length])); set(x, y + 1, hex(pærer[i % pærer.length])); set(x + 1 > 15 ? x - 1 : x + 1, y, hex("#ffffff"));
+    });
+  },
+  gaveSide: (set, r) => alle((x, y) => set(x, y, lys(hex(x === 7 || x === 8 ? "#f5c542" : "#e03a3a"), 1 + (r() - 0.5) * 0.1))),
+  gaveTop: (set, r) => alle((x, y) => {
+    const bånd = x === 7 || x === 8 || y === 7 || y === 8, sløjfe = Math.hypot(x - 5, y - 5) < 2.2 || Math.hypot(x - 10, y - 5) < 2.2;
+    set(x, y, lys(hex(sløjfe || bånd ? "#f5c542" : "#e03a3a"), 1 + (r() - 0.5) * 0.1));
+  }),
+  gaveBund: (set, r) => fyld(set, r, "#b82a2a", 0.1),
 };
 
 // Én flamme-tegning (16×16). Hver ramme får sin egen tilfældighed, så ilden blafrer.

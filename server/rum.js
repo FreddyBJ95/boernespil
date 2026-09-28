@@ -3,7 +3,11 @@ import { Simulering } from "../spil/broekraft/simulering.js";
 import { EMOJIER, pakKlump, send } from "./protokol.js";
 import { rensSignal } from "../spil/broekraft/stemmesignal.js";
 
-export const FYRMØNSTRE = ["kugle", "ring", "hjerte", "stjerne", "smiley", "guldregn", "knitter"];
+// Mønstre til raketter (tilfældige vælges blandt TILFÆLDIGE). Særlige: romerlys, fontæne (på jorden) og lygte (ønskelygte).
+const TILFÆLDIGE = ["kugle", "ring", "hjerte", "stjerne", "smiley", "guldregn", "knitter", "blomst", "sommerfugl", "spiral", "palme", "planet", "regn", "regnbue"];
+const FINALE = ["kugle", "palme", "regnbue", "planet", "blomst", "guldregn"];
+export const FYRMØNSTRE = [...TILFÆLDIGE, "romerlys", "fontæne", "lygte"];
+const FYRKASSER = { [ID.Fyrværkeri]: "kasse", [ID["Show-kasse"]]: "show", [ID.Fontæne]: "fontæne" };
 const FYRFARVER = ["#ff3b5c", "#ffd23f", "#4cd964", "#3aa8ff", "#c86bff", "#ff8c1a", "#ffffff", "#ff6fd0", "#5ff0ff"];
 const vælg = liste => liste[Math.floor(Math.random() * liste.length)];
 
@@ -159,10 +163,12 @@ export class Rum {
       this.eksploder(x, y, z); return;
     }
     if (b.t === "fyrkasse") {
-      if (afstand > 8 || !this.inde(x, y, z) || this.hent(x, y, z) !== ID.Fyrværkeri || this.fyrkasser.length >= 4 || !plads(s, "fyrTider", 2, nu)) return;
+      const slags = this.inde(x, y, z) && FYRKASSER[this.hent(x, y, z)];
+      if (afstand > 8 || !slags || this.fyrkasser.length >= 4 || !plads(s, "fyrTider", 2, nu)) return;
       // Fjern kassen først, så to samtidige tændinger aldrig starter to serier.
       this.sæt(x, y, z, 0);
-      this.fyrkasser.push({ x: x + 0.5, y: y + 1, z: z + 0.5, fra: s.id, antal: 12, tid: 0.3 });
+      if (slags === "fontæne") { this.fyrRaket(x, y, z, s.id, "fontæne", nu); return; }        // én fontæne på jorden
+      this.fyrkasser.push({ x: x + 0.5, y: y + 1, z: z + 0.5, fra: s.id, antal: slags === "show" ? 36 : 12, show: slags === "show", tid: 0.3 });
       return;
     }
     if (afstand > 32 || (b.mønster !== undefined && !FYRMØNSTRE.includes(b.mønster)) || !plads(s, "fyrTider", 2, nu)) return;
@@ -172,7 +178,7 @@ export class Rum {
   // Alle får samme mønster, farver og flyveparametre; ingen blokke ødelægges af fyrværkeri.
   fyrRaket(x, y, z, fra, mønster, nu) {
     if (!plads(this, "fyrTider", 16, nu)) return false;
-    this.alle({ t: "fyrværkeri", id: crypto.randomUUID(), fra, x, y, z, mønster: mønster || vælg(FYRMØNSTRE),
+    this.alle({ t: "fyrværkeri", id: crypto.randomUUID(), fra, x, y, z, mønster: mønster || vælg(TILFÆLDIGE),
       farver: [vælg(FYRFARVER), vælg(FYRFARVER)], højde: 16 + Math.random() * 10,
       vx: (Math.random() - 0.5) * 2.5, vy: 22 + Math.random() * 5, vz: (Math.random() - 0.5) * 2.5 });
     return true;
@@ -200,8 +206,9 @@ export class Rum {
   tick(dt, nu = performance.now()) {
     for (const f of [...this.fyrkasser]) {
       f.tid -= dt;
-      if (f.tid > 0 || !this.fyrRaket(f.x, f.y, f.z, f.fra, undefined, nu)) continue;
-      f.tid = 0.35 + Math.random() * 0.45;
+      const finale = f.show && f.antal <= 8;                     // showet slutter med en stor finale
+      if (f.tid > 0 || !this.fyrRaket(f.x, f.y, f.z, f.fra, finale ? vælg(FINALE) : undefined, nu)) continue;
+      f.tid = finale ? 0.08 : f.show ? 0.25 + Math.random() * 0.35 : 0.35 + Math.random() * 0.45;
       if (--f.antal <= 0) this.fyrkasser.splice(this.fyrkasser.indexOf(f), 1);
     }
     for (const s of this.spillere.values()) if (s.taler && performance.now() >= s.taleSlut) this.taleStatus(s, false);

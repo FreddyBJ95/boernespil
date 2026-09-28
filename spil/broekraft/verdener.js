@@ -306,54 +306,130 @@ export const VERDENER = [
   },
 
   {
-    id: "fyrvaerkeri", navn: "Fyrværkeri", ikon: "🎆", tekst: "Nytårsnat med sne. Send raketter op, og tænd fyrværkeri-kasserne!",
-    himmel: ["#070b24", "#1e2a5a"], tåge: [40, 100], hav: "#1a2a50", sol: "#f5f3e0", solStr: 30, stjerner: true, skyer: null,
+    id: "fyrvaerkeri", navn: "Fyrværkeri", ikon: "🎆", tekst: "Nytårsnat med sne, nordlys, juletræ og is. Send raketter, fontæner og ønskelygter op!",
+    himmel: ["#070b24", "#1e2a5a"], tåge: [44, 110], hav: "#1a2a50", sol: "#f5f3e0", solStr: 30, stjerner: true, skyer: null,
     lys: ["#b8c8ff", "#303a60", 1.6, 0.8], stemning: "rolig", tyngde: 28,
-    dyr: ["hone", "and", "faar"], antal: 6,
-    fyrværkeri: true,
-    hotbar: ["v:raket", "v:stjernekaster", "Fyrværkeri", "v:tænder", "Sne", "Lampe", "Planker", "Rød uld", "æg:?"],
-    vis: ["Fyrværkeri", "Sne", "Lampe"],
-    hent: ["Pakker raketterne ud…", "Lader det sne…", "Tænder lamperne…"],
+    størrelse: [160, 48, 160],
+    dyr: ["pingvin", "pingvin", "rensdyr", "hone", "and"], antal: 12,
+    fyrværkeri: true, sne: true, nordlys: true,                // sne der falder og nordlys på himlen (spil.js)
+    hotbar: ["v:raket", "v:romerlys", "v:lygte", "v:konfetti", "Show-kasse", "Fontæne", "Fyrværkeri", "v:tænder", "v:stjernekaster"],
+    vis: ["Show-kasse", "Lyskæde", "Is"],
+    hent: ["Pakker raketterne ud…", "Lader det sne…", "Pynter juletræet…", "Fryser søen til is…", "Tænder nordlyset…"],
     generer(a) {
       const { R, støj, ID, BX, BZ, top } = a, cx = BX / 2, cz = BZ / 2, h0 = (x, z) => top[x + z * BX];
+      const inde = (x, z) => x > 1 && z > 1 && x < BX - 2 && z < BZ - 2;
+      const bakke = [cx, Math.round(cz - Math.min(45, BZ / 2 - 18))], sø = [Math.round(cx + Math.min(42, BX / 2 - 20)), cz];
       a.terræn((x, z) => {
-        const ud = Math.min(1, Math.max(0, (Math.hypot(x - cx, z - cz) - 10) / 24));
-        return Math.round(10 + (støj(x / 16, z / 16) * 7 + støj(x / 6 + 70, z / 6) * 2 - 4.5) * ud);
+        const ud = Math.min(1, Math.max(0, (Math.hypot(x - cx, z - cz) - 16) / 26));
+        const kælk = Math.max(0, 1 - Math.hypot(x - bakke[0], z - bakke[1]) / 15) * 13;      // kælkebakken
+        return Math.round(10 + (støj(x / 18, z / 18) * 6 + støj(x / 6 + 70, z / 6) * 2 - 4) * ud + kælk);
       }, (x, z, y, h) => (y === 0 ? ID.Bundsten : y < h - 3 ? ID.Sten : y < h ? ID.Jord : ID.Sne));
-      // En plads af sten med lygtepæle og fyrværkeri-kasser, der er klar til at blive tændt
-      for (let x = cx - 6; x <= cx + 6; x++) for (let z = cz - 6; z <= cz + 6; z++) a.sæt(x, h0(x, z), z, ID.Sten);
-      for (const [dx, dz] of [[-6, -6], [6, -6], [-6, 6], [6, 6]]) {
-        const x = cx + dx, z = cz + dz, h = h0(x, z);
-        a.sæt(x, h + 1, z, ID.Planker); a.sæt(x, h + 2, z, ID.Planker); a.sæt(x, h + 3, z, ID.Lampe);
-      }
-      for (const [dx, dz] of [[-3, -4], [0, -5], [3, -4]]) a.sæt(cx + dx, h0(cx + dx, cz + dz) + 1, cz + dz, ID.Fyrværkeri);
-      // Små huse med lys i vinduerne og rødt tag
-      for (let n = 0; n < a.antal(6); n++) {
-        const x = 6 + Math.floor(R() * (BX - 12)), z = 6 + Math.floor(R() * (BZ - 12)), h = h0(x, z);
-        if (a.nærStart(x, z, 16)) continue;
-        for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) {
-          const kant = Math.abs(dx) === 2 || Math.abs(dz) === 2;
-          a.sæt(x + dx, h, z + dz, ID.Planker);
-          for (let y = 1; y <= 3; y++) a.sæt(x + dx, h + y, z + dz, !kant ? 0 : y === 2 && (dx === 0 || dz === 0) ? ID.Glas : ID.Planker);
-          a.sæt(x + dx, h + 4, z + dz, ID["Rød uld"]);
+      const optaget = [];
+      const fri = (x0, z0, b, d) => inde(x0, z0) && inde(x0 + b, z0 + d) && !optaget.some(([x, z, bb, dd]) => x0 < x + bb + 2 && x0 + b + 2 > x && z0 < z + dd + 2 && z0 + d + 2 > z);
+      const grund = (x0, z0, b, d, blok = ID.Sne) => {                // jævn en grund ud og svar højden
+        let sum = 0, n = 0;
+        for (let x = x0; x < x0 + b; x++) for (let z = z0; z < z0 + d; z++) { sum += h0(x, z); n++; }
+        const h = Math.round(sum / n);
+        for (let x = x0; x < x0 + b; x++) for (let z = z0; z < z0 + d; z++) {
+          const i = x + z * BX;
+          for (let y = top[i] + 1; y <= h; y++) a.sæt(x, y, z, ID.Jord);
+          for (let y = h + 1; y <= top[i]; y++) a.sæt(x, y, z, 0);
+          a.sæt(x, h, z, blok); top[i] = h;
         }
-        a.sæt(x, h + 5, z, ID["Rød uld"]);
-        a.sæt(x, h + 1, z + 2, 0); a.sæt(x, h + 2, z + 2, 0);                  // dør
-        a.sæt(x, h + 1, z, ID.Lampe);                                           // lys indenfor
+        optaget.push([x0, z0, b, d]);
+        return h;
+      };
+      const søjle = (x, z, y0, y1, blok) => { for (let y = y0; y <= y1; y++) a.sæt(x, y, z, blok); };
+
+      // Torvet midt i byen
+      const hT = grund(cx - 12, cz - 12, 25, 25, ID.Sten);
+      // Juletræet med lyskæder, en stjerne på toppen og gaver nedenunder
+      { const tx = cx, tz = cz - 6;
+        søjle(tx, tz, hT + 1, hT + 3, ID.Træstamme);
+        for (let lag = 0; lag < 9; lag++) {
+          const y = hT + 3 + lag, r = Math.max(0, Math.round((9 - lag) * 0.55));
+          for (let dx = -r; dx <= r; dx++) for (let dz = -r; dz <= r; dz++) {
+            if (dx * dx + dz * dz > r * r + 0.5) continue;
+            const kant = dx * dx + dz * dz > (r - 1) * (r - 1);
+            a.sæt(tx + dx, y, tz + dz, kant && (dx + dz + lag) % 3 === 0 ? ID.Lyskæde : ID.Blade);
+          }
+        }
+        a.sæt(tx, hT + 12, tz, ID.Stjerneblok);
+        for (const [dx, dz] of [[-2, 2], [2, 2], [-3, 0], [3, -1], [0, 3], [1, -3]]) a.sæt(tx + dx, hT + 1, tz + dz, ID.Gave);
+      }
+      // Scenen med show-kasser, fontæner og fyrværkeri
+      { const x0 = cx - 5, z0 = cz + 6;
+        for (let x = x0; x < x0 + 11; x++) for (let z = z0; z < z0 + 4; z++) a.sæt(x, hT + 1, z, ID.Planker);
+        [[1, ID["Show-kasse"]], [3, ID.Fontæne], [5, ID["Show-kasse"]], [7, ID.Fontæne], [9, ID["Show-kasse"]]].forEach(([dx, blok]) => a.sæt(x0 + dx, hT + 2, z0 + 1, blok));
+        for (const dx of [2, 4, 6, 8]) a.sæt(x0 + dx, hT + 2, z0 + 2, ID.Fyrværkeri);
+      }
+      // Lygtepæle i hjørnerne og lyskæder langs torvets kanter
+      for (const [dx, dz] of [[-12, -12], [12, -12], [-12, 12], [12, 12], [0, -12], [0, 12], [-12, 0], [12, 0]]) {
+        søjle(cx + dx, cz + dz, hT + 1, hT + 3, ID.Planker); a.sæt(cx + dx, hT + 4, cz + dz, ID.Lampe);
+      }
+      for (let i = -11; i <= 11; i++) if (i !== 0) for (const [x, z] of [[cx + i, cz - 12], [cx + i, cz + 12], [cx - 12, cz + i], [cx + 12, cz + i]]) a.sæt(x, hT + 4, z, ID.Lyskæde);
+
+      // Den frosne sø med glat is
+      { const [sx, sz] = sø, rx = 16, rz = 11;
+        let lav = 99; for (let x = sx - rx; x <= sx + rx; x++) for (let z = sz - rz; z <= sz + rz; z++) if (inde(x, z) && ((x - sx) / rx) ** 2 + ((z - sz) / rz) ** 2 < 1) lav = Math.min(lav, h0(x, z));
+        for (let x = sx - rx - 1; x <= sx + rx + 1; x++) for (let z = sz - rz - 1; z <= sz + rz + 1; z++) {
+          if (!inde(x, z)) continue;
+          const d = ((x - sx) / rx) ** 2 + ((z - sz) / rz) ** 2, i = x + z * BX;
+          if (d >= 1) continue;
+          for (let y = lav; y <= top[i]; y++) a.sæt(x, y, z, 0);
+          a.sæt(x, lav - 1, z, ID.Is); top[i] = lav - 1;
+        }
+        optaget.push([sx - rx, sz - rz, rx * 2, rz * 2]);
+        for (const [dx, dz] of [[-rx - 2, 0], [rx + 2, 0], [0, -rz - 2], [0, rz + 2]]) if (inde(sx + dx, sz + dz)) { const h = h0(sx + dx, sz + dz); søjle(sx + dx, sz + dz, h + 1, h + 2, ID.Planker); a.sæt(sx + dx, h + 3, sz + dz, ID.Lampe); }
+      }
+      // Kælkebakken med en isbane ned ad siden
+      { const [bx, bz] = bakke;
+        optaget.push([bx - 15, bz - 15, 30, 30]);
+        for (let z = bz; z <= bz + 15; z++) for (let x = bx - 1; x <= bx + 1; x++) if (inde(x, z)) a.sæt(x, h0(x, z), z, ID.Is);
+        a.sæt(bx, h0(bx, bz) + 1, bz, ID.Lampe);
+      }
+      // Stier fra torvet til søen og bakken, med lamper
+      for (let x = cx + 13; x < sø[0] - 16; x++) { a.sæt(x, h0(x, cz), cz, ID.Sten); a.sæt(x, h0(x, cz + 1), cz + 1, ID.Sten); if (x % 8 === 0) { const h = h0(x, cz + 2); søjle(x, cz + 2, h + 1, h + 2, ID.Planker); a.sæt(x, h + 3, cz + 2, ID.Lampe); } }
+      for (let z = cz - 13; z > bakke[1] + 15; z--) { a.sæt(cx, h0(cx, z), z, ID.Sten); a.sæt(cx + 1, h0(cx + 1, z), z, ID.Sten); }
+
+      // Huse med lys i vinduerne og lyskæder langs tagkanten
+      const MURE = [ID.Planker, ID.Planker, ID["Rød uld"], ID["Blå uld"], ID["Gul uld"], ID.Mursten];
+      for (let n = 0; n < a.antal(14); n++) {
+        const v = R() * Math.PI * 2, afst = 18 + R() * Math.min(40, BX / 2 - 26);
+        const x0 = Math.round(cx + Math.cos(v) * afst) - 3, z0 = Math.round(cz + Math.sin(v) * afst) - 3;
+        if (!fri(x0, z0, 7, 7)) continue;
+        const h = grund(x0, z0, 7, 7, ID.Planker), mur = MURE[Math.floor(R() * MURE.length)];
+        for (let x = x0; x < x0 + 7; x++) for (let z = z0; z < z0 + 7; z++) {
+          const væg = x === x0 || x === x0 + 6 || z === z0 || z === z0 + 6;
+          for (let y = 1; y <= 4; y++) a.sæt(x, h + y, z, !væg ? 0 : y === 2 && (x === x0 + 3 || z === z0 + 3) ? ID.Glas : y === 4 ? ID.Lyskæde : mur);
+          a.sæt(x, h + 5, z, ID["Rød uld"]);
+          if (x > x0 && x < x0 + 6 && z > z0 && z < z0 + 6) a.sæt(x, h + 6, z, ID["Rød uld"]);
+        }
+        a.sæt(x0 + 3, h + 1, z0, 0); a.sæt(x0 + 3, h + 2, z0, 0);
+        a.sæt(x0 + 3, h + 1, z0 + 3, ID.Lampe);
+        if (R() < 0.5) a.sæt(x0 + 1, h + 1, z0 + 5, ID.Gave);
+      }
+      // Snemænd
+      for (let n = 0; n < a.antal(8); n++) {
+        const x = 4 + Math.floor(R() * (BX - 8)), z = 4 + Math.floor(R() * (BZ - 8)), h = h0(x, z);
+        if (a.hent(x, h, z) !== ID.Sne || !fri(x - 1, z - 1, 2, 2)) continue;
+        søjle(x, z, h + 1, h + 3, ID.Sne);
+        a.sæt(x, h + 3, z + 1, ID["Orange uld"]);                      // gulerodsnæse
+        a.sæt(x, h + 4, z, ID.Obsidian);                               // hat
       }
       // Grantræer med sne på toppen
-      for (let n = 0; n < a.antal(26); n++) {
+      for (let n = 0; n < a.antal(34); n++) {
         const x = 3 + Math.floor(R() * (BX - 6)), z = 3 + Math.floor(R() * (BZ - 6)), h = h0(x, z);
-        if (a.hent(x, h, z) !== ID.Sne || a.nærStart(x, z, 9)) continue;
+        if (a.hent(x, h, z) !== ID.Sne || a.nærStart(x, z, 14) || !fri(x - 2, z - 2, 4, 4)) continue;
         const hs = 5 + Math.floor(R() * 3);
-        for (let y = 1; y <= hs; y++) a.sæt(x, h + y, z, ID.Træstamme);
+        søjle(x, z, h + 1, h + hs, ID.Træstamme);
         for (let y = 2; y <= hs + 1; y++) {
           const r = Math.round((hs + 1 - y) / 2.2);
           for (let dx = -r; dx <= r; dx++) for (let dz = -r; dz <= r; dz++) if (Math.abs(dx) + Math.abs(dz) <= r && a.hent(x + dx, h + y, z + dz) === 0) a.sæt(x + dx, h + y, z + dz, ID.Blade);
         }
         a.sæt(x, h + hs + 2, z, ID.Sne);
       }
-      a.pynt(a.antal(10), ID.Lampe, [ID.Sne]);
+      a.pynt(a.antal(8), ID.Gave, [ID.Sne]);
     },
   },
 ];

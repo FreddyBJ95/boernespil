@@ -50,7 +50,7 @@ Spillets visuelle integration udføres af Claude. Den eksisterende version 0.2.0
 |---|---|---|
 | `brag(x,y,z)` | `{t:"brag",x,y,z}` | Samme faste radius 3,3 og TNT-kæde som TNT; udsender `blok` og `bum` |
 | `fyrværkeri(x,y,z,mønster?)` | `{t:"fyrværkeri",x,y,z,mønster?}` | Vælger fælles farver/flyveparametre og sender én raket til alle i rummet |
-| `tændFyrkasse(x,y,z)` | `{t:"fyrkasse",x,y,z}` | Kræver Fyrværkeri-blok, fjerner den én gang og sender en serie med 12 raketter |
+| `tændFyrkasse(x,y,z)` | `{t:"fyrkasse",x,y,z}` | Kræver Fyrværkeri-, Show-kasse- eller Fontæne-blok og fjerner den én gang. Fyrværkeri: 12 raketter. Show-kasse: 36 raketter, hvor de sidste 8 er en hurtig finale. Fontæne: én `fyrværkeri`-besked med mønster `fontæne` på blokkens plads |
 
 Alle koordinater skal være endelige tal inden for verdens x/z-grænser og y=0…højde+64.
 Brag må være højst 96 blokke fra seneste spillerposition; klienten angiver træfpunktet, mens serveren
@@ -71,7 +71,9 @@ Server → alle i samme rum, **inklusive afsenderen**:
 ```
 
 `id` er serverens UUID pr. raket. Mønster vælges fra `kugle`, `ring`, `hjerte`, `stjerne`, `smiley`,
-`guldregn`, `knitter`; udeladt mønster vælges af serveren, ukendte mønstre afvises. Højde er 16…26 over
+`guldregn`, `knitter`, `blomst`, `sommerfugl`, `spiral`, `palme`, `planet`, `regn`, `regnbue` samt de særlige
+`romerlys` (lille kugle), `fontæne` (gnister fra jorden i ti sekunder) og `lygte` (ønskelygte, der svæver op);
+udeladt mønster vælges af serveren blandt de almindelige, ukendte mønstre afvises. Højde er 16…26 over
 startpunktet; vy=22…27 og vx/vz=−1,25…1,25. Afspil fra eventet og brug de medsendte værdier, så samme
 raket har samme bane, mønster og farver hos alle. Ingen skader eller blokændringer fra raketter.
 

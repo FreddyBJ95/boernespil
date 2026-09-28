@@ -223,6 +223,35 @@ export const DYR = [
       { s: [3, 2, 2], p: [0, 2.5, 8.6], f: "#ffcf3f" },
     ] },
   ] },
+  // Fyrværkeri-verdenen: en pingvin, der vralter og basker med vingerne
+  { id: "pingvin", navn: "Pingvin", lyd: "pip", fart: 0.9, æg: ["#1f2a3a", "#ffffff"], dele: [
+    { s: [8, 12, 7], p: [0, 9, 0], f: "#1f2a3a" },
+    { s: [6, 9, 1], p: [0, 8, 3.6], f: "#ffffff" },
+    { s: [3, 1.5, 4], p: [-2, 0.75, 1], f: "#ff8c1a", rolle: "ben", fase: 0 },
+    { s: [3, 1.5, 4], p: [2, 0.75, 1], f: "#ff8c1a", rolle: "ben", fase: Math.PI },
+    { s: [1, 7, 4], p: [-4.5, 10, 0], f: "#1f2a3a", rolle: "vinge" },
+    { s: [1, 7, 4], p: [4.5, 10, 0], f: "#1f2a3a", rolle: "vinge" },
+    { s: [7, 6, 6], p: [0, 18, 0], f: "#1f2a3a", rolle: "hoved", børn: [
+      { s: [5, 3, 1], p: [0, 17.5, 3.1], f: "#ffffff" },
+      ...øjne(1.5, 19, 3.1, 1.6),
+      { s: [2, 1.5, 2.5], p: [0, 17, 4], f: "#ff8c1a" },
+    ] },
+  ] },
+  // Fyrværkeri-verdenen: et rensdyr med gevir og en rød mule, der lyser
+  { id: "rensdyr", navn: "Rensdyr", lyd: "muh", fart: 1.3, æg: ["#8a5a2b", "#ff2a2a"], dele: [
+    { s: [9, 9, 16], p: [0, 16, 0], f: "#8a5a2b" },
+    { s: [9.2, 3, 8], p: [0, 13, 1], f: "#d8c3a0" },
+    ...fireBen([3, 12, 3], 3, 6, 6, "#6b4220"),
+    { s: [2, 3, 2], p: [0, 18, -8.5], f: "#f2e6d0", rolle: "hale" },
+    { s: [4, 6, 4], p: [0, 20, 8], f: "#8a5a2b" },
+    { s: [6, 7, 8], p: [0, 23, 11], f: "#8a5a2b", rolle: "hoved", børn: [
+      ...øjne(2, 25, 15.1, 1.8),
+      { s: [2.4, 2.4, 1.5], p: [0, 22, 15.6], f: "#ff2a2a", lys: true },
+      { s: [1, 6, 1], p: [-2.5, 30, 10], f: "#d8b88a" }, { s: [1, 6, 1], p: [2.5, 30, 10], f: "#d8b88a" },
+      { s: [4, 1, 1], p: [-4, 31, 10], f: "#d8b88a" }, { s: [4, 1, 1], p: [4, 31, 10], f: "#d8b88a" },
+      { s: [1, 3, 1], p: [-5.5, 32.5, 10], f: "#d8b88a" }, { s: [1, 3, 1], p: [5.5, 32.5, 10], f: "#d8b88a" },
+    ] },
+  ] },
   // Skydebanen: en hurtig turbo-dino, der spurter efter dig og skubber dig omkuld — man skal ramme den to gange
   { id: "dino", navn: "Turbo-dino", lyd: "rawr", fart: 6, evne: "jæger", klap: "puf", liv: 2, æg: ["#5fd35f", "#ffd23f"], dele: [
     { s: [8, 9, 14], p: [0, 15, 0], f: "#5fd35f" },

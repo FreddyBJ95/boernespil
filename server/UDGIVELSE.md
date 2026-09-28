@@ -1,6 +1,11 @@
 Broekraft Server lader 1–8 børn bygge i samme Broekraft-verden på familiens eget wifi.
 
-**Nyt i 0.3.1**
+**Nyt i 0.4.0**
+- 🎆 **Fyrværkeri-verdenen er meget større**: torv med et kæmpe juletræ, lyskæder og gaver, en scene med
+  show-kasser og fontæner, en frossen sø med glat is, en kælkebakke, snemænd, pingviner og rensdyr med
+  lysende rød mule — og der falder sne, mens nordlyset bølger på himlen. (Opret en ny Fyrværkeri-verden for at få det hele.)
+- 🎇 Nyt at fyre af: show-kasse med stor finale, fontæne, romerlys, ønskelygter og konfettikanon —
+  og nye raketter: blomst, sommerfugl, spiral, palme, planet og regn. Alle ser det samme, når man spiller sammen.
 - 💾 Verdenerne starter selv igen, når serveren startes, så børnene kan fortsætte, hvor de slap.
   En verden, som en voksen har stoppet, forbliver stoppet.
 - 📱 Billedet bliver ikke længere strakt, når man vender telefonen eller tabletten.

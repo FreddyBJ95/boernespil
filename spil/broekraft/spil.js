@@ -114,6 +114,57 @@ if (cfg.jordklode) {                                           // Jorden set fra
   t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.colorSpace = THREE.SRGBColorSpace;
   påHimlen(new THREE.Mesh(new THREE.PlaneGeometry(46, 46), new THREE.MeshBasicMaterial({ map: t, fog: false })), new THREE.Vector3(-0.6, 0.35, -0.75), 240);
 }
+// Sne, der falder stille omkring barnet (verdener med sne: true)
+let sne = null;
+if (cfg.sne) {
+  const N = 1400, pos = new Float32Array(N * 3), fart = new Float32Array(N);
+  for (let i = 0; i < N; i++) { pos[i * 3] = (Math.random() - 0.5) * 60; pos[i * 3 + 1] = Math.random() * 30; pos[i * 3 + 2] = (Math.random() - 0.5) * 60; fart[i] = 1.2 + Math.random() * 1.2; }
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  const c = document.createElement("canvas"); c.width = c.height = 16;
+  const k = c.getContext("2d"), grad = k.createRadialGradient(8, 8, 0, 8, 8, 8);
+  grad.addColorStop(0, "rgba(255,255,255,1)"); grad.addColorStop(1, "rgba(255,255,255,0)"); k.fillStyle = grad; k.fillRect(0, 0, 16, 16);
+  sne = new THREE.Points(g, new THREE.PointsMaterial({ size: 0.16, map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false, opacity: 0.9 }));
+  sne.frustumCulled = false; sne.userData.fart = fart;
+  scene.add(sne);
+}
+function opdaterSne(dt, t) {
+  if (!sne) return;
+  const p = sne.geometry.attributes.position.array, f = sne.userData.fart, k = kamera.position;
+  for (let i = 0; i < f.length; i++) {
+    const j = i * 3;
+    p[j] += Math.sin(t * 0.8 + i) * 0.3 * dt; p[j + 1] -= f[i] * dt; p[j + 2] += Math.cos(t * 0.6 + i * 1.7) * 0.3 * dt;
+    // hold flagerne i en kasse omkring kameraet
+    if (p[j + 1] < k.y - 12) p[j + 1] += 30; if (p[j + 1] > k.y + 18) p[j + 1] -= 30;
+    if (p[j] < k.x - 30) p[j] += 60; if (p[j] > k.x + 30) p[j] -= 60;
+    if (p[j + 2] < k.z - 30) p[j + 2] += 60; if (p[j + 2] > k.z + 30) p[j + 2] -= 60;
+  }
+  sne.geometry.attributes.position.needsUpdate = true;
+}
+// Nordlys: grønne og lilla bånd, der bølger langsomt på himlen (verdener med nordlys: true)
+const nordlys = [];
+if (cfg.nordlys) {
+  const c = document.createElement("canvas"); c.width = 4; c.height = 64;
+  const k = c.getContext("2d"), grad = k.createLinearGradient(0, 64, 0, 0);
+  grad.addColorStop(0, "rgba(90,255,170,0)"); grad.addColorStop(0.15, "rgba(90,255,170,0.9)"); grad.addColorStop(0.5, "rgba(60,220,160,0.45)"); grad.addColorStop(1, "rgba(160,90,255,0)");
+  k.fillStyle = grad; k.fillRect(0, 0, 4, 64);
+  const tekstur = new THREE.CanvasTexture(c);
+  for (const [dx, y, dz, fase] of [[-60, 70, -170, 0], [40, 85, -190, 2], [120, 75, -120, 4]]) {
+    const geo = new THREE.PlaneGeometry(220, 55, 48, 1);
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tekstur, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+    m.userData = { dx, y, dz, fase, grund: Float32Array.from(geo.attributes.position.array) };
+    m.renderOrder = -1;
+    scene.add(m); nordlys.push(m);
+  }
+}
+function opdaterNordlys(t) {
+  for (const m of nordlys) {
+    const { dx, y, dz, fase, grund } = m.userData, p = m.geometry.attributes.position.array;
+    for (let i = 0; i < p.length; i += 3) p[i + 2] = grund[i + 2] + Math.sin(grund[i] * 0.03 + t * 0.35 + fase) * 22 + Math.sin(grund[i] * 0.011 + t * 0.2) * 12;
+    m.geometry.attributes.position.needsUpdate = true;
+    m.position.set(kamera.position.x + dx, kamera.position.y + y, kamera.position.z + dz);
+    m.material.opacity = 0.45 + Math.sin(t * 0.5 + fase) * 0.15;
+  }
+}
 let stjerner = null;
 if (cfg.stjerner) {
   const pos = [], R = rng(7);
@@ -676,6 +727,12 @@ function himmelBlink(farve, styrke) {
 function fyrTryk(v, hit) {
   sving = 1;
   if (v === "stjernekaster") { stjernedrys(18, 5); Lyd.gnistre(); return; }
+  if (v === "konfetti") { konfettiSkud(); return; }
+  if (v === "romerlys" || v === "lygte") {                        // fra hånden, lige foran barnet
+    const x = sp.pos.x - Math.sin(sp.yaw) * 1.2, z = sp.pos.z - Math.cos(sp.yaw) * 1.2, y = sp.pos.y + 1.5;
+    if (ONLINE) net?.fyrværkeri(x, y, z, v); else fyr.raket(x, y, z, { mønster: v });
+    return;
+  }
   let x, y, z;
   if (hit && hit.n[1] === 1) { x = hit.x + 0.5; y = hit.y + 1; z = hit.z + 0.5; }
   else { x = sp.pos.x - Math.sin(sp.yaw) * 2.5; z = sp.pos.z - Math.cos(sp.yaw) * 2.5; y = verden.topY(Math.floor(x), Math.floor(z)) + 1; }
@@ -683,11 +740,25 @@ function fyrTryk(v, hit) {
   else fyr.raket(x, y, z);
 }
 // Fyrværkeri-kassen tændes og skyder en hel serie raketter op
+// (show-kassen giver et langt show med finale, fontænen sprøjter gnister op fra jorden)
 function tændFyrkasse({ x, y, z }) {
+  const slags = BLOKKE[verden.hent(x, y, z)]?.fyrværkeri;
   if (ONLINE) net?.tændFyrkasse(x, y, z);                         // sammen: serveren fyrer serien af for alle
-  else { verden.sæt(x, y, z, 0); fyr.tændKasse(x, y, z, 12); }
+  else {
+    verden.sæt(x, y, z, 0);
+    if (slags === "fontæne") fyr.fontæne(x, y, z); else fyr.tændKasse(x, y, z, 12, slags === "show");
+  }
   Lyd.tænd(); sving = 1;
   gemSnart();
+}
+// Konfettikanonen sprøjter en sky af konfetti frem foran barnet
+const KONFETTI = ["#ff3b5c", "#ffd23f", "#4cd964", "#3aa8ff", "#c86bff", "#ff8c1a", "#ffffff", "#ff6fd0"].map(f => new THREE.Color(f));
+function konfettiSkud() {
+  const r = new THREE.Vector3(); kamera.getWorldDirection(r);
+  const fra = kamera.position.clone().addScaledVector(r, 0.9);
+  for (let i = 0; i < 55; i++) partikel(fra.x, fra.y - 0.2, fra.z, KONFETTI[i % KONFETTI.length],
+    r.x * 9 + (Math.random() - 0.5) * 5, r.y * 9 + 2 + Math.random() * 4, r.z * 9 + (Math.random() - 0.5) * 5, 1.4 + Math.random(), 0.3, 0.7);
+  Lyd.puf();
 }
 // Gnister fra stjernekasteren i hånden
 const spids = new THREE.Vector3(), GNIST = ["#fff3a0", "#ffd23f", "#ffffff", "#ffb347"].map(f => new THREE.Color(f));
@@ -829,7 +900,9 @@ function opdaterSpiller(dt) {
     document.body.classList.toggle("svømmer", iVand);
     if (iVand && sp.vel.y < -4) { Lyd.plask(); stænk(sp.pos.x, sp.pos.y + 0.9, sp.pos.z, VANDFARVE, 16); }
   }
-  const fart = sp.flyver ? FLYV : iVand ? GÅ * 0.65 : GÅ, greb = sp.jord || sp.flyver || iVand ? 12 : 3;
+  const underFod = verden.hent(Math.floor(sp.pos.x), Math.floor(sp.pos.y - 0.1), Math.floor(sp.pos.z));
+  const glat = sp.jord && !sp.flyver && BLOKKE[underFod]?.glat;                  // på is glider man
+  const fart = sp.flyver ? FLYV : iVand ? GÅ * 0.65 : glat ? GÅ * 1.5 : GÅ, greb = glat ? 0.9 : sp.jord || sp.flyver || iVand ? 12 : 3;
   sp.vel.x += (mx * fart - sp.vel.x) * Math.min(1, dt * greb);
   sp.vel.z += (mz * fart - sp.vel.z) * Math.min(1, dt * greb);
   if (sp.flyver) {
@@ -1097,6 +1170,7 @@ function tegnFrame(nu) {
   if (underVand !== document.body.classList.contains("under-vand")) document.body.classList.toggle("under-vand", underVand);
   himmel.position.copy(kamera.position);
   if (stjerner) stjerner.position.copy(kamera.position);
+  opdaterSne(dt, tid); opdaterNordlys(tid);
   for (const m of følgerKamera) { m.position.copy(kamera.position).addScaledVector(m.userData.retning, m.userData.afstand); m.lookAt(kamera.position); }
 
   sving = Math.max(0, sving - dt * 4);

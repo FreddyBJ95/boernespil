@@ -69,3 +69,17 @@ Deno.test("Fyrkasse: kun rigtig blok, én forbrugning, 12 fælles raketter og st
   assert.equal(rum.fyrkasser.length, 4); assert.equal(rum.hent(65, 5, 68), ID.Fyrværkeri);
   rum.afslut(); assert.equal(rum.fyrkasser.length, 0);
 });
+
+Deno.test("Show-kasse giver 36 raketter med finale; fontænen giver én fontæne på jorden", () => {
+  const { rum, a, b } = opsæt();
+  rum.sæt(65, 5, 64, ID["Show-kasse"]); rum.sæt(63, 5, 64, ID.Fontæne);
+  rum.besked(a, { t: "fyrkasse", x: 65, y: 5, z: 64 }, 1000);
+  rum.besked(a, { t: "fyrkasse", x: 63, y: 5, z: 64 }, 1600);
+  assert.equal(rum.hent(65, 5, 64), 0); assert.equal(rum.hent(63, 5, 64), 0);
+  const fontæner = hændelser(b, "fyrværkeri").filter(r => r.mønster === "fontæne");
+  assert.equal(fontæner.length, 1); assert.deepEqual([fontæner[0].x, fontæner[0].y, fontæner[0].z], [63, 5, 64]);
+  for (let i = 0; i < 600; i++) rum.tick(0.05, 2000 + i * 50);
+  const raketter = hændelser(b, "fyrværkeri").filter(r => r.mønster !== "fontæne");
+  assert.equal(raketter.length, 36);
+  assert.ok(raketter.every(r => FYRMØNSTRE.includes(r.mønster) && !["romerlys", "fontæne", "lygte"].includes(r.mønster)));
+});

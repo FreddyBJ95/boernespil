@@ -18,6 +18,9 @@ export const VÆRKTØJ = {
   maling: { navn: "Malingspistol", våben: "maling", hold: 0.18 },
   raket: { navn: "Fyrværkeri-raket", fyrværkeri: "raket", hold: 0.45 },
   stjernekaster: { navn: "Stjernekaster", fyrværkeri: "stjernekaster", hold: 0.12 },
+  romerlys: { navn: "Romerlys", fyrværkeri: "romerlys", hold: 0.5 },
+  lygte: { navn: "Ønskelygte", fyrværkeri: "lygte", hold: 1.2 },
+  konfetti: { navn: "Konfettikanon", fyrværkeri: "konfetti", hold: 0.35 },
 };
 
 // ---------- Ikoner (pixel-tegninger) ----------
@@ -96,7 +99,24 @@ function stjernekaster(set) {
     [0, 2, "#ffd23f"], [0, -2, "#ffd23f"], [1, 1, "#ffd23f"], [-1, -1, "#ffd23f"], [1, -1, "#ffd23f"], [-1, 1, "#ffd23f"], [3, -2, "#ff8c1a"], [-3, 2, "#ff8c1a"], [2, 3, "#ff8c1a"], [-2, -3, "#ff8c1a"]];
   for (const [dx, dy, f] of glimt) set(12 + dx, 3 + dy, f);
 }
-const TEGNERE = { tænder, gevær, bazooka, maling, raket, stjernekaster };
+// Romerlys: et stribet rør, der skyder farvede kugler op
+function romerlys(set) {
+  for (let y = 4; y <= 15; y++) for (let x = 6; x <= 9; x++) set(x, y, (y + (x === 6 ? 1 : 0)) % 4 < 2 ? "#3a6fe0" : "#ffffff");
+  for (const [x, y, f] of [[7, 2, "#ff3b5c"], [8, 0, "#ffd23f"], [10, 1, "#4cd964"], [5, 1, "#c86bff"], [7, 3, "#ff8c1a"]]) set(x, y, f);
+}
+// Ønskelygte: en glødende papirlygte
+function lygte(set) {
+  for (let y = 3; y <= 12; y++) { const b = y < 5 ? 3 : y > 10 ? 3 : 4; for (let x = 8 - b; x < 8 + b; x++) set(x, y, y === 3 || x === 8 - b || x === 8 + b - 1 ? "#e8891c" : y > 7 ? "#ffd23f" : "#ffb347"); }
+  for (let x = 6; x <= 9; x++) set(x, 13, "#8a5a2b");
+  set(7, 11, "#fff3a0"); set(8, 11, "#fff3a0"); set(7, 10, "#ffffff");
+}
+// Konfettikanon: en tragt, der sprøjter konfetti
+function konfetti(set) {
+  for (let i = 0; i < 9; i++) for (let j = -Math.floor(i / 3); j <= Math.floor(i / 3); j++) set(2 + i, 10 + j - Math.floor(i / 2), i < 3 ? "#9b4de0" : "#ff6fd0");
+  for (let y = 11; y <= 14; y++) { set(3, y, "#2a2a2a"); set(4, y, "#2a2a2a"); }
+  for (const [x, y, f] of [[12, 1, "#ff3b5c"], [14, 3, "#ffd23f"], [11, 3, "#4cd964"], [13, 6, "#3aa8ff"], [15, 1, "#ff8c1a"], [10, 0, "#c86bff"], [15, 6, "#ffffff"]]) set(x, y, f);
+}
+const TEGNERE = { tænder, gevær, bazooka, maling, raket, stjernekaster, romerlys, lygte, konfetti };
 export function værktøjIkon(id) {
   if (!ikoner[id]) ikoner[id] = tegn(set => (TEGNERE[id] ? TEGNERE[id](set) : spand(set, VÆRKTØJ[id].væske)));
   return ikoner[id];
@@ -140,6 +160,21 @@ export function værktøjModel(id) {
     model.add(kasse(0.42, 1.0, 0.42, "#e0302a"), kasse(0.44, 0.1, 0.44, "#ffe066", 0, 0.2, 0), kasse(0.44, 0.1, 0.44, "#ffe066", 0, -0.2, 0));
     model.add(kasse(0.07, 1.6, 0.07, "#8a5a2b", 0.26, -0.8, 0));
     model.rotation.set(0.2, 0.4, 0.25);
+  } else if (id === "romerlys") {                           // blåt og hvidt stribet rør
+    for (let i = 0; i < 5; i++) model.add(kasse(0.34, 0.26, 0.34, i % 2 ? "#ffffff" : "#3a6fe0", 0, -0.5 + i * 0.26, 0));
+    flamme = new THREE.Group();
+    flamme.add(kasse(0.2, 0.2, 0.2, "#ff6fd0", 0, 0, 0, true));
+    flamme.position.y = 0.9; model.add(flamme);
+    model.rotation.set(0.25, 0.3, 0.3);
+  } else if (id === "lygte") {                               // papirlygte, der gløder
+    model.add(kasse(0.8, 1, 0.8, "#ffb347", 0, 0, 0, true), kasse(0.84, 0.1, 0.84, "#e8891c", 0, 0.5, 0), kasse(0.5, 0.08, 0.5, "#8a5a2b", 0, -0.55, 0));
+    flamme = new THREE.Group(); flamme.add(kasse(0.25, 0.3, 0.25, "#fff3a0", 0, 0, 0, true)); flamme.position.y = -0.3; model.add(flamme);
+    model.rotation.set(0.2, 0.5, 0);
+  } else if (id === "konfetti") {                           // tragt, der peger frem
+    const tragt = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1.1, 10, 1, true), new THREE.MeshLambertMaterial({ color: "#ff6fd0", side: THREE.DoubleSide }));
+    tragt.rotation.x = Math.PI / 2; tragt.position.z = -0.3; model.add(tragt);
+    model.add(kasse(0.26, 0.6, 0.3, "#2a2a2a", 0, -0.4, 0.35), kasse(0.3, 0.3, 0.5, "#9b4de0", 0, 0, 0.35));
+    model.rotation.set(0.05, 0.1, 0);
   } else if (id === "stjernekaster") {                       // tynd tråd med et glimt, der gnistrer
     model.add(kasse(0.07, 1.5, 0.07, "#9aa3ad"), kasse(0.1, 0.5, 0.1, "#6b7078", 0, -0.55, 0));
     flamme = new THREE.Group();

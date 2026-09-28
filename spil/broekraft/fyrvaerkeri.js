@@ -1,6 +1,7 @@
 // ===== Fyrværkeri i Broekraft =====
 // Raketter skydes op med et hvin og springer ud i farvede gnister: kugle, ring, hjerte, stjerne,
-// smiley, guldregn og knitter. Gnisterne er glødende prikker (THREE.Points), der lægges oven i
+// smiley, guldregn, knitter, blomst, sommerfugl, spiral, palme, planet og regn. Desuden fontæner
+// på jorden, romerlys, ønskelygter der svæver op, og show-kasser med en stor finale. Gnisterne er glødende prikker (THREE.Points), der lægges oven i
 // hinanden, så de lyser på nattehimlen. Nye mønstre: tilføj en funktion i MØNSTRE.
 
 import * as THREE from "./three.js";
@@ -87,6 +88,8 @@ export class Fyrværkeri {
     this.lille = new Sværm(scene, 1500, 0.2);                     // raketternes haler
     this.raketter = [];
     this.fyrkasser = [];
+    this.fontæner = [];
+    this.lygter = [];
     this.farveTmp = new THREE.Color();
   }
   get levende() { return this.stor.levende + this.lille.levende; }
@@ -99,11 +102,39 @@ export class Fyrværkeri {
 
   // Send en raket op fra (x, y, z). mønster: se MØNSTRE (tom = tilfældigt)
   // Sammen sender serveren fart, farver og højde med, så raketten flyver ens hos alle
+  // Særlige: "fontæne" (på jorden), "lygte" (ønskelygte) og "romerlys" (en lille kugle, der skydes op)
   raket(x, y, z, { mønster, farver, højde = 16 + Math.random() * 10, vx = (Math.random() - 0.5) * 2.5, vy = 22 + Math.random() * 5, vz = (Math.random() - 0.5) * 2.5 } = {}) {
+    farver ||= [tilfældig(FARVER), tilfældig(FARVER)];
+    if (mønster === "fontæne") return this.fontæne(x, y, z, farver);
+    if (mønster === "lygte") return this.lygte(x, y, z, vx, vz);
     if (this.raketter.length > 24) return;
-    this.raketter.push({ x, y, z, vx, vy, vz, top: y + højde,
-      mønster: mønster || tilfældig(Object.keys(MØNSTRE)), farver: farver || [tilfældig(FARVER), tilfældig(FARVER)], t: 0 });
+    if (mønster === "romerlys") { højde = 8 + Math.random() * 5; vy = 18; vx *= 0.3; vz *= 0.3; mønster = "lille"; }
+    this.raketter.push({ x, y, z, vx, vy, vz, top: y + højde, mønster: MØNSTRE[mønster] ? mønster : tilfældig(TILFÆLDIGE), farver, t: 0 });
     this.lyd.fløjt?.(this.afstand(x, y, z));
+  }
+
+  // Fontæne: gnister sprøjter op fra jorden i ti sekunder
+  fontæne(x, y, z, farver = [tilfældig(FARVER), tilfældig(FARVER)]) {
+    if (this.fontæner.length < 12) this.fontæner.push({ x, y, z, farver, tid: 10, lyd: 0 });
+  }
+
+  // Ønskelygte: en lille glødende papirlygte, der svæver langsomt op og driver med vinden
+  lygte(x, y, z, vx = 0, vz = 0) {
+    if (this.lygter.length >= 30) this.fjernLygte(this.lygter[0]);
+    const g = new THREE.Group(), papir = new THREE.MeshBasicMaterial({ color: "#ffb347", transparent: true, opacity: 0.92, fog: false });
+    const krop = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.7, 0.55), papir);
+    const flamme = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.2, 0.18), new THREE.MeshBasicMaterial({ color: "#fff3a0", fog: false }));
+    flamme.position.y = -0.28;
+    const kant = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.06, 0.6), new THREE.MeshBasicMaterial({ color: "#e8891c", fog: false }));
+    kant.position.y = 0.36;
+    g.add(krop, flamme, kant);
+    g.position.set(x, y, z);
+    this.scene.add(g);
+    this.lygter.push({ g, papir, x, y, z, vx: vx * 0.2 + (Math.random() - 0.5) * 0.4, vz: vz * 0.2 + (Math.random() - 0.5) * 0.4, t: Math.random() * 10, alder: 0 });
+  }
+  fjernLygte(l) {
+    this.lygter.splice(this.lygter.indexOf(l), 1);
+    this.scene.remove(l.g); l.g.traverse(c => { if (c.isMesh) { c.geometry.dispose(); c.material.dispose(); } });
   }
 
   afstand(x, y, z) { const k = this.kamera.position; return Math.hypot(x - k.x, y - k.y, z - k.z); }
@@ -119,8 +150,9 @@ export class Fyrværkeri {
   }
 
   // Fyrværkeri-kasse: skyder en hel serie raketter op fra samme sted
-  tændKasse(x, y, z, antal = 12) {
-    this.fyrkasser.push({ x, y, z, antal, tid: 0.3 });
+  // show = true: et langt show, der slutter med en stor finale
+  tændKasse(x, y, z, antal = 12, show = false) {
+    this.fyrkasser.push({ x, y, z, antal: show ? 36 : antal, show, tid: 0.3 });
   }
 
   opdater(dt) {
@@ -135,9 +167,31 @@ export class Fyrværkeri {
     for (let i = this.fyrkasser.length - 1; i >= 0; i--) {
       const f = this.fyrkasser[i];
       if ((f.tid -= dt) > 0) continue;
-      this.raket(f.x + 0.5, f.y + 1, f.z + 0.5, { højde: 12 + Math.random() * 12 });
-      f.tid = 0.35 + Math.random() * 0.45;
+      const finale = f.show && f.antal <= 8;
+      this.raket(f.x + 0.5, f.y + 1, f.z + 0.5, { højde: finale ? 18 + Math.random() * 10 : 12 + Math.random() * 12, mønster: finale ? tilfældig(FINALE) : undefined });
+      f.tid = finale ? 0.08 : f.show ? 0.25 + Math.random() * 0.35 : 0.35 + Math.random() * 0.45;
       if (--f.antal <= 0) this.fyrkasser.splice(i, 1);
+    }
+    // fontænerne sprøjter
+    for (let i = this.fontæner.length - 1; i >= 0; i--) {
+      const f = this.fontæner[i];
+      f.tid -= dt;
+      const n = Math.round(dt * (f.tid > 1.5 ? 220 : 80)), farver = [f.farver[0], f.farver[1], "#fff3a0", "#ffd23f"];
+      for (let k = 0; k < n; k++) {
+        const v = Math.random() * Math.PI * 2, s = Math.random() * 1.4;
+        this.gnist(f.x + 0.5, f.y + 0.1, f.z + 0.5, Math.cos(v) * s, 7 + Math.random() * 4, Math.sin(v) * s, farver[k % 4], 0.9 + Math.random() * 0.5, { g: 0.6, træk: 0.8 });
+      }
+      if ((f.lyd -= dt) <= 0) { f.lyd = 0.9; this.lyd.knitre?.(this.afstand(f.x, f.y, f.z)); }
+      if (f.tid <= 0) this.fontæner.splice(i, 1);
+    }
+    // ønskelygterne svæver op, blafrer og slukker til sidst
+    for (const l of [...this.lygter]) {
+      l.t += dt; l.alder += dt;
+      l.x += (l.vx + Math.sin(l.t * 0.4) * 0.3) * dt; l.z += (l.vz + Math.cos(l.t * 0.3) * 0.3) * dt; l.y += 1.3 * dt;
+      l.g.position.set(l.x, l.y, l.z);
+      l.g.rotation.y += dt * 0.3;
+      l.papir.opacity = Math.min(0.92, Math.max(0, (32 - l.alder) / 4)) * (0.85 + Math.sin(l.t * 9) * 0.07);
+      if (l.alder > 32) this.fjernLygte(l);
     }
     this.stor.opdater(dt); this.lille.opdater(dt);
   }
@@ -147,11 +201,12 @@ export class Fyrværkeri {
 // Hver får (fyr, raket, { højre, op }) og laver gnisterne. Farverne ligger i raket.farver.
 const kugleRetning = () => { const u = Math.random() * 2 - 1, t = Math.random() * Math.PI * 2, s = Math.sqrt(1 - u * u); return [s * Math.cos(t), u, s * Math.sin(t)]; };
 function iFladen(fyr, r, form, fart, { højre, op }, farve, liv = 1.8) {
-  for (const [a, b] of form) {
+  form.forEach(([a, b], i) => {
     const vx = (højre.x * a + op.x * b) * fart, vy = (højre.y * a + op.y * b) * fart, vz = (højre.z * a + op.z * b) * fart;
-    fyr.gnist(r.x, r.y, r.z, vx, vy, vz, farve, liv + Math.random() * 0.3, { g: 0.12, træk: 1.1 });
-  }
+    fyr.gnist(r.x, r.y, r.z, vx, vy, vz, Array.isArray(farve) ? farve[i % farve.length] : farve, liv + Math.random() * 0.3, { g: 0.12, træk: 1.1 });
+  });
 }
+const cirkel = (n, rr = 1, fladt = 1) => Array.from({ length: n }, (_, i) => { const t = i / n * Math.PI * 2; return [Math.cos(t) * rr, Math.sin(t) * rr * fladt]; });
 const MØNSTRE = {
   kugle(fyr, r) {
     for (let i = 0; i < 170; i++) {
@@ -189,4 +244,39 @@ const MØNSTRE = {
       fyr.gnist(r.x, r.y, r.z, x * v, y * v, z * v, FARVER[i % 6], 1.8);
     }
   },
+  blomst(fyr, r, akser) {                                        // fem kronblade om en gul midte
+    const blade = Array.from({ length: 150 }, (_, i) => { const t = i / 150 * Math.PI * 2, rr = Math.abs(Math.sin(t * 2.5)) * 0.8 + 0.2; return [Math.cos(t) * rr, Math.sin(t) * rr]; });
+    iFladen(fyr, r, blade, 10, akser, r.farver[0]);
+    iFladen(fyr, r, cirkel(30, 0.18), 10, akser, "#ffd23f", 1.6);
+  },
+  sommerfugl(fyr, r, akser) {                                    // sommerfugle-kurven
+    const form = Array.from({ length: 230 }, (_, i) => {
+      const t = i / 230 * 12 * Math.PI, k = Math.exp(Math.cos(t)) - 2 * Math.cos(4 * t) - Math.sin(t / 12) ** 5;
+      return [Math.sin(t) * k / 4.2, Math.cos(t) * k / 4.2];
+    });
+    iFladen(fyr, r, form, 9, akser, [r.farver[0], r.farver[1]], 2);
+  },
+  spiral(fyr, r, akser) {                                        // fire arme, der snor sig
+    const form = [];
+    for (let a = 0; a < 4; a++) for (let j = 0; j < 34; j++) { const v = a * Math.PI / 2 + j * 0.17, s = 0.12 + j / 34; form.push([Math.cos(v) * s, Math.sin(v) * s]); }
+    iFladen(fyr, r, form, 10, akser, [r.farver[0], r.farver[1]], 1.8);
+  },
+  palme(fyr, r) {                                                // lange gyldne blade, der hænger ned
+    for (let k = 0; k < 9; k++) {
+      const v = k / 9 * Math.PI * 2;
+      for (let j = 0; j < 18; j++) { const s = 3 + j * 0.55; fyr.gnist(r.x, r.y, r.z, Math.cos(v) * s, 2 + j * 0.25, Math.sin(v) * s, j % 3 ? "#ffcf5a" : "#7dff7a", 2.2 + Math.random() * 0.5, { g: 0.55, træk: 1.2 }); }
+    }
+  },
+  planet(fyr, r, akser) {                                        // en kugle med en ring om
+    for (let i = 0; i < 90; i++) { const [x, y, z] = kugleRetning(); fyr.gnist(r.x, r.y, r.z, x * 5, y * 5, z * 5, r.farver[0], 1.8, { g: 0.15, træk: 1.3 }); }
+    iFladen(fyr, r, cirkel(100, 1, 0.3), 11, akser, r.farver[1]);
+  },
+  regn(fyr, r) {                                                 // farvet regn, der drysser ned
+    for (let i = 0; i < 200; i++) { const [x, y, z] = kugleRetning(), v = 4 + Math.random() * 4; fyr.gnist(r.x, r.y, r.z, x * v, y * v + 1, z * v, FARVER[i % FARVER.length], 3 + Math.random(), { g: 0.8, træk: 2.5 }); }
+  },
+  lille(fyr, r) {                                                // romerlysets lille kugle
+    for (let i = 0; i < 40; i++) { const [x, y, z] = kugleRetning(); fyr.gnist(r.x, r.y, r.z, x * 4, y * 4, z * 4, r.farver[0], 0.9, { g: 0.3 }); }
+  },
 };
+const TILFÆLDIGE = Object.keys(MØNSTRE).filter(m => m !== "lille");
+const FINALE = ["kugle", "palme", "regnbue", "planet", "blomst", "guldregn"];
