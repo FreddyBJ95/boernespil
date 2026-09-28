@@ -400,6 +400,19 @@ export function skat() {                    // kling-kling: guldmønter springer
   [1568, 2093, 1760, 2349, 2637, 3136].forEach((f, i) => tone(f, t + i * 0.07, 0.25, "triangle", 0.09));
   sus(t, 0.6, 6000, 9000, 0.06, "highpass", 0.7);
 }
+// ---------- NUKE-banen ----------
+export function atomBip() {                // atombomben bipper, mens lunten brænder
+  if (!ac) return;
+  tone(1250, nu(), 0.09, "square", 0.06);
+}
+export function atomBrag(afstand = 0) {    // et kæmpe, dybt brag og en lang rumlen bagefter
+  if (!ac) return;
+  const v = Math.max(0.3, 1 - afstand / 140), t = nu();
+  sus(t, 0.35, 3000, 400, 0.35 * v, "lowpass", 0.7);
+  tone(70, t, 1.8, "sine", 0.45 * v, 28);
+  sus(t + 0.1, 4, 500, 40, 0.4 * v, "lowpass", 0.9);
+  glid(55, 30, t + 0.2, 3.5, { type: "sawtooth", vol: 0.1 * v, filter: 160, q: 1 });
+}
 // ---------- Dinodalen ----------
 export function vulkan(afstand = 0) {      // en dyb rumlen, når vulkanen går i udbrud
   if (!ac) return;

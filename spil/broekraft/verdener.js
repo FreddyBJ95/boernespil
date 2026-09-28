@@ -1208,4 +1208,96 @@ export const VERDENER = [
       a.pynt(a.antal(20), () => (R() < 0.5 ? ID["Rød blomst"] : ID["Gul blomst"]), [ID["Græs"]]);
     },
   },
+
+  {
+    id: "atom", navn: "NUKE-banen", ikon: "☢️", tekst: "Et ødeland med ruiner og lysende grønt slim. Tænd atombomberne, og løb væk — og pas på de lysende zombier!",
+    himmel: ["#1f2a14", "#9ab04a"], tåge: [26, 82], hav: "#5ad02a", sol: "#f0ffb0", solStr: 30, skyer: "#8a9a6a",
+    lys: ["#e0ffb0", "#3a4a2a", 1.9, 1.0], stemning: "uhyggelig", tyngde: 28,
+    størrelse: [144, 48, 144],
+    dyr: ["atomzombie", "atomzombie", "atomzombie", "atomfro"], antal: 12, genfød: true,
+    sne: "atom",                                                 // små, grønne gnister i luften
+    hotbar: ["Atombombe", "Atomtønde", "TNT", "Beton", "Aske", "Atomslim", "v:tænder", "v:brandslange", "æg:atomzombie"],
+    vis: ["Atombombe", "Atomtønde", "Atomslim"],
+    hent: ["Bygger bunkeren…", "Fylder tønderne med slim…", "Vækker de lysende zombier…", "Tæller ned: 3… 2… 1…"],
+    generer(a) {
+      const { R, støj, ID, BX, BZ, top } = a, cx = BX / 2, cz = BZ / 2, h0 = (x, z) => top[x + z * BX];
+      a.terræn((x, z) => {
+        const kant = Math.min(1, Math.min(x, z, BX - 1 - x, BZ - 1 - z) / 10);
+        const midt = Math.max(0, 1 - Math.hypot(x - cx, z - cz) / 12);
+        const h = 10 + (støj(x / 22, z / 22) * 5 + støj(x / 7 + 11, z / 7) * 1.5 - 3) * (1 - midt);
+        return Math.round(5 + (h - 5) * kant);
+      }, (x, z, y, h) => (y === 0 ? ID.Bundsten : y < h - 3 ? ID.Sten : y < h ? ID.Jord : støj(x / 8 + 40, z / 8) > 0.58 ? ID["Mørkt græs"] : ID.Aske));
+      const søjle = (x, z, y0, y1, blok) => { for (let y = y0; y <= y1; y++) a.sæt(x, y, z, blok); };
+
+      // Gamle kratere med lysende slim i bunden
+      for (let n = 0; n < a.antal(8); n++) {
+        const kx = 8 + Math.floor(R() * (BX - 16)), kz = 8 + Math.floor(R() * (BZ - 16)), r = 3 + R() * 2.5;
+        if (a.nærStart(kx, kz, 20)) continue;
+        for (let x = Math.floor(kx - r); x <= kx + r; x++) for (let z = Math.floor(kz - r); z <= kz + r; z++) {
+          const d = Math.hypot(x - kx, z - kz);
+          if (d > r) continue;
+          const i = x + z * BX, dyb = Math.round((1 - d / r) * r * 0.6);
+          for (let k = 0; k < dyb; k++) a.sæt(x, top[i]--, z, 0);
+          a.sæt(x, top[i], z, d < r * 0.45 ? ID.Atomslim : ID.Aske);
+        }
+      }
+      // Ruinbyen: betonhuse med huller i murene og uden tag, og bunker af murbrokker
+      for (let n = 0; n < a.antal(16); n++) {
+        const b = 5 + Math.floor(R() * 5), d = 5 + Math.floor(R() * 5), x0 = 4 + Math.floor(R() * (BX - b - 8)), z0 = 4 + Math.floor(R() * (BZ - d - 8));
+        if (a.nærStart(x0 + b / 2, z0 + d / 2, 18)) continue;
+        const h = h0(x0, z0), hs = 4 + Math.floor(R() * 8);
+        for (let x = x0; x < x0 + b; x++) for (let z = z0; z < z0 + d; z++) {
+          const væg = x === x0 || x === x0 + b - 1 || z === z0 || z === z0 + d - 1;
+          søjle(x, z, Math.min(h, h0(x, z)), h, ID.Beton);
+          if (!væg) { for (let y = h + 1; y <= h + hs + 1; y++) a.sæt(x, y, z, (y - h) % 4 === 0 && R() < 0.6 ? ID.Beton : 0); continue; }
+          const højde = hs - Math.floor(R() * 4);
+          for (let y = h + 1; y <= h + højde; y++) a.sæt(x, y, z, R() < 0.16 ? 0 : (y - h) % 4 === 2 && R() < 0.3 ? ID.Glas : ID.Beton);
+        }
+        for (let k = 0; k < 6; k++) { const x = x0 - 1 + Math.floor(R() * (b + 2)), z = z0 - 1 + Math.floor(R() * (d + 2)); if (!a.hent(x, h0(x, z) + 1, z)) a.sæt(x, h0(x, z) + 1, z, R() < 0.5 ? ID.Beton : ID.Sten); }
+      }
+      // Bilvrag i mange farver
+      const BILER = [ID["Rød uld"], ID["Blå uld"], ID["Gul uld"], ID["Grøn uld"], ID["Hvid uld"]];
+      for (let n = 0; n < a.antal(10); n++) {
+        const x = 5 + Math.floor(R() * (BX - 10)), z = 5 + Math.floor(R() * (BZ - 10)), h = h0(x, z), f = BILER[Math.floor(R() * BILER.length)];
+        if (a.nærStart(x, z, 14) || a.hent(x, h + 1, z)) continue;
+        for (let dz = 0; dz < 4; dz++) for (let dx = 0; dx < 2; dx++) { a.sæt(x + dx, h + 1, z + dz, (dz === 0 || dz === 3) ? ID.Obsidian : f); if (dz === 1 || dz === 2) a.sæt(x + dx, h + 2, z + dz, dz === 1 ? ID.Glas : f); }
+      }
+      // Døde træer og atomtønder rundt omkring
+      for (let n = 0; n < a.antal(12); n++) {
+        const x = 3 + Math.floor(R() * (BX - 6)), z = 3 + Math.floor(R() * (BZ - 6)), h = h0(x, z);
+        if (a.hent(x, h + 1, z) || a.nærStart(x, z, 10)) continue;
+        const hs = 3 + Math.floor(R() * 3);
+        søjle(x, z, h + 1, h + hs, ID["Død stamme"]);
+        if (R() < 0.6) a.sæt(x + 1, h + hs - 1, z, ID["Død stamme"]);
+      }
+      a.pynt(a.antal(22), ID.Atomtønde, [ID.Aske, ID["Mørkt græs"]]);
+
+      // Bunkeren ved startstedet: en betonplads, sandsække, lamper og et stativ med atombomber
+      const hB = h0(cx, cz);
+      for (let x = cx - 6; x <= cx + 6; x++) for (let z = cz - 6; z <= cz + 6; z++) {
+        søjle(x, z, Math.min(hB, h0(x, z)), hB, ID.Beton);
+        for (let y = hB + 1; y <= hB + 6; y++) a.sæt(x, y, z, 0);
+        top[x + z * BX] = hB;
+        const kant = Math.abs(x - cx) === 6 || Math.abs(z - cz) === 6;
+        if (kant && Math.abs(x - cx) > 1 && Math.abs(z - cz) > 1) a.sæt(x, hB + 1, z, ID.Sandsæk);
+      }
+      for (const [dx, dz] of [[-6, -6], [6, -6], [-6, 6], [6, 6]]) { søjle(cx + dx, cz + dz, hB + 1, hB + 2, ID.Beton); a.sæt(cx + dx, hB + 3, cz + dz, ID.Lampe); }
+      for (let x = cx - 3; x <= cx + 3; x++) { a.sæt(x, hB + 1, cz - 4, ID.Planker); a.sæt(x, hB + 2, cz - 4, x === cx ? ID.Atomtønde : ID.Atombombe); }
+      // Missilet i siloen: tænd bomben i bunden, så går det af
+      { const sx = Math.min(BX - 8, cx + 16), sz = Math.max(8, cz - 14), h = h0(sx, sz);
+        for (let x = sx - 3; x <= sx + 3; x++) for (let z = sz - 3; z <= sz + 3; z++) {
+          const d = Math.hypot(x - sx, z - sz);
+          if (d > 3.4) continue;
+          søjle(x, z, h - 1, h - 1, ID.Beton);
+          for (let y = h; y <= h + 3; y++) a.sæt(x, y, z, d > 2.5 ? ID.Beton : 0);
+        }
+        a.sæt(sx, h, sz, ID.Atombombe);
+        søjle(sx, sz, h + 1, h + 8, ID["Hvid puds"]);
+        søjle(sx, sz, h + 9, h + 10, ID["Rød uld"]);
+        for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) søjle(sx + dx, sz + dz, h + 1, h + 2, ID["Rød uld"]);
+        a.sæt(sx, h + 5, sz + 1, ID.Atombombe);
+      }
+      a.pynt(a.antal(18), ID.Atomslim, [ID.Aske]);
+    },
+  },
 ];

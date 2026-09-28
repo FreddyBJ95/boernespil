@@ -121,6 +121,7 @@ const SNEARTER = {
   gløder: { farver: ["#ff8c1a", "#ffd23f", "#ff4d2e", "#ffb020"], fart: -0.7, str: 0.12, antal: 700, glød: true },
   bobler: { farver: ["#e8f8ff", "#bfe8ff", "#ffffff"], fart: -1.1, str: 0.13, antal: 450 },
   slik: { farver: ["#ff5fa8", "#ffd23f", "#5fd3ff", "#8aff7a", "#c86bff", "#ffffff", "#ff8c1a"], fart: 1.6, str: 0.18, antal: 900 },
+  atom: { farver: ["#8aff5a", "#c8ff7a", "#5aff3a"], fart: -0.4, str: 0.12, antal: 500, glød: true },
 };
 let sne = null;
 if (cfg.sne) {
@@ -463,10 +464,7 @@ function tryk(x, y) {
   if (valgtTing().hammer) {                                      // hammeren fjerner blokken med det samme
     if (BLOKKE[hit.id].fyrværkeri) { tændFyrkasse(hit); return; }        // fyrværkeri-kassen går i gang
     if (BLOKKE[hit.id].kanon) { affyrKanon(hit); return; }               // bum — kanonkuglen flyver
-    if (BLOKKE[hit.id].tnt) {                                     // … men TNT bliver tændt!
-      if (ONLINE) { net?.tænd(hit.x, hit.y, hit.z); tændTNT(hit.x, hit.y, hit.z, 2.2, true); } else tændTNT(hit.x, hit.y, hit.z);
-      sving = 1; return;
-    }
+    if (BLOKKE[hit.id].tnt || BLOKKE[hit.id].atom) { tændSprængstof(hit); sving = 1; return; }   // … men TNT og bomber bliver tændt!
     if (!BLOKKE[hit.id].uknuselig) { knus(hit, true); sving = 1; }
     return;
   }
@@ -550,10 +548,7 @@ function brugVærktøj(v, hit) {
   if (v === "tænder" && b.fyrværkeri) { tændFyrkasse(hit); return; }
   if (v === "tænder" && b.kanon) { affyrKanon(hit); return; }
   if (v === "tænder" && cfg.undervand) { besked("Ild kan ikke brænde under vandet 🫧", 2500); return; }
-  if (v === "tænder" && b.tnt) {
-    if (ONLINE) { net?.tænd(hit.x, hit.y, hit.z); tændTNT(hit.x, hit.y, hit.z, 2.2, true); } else tændTNT(hit.x, hit.y, hit.z);
-    sving = 1; return;
-  }
+  if (v === "tænder" && (b.tnt || b.atom)) { tændSprængstof(hit); sving = 1; return; }
   let tx = hit.x + hit.n[0], ty = hit.y + hit.n[1], tz = hit.z + hit.n[2];
   if (b.kryds) { tx = hit.x; ty = hit.y; tz = hit.z; }                         // en blomst eller ild bliver skiftet ud
   if (!verden.inde(tx, ty, tz)) return;
@@ -591,6 +586,69 @@ function høstet({ x, y, z }) {
 if (!ONLINE) for (let i = 0; i < verden.data.length; i++) if (verden.data[i] === ID.Spire) {   // spirer fra sidst gror videre
   const lag = verden.BX * verden.BZ;
   plantSpire(i % verden.BX, Math.floor(i / lag), Math.floor((i % lag) / verden.BX));
+}
+
+// ---------- NUKE-banen: atombomben laver et kæmpe glimt, en trykbølge, en svampesky og et stort krater ----------
+// (ingen kommer til skade: zombierne bliver til konfetti, og alle andre bliver bare blæst lidt væk)
+const ATOMR = 9;
+const svampeskyer = [], PUFGEO = new THREE.BoxGeometry(1, 1, 1);
+function atomEksplosion(cx, cy, cz, kunVis) {
+  const afst = Math.hypot(cx - sp.pos.x, cz - sp.pos.z);
+  if (!kunVis) eksploder(cx, cy, cz, ATOMR); else bragEffekt(cx, cy, cz, ATOMR);
+  svampesky(cx, cy - 0.5, cz);
+  E.flash("#ffffff"); himmelBlink(new THREE.Color("#fff6d0"), 3);
+  rystelse = Math.min(2.2, rystelse + Math.max(0.4, 2 - afst / 40));
+  Lyd.atomBrag(afst);
+}
+function svampesky(x, y, z) {
+  const g = new THREE.Group(); g.position.set(x, y, z); scene.add(g);
+  // skyen får lys og skygge (Lambert), så man kan se de enkelte klumper — og tågen må ikke gøre den grå
+  const mat = f => new THREE.MeshLambertMaterial({ color: f, emissive: new THREE.Color(f).multiplyScalar(0.5), transparent: true, fog: false });
+  const m = { stamme: mat("#ff8a2a"), hat: mat("#ffb040"), fod: mat("#c8a070"), kerne: new THREE.MeshBasicMaterial({ color: "#fffbe0", transparent: true, depthWrite: false, fog: false }) };
+  const puf = [], ny = (del, data) => { const k = new THREE.Mesh(PUFGEO, m[del]); g.add(k); puf.push({ k, del, ...data }); };
+  for (let i = 0; i < 18; i++) ny("stamme", { h: i / 17, v: Math.random() * 6.3, r: Math.random() * 0.8, s: 2 + Math.random() * 1.4 });
+  for (let i = 0; i < 34; i++) ny("hat", { v: i / 34 * Math.PI * 2 + Math.random() * 0.2, r: 0.35 + Math.random() * 0.65, dy: (Math.random() - 0.35) * 1.4, s: 2.6 + Math.random() * 2.4 });
+  for (let i = 0; i < 20; i++) ny("fod", { v: i / 20 * Math.PI * 2, r: 0.7 + Math.random() * 0.3, s: 1.8 + Math.random() * 1.4 });
+  ny("kerne", { s: 1 });
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: "#ffffff", transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+  ring.position.y = 0.6; g.add(ring);
+  svampeskyer.push({ g, puf, m, ring, t: 0 });
+}
+const GRÅ = new THREE.Color("#8a8580"), ORANGE = new THREE.Color("#ff8a2a"), GUL = new THREE.Color("#ffc050");
+function opdaterSvampeskyer(dt) {
+  for (const s of [...svampeskyer]) {
+    s.t += dt;
+    const t = s.t, T = 10, k = 1 - Math.pow(1 - Math.min(1, t / 3.5), 3), H = 3 + 20 * k, CR = 2 + 7.5 * (1 - Math.pow(1 - Math.min(1, t / 4.5), 3));
+    const gløder = Math.max(0, 1 - Math.pow(t / 7, 1.5)), falm = t > T - 3 ? Math.max(0, (T - t) / 3) : 1;
+    for (const p of s.puf) {
+      if (p.del === "stamme") { p.k.position.set(Math.cos(p.v) * p.r * (1 + k * 0.6), p.h * H, Math.sin(p.v) * p.r * (1 + k * 0.6)); p.k.scale.setScalar(p.s * (0.5 + 0.6 * k)); }
+      else if (p.del === "hat") { p.k.position.set(Math.cos(p.v) * CR * p.r, H + p.dy * (1 + CR * 0.35), Math.sin(p.v) * CR * p.r); p.k.scale.setScalar(p.s * (0.4 + 0.9 * k)); }
+      else if (p.del === "fod") { const rr = (2 + 16 * Math.min(1, t / 2.5)) * p.r; p.k.position.set(Math.cos(p.v) * rr, 0.6 + t * 0.15, Math.sin(p.v) * rr); p.k.scale.setScalar(p.s * (1 + t * 0.25)); }
+      else { p.k.scale.setScalar(t < 0.35 ? 2 + t * 70 : Math.max(0.01, 26 * (1 - (t - 0.35) / 0.9))); p.k.position.y = 1.5; }
+      p.k.rotation.y += dt * 0.3;
+    }
+    s.m.stamme.color.copy(GRÅ).lerp(ORANGE, gløder); s.m.hat.color.copy(GRÅ).lerp(GUL, gløder);
+    s.m.stamme.emissive.copy(s.m.stamme.color).multiplyScalar(0.25 + 0.4 * gløder); s.m.hat.emissive.copy(s.m.hat.color).multiplyScalar(0.25 + 0.4 * gløder);
+    for (const n of ["stamme", "hat"]) s.m[n].opacity = falm;
+    s.m.fod.opacity = Math.max(0, 1 - t / 6) * falm;
+    s.m.kerne.opacity = Math.max(0, 1 - t / 1.2);
+    s.ring.scale.setScalar(1 + 48 * Math.min(1, t / 1.6)); s.ring.material.opacity = Math.max(0, 0.85 * (1 - t / 1.6));
+    if (t > T) {
+      scene.remove(s.g); s.g.traverse(c => { if (c.isMesh && c.geometry !== PUFGEO) c.geometry.dispose(); });
+      for (const x of Object.values(s.m)) x.dispose(); s.ring.material.dispose();
+      svampeskyer.splice(svampeskyer.indexOf(s), 1);
+    }
+  }
+}
+// Dyr med glød: true drysser små, grønne gnister
+const GRØNGLØD = ["#8aff5a", "#c8ff7a", "#5aff3a"].map(f => new THREE.Color(f));
+let gløddyrT = 0;
+function opdaterGløddyr(dt) {
+  if ((gløddyrT -= dt) > 0) return;
+  gløddyrT = 0.18;
+  for (const d of dyr) if (d.def.glød && Math.abs(d.pos.x - sp.pos.x) < 30 && Math.abs(d.pos.z - sp.pos.z) < 30)
+    partikel(d.pos.x + (Math.random() - 0.5) * 0.6, d.pos.y + Math.random() * d.h, d.pos.z + (Math.random() - 0.5) * 0.6, GRØNGLØD[Math.floor(Math.random() * 3)],
+      (Math.random() - 0.5) * 0.5, 0.6 + Math.random() * 0.6, (Math.random() - 0.5) * 0.5, 0.9, -0.05, 0.7);
 }
 
 // ---------- Dinodalen: dino-æg, der klækkes, og en vulkan, der ryger og af og til går i udbrud (kun pynt) ----------
@@ -963,15 +1021,23 @@ function bygPortal(px, pz) {
 const tændte = [];
 let rystelse = 0, tntTip = false;
 const RØG = new THREE.Color("#8f8f8f"), ILD = ["#fff3a0", "#ffd23f", "#ff8c1a", "#ff4d2e"].map(f => new THREE.Color(f));
-function tændTNT(x, y, z, lunte = 2.2, kunVis = false) {
+// TNT, atomtønder og atombomber: sammen tænder serveren TNT'en — de andre fjernes og giver et brag fra serveren
+function tændSprængstof({ x, y, z, id }) {
+  const lunte = BLOKKE[id].atom ? 3.5 : 2.2;
+  if (!ONLINE) { tændTNT(x, y, z, lunte, false, id); return; }
+  if (id === ID.TNT) net?.tænd(x, y, z); else net?.sæt(x, y, z, 0);
+  tændTNT(x, y, z, lunte, true, id);
+}
+function tændTNT(x, y, z, lunte = 2.2, kunVis = false, blok = ID.TNT) {
   if (!kunVis) verden.sæt(x, y, z, 0);
   if (tændte.length >= 40) return;
   const g = new THREE.Group();
-  g.add(atlas.blokMesh(ID.TNT));
+  g.add(atlas.blokMesh(blok));
   const hvid = new THREE.Mesh(new THREE.BoxGeometry(1.02, 1.02, 1.02), new THREE.MeshBasicMaterial({ color: "#ffffff", transparent: true, opacity: 0, depthWrite: false }));
   g.add(hvid);
   scene.add(g);
-  tændte.push({ g, hvid, pos: new THREE.Vector3(x + 0.5, y, z + 0.5), vel: new THREE.Vector3(0, lunte < 1 ? 3 : 2, 0), tid: 0, lunte, røgT: 0, kunVis });
+  tændte.push({ g, hvid, pos: new THREE.Vector3(x + 0.5, y, z + 0.5), vel: new THREE.Vector3(0, lunte < 1 ? 3 : 2, 0), tid: 0, lunte, røgT: 0, kunVis,
+    atom: !!BLOKKE[blok]?.atom, brag: kunVis && ONLINE && blok !== ID.TNT });
   Lyd.tænd();
   if (!kunVis) gemSnart();
 }
@@ -991,25 +1057,27 @@ function opdaterTNT(dt) {
       t.røgT = 0.08;
       partikel(t.pos.x, t.pos.y + 1.05, t.pos.z, RØG, (Math.random() - 0.5) * 0.5, 1.2, (Math.random() - 0.5) * 0.5, 0.9, -0.12, 1.6);
       if (i < 2) Lyd.lunte();
+      if (t.atom && Math.floor(t.tid * 4) !== Math.floor((t.tid - dt) * 4)) Lyd.atomBip();
     }
     if (rest <= 0) {
       tændte.splice(i, 1);
       scene.remove(t.g);
       t.g.traverse(c => { if (c.isMesh) { c.geometry.dispose(); c.material.dispose(); } });
-      if (!t.kunVis) eksploder(t.pos.x, t.pos.y + 0.5, t.pos.z);
+      if (t.atom) atomEksplosion(t.pos.x, t.pos.y + 0.5, t.pos.z, t.kunVis);
+      else if (!t.kunVis) eksploder(t.pos.x, t.pos.y + 0.5, t.pos.z);
+      if (t.brag) net?.brag(t.pos.x, t.pos.y + 0.5, t.pos.z);
     }
   }
 }
-function eksploder(cx, cy, cz) {
-  const R = 3.3;
+function eksploder(cx, cy, cz, R = 3.3) {
   for (let x = Math.floor(cx - R); x <= cx + R; x++) for (let y = Math.floor(cy - R); y <= cy + R; y++) for (let z = Math.floor(cz - R); z <= cz + R; z++) {
     const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy, z + 0.5 - cz);
     if (d > R || (d > R - 0.9 && Math.random() < 0.5)) continue;
     const id = verden.inde(x, y, z) ? verden.hent(x, y, z) : 0;
     if (!id || BLOKKE[id].uknuselig) continue;
-    if (BLOKKE[id].tnt) { tændTNT(x, y, z, 0.25 + Math.random() * 0.5); continue; }   // kædereaktion!
+    if (BLOKKE[id].tnt || BLOKKE[id].atom) { tændTNT(x, y, z, 0.25 + Math.random() * 0.5, false, id); continue; }   // kædereaktion!
     verden.sæt(x, y, z, 0);
-    if (Math.random() < 0.4) {
+    if (Math.random() < 0.4 * Math.min(1, (3.3 / R) ** 2)) {
       const f = atlas.farve(id), a = Math.max(0.3, d);
       for (let k = 0; k < 3; k++) partikel(x + 0.5, y + 0.5, z + 0.5, f.clone().multiplyScalar(0.8 + Math.random() * 0.4),
         (x + 0.5 - cx) / a * 7 + (Math.random() - 0.5) * 3, 3 + Math.random() * 6, (z + 0.5 - cz) / a * 7 + (Math.random() - 0.5) * 3, 0.9 + Math.random() * 0.6);
@@ -1024,12 +1092,11 @@ function eksploder(cx, cy, cz) {
       (Math.random() - 0.5) * 2, 1 + Math.random() * 2, (Math.random() - 0.5) * 2, 1.2 + Math.random() * 0.8, -0.1, 3.5);
   }
   verden.opdater(40);                                           // vis hullet med det samme
-  bragEffekt(cx, cy, cz);
+  bragEffekt(cx, cy, cz, R);
   gemSnart();
 }
 // Ild, røg, skub, rystelser og lyd — bruges både alene og når serveren sender "bum"
-function bragEffekt(cx, cy, cz) {
-  const R = 3.3;
+function bragEffekt(cx, cy, cz, R = 3.3) {
   if (ONLINE) {
     for (let i = 0; i < 45; i++) {
       const v = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.3, Math.random() - 0.5).normalize().multiplyScalar(3 + Math.random() * 7);
@@ -1050,7 +1117,7 @@ function bragEffekt(cx, cy, cz) {
   }
   const px = sp.pos.x - cx, py = sp.pos.y + 0.9 - cy, pz = sp.pos.z - cz, afst = Math.max(0.5, Math.hypot(px, py, pz));
   if (afst < R + 4) {
-    const k = (R + 4 - afst) * 2;
+    const k = Math.min(14, (R + 4 - afst) * 2);
     sp.vel.x += px / afst * k; sp.vel.z += pz / afst * k;
     sp.vel.y = Math.max(sp.vel.y, 4 + k * 0.6);
     sp.jord = false;
@@ -1573,7 +1640,7 @@ function tegnFrame(nu) {
   if (iGang && !pause) {
     if (skyd.kører) { skyd.styr(tast, sp.yaw, dt); sp.pitch = Math.max(-1.1, Math.min(0.45, sp.pitch)); } else opdaterSpiller(dt);
     opdaterHak(dt); genfød(dt); opdaterTNT(dt); sim?.tick(dt); opdaterGløder(dt);
-    skyd.opdater(dt); fyr.opdater(dt); brand?.opdater(dt, sp.pos); opdaterKugler(dt); opdaterSpirer(dt); opdaterVulkan(dt);
+    skyd.opdater(dt); fyr.opdater(dt); brand?.opdater(dt, sp.pos); opdaterKugler(dt); opdaterSpirer(dt); opdaterVulkan(dt); opdaterGløddyr(dt);
     if (valgtTing().v === "stjernekaster" && !skyd.kører) {
       stjernedrys(3, 1.6);
       if ((gnistLyd -= dt) <= 0) { gnistLyd = 0.15; Lyd.gnistre(); }
@@ -1587,6 +1654,7 @@ function tegnFrame(nu) {
   tegnPortalSlør(dt);
   opdaterVærktøj(håndFlamme, tid);
   opdaterStykker(dt);
+  opdaterSvampeskyer(dt);
   for (const s of skyer) {                                                        // skyerne driver og følger med
     s.position.x += dt * 0.8;
     if (s.position.x - kamera.position.x > 120) s.position.x -= 240; else if (s.position.x - kamera.position.x < -120) s.position.x += 240;
@@ -1633,7 +1701,8 @@ async function startSpil() {
   luk("start");
   document.body.classList.add("i-gang");
   besked(ONLINE ? `${figurIkon(minFigur)} Velkommen til ${onlineInfo?.navn || cfg.navn}!` : `${cfg.ikon} ${cfg.navn}`, 2400);
-  setTimeout(() => { if (iGang) besked(cfg.id === "dino" ? "🦕 Find dino-æggene, og slå på dem med 🔨 hammeren · pas på, vulkanen ryger!"
+  setTimeout(() => { if (iGang) besked(cfg.id === "atom" ? "☢️ Tænd atombomben med 🔥 eller 🔨 — og løb langt væk! · tryk på de grønne zombier"
+    : cfg.id === "dino" ? "🦕 Find dino-æggene, og slå på dem med 🔨 hammeren · pas på, vulkanen ryger!"
     : cfg.id === "bondegaard" ? "🌱 Plant spirer, og se dem gro · høst med 🔨 hammeren for ⭐"
     : cfg.id === "sky" ? "☁️ Hop på skyerne og trampolinerne · falder du ned, så hop op igen på trampolinerne"
     : cfg.id === "slik" ? "🍭 Hop på skumfiduserne · pas på, floden er af chokolade!"
@@ -1912,4 +1981,4 @@ if (ONLINE) {
 
 if (ONLINE) forberedOnline();
 window.broekraftKlar = true;
-if (location.search.includes("debug")) window.bk = { sp, verden, dyr, tast, cfg, andre, sim, get net() { return net; }, get tale() { return tale; }, get graf() { return graf; }, afspillere, skyd, fyr, tændPortal, visPortalValg, brand, steg: n => { for (let i = 0; i < n; i++) tegnFrame(sidst + 1000 / 60); sidst = performance.now(); } };
+if (location.search.includes("debug")) window.bk = { sp, verden, dyr, tast, cfg, andre, sim, get net() { return net; }, get tale() { return tale; }, get graf() { return graf; }, afspillere, skyd, fyr, tændPortal, visPortalValg, brand, tændSprængstof, steg: n => { for (let i = 0; i < n; i++) tegnFrame(sidst + 1000 / 60); sidst = performance.now(); } };

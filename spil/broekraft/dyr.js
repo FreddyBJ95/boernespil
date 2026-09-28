@@ -5,6 +5,7 @@
 //  rolle: "ben" (svinger når dyret går) · "hoved" (kigger på dig) · "vinge" (basker) · "hale" (logrer)
 //         "arm" (zombie-arme) · "flamme" (vises kun når turbosneglen drøner af sted)
 //  regnbue: true = klodsen skifter farve · lys: true = lyser selv · gennemsigtig: 0.8 = lidt gennemsigtig
+//  glød:  true = dyret lyser grønt og drysser små, grønne gnister (NUKE-banen)
 //  evne:  "flyver" | "hopper" | "turbo" | "flagrer" (falder langsomt) | "zombie" (følger efter dig) | "svæver"
 //         "svømmer" (svømmer rundt i sin egen højde over havbunden)
 //         "jæger" (spurter efter dig og skubber — se skyd.js) · liv: hvor mange skud der skal til (standard 1)
@@ -560,6 +561,34 @@ export const DYR = [
     { s: [4, 4, 5], p: [0, 10, 7], f: "#b86a4a", rolle: "hoved", børn: [
       { s: [2, 1.6, 6], p: [0, 9.5, 12], f: "#ffd23f" }, { s: [1, 3, 5], p: [0, 13, 5], f: "#e03a3a" },
       ...øjne(1.3, 11, 9.6, 1.2),
+    ] },
+  ] },
+  // NUKE-banen: en lysende grøn zombie — den følger efter dig og danser, og tryk gør den til konfetti
+  { id: "atomzombie", navn: "Atomzombie", lyd: "uuuh", fart: 1, evne: "zombie", klap: "puf", glød: true, skala: 0.85, æg: ["#7aff3a", "#1a3a1a"], dele: [
+    { s: [8, 12, 4], p: [0, 18, 0], f: "#2a5a2a" },
+    { s: [8.2, 3, 4.2], p: [0, 15, 0], f: "#7aff3a", lys: true },
+    { s: [4, 12, 4], p: [-2, 6, 0], f: "#3a4a3a", rolle: "ben", fase: 0 },
+    { s: [4, 12, 4], p: [2, 6, 0], f: "#3a4a3a", rolle: "ben", fase: Math.PI },
+    { s: [4, 4, 12], p: [-6, 22, 4], f: "#8aff4a", lys: true, rolle: "arm" },
+    { s: [4, 4, 12], p: [6, 22, 4], f: "#8aff4a", lys: true, rolle: "arm" },
+    { s: [8, 8, 8], p: [0, 28, 0], f: "#8aff4a", lys: true, rolle: "hoved", børn: [
+      { s: [3, 3, 0.4], p: [-2, 29, 4.1], f: "#ffff5a", lys: true }, { s: [1.5, 1.5, 0.5], p: [-2, 28.5, 4.2], f: "#1a3a1a" },
+      { s: [3, 3, 0.4], p: [2, 29, 4.1], f: "#ffff5a", lys: true }, { s: [1.5, 1.5, 0.5], p: [2, 28.5, 4.2], f: "#1a3a1a" },
+      { s: [4, 1, 0.4], p: [0, 25.5, 4.1], f: "#1a3a1a" },
+      { s: [2, 3, 2], p: [-2, 33.5, 0], f: "#5aff2a", lys: true }, { s: [2, 2, 2], p: [2, 33, 1], f: "#5aff2a", lys: true },
+    ] },
+  ] },
+  // NUKE-banen: en stor, lysende frø med tre øjne
+  { id: "atomfro", navn: "Atomfrø", lyd: "kvæk", fart: 2.4, evne: "hopper", glød: true, skala: 1.4, æg: ["#6aff3a", "#ffff5a"], dele: [
+    { s: [8, 6, 8], p: [0, 4, 0], f: "#6aff3a", lys: true },
+    { s: [6, 0.6, 0.3], p: [0, 3, 4.1], f: "#1a5a1a" },
+    { s: [3, 2, 4], p: [-4, 1, -2], f: "#4ae02a", rolle: "ben", fase: 0 }, { s: [3, 2, 4], p: [4, 1, -2], f: "#4ae02a", rolle: "ben", fase: 0 },
+    { s: [2, 2, 2], p: [-3, 1, 3], f: "#4ae02a", rolle: "ben", fase: Math.PI }, { s: [2, 2, 2], p: [3, 1, 3], f: "#4ae02a", rolle: "ben", fase: Math.PI },
+    { s: [8, 3, 3], p: [0, 8, 2.5], f: "#6aff3a", lys: true, rolle: "hoved", børn: [
+      { s: [3, 3, 3], p: [-3, 9.5, 2.5], f: "#6aff3a", lys: true }, { s: [3, 3, 3], p: [3, 9.5, 2.5], f: "#6aff3a", lys: true }, { s: [3, 3, 3], p: [0, 10.5, 2.5], f: "#6aff3a", lys: true },
+      { s: [2, 2, 0.4], p: [-3, 9.8, 4.1], f: "#ffffff" }, { s: [1, 1, 0.5], p: [-3, 9.8, 4.2], f: "#1a1a1a" },
+      { s: [2, 2, 0.4], p: [3, 9.8, 4.1], f: "#ffffff" }, { s: [1, 1, 0.5], p: [3, 9.8, 4.2], f: "#1a1a1a" },
+      { s: [2, 2, 0.4], p: [0, 10.8, 4.1], f: "#ffffff" }, { s: [1, 1, 0.5], p: [0, 10.8, 4.2], f: "#1a1a1a" },
     ] },
   ] },
 ];

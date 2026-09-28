@@ -14,6 +14,7 @@
 //  portal:       lilla portal man kan gå igennem — tændes i en ramme af obsidian med 🔥 tænderen (spil.js)
 //  skat:         en skattekiste — slå den op med 🔨, så springer guldet ud · kanon: tryk med 🔨 eller 🔥, så skyder den
 //  dinoæg:       slå på det med 🔨, så kommer der en dino-unge ud
+//  atom:         en atombombe — tændes med 🔥 eller 🔨 og giver en kæmpe sprængning med en svampesky (spil.js)
 //  Nye blokke skal altid tilføjes NEDERST, så gemte verdener stadig passer.
 //  lyd:          "græs" | "sten" | "træ" | "sand" | "glas" | "uld" | "metal" | "vand" | "lava" | "ild"
 // Et nyt mønster er en funktion i MØNSTRE der tegner 16×16 pixels med set(x, y, farve).
@@ -166,6 +167,12 @@ export const BLOKKE = [
   { navn: "Dinoæg", tekstur: "dinoæg", dinoæg: true, lyd: "uld" },
   { navn: "Rede", tekstur: { top: "redeTop", side: "rede", bund: "rede" }, lyd: "græs" },
   { navn: "Vulkansten", tekstur: "vulkansten", lyd: "sten" },
+  // --- NUKE-banen ---
+  { navn: "Atombombe", tekstur: { top: "atombombeTop", side: "atombombe", bund: "atombombeTop" }, atom: true, lyd: "metal" },
+  { navn: "Atomtønde", tekstur: { top: "atomtøndeTop", side: "atomtønde", bund: "atomtøndeTop" }, tnt: true, lyd: "metal" },
+  { navn: "Beton", tekstur: "beton", lyd: "sten" },
+  { navn: "Aske", tekstur: "aske", lyd: "sand" },
+  { navn: "Atomslim", tekstur: "atomslim", lyser: true, lyd: "vand" },
 ];
 
 export const ID = {};
@@ -492,6 +499,32 @@ const MØNSTRE = {
     for (let x = 4; x <= 11; x++) set(x, 14, hex("#a81e16"));
     set(7, 11, hex("#ffd23f")); set(8, 11, hex("#ffd23f"));
   },
+  // --- NUKE-banen ---
+  atombombe: (set, r) => {
+    fyld(set, r, "#f5d02a", 0.06);
+    alle((x, y) => { if (x === 0 || x === 15 || y === 0 || y === 15) set(x, y, hex("#1a1a1a")); });
+    strålingstegn(set, 8, 8, 1, "#1a1a1a");
+  },
+  atombombeTop: set => alle((x, y) => set(x, y, hex(((x + y) >> 2) % 2 ? "#1a1a1a" : "#f5d02a"))),
+  atomtønde: (set, r) => {
+    alle((x, y) => set(x, y, lys(hex(y === 2 || y === 13 ? "#8a7a1a" : x < 2 || x > 13 ? "#c8a820" : "#f2d030"), 1 + (r() - 0.5) * 0.08)));
+    strålingstegn(set, 8, 8, 0.62, "#1a1a1a");
+  },
+  atomtøndeTop: (set, r) => alle((x, y) => {
+    const kant = Math.hypot(x - 7.5, y - 7.5) > 6.5, boble = (x * 7 + y * 3) % 11 === 0;
+    set(x, y, lys(hex(kant ? "#c8a820" : boble ? "#d8ffb0" : "#6aff3a"), 1 + (r() - 0.5) * 0.1));
+  }),
+  beton: (set, r) => {
+    fyld(set, r, "#a8a8a0", 0.1); prik(set, r, ["#909088", "#bcbcb4"], 26);
+    let x = Math.floor(r() * 16), y = 0;
+    while (y < T) { set(x, y, hex("#6a6a64")); y++; x = Math.max(0, Math.min(15, x + Math.round((r() - 0.5) * 2))); if (r() < 0.25) break; }
+  },
+  aske: (set, r) => { fyld(set, r, "#5e5e5a", 0.18); prik(set, r, ["#46464a", "#7a7a74", "#8a8a80"], 40); },
+  atomslim: (set, r) => {
+    fyld(set, r, "#4ae02a", 0.14);
+    for (let i = 0; i < 7; i++) { const x = Math.floor(r() * 14), y = Math.floor(r() * 14); set(x, y, hex("#d8ffb0")); set(x + 1, y, hex("#a8ff7a")); set(x, y + 1, hex("#a8ff7a")); }
+    prik(set, r, ["#2aa81a"], 10);
+  },
   // --- Dinodalen ---
   junglestamme: (set, r) => alle((x, y) => set(x, y, lys(hex(x % 4 === 0 ? "#4a3a1e" : (x + y * 3) % 11 === 0 ? "#5a7a2a" : "#6e5230"), 1 + (r() - 0.5) * 0.18))),
   jungleTop: (set, r) => alle((x, y) => { const d = Math.max(Math.abs(x - 7.5), Math.abs(y - 7.5)); set(x, y, lys(hex(d > 6.5 ? "#4a3a1e" : Math.floor(d) % 2 ? "#a88a58" : "#8a6e44"), 1 + (r() - 0.5) * 0.1)); }),
@@ -679,6 +712,16 @@ function portalRamme(set, fase, r) {
     set(x, y, PORTALFARVER[Math.floor(t * PORTALFARVER.length)], 185 + Math.round(t * 65));
   });
   for (let i = 0; i < 4; i++) set(Math.floor(r() * T), Math.floor(r() * T), hex("#f4e4ff"), 255);   // små stjerneglimt
+}
+
+// Strålingstegnet: en prik i midten og tre vinger (s = størrelse, 1 = hele blokken)
+function strålingstegn(set, cx, cy, s, farve) {
+  alle((x, y) => {
+    const dx = (x + 0.5 - cx) / s, dy = (y + 0.5 - cy) / s, r = Math.hypot(dx, dy);
+    const v = (Math.atan2(-dy, dx) * 180 / Math.PI + 360) % 360;
+    const vinge = r > 2.3 && r < 6.4 && [90, 210, 330].some(m => Math.abs(((v - m + 540) % 360) - 180) < 30);
+    if (r < 1.5 || vinge) set(x, y, hex(farve));
+  });
 }
 
 // Én flamme-tegning (16×16). Hver ramme får sin egen tilfældighed, så ilden blafrer.
