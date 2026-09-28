@@ -13,6 +13,7 @@
 //  glat:         man glider på den (is) · afgrøde: høstes med 🔨 og giver ⭐ (en spire gror til en afgrøde)
 //  portal:       lilla portal man kan gå igennem — tændes i en ramme af obsidian med 🔥 tænderen (spil.js)
 //  skat:         en skattekiste — slå den op med 🔨, så springer guldet ud · kanon: tryk med 🔨 eller 🔥, så skyder den
+//  dinoæg:       slå på det med 🔨, så kommer der en dino-unge ud
 //  Nye blokke skal altid tilføjes NEDERST, så gemte verdener stadig passer.
 //  lyd:          "græs" | "sten" | "træ" | "sand" | "glas" | "uld" | "metal" | "vand" | "lava" | "ild"
 // Et nyt mønster er en funktion i MØNSTRE der tegner 16×16 pixels med set(x, y, farve).
@@ -157,6 +158,14 @@ export const BLOKKE = [
   { navn: "Høballe", tekstur: { top: "høballeTop", side: "høballe", bund: "høballeTop" }, lyd: "græs" },
   { navn: "Hegn", tekstur: "hegn", gennemsigtig: true, lyd: "træ" },
   { navn: "Ladetræ", tekstur: "ladetræ", lyd: "træ" },
+  // --- Dinodalen ---
+  { navn: "Junglestamme", tekstur: { top: "jungleTop", side: "junglestamme", bund: "jungleTop" }, lyd: "træ" },
+  { navn: "Jungleblade", tekstur: "jungleblade", lyd: "græs" },
+  { navn: "Bregne", tekstur: "bregne", kryds: true, lyd: "græs" },
+  { navn: "Lian", tekstur: "lian", kryds: true, lyd: "græs" },
+  { navn: "Dinoæg", tekstur: "dinoæg", dinoæg: true, lyd: "uld" },
+  { navn: "Rede", tekstur: { top: "redeTop", side: "rede", bund: "rede" }, lyd: "græs" },
+  { navn: "Vulkansten", tekstur: "vulkansten", lyd: "sten" },
 ];
 
 export const ID = {};
@@ -483,6 +492,34 @@ const MØNSTRE = {
     for (let x = 4; x <= 11; x++) set(x, 14, hex("#a81e16"));
     set(7, 11, hex("#ffd23f")); set(8, 11, hex("#ffd23f"));
   },
+  // --- Dinodalen ---
+  junglestamme: (set, r) => alle((x, y) => set(x, y, lys(hex(x % 4 === 0 ? "#4a3a1e" : (x + y * 3) % 11 === 0 ? "#5a7a2a" : "#6e5230"), 1 + (r() - 0.5) * 0.18))),
+  jungleTop: (set, r) => alle((x, y) => { const d = Math.max(Math.abs(x - 7.5), Math.abs(y - 7.5)); set(x, y, lys(hex(d > 6.5 ? "#4a3a1e" : Math.floor(d) % 2 ? "#a88a58" : "#8a6e44"), 1 + (r() - 0.5) * 0.1)); }),
+  jungleblade: (set, r) => { fyld(set, r, "#2a7a2a", 0.4); prik(set, r, ["#1a5a1e", "#3fa03a", "#5ac04a", "#185018"], 50); },
+  bregne: (set, r) => {
+    alle((x, y) => set(x, y, [0, 0, 0], 0));
+    for (const [x0, v] of [[7, -0.35], [8, 0.35], [7, 0], [8, 0.7], [7, -0.7]]) for (let i = 0; i < 12; i++) {
+      const x = Math.round(x0 + Math.sin(v) * i), y = 15 - Math.round(Math.cos(v) * i);
+      if (x < 0 || x > 15 || y < 0) continue;
+      set(x, y, lys(hex("#3f9b35"), 1 + (r() - 0.5) * 0.15));
+      if (i > 2 && i % 2 === 0) { if (x > 0) set(x - 1, y, hex("#5ac04a")); if (x < 15) set(x + 1, y, hex("#5ac04a")); }
+    }
+  },
+  lian: (set, r) => {
+    alle((x, y) => set(x, y, [0, 0, 0], 0));
+    for (const x0 of [3, 8, 12]) for (let y = 0; y < T; y++) {
+      const x = x0 + Math.round(Math.sin(y * 0.6 + x0) * 1);
+      set(x, y, lys(hex("#3a7a2a"), 1 + (r() - 0.5) * 0.2));
+      if (y % 4 === 1) { set(Math.min(15, x + 1), y, hex("#5ac04a")); set(Math.max(0, x - 1), y + 1 < T ? y + 1 : y, hex("#5ac04a")); }
+    }
+  },
+  dinoæg: (set, r) => {
+    fyld(set, r, "#f4ecd0", 0.06);
+    for (const [px, py, pr] of [[4, 4, 2], [11, 3, 1.5], [7, 9, 2.2], [12, 11, 1.8], [3, 12, 1.4]]) alle((x, y) => { if (Math.hypot(x - px, y - py) < pr) set(x, y, lys(hex("#5aa84a"), 1 + (r() - 0.5) * 0.1)); });
+  },
+  rede: (set, r) => alle((x, y) => set(x, y, lys(hex((x * 2 + y) % 5 === 0 ? "#6e4a24" : (x + y * 2) % 7 === 0 ? "#d8b870" : "#a8803e"), 1 + (r() - 0.5) * 0.2))),
+  redeTop: (set, r) => alle((x, y) => { const d = Math.hypot(x - 7.5, y - 7.5); set(x, y, lys(hex(d < 4 ? "#6e4a24" : (x + y) % 3 ? "#a8803e" : "#d8b870"), 1 + (r() - 0.5) * 0.2)); }),
+  vulkansten: (set, r) => { fyld(set, r, "#3a302c", 0.25); prik(set, r, ["#2a2220", "#4a3e38", "#8a2a1a", "#5a4a42"], 40); },
   // --- Bondegården ---
   muld: (set, r) => alle((x, y) => set(x, y, lys(hex(y % 4 === 0 ? "#3a2412" : y % 4 === 1 ? "#6e4424" : "#5a3a1e"), 1 + (r() - 0.5) * 0.18))),
   spire: set => {

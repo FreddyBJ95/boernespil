@@ -400,6 +400,13 @@ export function skat() {                    // kling-kling: guldmønter springer
   [1568, 2093, 1760, 2349, 2637, 3136].forEach((f, i) => tone(f, t + i * 0.07, 0.25, "triangle", 0.09));
   sus(t, 0.6, 6000, 9000, 0.06, "highpass", 0.7);
 }
+// ---------- Dinodalen ----------
+export function vulkan(afstand = 0) {      // en dyb rumlen, når vulkanen går i udbrud
+  if (!ac) return;
+  const v = Math.max(0.15, 1 - afstand / 90), t = nu();
+  sus(t, 2.2, 300, 60, 0.35 * v, "lowpass", 0.8);
+  glid(70, 40, t, 2, { type: "sawtooth", vol: 0.12 * v, filter: 200, q: 1 });
+}
 // ---------- Bondegården ----------
 export function groet(afstand = 0) {       // plop — spiren er blevet til en afgrøde
   if (!ac) return;

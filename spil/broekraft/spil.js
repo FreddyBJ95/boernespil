@@ -531,6 +531,7 @@ function knus(hit, hammer = false) {
   const b = BLOKKE[hit.id];
   if (b.skat) skatFundet(hit);                                   // en skattekiste springer op!
   if (b.afgrøde) høstet(hit);                                    // hvede, gulerod eller solsikke
+  if (b.dinoæg) klækÆg(hit);                                     // en dino-unge kommer ud
   if (b.væske || b.ild) {
     stænk(hit.x + 0.5, hit.y + 0.7, hit.z + 0.5, atlas.farve(hit.id));
     if (b.væske) Lyd.plask(); else Lyd.knitre();
@@ -590,6 +591,33 @@ function høstet({ x, y, z }) {
 if (!ONLINE) for (let i = 0; i < verden.data.length; i++) if (verden.data[i] === ID.Spire) {   // spirer fra sidst gror videre
   const lag = verden.BX * verden.BZ;
   plantSpire(i % verden.BX, Math.floor(i / lag), Math.floor((i % lag) / verden.BX));
+}
+
+// ---------- Dinodalen: dino-æg, der klækkes, og en vulkan, der ryger og af og til går i udbrud (kun pynt) ----------
+function klækÆg({ x, y, z }) {
+  const d = nytDyr(dyrDef("dinounge"), x + 0.5, y + 0.01, z + 0.5);
+  d.klapTid = 0.5; d.vel.y = 5;
+  Lyd.æg(); setTimeout(() => Lyd.dyrLyd("pip"), 350);
+  nyePoint(2);
+  const p = tilSkærm({ x: x + 0.5, y: y + 0.8, z: z + 0.5 }); E.konfetti(p.x, p.y, { antal: 36 });
+  besked("🦕 En dino-unge kom ud af ægget!", 2600);
+}
+const VULKAN = cfg.vulkan ? cfg.vulkan(VX, VZ) : null;
+let vulkanT = 20, udbrud = 0, vulkanRøgT = 0;
+function opdaterVulkan(dt) {
+  if (!VULKAN) return;
+  const [vx, vz] = VULKAN, x = vx + 0.5, z = vz + 0.5, y = verden.topY(vx, vz) + 1.5, afst = Math.hypot(x - sp.pos.x, z - sp.pos.z);
+  if (afst > 110) return;
+  if ((vulkanRøgT -= dt) <= 0) {                                   // røgen stiger hele tiden
+    vulkanRøgT = udbrud > 0 ? 0.03 : 0.14;
+    partikel(x + (Math.random() - 0.5) * 3, y + 1, z + (Math.random() - 0.5) * 3, RØGMØRK, (Math.random() - 0.5) * 0.8, 3 + Math.random() * 2, (Math.random() - 0.5) * 0.8, 4, -0.1, 7);
+  }
+  if ((vulkanT -= dt) <= 0) { vulkanT = 30 + Math.random() * 25; udbrud = 3; Lyd.vulkan(afst); if (afst < 40) rystelse = Math.max(rystelse, 0.4); }
+  if (udbrud > 0) {                                                // gnister og lavaklatter skydes op
+    udbrud -= dt;
+    for (let i = 0; i < 4; i++) partikel(x + (Math.random() - 0.5) * 2, y, z + (Math.random() - 0.5) * 2, ILD[Math.floor(Math.random() * ILD.length)],
+      (Math.random() - 0.5) * 9, 12 + Math.random() * 10, (Math.random() - 0.5) * 9, 2 + Math.random(), 0.6, 2.2);
+  }
 }
 
 // ---------- Piratøen: skattekister fulde af guld, og kanoner der skyder kanonkugler ud over vandet ----------
@@ -1545,7 +1573,7 @@ function tegnFrame(nu) {
   if (iGang && !pause) {
     if (skyd.kører) { skyd.styr(tast, sp.yaw, dt); sp.pitch = Math.max(-1.1, Math.min(0.45, sp.pitch)); } else opdaterSpiller(dt);
     opdaterHak(dt); genfød(dt); opdaterTNT(dt); sim?.tick(dt); opdaterGløder(dt);
-    skyd.opdater(dt); fyr.opdater(dt); brand?.opdater(dt, sp.pos); opdaterKugler(dt); opdaterSpirer(dt);
+    skyd.opdater(dt); fyr.opdater(dt); brand?.opdater(dt, sp.pos); opdaterKugler(dt); opdaterSpirer(dt); opdaterVulkan(dt);
     if (valgtTing().v === "stjernekaster" && !skyd.kører) {
       stjernedrys(3, 1.6);
       if ((gnistLyd -= dt) <= 0) { gnistLyd = 0.15; Lyd.gnistre(); }
@@ -1605,7 +1633,8 @@ async function startSpil() {
   luk("start");
   document.body.classList.add("i-gang");
   besked(ONLINE ? `${figurIkon(minFigur)} Velkommen til ${onlineInfo?.navn || cfg.navn}!` : `${cfg.ikon} ${cfg.navn}`, 2400);
-  setTimeout(() => { if (iGang) besked(cfg.id === "bondegaard" ? "🌱 Plant spirer, og se dem gro · høst med 🔨 hammeren for ⭐"
+  setTimeout(() => { if (iGang) besked(cfg.id === "dino" ? "🦕 Find dino-æggene, og slå på dem med 🔨 hammeren · pas på, vulkanen ryger!"
+    : cfg.id === "bondegaard" ? "🌱 Plant spirer, og se dem gro · høst med 🔨 hammeren for ⭐"
     : cfg.id === "sky" ? "☁️ Hop på skyerne og trampolinerne · falder du ned, så hop op igen på trampolinerne"
     : cfg.id === "slik" ? "🍭 Hop på skumfiduserne · pas på, floden er af chokolade!"
     : cfg.undervand ? "🐠 Du kan svømme overalt! ⬆ svøm op · ⬇ dyk ned · find skattekisterne"

@@ -13,7 +13,11 @@
 //  brand:   huse, der af og til brænder (brand.js) · point: vis ⭐-tælleren
 //  undervand: hele verdenen er under vandet — man svømmer overalt, og overfladen er langt oppe
 //  vand:    "chokolade" = floderne og havet er af chokolade
+//  vulkan:  (BX, BZ) => [x, z] — hvor vulkanen står (den ryger og går af og til i udbrud i spil.js)
 //  generer: opskriften på terrænet — får værktøjer fra verden.js (terræn, pynt, sæt, hent, R, støj …)
+
+// Hvor vulkanen i Dinodalen står (bruges både af opskriften og af spil.js)
+const dinoVulkan = (BX, BZ) => [Math.min(BX - 22, BX / 2 + 30), Math.max(22, BZ / 2 - 28)];
 
 export const VERDENER = [
   {
@@ -1126,6 +1130,82 @@ export const VERDENER = [
         a.sæt(x, h + 6, z, ID.Blade);
       }
       a.pynt(a.antal(50), () => (R() < 0.5 ? ID["Rød blomst"] : ID["Gul blomst"]), [ID["Græs"]]);
+    },
+  },
+
+  {
+    id: "dino", navn: "Dinodalen", ikon: "🦕", tekst: "En jungle med kæmpe træer, en vulkan og venlige dinosaurer. Find dino-æggene, og slå på dem med hammeren!",
+    himmel: ["#6ab0e0", "#e8f4d8"], tåge: [30, 84], hav: "#3a9ab8", sol: "#fff6b0", skyer: "#ffffff",
+    lys: ["#ffffff", "#5a8a3a", 2.1, 1.3], stemning: "rolig", tyngde: 28,
+    størrelse: [144, 48, 144],
+    dyr: ["langhals", "triceratops", "triceratops", "dinounge", "dinounge", "flyveogle", "flyveogle"], antal: 12,
+    point: true, vulkan: dinoVulkan,
+    hotbar: ["Græs", "Junglestamme", "Jungleblade", "Bregne", "Vulkansten", "Dinoæg", "Rede", "v:vand", "æg:dinounge"],
+    vis: ["Dinoæg", "Bregne", "Vulkansten"],
+    hent: ["Lader junglen gro…", "Varmer vulkanen op…", "Lægger dino-æg…", "Vækker langhalsen…"],
+    generer(a) {
+      const { R, støj, ID, BX, BY, BZ, top } = a, cx = BX / 2, cz = BZ / 2, h0 = (x, z) => top[x + z * BX];
+      const [vx, vz] = dinoVulkan(BX, BZ), VR = 17, VH = 24, rand = 10 + (1 - 3.5 / VR) * VH;
+      a.terræn((x, z) => {
+        const kant = Math.min(1, Math.min(x, z, BX - 1 - x, BZ - 1 - z) / 10);
+        const midt = Math.max(0, 1 - Math.hypot(x - cx, z - cz) / 10);
+        let h = 10 + (støj(x / 18, z / 18) * 8 + støj(x / 6 + 60, z / 6) * 2 - 5) * (1 - midt);
+        const dv = Math.hypot(x - vx, z - vz);
+        if (dv < VR) h = Math.max(h, 10 + (1 - dv / VR) * VH);                          // vulkanen
+        if (dv < 3.5) h = rand - 3;                                                      // krateret
+        return Math.round(6 + (h - 6) * kant);
+      }, (x, z, y, h) => {
+        if (y === 0) return ID.Bundsten;
+        if (Math.hypot(x - vx, z - vz) < VR * 0.8) return ID.Vulkansten;
+        return y < h - 3 ? ID.Sten : y < h ? ID.Jord : ID["Græs"];
+      });
+      const søjle = (x, z, y0, y1, blok) => { for (let y = y0; y <= y1; y++) a.sæt(x, y, z, blok); };
+      // Lava i krateret
+      for (let x = Math.floor(vx - 3); x <= vx + 3; x++) for (let z = Math.floor(vz - 3); z <= vz + 3; z++) {
+        if (Math.hypot(x - vx, z - vz) >= 3.2) continue;
+        for (let y = h0(x, z) + 1; y < Math.min(BY - 6, Math.round(rand)); y++) a.sæt(x, y, z, ID.Lava);
+      }
+      const iVulkan = (x, z, ekstra = 0) => Math.hypot(x - vx, z - vz) < VR + ekstra;
+      // Kæmpe junglertræer med tyk stamme, en stor krone og lianer, der hænger ned
+      for (let n = 0; n < a.antal(22); n++) {
+        const x = 4 + Math.floor(R() * (BX - 9)), z = 4 + Math.floor(R() * (BZ - 9)), h = h0(x, z);
+        if (a.hent(x, h, z) !== ID["Græs"] || a.hent(x, h + 1, z) || a.nærStart(x, z, 9) || iVulkan(x, z, 4)) continue;
+        const hs = 8 + Math.floor(R() * 6), ty = h + hs;
+        for (const [dx, dz] of [[0, 0], [1, 0], [0, 1], [1, 1]]) søjle(x + dx, z + dz, h0(x + dx, z + dz) + 1, ty, ID.Junglestamme);
+        const r = 3 + Math.floor(R() * 2);
+        for (let ix = -r; ix <= r + 1; ix++) for (let iz = -r; iz <= r + 1; iz++) for (let dy = 0; dy <= 2; dy++) {
+          const d = Math.hypot(ix - 0.5, iz - 0.5) + dy * 0.9;
+          if (d <= r + 0.3 && !a.hent(x + ix, ty + dy, z + iz)) a.sæt(x + ix, ty + dy, z + iz, ID.Jungleblade);
+        }
+        for (let k = 0; k < 7; k++) {                                                   // lianer
+          const v = R() * Math.PI * 2, lx = Math.round(x + 0.5 + Math.cos(v) * r), lz = Math.round(z + 0.5 + Math.sin(v) * r), l = 2 + Math.floor(R() * 4);
+          if (a.hent(lx, ty, lz) !== ID.Jungleblade) continue;
+          for (let y = ty - 1; y >= ty - l && !a.hent(lx, y, lz); y--) a.sæt(lx, y, lz, ID.Lian);
+        }
+      }
+      // Små buske
+      for (let n = 0; n < a.antal(40); n++) {
+        const x = 3 + Math.floor(R() * (BX - 6)), z = 3 + Math.floor(R() * (BZ - 6)), h = h0(x, z);
+        if (a.hent(x, h, z) !== ID["Græs"] || a.hent(x, h + 1, z) || a.nærStart(x, z, 6) || iVulkan(x, z)) continue;
+        a.sæt(x, h + 1, z, ID.Junglestamme);
+        for (let ix = -1; ix <= 1; ix++) for (let iz = -1; iz <= 1; iz++) if (!a.hent(x + ix, h + 2, z + iz)) a.sæt(x + ix, h + 2, z + iz, ID.Jungleblade);
+        a.sæt(x, h + 3, z, ID.Jungleblade);
+      }
+      // Dino-reder med æg — én lige ved startstedet
+      const rede = (x, z) => {
+        const h = h0(x, z);
+        for (let ix = -1; ix <= 1; ix++) for (let iz = -1; iz <= 1; iz++) { a.sæt(x + ix, h, z + iz, ID.Rede); for (let y = h + 1; y <= h + 2; y++) if (a.hent(x + ix, y, z + iz) !== ID.Junglestamme) a.sæt(x + ix, y, z + iz, 0); }
+        a.sæt(x, h + 1, z, ID.Dinoæg);
+        if (R() < 0.7) a.sæt(x + 1, h + 1, z, ID.Dinoæg);
+        if (R() < 0.5) a.sæt(x, h + 1, z + 1, ID.Dinoæg);
+      };
+      rede(cx + 5, cz + 4);
+      for (let n = 0; n < a.antal(5); n++) {
+        const x = 6 + Math.floor(R() * (BX - 12)), z = 6 + Math.floor(R() * (BZ - 12));
+        if (!a.nærStart(x, z, 12) && !iVulkan(x, z, 3) && a.hent(x, h0(x, z), z) === ID["Græs"]) rede(x, z);
+      }
+      a.pynt(a.antal(140), ID.Bregne, [ID["Græs"]]);
+      a.pynt(a.antal(20), () => (R() < 0.5 ? ID["Rød blomst"] : ID["Gul blomst"]), [ID["Græs"]]);
     },
   },
 ];

@@ -512,6 +512,56 @@ export const DYR = [
       ...øjne(1.1, 7.2, 6.1, 1.1),
     ] },
   ] },
+  // Dinodalen: en kæmpe, venlig langhals — den strækker halsen hen mod dig
+  { id: "langhals", navn: "Langhals", lyd: "hval", fart: 0.8, æg: ["#7ab86a", "#4a8a3a"], dele: [
+    { s: [18, 15, 26], p: [0, 27, 0], f: "#7ab86a" },
+    { s: [18.4, 5, 20], p: [0, 22, 1], f: "#a8d890" },
+    ...fireBen([5, 20, 5], 6, 10, 9, "#6aa85a"),
+    { s: [5, 5, 22], p: [0, 28, -23], f: "#7ab86a", rolle: "hale" },
+    { s: [6, 26, 6], p: [0, 44, 13], f: "#7ab86a", rolle: "hoved", børn: [
+      { s: [7, 6, 10], p: [0, 59, 17], f: "#7ab86a" },
+      ...øjne(2.4, 61, 22.1, 1.8),
+      { s: [4, 0.8, 0.4], p: [0, 57.5, 22.1], f: "#3a5a2a" },
+      { s: [1.5, 1, 0.4], p: [-2.5, 58.5, 22.1], f: "#ffb0c8" }, { s: [1.5, 1, 0.4], p: [2.5, 58.5, 22.1], f: "#ffb0c8" },
+    ] },
+  ] },
+  // Dinodalen: en triceratops med tre horn og en stor krave
+  { id: "triceratops", navn: "Triceratops", lyd: "rawr", fart: 1.2, æg: ["#c8884a", "#f4ecd0"], dele: [
+    { s: [14, 12, 20], p: [0, 14, 0], f: "#c8884a" },
+    { s: [14.4, 3, 16], p: [0, 10, 1], f: "#e8b070" },
+    ...fireBen([4, 9, 4], 4.5, 4.5, 6.5, "#a86a38"),
+    { s: [4, 4, 10], p: [0, 13, -14], f: "#c8884a", rolle: "hale" },
+    { s: [10, 9, 10], p: [0, 15, 13], f: "#c8884a", rolle: "hoved", børn: [
+      { s: [16, 12, 2], p: [0, 19, 9], f: "#e87a3a" }, { s: [14, 2, 2.2], p: [0, 24.5, 9], f: "#f4ecd0" },
+      { s: [1.5, 1.5, 8], p: [-3, 20, 20], f: "#f4ecd0" }, { s: [1.5, 1.5, 8], p: [3, 20, 20], f: "#f4ecd0" },
+      { s: [1.5, 3, 1.5], p: [0, 16, 18.5], f: "#f4ecd0" },
+      ...øjne(3, 17, 18.1, 2),
+      { s: [6, 1, 0.4], p: [0, 12, 18.1], f: "#6a3a1a" },
+    ] },
+  ] },
+  // Dinodalen: en lille dino-unge med store øjne — den kommer ud af ægget
+  { id: "dinounge", navn: "Dino-unge", lyd: "pip", fart: 2.2, æg: ["#f4ecd0", "#5aa84a"], dele: [
+    { s: [5, 5, 7], p: [0, 5.5, 0], f: "#6ad05a" },
+    { s: [4, 2, 5], p: [0, 3.5, 0.5], f: "#d8f5a0" },
+    { s: [2, 3, 2], p: [-1.6, 1.5, 0], f: "#4cb748", rolle: "ben", fase: 0 }, { s: [2, 3, 2], p: [1.6, 1.5, 0], f: "#4cb748", rolle: "ben", fase: Math.PI },
+    { s: [2, 2, 6], p: [0, 5, -6], f: "#6ad05a", rolle: "hale" },
+    { s: [6, 6, 6], p: [0, 10, 3.5], f: "#6ad05a", rolle: "hoved", børn: [
+      ...øjne(1.6, 11, 6.6, 2.2),
+      { s: [3, 0.6, 0.4], p: [0, 8.2, 6.6], f: "#2a5a2a" },
+      { s: [4, 1.5, 2], p: [0, 13.5, 3], f: "#f4ecd0" },
+    ] },
+  ] },
+  // Dinodalen: en flyveøgle, der svæver rundt over junglen
+  { id: "flyveogle", navn: "Flyveøgle", lyd: "kra", fart: 2, evne: "flyver", æg: ["#b86a4a", "#ffd23f"], dele: [
+    { s: [4, 4, 10], p: [0, 8, 0], f: "#b86a4a" },
+    { s: [16, 1, 8], p: [-10, 10, 0], f: "#d88a5a", rolle: "vinge" }, { s: [16, 1, 8], p: [10, 10, 0], f: "#d88a5a", rolle: "vinge" },
+    { s: [1, 3, 1], p: [-1.2, 4.5, -1], f: "#8a4a2a", rolle: "ben", fase: 0 }, { s: [1, 3, 1], p: [1.2, 4.5, -1], f: "#8a4a2a", rolle: "ben", fase: Math.PI },
+    { s: [1.5, 1.5, 5], p: [0, 8, -7], f: "#b86a4a", rolle: "hale" },
+    { s: [4, 4, 5], p: [0, 10, 7], f: "#b86a4a", rolle: "hoved", børn: [
+      { s: [2, 1.6, 6], p: [0, 9.5, 12], f: "#ffd23f" }, { s: [1, 3, 5], p: [0, 13, 5], f: "#e03a3a" },
+      ...øjne(1.3, 11, 9.6, 1.2),
+    ] },
+  ] },
 ];
 // ---------- Byg et dyr af klodser ----------
 const kasse = new THREE.BoxGeometry(1, 1, 1);
