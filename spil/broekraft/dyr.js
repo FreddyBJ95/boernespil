@@ -344,6 +344,33 @@ export const DYR = [
       { s: [3, 0.2, 0.2], p: [-2.5, 9, 8.8], f: "#ffffff" }, { s: [3, 0.2, 0.2], p: [2.5, 9, 8.8], f: "#ffffff" },
     ] },
   ] },
+  // Piratøen: en farvestrålende papegøje, der letter af og til
+  { id: "papegoje", navn: "Papegøje", lyd: "kra", fart: 1.4, evne: "flyver", æg: ["#e03a3a", "#3a7be0"], dele: [
+    { s: [5, 7, 6], p: [0, 7, 0], f: "#e03a3a" },
+    { s: [1, 3, 1], p: [-1.2, 2, 0.5], f: "#5a5a5a", rolle: "ben", fase: 0 }, { s: [1, 3, 1], p: [1.2, 2, 0.5], f: "#5a5a5a", rolle: "ben", fase: Math.PI },
+    { s: [1, 6, 6], p: [-3, 7.5, -0.5], f: "#3a7be0", rolle: "vinge" }, { s: [1, 6, 6], p: [3, 7.5, -0.5], f: "#3a7be0", rolle: "vinge" },
+    { s: [1.2, 2, 5], p: [-3.1, 5.5, -1], f: "#ffd23f" }, { s: [1.2, 2, 5], p: [3.1, 5.5, -1], f: "#ffd23f" },
+    { s: [3, 1, 8], p: [0, 4.5, -6], f: "#3a7be0", rolle: "hale" },
+    { s: [5, 5, 5], p: [0, 12.5, 1.5], f: "#e03a3a", rolle: "hoved", børn: [
+      { s: [2.4, 2.6, 2.4], p: [0, 11.5, 4.8], f: "#f2e6b0" }, { s: [1.6, 1.4, 1.2], p: [0, 10.2, 5.4], f: "#2a2a2a" },
+      { s: [4.2, 2, 0.4], p: [0, 13, 4.1], f: "#ffffff" },
+      ...øjne(1.3, 13, 4.2, 1.2),
+    ] },
+  ] },
+  // Piratøen: en rød krabbe med klosakse, der vinker
+  { id: "krabbe", navn: "Krabbe", lyd: "knips", fart: 1.8, æg: ["#e8502a", "#ffd9c8"], dele: [
+    { s: [9, 3, 6], p: [0, 3, 0], f: "#e8502a" },
+    { s: [9.2, 1, 6.2], p: [0, 4.2, 0], f: "#ff7a4a" },
+    ...[-1, 1].flatMap(s => [-1.5, 0.5, 2.5].map((z, i) => ({ s: [1, 3, 1], p: [s * 4.2, 1.2, z - 1], f: "#c83a1a", rolle: "ben", fase: i * 2 + (s > 0 ? Math.PI : 0) }))),
+    { s: [3, 3, 3], p: [-5, 4, 4], f: "#e8502a", rolle: "vinge" }, { s: [3, 3, 3], p: [5, 4, 4], f: "#e8502a", rolle: "vinge" },
+    { s: [1.2, 3, 1.2], p: [-5.5, 4, 6], f: "#c83a1a" }, { s: [1.2, 3, 1.2], p: [5.5, 4, 6], f: "#c83a1a" },
+    { s: [4, 3, 1], p: [0, 6, 2.5], f: "#e8502a", rolle: "hoved", børn: [
+      { s: [0.8, 3, 0.8], p: [-1.5, 7, 2.5], f: "#c83a1a" }, { s: [0.8, 3, 0.8], p: [1.5, 7, 2.5], f: "#c83a1a" },
+      { s: [1.8, 1.8, 1.8], p: [-1.5, 9, 2.5], f: "#ffffff" }, { s: [1.8, 1.8, 1.8], p: [1.5, 9, 2.5], f: "#ffffff" },
+      { s: [1, 1, 0.4], p: [-1.5, 9, 3.5], f: "#1a1a1a" }, { s: [1, 1, 0.4], p: [1.5, 9, 3.5], f: "#1a1a1a" },
+      { s: [2, 0.6, 0.4], p: [0, 4.8, 3.1], f: "#8a1a0a" },
+    ] },
+  ] },
 ];
 // ---------- Byg et dyr af klodser ----------
 const kasse = new THREE.BoxGeometry(1, 1, 1);

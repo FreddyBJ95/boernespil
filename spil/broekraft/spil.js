@@ -433,6 +433,7 @@ function tryk(x, y) {
   if (!hit) return;
   if (valgtTing().hammer) {                                      // hammeren fjerner blokken med det samme
     if (BLOKKE[hit.id].fyrværkeri) { tændFyrkasse(hit); return; }        // fyrværkeri-kassen går i gang
+    if (BLOKKE[hit.id].kanon) { affyrKanon(hit); return; }               // bum — kanonkuglen flyver
     if (BLOKKE[hit.id].tnt) {                                     // … men TNT bliver tændt!
       if (ONLINE) { net?.tænd(hit.x, hit.y, hit.z); tændTNT(hit.x, hit.y, hit.z, 2.2, true); } else tændTNT(hit.x, hit.y, hit.z);
       sving = 1; return;
@@ -498,6 +499,7 @@ function knus(hit, hammer = false) {
     if (over && BLOKKE[over].kryds) verden.sæt(hit.x, hit.y + 1, hit.z, 0);        // blomsten ovenpå ryger med
   }
   const b = BLOKKE[hit.id];
+  if (b.skat) skatFundet(hit);                                   // en skattekiste springer op!
   if (b.væske || b.ild) {
     stænk(hit.x + 0.5, hit.y + 0.7, hit.z + 0.5, atlas.farve(hit.id));
     if (b.væske) Lyd.plask(); else Lyd.knitre();
@@ -514,6 +516,7 @@ const VANDFARVE = new THREE.Color("#8fc4ff"), DAMP = new THREE.Color("#f2f2f2");
 function brugVærktøj(v, hit) {
   const b = BLOKKE[hit.id];
   if (v === "tænder" && b.fyrværkeri) { tændFyrkasse(hit); return; }
+  if (v === "tænder" && b.kanon) { affyrKanon(hit); return; }
   if (v === "tænder" && b.tnt) {
     if (ONLINE) { net?.tænd(hit.x, hit.y, hit.z); tændTNT(hit.x, hit.y, hit.z, 2.2, true); } else tændTNT(hit.x, hit.y, hit.z);
     sving = 1; return;
@@ -532,6 +535,39 @@ function brugVærktøj(v, hit) {
   else { Lyd.plask(); stænk(tx + 0.5, ty + 0.9, tz + 0.5, v === "vand" ? VANDFARVE : ILD[2], 12); }
   gemSnart();
 }
+// ---------- Piratøen: skattekister fulde af guld, og kanoner der skyder kanonkugler ud over vandet ----------
+const GULDMØNT = ["#ffd23f", "#f5c542", "#fff3b0"].map(f => new THREE.Color(f));
+function skatFundet({ x, y, z }) {
+  for (let i = 0; i < 40; i++) partikel(x + 0.5, y + 0.6, z + 0.5, GULDMØNT[i % 3], (Math.random() - 0.5) * 5, 5 + Math.random() * 5,
+    (Math.random() - 0.5) * 5, 1.4 + Math.random() * 0.6, 1, 1.3);
+  Lyd.skat(); nyePoint(3);
+  const p = tilSkærm({ x: x + 0.5, y: y + 1, z: z + 0.5 }); E.konfetti(p.x, p.y, { antal: 40 });
+  besked("💰 Du fandt en skat!", 3000);
+}
+const kugleGeo = new THREE.SphereGeometry(0.22, 10, 8), kugleMat = new THREE.MeshLambertMaterial({ color: "#26262a" });
+const kugler = [];
+function affyrKanon({ x, y, z }) {
+  const r = new THREE.Vector3(); kamera.getWorldDirection(r); r.y = 0; r.normalize();
+  const m = new THREE.Mesh(kugleGeo, kugleMat);
+  m.position.set(x + 0.5 + r.x * 0.9, y + 0.8, z + 0.5 + r.z * 0.9);
+  scene.add(m);
+  kugler.push({ m, v: new THREE.Vector3(r.x * 15, 7, r.z * 15), liv: 6 });
+  Lyd.kanonSkud(); sving = 1; rystelse = Math.max(rystelse, 0.25);
+  for (let i = 0; i < 14; i++) partikel(m.position.x, m.position.y, m.position.z, RØG, r.x * 2 + (Math.random() - 0.5) * 2, 1 + Math.random(), r.z * 2 + (Math.random() - 0.5) * 2, 1.2, -0.1, 2.6);
+}
+function opdaterKugler(dt) {
+  for (const k of [...kugler]) {
+    k.v.y -= TYNGDE * 0.6 * dt; k.m.position.addScaledVector(k.v, dt); k.liv -= dt;
+    const p = k.m.position, x = Math.floor(p.x), y = Math.floor(p.y), z = Math.floor(p.z);
+    const iVand = (cfg.hav && p.y < HAV) || verden.væske[verden.hent(x, y, z)] === "vand";
+    if (!iVand && !verden.erFast(x, y, z) && k.liv > 0) continue;
+    const afst = Math.hypot(p.x - sp.pos.x, p.z - sp.pos.z);
+    if (iVand) { stænk(p.x, Math.max(p.y, HAV), p.z, VANDFARVE, 26); Lyd.plask(afst); }
+    else { stykker(p.x, p.y, p.z, RØG, 12, 5); Lyd.fyrBrag(afst); }
+    scene.remove(k.m); kugler.splice(kugler.indexOf(k), 1);
+  }
+}
+
 // ---------- Brandslangen: en stråle vand, der slukker ild, gør lava til sten og får dyrene til at hoppe ----------
 const SPRØJT = new THREE.Color("#e6f4ff");
 let sprøjtLyd = 0, tssLyd = 0;
@@ -1449,7 +1485,7 @@ function tegnFrame(nu) {
   if (iGang && !pause) {
     if (skyd.kører) { skyd.styr(tast, sp.yaw, dt); sp.pitch = Math.max(-1.1, Math.min(0.45, sp.pitch)); } else opdaterSpiller(dt);
     opdaterHak(dt); genfød(dt); opdaterTNT(dt); sim?.tick(dt); opdaterGløder(dt);
-    skyd.opdater(dt); fyr.opdater(dt); brand?.opdater(dt, sp.pos);
+    skyd.opdater(dt); fyr.opdater(dt); brand?.opdater(dt, sp.pos); opdaterKugler(dt);
     if (valgtTing().v === "stjernekaster" && !skyd.kører) {
       stjernedrys(3, 1.6);
       if ((gnistLyd -= dt) <= 0) { gnistLyd = 0.15; Lyd.gnistre(); }
@@ -1509,7 +1545,8 @@ async function startSpil() {
   luk("start");
   document.body.classList.add("i-gang");
   besked(ONLINE ? `${figurIkon(minFigur)} Velkommen til ${onlineInfo?.navn || cfg.navn}!` : `${cfg.ikon} ${cfg.navn}`, 2400);
-  setTimeout(() => { if (iGang) besked(cfg.brand ? "🚒 Tag brandslangen, og hold fingeren nede for at sprøjte · følg røgen, når det brænder"
+  setTimeout(() => { if (iGang) besked(cfg.id === "pirat" ? "🏴‍☠️ Find de røde krydser i sandet, og grav skatten op med 🔨 hammeren · tryk på kanonerne!"
+    : cfg.brand ? "🚒 Tag brandslangen, og hold fingeren nede for at sprøjte · følg røgen, når det brænder"
     : cfg.skyd ? "🎯 Tryk for at skyde · hold fingeren nede for at skyde mange · tryk på en grøn kampvogn for at køre"
     : cfg.fyrværkeri ? "🎆 Tryk for at sende en raket op · tænd fyrværkeri-kasserne med 🔥 tænderen"
     : nyVæske ? "NYT: 🪣 Vand, 🌋 lava og 🔥 ild! Find dem i ⋯" : nyTNT && !ONLINE ? "NYT: 🧨 TNT! Sæt den og slå på den med 🔨" : "Tryk = byg 🧱   🔨 = fjern   Træk = kig 👀", 5000); }, 2500);

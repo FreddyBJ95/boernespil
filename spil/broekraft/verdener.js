@@ -657,4 +657,108 @@ export const VERDENER = [
       a.pynt(a.antal(30), () => (R() < 0.5 ? ID["Rød blomst"] : ID["Gul blomst"]), [ID["Græs"]]);
     },
   },
+
+  {
+    id: "pirat", navn: "Piratøen", ikon: "🏴‍☠️", tekst: "En ø med palmer, papegøjer og et piratskib med kanoner. Find de røde krydser, og grav skatten op med hammeren!",
+    himmel: ["#2f94ee", "#c4ecff"], tåge: [38, 96], hav: "#1fb0c8", sol: "#fff6b0", skyer: "#ffffff",
+    lys: ["#ffffff", "#c8b070", 2.3, 1.5], stemning: "glad", tyngde: 28,
+    størrelse: [144, 48, 144],
+    dyr: ["papegoje", "papegoje", "krabbe", "krabbe", "krabbe"], antal: 11,
+    point: true,                                                 // ⭐ for hver skat
+    hotbar: ["Sand", "Palmestamme", "Palmeblade", "Skibsplanker", "Sejl", "Kanon", "Skattekiste", "TNT", "æg:papegoje"],
+    vis: ["Skattekiste", "Piratflag", "Kanon"],
+    hent: ["Begraver skattene…", "Hejser piratflaget…", "Lader kanonerne…", "Lærer papegøjerne at snakke…"],
+    generer(a) {
+      const { R, støj, ID, BX, BZ, top } = a, cx = BX / 2, cz = BZ / 2, h0 = (x, z) => top[x + z * BX];
+      const RØ = Math.min(BX, BZ) / 2 - 22;                        // øens størrelse
+      const land = (x, z) => 1 - Math.hypot(x - cx, (z - cz) * 1.1) / RØ + (støj(x / 26, z / 26) - 0.5) * 0.35;
+      a.terræn((x, z) => {
+        const m = land(x, z);
+        if (m < 0) return Math.max(2, Math.round(5 + m * 12));                        // havbunden
+        if (m < 0.12) return 7;                                                        // stranden
+        return Math.round(8 + støj(x / 14 + 7, z / 14) * 5 * Math.min(1, (m - 0.12) * 4));
+      }, (x, z, y, h) => {
+        if (y === 0) return ID.Bundsten;
+        const m = land(x, z), strand = m < 0.16 || støj(x / 9 + 80, z / 9) > 0.72;
+        if (y < h - 3) return ID.Sten;
+        return strand || m < 0 ? ID.Sand : y === h ? ID["Græs"] : ID.Jord;
+      });
+      const søjle = (x, z, y0, y1, blok) => { for (let y = y0; y <= y1; y++) a.sæt(x, y, z, blok); };
+
+      // Palmer med skrå stammer og store blade
+      const palme = (x, z) => {
+        const h = h0(x, z), hs = 5 + Math.floor(R() * 3), dx = R() < 0.5 ? 1 : -1, dz = R() < 0.5 ? 1 : 0;
+        let px = x, pz = z;
+        for (let y = 1; y <= hs; y++) { if (y === 3 || y === 5) { px += dx; pz += dz; } a.sæt(px, h + y, pz, ID.Palmestamme); }
+        const ty = h + hs + 1;
+        a.sæt(px, ty, pz, ID.Palmeblade);
+        for (const [ix, iz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          a.sæt(px + ix, ty, pz + iz, ID.Palmeblade); a.sæt(px + ix * 2, ty, pz + iz * 2, ID.Palmeblade);
+          a.sæt(px + ix * 3, ty - 1, pz + iz * 3, ID.Palmeblade);
+        }
+        for (const [ix, iz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) a.sæt(px + ix, ty - 1, pz + iz, ID.Palmeblade);
+      };
+      for (let n = 0; n < a.antal(34); n++) {
+        const x = 4 + Math.floor(R() * (BX - 8)), z = 4 + Math.floor(R() * (BZ - 8)), h = h0(x, z);
+        if (h < 7 || a.hent(x, h + 1, z) || a.nærStart(x, z, 6)) continue;
+        palme(x, z);
+      }
+
+      // Piratskibet ligger ude i vandet syd for øen, med en bro ind til stranden
+      const sx = cx, sz = Math.min(BZ - 8, Math.round(cz + RØ * 0.95 + 10)), dæk = 8;
+      const bred = x => (x > 6 ? Math.max(1, Math.round(4 - (x - 6) * 0.6)) : 4);   // stævnen bliver smal
+      for (let lx = -12; lx <= 12; lx++) {
+        const w = bred(lx), x = sx + lx;
+        for (let lz = -w; lz <= w; lz++) {
+          const z = sz + lz, side = Math.abs(lz) === w || lx === -12 || lx === 12;
+          for (let y = 3; y < dæk; y++) a.sæt(x, y, z, side || y === 3 ? ID.Skibsplanker : 0);   // skroget, hult indeni
+          a.sæt(x, dæk, z, side ? ID.Skibsplanker : ID.Planker);
+          if (side) a.sæt(x, dæk + 1, z, ID.Skibsplanker);                               // rælingen
+          top[x + z * BX] = dæk;
+        }
+      }
+      for (const lx of [-2, 2, 5]) for (const s of [-1, 1]) a.sæt(sx + lx, dæk + 1, sz + s * bred(lx), ID.Kanon);   // kanoner i siderne
+      for (let lx = 13; lx <= 16; lx++) a.sæt(sx + lx, dæk + 1 + Math.floor((lx - 13) / 2), sz, ID.Træstamme);          // bovsprydet
+      // Kahytten agterude med vinduer og en skattekiste
+      for (let lx = -12; lx <= -8; lx++) for (let lz = -3; lz <= 3; lz++) {
+        const væg = lx === -12 || lx === -8 || Math.abs(lz) === 3;
+        for (let y = dæk + 1; y <= dæk + 3; y++) a.sæt(sx + lx, y, sz + lz, væg ? (y === dæk + 2 && (lz === 0 || lx === -10) ? ID.Glas : ID.Skibsplanker) : 0);
+        a.sæt(sx + lx, dæk + 4, sz + lz, ID.Skibsplanker);
+        if (væg && (lx + lz) % 2) a.sæt(sx + lx, dæk + 5, sz + lz, ID.Skibsplanker);
+      }
+      a.sæt(sx - 8, dæk + 1, sz, 0); a.sæt(sx - 8, dæk + 2, sz, 0);                    // døren
+      a.sæt(sx - 11, dæk + 1, sz - 2, ID.Skattekiste); a.sæt(sx - 11, dæk + 1, sz + 2, ID.Lampe);
+      // Master, sejl, udkigstønde og piratflaget på toppen
+      for (const [lx, højde] of [[-3, 13], [4, 15]]) {
+        søjle(sx + lx, sz, dæk + 1, dæk + højde, ID.Træstamme);
+        for (let y = dæk + 5; y <= dæk + højde - 2; y++) for (let lz = -3; lz <= 3; lz++) if (lz) a.sæt(sx + lx + 1, y, sz + lz, ID.Sejl);
+        for (const [ix, iz] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) a.sæt(sx + lx + ix, dæk + højde - 1, sz + iz, ID.Skibsplanker);
+        for (let fx = 1; fx <= 3; fx++) for (let fy = 0; fy <= 1; fy++) a.sæt(sx + lx - fx, dæk + højde - fy, sz, ID.Piratflag);
+      }
+      // Broen fra stranden ud til skibet
+      { let z = sz - bred(0) - 1;
+        while (z > 2 && h0(sx + 7, z) < 7) {
+          for (let x = sx + 6; x <= sx + 8; x++) a.sæt(x, dæk, z, ID.Planker);
+          if (z % 4 === 0) for (const x of [sx + 6, sx + 8]) søjle(x, z, Math.max(1, h0(x, z) + 1), dæk - 1, ID.Træstamme);
+          z--;
+        }
+        for (let zz = sz - bred(0) - 1; zz < sz - 3; zz++) a.sæt(sx + 7, dæk + 1, zz, 0);
+      }
+
+      // Piratlejren på øen: et telt af sejl, en tønde og en kiste til at starte med
+      { const lx = cx + 7, lz = cz - 5, h = h0(lx, lz);
+        for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) a.sæt(lx + dx, h + 3 - Math.abs(dx), lz + dz, ID.Sejl);
+        a.sæt(lx, h + 1, lz + 3, ID.Skattekiste);
+        a.sæt(lx - 4, h0(lx - 4, lz) + 1, lz, ID.Kanon);
+      }
+
+      // De begravede skatte: et rødt kryds i sandet — og kisten ligger to blokke nede
+      for (let n = 0; n < a.antal(7); n++) {
+        const x = 4 + Math.floor(R() * (BX - 8)), z = 4 + Math.floor(R() * (BZ - 8)), h = h0(x, z);
+        if (h < 7 || a.nærStart(x, z, 8) || a.hent(x, h + 1, z) || ![ID.Sand, ID["Græs"]].includes(a.hent(x, h, z))) continue;
+        a.sæt(x, h, z, ID.Skattekryds); a.sæt(x, h - 1, z, ID.Sand); a.sæt(x, h - 2, z, ID.Skattekiste);
+      }
+      a.pynt(a.antal(30), () => (R() < 0.5 ? ID["Rød blomst"] : ID["Gul blomst"]), [ID["Græs"]]);
+    },
+  },
 ];

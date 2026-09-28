@@ -12,6 +12,7 @@
 //  fyrværkeri:   tændes med 🔥 tænderen eller 🔨 hammeren: true = kasse (12 raketter), "show" = stort show, "fontæne" = fontæne
 //  glat:         man glider på den (is)
 //  portal:       lilla portal man kan gå igennem — tændes i en ramme af obsidian med 🔥 tænderen (spil.js)
+//  skat:         en skattekiste — slå den op med 🔨, så springer guldet ud · kanon: tryk med 🔨 eller 🔥, så skyder den
 //  Nye blokke skal altid tilføjes NEDERST, så gemte verdener stadig passer.
 //  lyd:          "græs" | "sten" | "træ" | "sand" | "glas" | "uld" | "metal" | "vand" | "lava" | "ild"
 // Et nyt mønster er en funktion i MØNSTRE der tegner 16×16 pixels med set(x, y, farve).
@@ -116,6 +117,15 @@ export const BLOKKE = [
   { navn: "Gul puds", tekstur: "puds:#f2d37a", lyd: "sten" },
   { navn: "Hvid puds", tekstur: "puds:#f4f1ea", lyd: "sten" },
   { navn: "Blå puds", tekstur: "puds:#a8c8ec", lyd: "sten" },
+  // --- Piratøen ---
+  { navn: "Palmestamme", tekstur: { top: "palmeTop", side: "palmestamme", bund: "palmeTop" }, lyd: "træ" },
+  { navn: "Palmeblade", tekstur: "palmeblade", lyd: "græs" },
+  { navn: "Skattekiste", tekstur: { top: "kisteTop", side: "kisteSide", bund: "skibsplanker" }, skat: true, lyd: "træ" },
+  { navn: "Skattekryds", tekstur: { top: "skattekryds", side: "sand", bund: "sand" }, lyd: "sand" },
+  { navn: "Skibsplanker", tekstur: "skibsplanker", lyd: "træ" },
+  { navn: "Sejl", tekstur: "sejl", lyd: "uld" },
+  { navn: "Piratflag", tekstur: "piratflag", lyd: "uld" },
+  { navn: "Kanon", tekstur: { top: "kanonTop", side: "kanonSide", bund: "skibsplanker" }, kanon: true, lyd: "metal" },
 ];
 
 export const ID = {};
@@ -442,6 +452,34 @@ const MØNSTRE = {
     for (let x = 4; x <= 11; x++) set(x, 14, hex("#a81e16"));
     set(7, 11, hex("#ffd23f")); set(8, 11, hex("#ffd23f"));
   },
+  // --- Piratøen ---
+  palmestamme: (set, r) => alle((x, y) => set(x, y, lys(hex(y % 5 === 4 ? "#8a6a3a" : x % 5 === 0 ? "#b89060" : "#c8a070"), 1 + (r() - 0.5) * 0.14))),
+  palmeTop: (set, r) => alle((x, y) => { const d = Math.hypot(x - 7.5, y - 7.5); set(x, y, lys(hex(d > 6.5 ? "#8a6a3a" : Math.floor(d) % 2 ? "#d8b888" : "#c8a070"), 1 + (r() - 0.5) * 0.1)); }),
+  palmeblade: (set, r) => alle((x, y) => {
+    const ribbe = (x + y) % 8 === 0 || (x - y + 16) % 8 === 0;
+    set(x, y, lys(hex(ribbe ? "#2f8a2a" : (x * 3 + y) % 5 === 0 ? "#6ad04a" : "#4cb43a"), 1 + (r() - 0.5) * 0.2));
+  }),
+  skibsplanker: (set, r) => alle((x, y) => set(x, y, lys(hex(y % 4 === 3 ? "#3a2210" : x === (Math.floor(y / 4) % 2 ? 5 : 12) ? "#44280f" : "#5e3a1c"), 1 + (r() - 0.5) * 0.16))),
+  kisteSide: (set, r) => alle((x, y) => {
+    const bånd = x <= 1 || x >= 14 || y === 5 || y === 6, lås = x >= 6 && x <= 9 && y >= 4 && y <= 8;
+    set(x, y, lys(hex(lås ? (x === 7 || x === 8) && y === 7 ? "#3a2a10" : "#ffd23f" : bånd ? "#d9a520" : y < 5 ? "#8a5a2b" : "#6e4520"), 1 + (r() - 0.5) * 0.12));
+  }),
+  kisteTop: (set, r) => alle((x, y) => set(x, y, lys(hex(x <= 1 || x >= 14 || y <= 1 || y >= 14 ? "#d9a520" : "#8a5a2b"), 1 + (r() - 0.5) * 0.12))),
+  skattekryds: (set, r) => {
+    MØNSTRE.sand(set, r);
+    alle((x, y) => { if (x > 1 && x < 14 && (Math.abs(x - y) <= 1 || Math.abs(x + y - 15) <= 1)) set(x, y, lys(hex("#d9232e"), 1 + (r() - 0.5) * 0.1)); });
+  },
+  sejl: (set, r) => alle((x, y) => set(x, y, lys(hex(x % 8 === 0 ? "#d8cfb8" : y % 8 === 0 ? "#e2d9c2" : "#f4ecd8"), 1 + (r() - 0.5) * 0.06))),
+  piratflag: set => alle((x, y) => {
+    const kranie = Math.hypot(x - 7.5, y - 6) < 3.6 && y < 9, øje = (Math.hypot(x - 6, y - 6) < 1.1 || Math.hypot(x - 9, y - 6) < 1.1);
+    const kæbe = y >= 8 && y <= 9 && x >= 6 && x <= 9, knogle = (Math.abs(x - y) <= 0.5 || Math.abs(x + y - 15) <= 0.5) && y >= 10 && y <= 15 && x >= 2 && x <= 13;
+    set(x, y, hex(øje ? "#1a1a1a" : kranie || kæbe || knogle ? "#f2f2f2" : "#1a1a1a"));
+  }),
+  kanonSide: (set, r) => alle((x, y) => {
+    const løb = y >= 3 && y <= 9, glans = y === 4 && x > 1, vogn = y >= 11;
+    set(x, y, lys(hex(vogn ? (y === 11 ? "#3a2210" : "#6e4520") : løb ? (glans ? "#6a6a72" : x === 15 && y >= 5 && y <= 7 ? "#0a0a0c" : "#2a2a30") : "#6e4520"), 1 + (r() - 0.5) * 0.1));
+  }),
+  kanonTop: (set, r) => alle((x, y) => { const løb = x >= 4 && x <= 11; set(x, y, lys(hex(løb ? (x === 5 ? "#5a5a62" : "#2a2a30") : "#6e4520"), 1 + (r() - 0.5) * 0.1)); }),
   garageport: (set, r) => alle((x, y) => {
     const kant = x === 0 || x === 15, fuge = y % 3 === 2;
     set(x, y, lys(hex(kant ? "#6a1a10" : fuge ? "#9a2a1c" : "#d83a2a"), 1 + (r() - 0.5) * 0.08));

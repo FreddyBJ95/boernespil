@@ -393,6 +393,13 @@ export function knitre(afstand = 0) {      // ild der knitrer
   sus(t, 0.3, 500, 300, 0.05 * v, "lowpass");
 }
 // ---------- Brandmandsbyen ----------
+// ---------- Piratøen ----------
+export function skat() {                    // kling-kling: guldmønter springer ud af kisten
+  if (!ac) return;
+  const t = nu();
+  [1568, 2093, 1760, 2349, 2637, 3136].forEach((f, i) => tone(f, t + i * 0.07, 0.25, "triangle", 0.09));
+  sus(t, 0.6, 6000, 9000, 0.06, "highpass", 0.7);
+}
 export function sirene() {                  // ba-bu ba-bu — brandbilen er på vej
   if (!ac) return;
   const t = nu();
@@ -518,6 +525,8 @@ export function dyrLyd(type, afstand = 0) {
     case "rawr": glid(340, 170, t, 0.45, { type: "sawtooth", vol: 0.2 * v, vibHz: 22, vib: 30, filter: 900, q: 2 }); sus(t, 0.35, 1200, 400, 0.12 * v, "bandpass", 1.5); break;
     case "vov": for (const d of [0, 0.22]) glid(520, 300, t + d, 0.14, { type: "square", vol: 0.16 * v, filter: 1000, q: 2 }); break;
     case "mjav": glid(600, 900, t, 0.25, { type: "sawtooth", vol: 0.13 * v, filter: 1500, q: 2 }); glid(900, 520, t + 0.25, 0.4, { type: "sawtooth", vol: 0.13 * v, vibHz: 7, vib: 20, filter: 1400, q: 2 }); break;
+    case "kra": glid(1300, 850, t, 0.22, { type: "sawtooth", vol: 0.14 * v, filter: 1800, q: 2.5 }); glid(1400, 1000, t + 0.3, 0.16, { type: "sawtooth", vol: 0.12 * v, filter: 1800, q: 2.5 }); break;
+    case "knips": [0, 0.12, 0.24].forEach(d => tone(2400, t + d, 0.04, "square", 0.08 * v)); break;
     default: tone(600, t, 0.1, "sine", 0.2 * v, 900);
   }
 }
