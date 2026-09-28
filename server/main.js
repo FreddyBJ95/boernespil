@@ -1,6 +1,6 @@
 import { extname, sep, resolve, join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Verdenslager, metadata, VERSION } from "./verdener.js";
+import { Verdenslager, metadata, VERSION, UDGAVE } from "./verdener.js";
 import { Rum } from "./rum.js";
 import { FIGURER, læsBesked, send } from "./protokol.js";
 import { hentCertifikater, certifikatSvar } from "./certifikat.js";
@@ -153,7 +153,7 @@ export class BroekraftServer {
 
   async api(req, sti) {
     if (sti === "/api/status" && req.method === "GET") return json({
-      token: this.token, version: VERSION, adresser: this.adresser.map(ip => this.certifikater ? `https://${ip}:${this.httpsPort}/` : `http://${ip}:${this.port}/`), datamappe: this.lager.rod,
+      token: this.token, version: UDGAVE, adresser: this.adresser.map(ip => this.certifikater ? `https://${ip}:${this.httpsPort}/` : `http://${ip}:${this.port}/`), datamappe: this.lager.rod,
       netværk: await this.netværkstjek.hent(this.adresser), tabletSet: this.tabletSet,
       certifikatAdresser: this.certifikater ? this.adresser.map(ip => `http://${ip}:${this.port}/certifikat`) : [], aftryk: this.certifikater?.aftryk,
       verdener: [...this.metadata.values()].map(m => ({ ...m, startet: this.rum.has(m.id), spillere: this.rum.get(m.id)?.spillere.size || 0 })),
@@ -260,7 +260,7 @@ export async function startServer({ port = 8080, httpsPort = 8443, lager, åbn =
   }
   app.port = port; app.kørTimere();
   const url = `http://127.0.0.1:${port}/kontrol`;
-  console.log(`Broekraft Server ${VERSION}\nKontrolpanel: ${url}\nLad dette vindue stå åbent. Stop med Ctrl+C.`);
+  console.log(`Broekraft Server ${UDGAVE}\nKontrolpanel: ${url}\nLad dette vindue stå åbent. Stop med Ctrl+C.`);
   if (åbn) {
     const cmd = Deno.build.os === "windows" ? ["rundll32.exe", "url.dll,FileProtocolHandler", url] : Deno.build.os === "darwin" ? ["open", url] : ["xdg-open", url];
     try { const barn = new Deno.Command(cmd[0], { args: cmd.slice(1), stdout: "null", stderr: "null" }).spawn(); barn.unref(); }

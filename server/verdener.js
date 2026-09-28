@@ -2,7 +2,8 @@ import { join } from "node:path";
 import { VERDENER } from "../spil/broekraft/verdener.js";
 import { BLOKKE } from "../spil/broekraft/blokke.js";
 
-export const VERSION = "0.2.0";
+export const VERSION = "0.2.0";                              // protokollen mellem tablet og server
+export const UDGAVE = "0.3.0";                               // programmets udgave (vises i vinduet og kontrolpanelet)
 // Protokollen får nyt nummer; verdensdata beholder sit kompatible format.
 const DATA_VERSION = "0.1.0";
 export const STØRRELSER = [128, 256, 512, 1024];
