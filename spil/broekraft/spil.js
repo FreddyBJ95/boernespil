@@ -1289,7 +1289,8 @@ function opdaterSpiller(dt) {
   }
   if (r.loft) sp.vel.y = Math.min(0, sp.vel.y);
   sp.jord = r.jord;
-  if (trampolin) { sp.vel.y = Math.min(17, Math.max(11, -fald)); sp.jord = false; Lyd.boing(); }   // boing!
+  const superhop = trampolin && BLOKKE[verden.hent(Math.floor(sp.pos.x), Math.floor(sp.pos.y - 0.05), Math.floor(sp.pos.z))]?.superhop;
+  if (trampolin) { sp.vel.y = superhop ? 28 : Math.min(17, Math.max(11, -fald)); sp.jord = false; Lyd.boing(); }   // boing!
   if (r.væg && sp.jord && l > 0.1) {                                            // hop selv op ad ét trin
     tmp.copy(sp.pos); tmp.y += 1.05; tmp.x += mx * 0.35; tmp.z += mz * 0.35;
     if (!verden.kolliderer(tmp, B, HØJ)) sp.vel.y = Math.max(HOP * 0.92, Math.sqrt(2 * TYNGDE * 1.3));
@@ -1577,7 +1578,8 @@ async function startSpil() {
   luk("start");
   document.body.classList.add("i-gang");
   besked(ONLINE ? `${figurIkon(minFigur)} Velkommen til ${onlineInfo?.navn || cfg.navn}!` : `${cfg.ikon} ${cfg.navn}`, 2400);
-  setTimeout(() => { if (iGang) besked(cfg.id === "slik" ? "🍭 Hop på skumfiduserne · pas på, floden er af chokolade!"
+  setTimeout(() => { if (iGang) besked(cfg.id === "sky" ? "☁️ Hop på skyerne og trampolinerne · falder du ned, så hop op igen på trampolinerne"
+    : cfg.id === "slik" ? "🍭 Hop på skumfiduserne · pas på, floden er af chokolade!"
     : cfg.undervand ? "🐠 Du kan svømme overalt! ⬆ svøm op · ⬇ dyk ned · find skattekisterne"
     : cfg.id === "pirat" ? "🏴‍☠️ Find de røde krydser i sandet, og grav skatten op med 🔨 hammeren · tryk på kanonerne!"
     : cfg.brand ? "🚒 Tag brandslangen, og hold fingeren nede for at sprøjte · følg røgen, når det brænder"

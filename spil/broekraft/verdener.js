@@ -928,4 +928,95 @@ export const VERDENER = [
       a.pynt(a.antal(60), ID.Slikblomst, [ID.Glasur]);
     },
   },
+
+  {
+    id: "sky", navn: "Skyøerne", ikon: "☁️", tekst: "Svævende øer højt oppe i himlen med regnbuebroer, trampoliner og skyer, man kan hoppe på. Pas på kanten!",
+    himmel: ["#4aa8ff", "#e8f6ff"], tåge: [44, 110], hav: null, sol: "#fff6b0", skyer: "#ffffff",
+    lys: ["#ffffff", "#9ab0d0", 2.3, 1.4], stemning: "glad", tyngde: 20,
+    størrelse: [128, 48, 128],
+    dyr: ["skyfaar", "skyfaar", "drage", "drage", "gris"], antal: 10,
+    hotbar: ["Græs", "Sky", "Regnbue", "Trampolin", "Himmelsten", "Hvid puds", "Guld", "Glas", "æg:drage"],
+    vis: ["Sky", "Regnbue", "Trampolin"],
+    hent: ["Puster skyerne op…", "Maler regnbuerne…", "Sender øerne til vejrs…", "Fylder luftballonerne…"],
+    generer(a) {
+      const { R, støj, ID, BX, BY, BZ, top } = a, cx = BX / 2, cz = BZ / 2;
+      const H = Math.round(BY * 0.42);                                  // hovedøens højde
+      a.terræn(() => 2, (x, z, y) => (y === 0 ? ID.Bundsten : ID.Sky));   // et blødt skyhav langt nede
+      const søjle = (x, z, y0, y1, blok) => { for (let y = y0; y <= y1; y++) a.sæt(x, y, z, blok); };
+      // En svævende ø: græs ovenpå, jord og himmelsten nedenunder, der bliver spidsere nedad
+      const ø = (ox, oz, r, h) => {
+        for (let x = Math.floor(ox - r - 1); x <= ox + r + 1; x++) for (let z = Math.floor(oz - r - 1); z <= oz + r + 1; z++) {
+          if (x < 1 || z < 1 || x >= BX - 1 || z >= BZ - 1) continue;
+          const d = Math.hypot(x - ox, z - oz) / r + (støj(x / 5 + ox, z / 5 + oz) - 0.5) * 0.3;
+          if (d > 1) continue;
+          const dyb = Math.round((1 - d) * r * 0.9) + 1, th = h + Math.round((1 - d) * 1.4);
+          for (let y = th - dyb; y <= th; y++) a.sæt(x, y, z, y === th ? ID["Græs"] : y > th - 2 ? ID.Jord : ID.Himmelsten);
+          top[x + z * BX] = Math.max(top[x + z * BX], th);
+        }
+      };
+      ø(cx, cz, 10, H);
+      const øer = [[cx, cz, 10, H]];
+      for (let n = 0; n < a.antal(13); n++) {
+        const r = 4 + Math.floor(R() * 5), ox = r + 3 + Math.floor(R() * (BX - 2 * r - 6)), oz = r + 3 + Math.floor(R() * (BZ - 2 * r - 6));
+        const h = Math.max(6, Math.min(BY - 10, H + Math.round((R() - 0.5) * 16)));
+        if (øer.some(([x, z, rr]) => Math.hypot(x - ox, z - oz) < r + rr + 6)) continue;
+        ø(ox, oz, r, h); øer.push([ox, oz, r, h]);
+      }
+      // Regnbuebroer fra hovedøen ud til de nærmeste øer
+      const nære = øer.slice(1).map(ø2 => [ø2, Math.hypot(ø2[0] - cx, ø2[1] - cz)]).sort((p, q) => p[1] - q[1]).slice(0, 5);
+      for (const [[ox, oz, r, h]] of nære) {
+        const l = Math.hypot(ox - cx, oz - cz), ux = (ox - cx) / l, uz = (oz - cz) / l;
+        for (let t = 8; t <= l - r + 1; t += 0.5) {
+          const x = Math.round(cx + ux * t), z = Math.round(cz + uz * t), y = Math.round(H + 1 + (h - H) * Math.max(0, (t - 8) / Math.max(1, l - r - 7)));
+          for (const s of [0, 1]) {
+            const bx = x + Math.round(-uz * s), bz = z + Math.round(ux * s);
+            if (!a.hent(bx, y, bz) || a.hent(bx, y, bz) === ID.Sky) a.sæt(bx, y, bz, ID.Regnbue);
+            for (let k = 1; k <= 2; k++) if (a.hent(bx, y + k, bz) === ID.Blade) a.sæt(bx, y + k, bz, 0);
+          }
+        }
+      }
+      // Slottet i skyerne på hovedøen: hvide mure, tårne med guld og et regnbueflag
+      { const sx = cx - 3, sz = cz - 9, h = top[cx + (cz - 6) * BX];
+        for (let x = sx; x < sx + 7; x++) for (let z = sz; z < sz + 6; z++) {
+          const væg = x === sx || x === sx + 6 || z === sz || z === sz + 5;
+          søjle(x, z, h, h, ID["Hvid puds"]);
+          for (let y = 1; y <= 4; y++) a.sæt(x, h + y, z, væg ? (y === 2 && (x === sx + 3 || z === sz + 2) ? ID.Glas : ID["Hvid puds"]) : 0);
+          if (væg && (x + z) % 2 === 0) a.sæt(x, h + 5, z, ID["Hvid puds"]);
+        }
+        for (const [tx, tz] of [[sx, sz], [sx + 6, sz], [sx, sz + 5], [sx + 6, sz + 5]]) { søjle(tx, tz, h + 1, h + 7, ID["Hvid puds"]); a.sæt(tx, h + 8, tz, ID.Guld); }
+        a.sæt(sx + 3, h + 1, sz + 5, 0); a.sæt(sx + 3, h + 2, sz + 5, 0);
+        søjle(sx + 3, sz + 2, h + 5, h + 9, ID["Hvid puds"]); a.sæt(sx + 4, h + 9, sz + 2, ID.Regnbue); a.sæt(sx + 5, h + 9, sz + 2, ID.Regnbue);
+        a.sæt(sx + 1, h + 1, sz + 1, ID.Lampe);
+      }
+      // Træer, blomster og en trampolin på hver ø
+      for (let n = 0; n < a.antal(40); n++) {
+        const x = 2 + Math.floor(R() * (BX - 4)), z = 2 + Math.floor(R() * (BZ - 4)), h = top[x + z * BX];
+        if (a.hent(x, h, z) !== ID["Græs"] || a.hent(x, h + 1, z) || a.nærStart(x, z, 5)) continue;
+        søjle(x, z, h + 1, h + 4, ID.Træstamme);
+        for (let ix = -1; ix <= 1; ix++) for (let iz = -1; iz <= 1; iz++) for (let y = 4; y <= 5; y++) if (!a.hent(x + ix, h + y, z + iz)) a.sæt(x + ix, h + y, z + iz, ID.Blade);
+        a.sæt(x, h + 6, z, ID.Blade);
+      }
+      for (const [ox, oz, r] of øer) { const x = Math.round(ox + r * 0.5), z = Math.round(oz); if (a.hent(x, top[x + z * BX], z) === ID["Græs"] && !a.hent(x, top[x + z * BX] + 1, z)) a.sæt(x, top[x + z * BX], z, ID.Trampolin); }
+      // Trampoliner nede i skyhavet under hovedøen, så man kan hoppe op igen
+      for (let v = 0; v < 16; v++) { const x = Math.round(cx + Math.cos(v / 16 * Math.PI * 2) * 12), z = Math.round(cz + Math.sin(v / 16 * Math.PI * 2) * 12); a.sæt(x, 2, z, ID.Trampolin); }
+      // Skyer, der svæver rundt, og luftballoner i stribede farver
+      for (let n = 0; n < a.antal(22); n++) {
+        const x = 4 + Math.floor(R() * (BX - 8)), z = 4 + Math.floor(R() * (BZ - 8)), y = Math.max(8, Math.min(BY - 4, H - 6 + Math.floor(R() * 16)));
+        if (øer.some(([ox, oz, r]) => Math.hypot(ox - x, oz - z) < r + 4)) continue;
+        for (let i = -2; i <= 2; i++) for (let j = -1; j <= 1; j++) if (R() < 0.8) a.sæt(x + i, y, z + j, ID.Sky);
+        a.sæt(x, y + 1, z, ID.Sky); a.sæt(x + 1, y + 1, z, ID.Sky);
+      }
+      for (let n = 0; n < a.antal(3); n++) {
+        const x = 6 + Math.floor(R() * (BX - 12)), z = 6 + Math.floor(R() * (BZ - 12)), y = Math.min(BY - 5, H + 6 + Math.floor(R() * 6));
+        if (Math.hypot(x - cx, z - cz) < 16) continue;
+        const F = [ID["Rød uld"], ID["Gul uld"], ID["Blå uld"], ID["Lilla uld"]][Math.floor(R() * 4)];
+        for (let i = -3; i <= 3; i++) for (let j = -3; j <= 3; j++) for (let k = -3; k <= 3; k++) {
+          const d = Math.hypot(i, j * 0.8, k); if (d <= 3.2 && d > 2.2) a.sæt(x + i, y + j, z + k, (i + 3) % 3 === 0 ? ID["Hvid uld"] : F);
+        }
+        for (let i = -1; i <= 1; i++) for (let k = -1; k <= 1; k++) a.sæt(x + i, y - 6, z + k, ID.Planker);
+        for (const [i, k] of [[-1, -1], [1, 1], [-1, 1], [1, -1]]) søjle(x + i, z + k, y - 5, y - 3, ID.Træstamme);
+      }
+      a.pynt(a.antal(50), () => (R() < 0.5 ? ID["Rød blomst"] : ID["Gul blomst"]), [ID["Græs"]]);
+    },
+  },
 ];

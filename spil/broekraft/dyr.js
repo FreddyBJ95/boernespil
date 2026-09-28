@@ -460,6 +460,32 @@ export const DYR = [
       { s: [2, 9, 3], p: [0, 25, 7.5], f: "#c86bff", regnbue: true },
     ] },
   ] },
+  // Skyøerne: et får, der er så blødt som en sky
+  { id: "skyfaar", navn: "Skyfår", lyd: "mæh", fart: 1.1, æg: ["#ffffff", "#8fd0ff"], dele: [
+    { s: [12, 11, 15], p: [0, 14, 0], f: "#ffffff" },
+    { s: [6, 6, 6], p: [-4, 19, 3], f: "#f4f8ff" }, { s: [6, 6, 6], p: [4, 19, -3], f: "#f4f8ff" }, { s: [5, 5, 5], p: [0, 20, -5], f: "#f4f8ff" },
+    ...fireBen([3, 8, 3], 3, 4, 4.5, "#c8d0e0"),
+    { s: [6, 6, 6], p: [0, 16, 9.5], f: "#ffd6e6", rolle: "hoved", børn: [
+      { s: [7, 3, 5], p: [0, 19.5, 8.5], f: "#ffffff" },
+      { s: [2, 1, 0.3], p: [0, 14.5, 12.6], f: "#c08080" },
+      ...øjne(1.5, 16.8, 12.6),
+    ] },
+  ] },
+  // Skyøerne: en venlig, grøn drage, der flyver rundt mellem øerne
+  { id: "drage", navn: "Lille drage", lyd: "rawr", fart: 1.8, evne: "flyver", æg: ["#4cc05a", "#ffd23f"], dele: [
+    { s: [8, 8, 14], p: [0, 11, 0], f: "#4cc05a" },
+    { s: [6, 3, 12], p: [0, 7.5, 1], f: "#ffe27a" },
+    ...fireBen([3, 6, 3], 3, 3, 4.5, "#3a9a48"),
+    { s: [12, 1, 8], p: [-9, 15, -1], f: "#6ad0ff", rolle: "vinge" }, { s: [12, 1, 8], p: [9, 15, -1], f: "#6ad0ff", rolle: "vinge" },
+    { s: [3, 3, 12], p: [0, 11, -12], f: "#4cc05a", rolle: "hale" },
+    { s: [1, 3, 8], p: [0, 16, -2], f: "#ff8c1a" },
+    { s: [7, 7, 8], p: [0, 16, 10], f: "#4cc05a", rolle: "hoved", børn: [
+      { s: [5, 3, 4], p: [0, 14, 15], f: "#5ad06a" },
+      { s: [1, 1, 0.4], p: [-1.2, 15, 17.1], f: "#1a4a2a" }, { s: [1, 1, 0.4], p: [1.2, 15, 17.1], f: "#1a4a2a" },
+      ...øjne(2, 17.5, 14.1, 2),
+      { s: [1.2, 3, 1.2], p: [-2, 21, 8], f: "#ffd23f" }, { s: [1.2, 3, 1.2], p: [2, 21, 8], f: "#ffd23f" },
+    ] },
+  ] },
 ];
 // ---------- Byg et dyr af klodser ----------
 const kasse = new THREE.BoxGeometry(1, 1, 1);

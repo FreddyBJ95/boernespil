@@ -4,7 +4,7 @@
 //                "uld:#farve", "blomst:#farve", "prikker:#farve:#prik" og "lilleSvamp:#farve" kan få valgfri farver.
 //  gennemsigtig: man kan se igennem (glas) · kryds: tynd plante man kan gå igennem (blomster)
 //  lyser:        altid fuldt oplyst · uknuselig: kan ikke hakkes · skjult: vises ikke i inventaret
-//  hopper:       man hopper højt når man lander på den (som en trampolin)
+//  hopper:       man hopper højt når man lander på den (som en trampolin) · superhop: man hopper SUPER højt
 //  tnt:          kan tændes med hammeren og sprænger så et hul (se spil.js)
 //  væske:        "vand" eller "lava" · niveau: 0 = kilde, højere = tyndere strøm
 //  ild:          flammer styret af simulering.js
@@ -144,6 +144,10 @@ export const BLOKKE = [
   { navn: "Honningkage", tekstur: "honningkage", lyd: "træ" },
   { navn: "Vingummi", tekstur: "vingummi", lyd: "uld" },
   { navn: "Slikblomst", tekstur: "slikblomst", kryds: true, lyd: "glas" },
+  // --- Skyøerne ---
+  { navn: "Sky", tekstur: "sky", hopper: true, lyd: "uld" },
+  { navn: "Trampolin", tekstur: { top: "trampolinTop", side: "trampolinSide", bund: "trampolinSide" }, hopper: true, superhop: true, lyd: "uld" },
+  { navn: "Himmelsten", tekstur: "himmelsten", lyd: "sten" },
 ];
 
 export const ID = {};
@@ -470,6 +474,20 @@ const MØNSTRE = {
     for (let x = 4; x <= 11; x++) set(x, 14, hex("#a81e16"));
     set(7, 11, hex("#ffd23f")); set(8, 11, hex("#ffd23f"));
   },
+  // --- Skyøerne ---
+  sky: (set, r) => alle((x, y) => {
+    const b = Math.sin(x * 0.8) + Math.cos(y * 0.9) + Math.sin((x + y) * 0.5);
+    set(x, y, lys(hex(b > 1.2 ? "#ffffff" : b > -0.5 ? "#f4f8ff" : "#dfe8f6"), 1 + (r() - 0.5) * 0.03));
+  }),
+  trampolinTop: (set, r) => alle((x, y) => {
+    const kant = x <= 1 || y <= 1 || x >= 14 || y >= 14, midt = Math.hypot(x - 7.5, y - 7.5) < 2.5;
+    set(x, y, lys(hex(kant ? "#e8283c" : midt ? "#5fb0ff" : "#2a6fe0"), 1 + (r() - 0.5) * 0.06));
+  }),
+  trampolinSide: (set, r) => alle((x, y) => {
+    const fjeder = y >= 4 && y <= 11 && x % 4 === 1, ben = y >= 12 && (x <= 1 || x >= 14);
+    set(x, y, y < 4 ? lys(hex("#e8283c"), 1 + (r() - 0.5) * 0.06) : fjeder ? hex("#c8c8d0") : ben ? hex("#5a5a62") : [0, 0, 0], y < 4 || fjeder || ben ? 255 : 0);
+  }),
+  himmelsten: (set, r) => { fyld(set, r, "#a8b8d0", 0.16); prik(set, r, ["#8a9ab8", "#c8d4e6", "#9aaccc"], 36); },
   // --- Slikland ---
   glasurTop: (set, r) => {
     fyld(set, r, "#ff9ad0", 0.08);
