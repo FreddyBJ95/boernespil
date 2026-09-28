@@ -48,7 +48,7 @@
   }
 
   function loop(nu) {
-    const dt = Math.min((nu - sidste) / 1000, 0.05);
+    const dt = Math.max(0, Math.min((nu - sidste) / 1000, 0.05));   // aldrig baglæns i tiden
     sidste = nu;
     ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
 
@@ -65,7 +65,7 @@
         ctx.strokeStyle = p.farve;
         ctx.lineWidth = p.tyk * a;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, Math.max(0, p.r), 0, Math.PI * 2);
         ctx.stroke();
         continue;
       }
