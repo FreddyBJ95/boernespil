@@ -22,6 +22,7 @@ import { forbindStemmer } from "./stemmer.js";
 import { Stemmegraf, STEMMER, stemmeAf } from "./stemmeeffekt.js";
 import { Skydning } from "./skyd.js";
 import { Fyrværkeri } from "./fyrvaerkeri.js";
+import { Brandvæsen } from "./brand.js";
 
 const E = window.Effekter, $ = id => document.getElementById(id);
 const RÆKKE = 7, HAKTID = 0.4;                                  // hvor langt man når, og hvor længe en blok tager at hakke
@@ -353,7 +354,7 @@ const revne = new THREE.Mesh(new THREE.BoxGeometry(1.012, 1.012, 1.012), new THR
 markør.visible = revne.visible = false;
 scene.add(markør, revne);
 
-const STYK = 400, stykMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.12, 0.12, 0.12), new THREE.MeshBasicMaterial(), STYK);
+const STYK = 700, stykMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.12, 0.12, 0.12), new THREE.MeshBasicMaterial(), STYK);
 stykMesh.frustumCulled = false;
 scene.add(stykMesh);
 const styk = Array.from({ length: STYK }, () => ({ liv: 0 }));
@@ -415,6 +416,7 @@ function tryk(x, y) {
     return;
   }
   if (værk?.våben) { if (skyd.skydMod(værk.våben, kamera.position, ray.ray.direction)) sving = 1; return; }
+  if (værk?.slange) { sprøjt(); return; }
   if (værk?.fyrværkeri) { fyrTryk(valgt.v, hit); return; }
   let bedst = null;
   for (const d of dyr) {
@@ -530,6 +532,46 @@ function brugVærktøj(v, hit) {
   else { Lyd.plask(); stænk(tx + 0.5, ty + 0.9, tz + 0.5, v === "vand" ? VANDFARVE : ILD[2], 12); }
   gemSnart();
 }
+// ---------- Brandslangen: en stråle vand, der slukker ild, gør lava til sten og får dyrene til at hoppe ----------
+const SPRØJT = new THREE.Color("#e6f4ff");
+let sprøjtLyd = 0, tssLyd = 0;
+function sprøjt() {
+  sving = Math.max(sving, 0.35);
+  const r = new THREE.Vector3(); kamera.getWorldDirection(r);
+  const fra = kamera.position.clone().addScaledVector(r, 0.7); fra.y -= 0.3;
+  for (let i = 0; i < 16; i++) {
+    const f = 11 + Math.random() * 4;
+    partikel(fra.x, fra.y, fra.z, i % 3 ? VANDFARVE : SPRØJT, r.x * f + (Math.random() - 0.5) * 1.6, r.y * f + 1.5 + (Math.random() - 0.5) * 1.6,
+      r.z * f + (Math.random() - 0.5) * 1.6, 0.55 + Math.random() * 0.35, 1.1, 0.65);
+  }
+  if (tid - sprøjtLyd > 0.2) { sprøjtLyd = tid; Lyd.sprøjt(); }
+  let damp = false;
+  const set = new Set();
+  for (let t = 0.8; t <= 10; t += 0.5) {                          // gå hen ad strålen og se, hvad den rammer
+    const px = fra.x + r.x * t, py = fra.y + r.y * t - 0.012 * t * t, pz = fra.z + r.z * t;
+    let ramt = false;
+    for (const [ox, oy, oz] of [[0, 0, 0], [0.7, 0, 0], [-0.7, 0, 0], [0, 0.7, 0], [0, -0.7, 0], [0, 0, 0.7], [0, 0, -0.7]]) {
+      const x = Math.floor(px + ox), y = Math.floor(py + oy), z = Math.floor(pz + oz), k = `${x},${y},${z}`;
+      if (set.has(k)) continue;
+      set.add(k);
+      const id = verden.hent(x, y, z);
+      if (id === ID.Ild) { sætHer(x, y, z, 0); brand?.sprøjtet(x, y, z); dampSky(x, y, z); damp = true; }
+      else if (id === ID.Lava) { sætHer(x, y, z, ID.Obsidian); dampSky(x, y, z); damp = true; }
+      else if (verden.væske[id] === "lava") { sætHer(x, y, z, ID.Sten); dampSky(x, y, z); damp = true; }
+      if (!ox && !oy && !oz && verden.fast[id]) ramt = true;
+    }
+    if (ramt) break;
+  }
+  if (damp && tid - tssLyd > 0.35) { tssLyd = tid; Lyd.tss(); }
+  for (const d of dyr) {                                          // dyrene bliver våde og hopper
+    tmp.copy(d.pos).sub(fra);
+    const t = tmp.dot(r);
+    if (t > 0.5 && t < 9 && tmp.addScaledVector(r, -t).length() < 1.3 && !(d.vådT > tid)) { d.vådT = tid + 1; d.klap(); }
+  }
+}
+function dampSky(x, y, z) {
+  for (let i = 0; i < 6; i++) partikel(x + Math.random(), y + 0.5, z + Math.random(), DAMP, Math.random() - 0.5, 1.5 + Math.random(), Math.random() - 0.5, 1.1, -0.08, 2.2);
+}
 // Dråber eller gnister der springer op
 function stænk(x, y, z, farve, antal = 10) {
   for (let i = 0; i < antal; i++) partikel(x + (Math.random() - 0.5) * 0.6, y, z + (Math.random() - 0.5) * 0.6, farve,
@@ -604,7 +646,10 @@ const NABO6 = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -
 // Sammen: portalens blokke sendes lidt ad gangen, for serveren tager højst 20 blokke i sekundet fra hver
 const netKø = [];
 let netKøT = 0;
-const sætHer = (x, y, z, id) => { if (ONLINE) netKø.push([x, y, z, id]); else verden.sæt(x, y, z, id); };
+const sætHer = (x, y, z, id) => {
+  if (!ONLINE) { verden.sæt(x, y, z, id); return; }
+  if (!netKø.some(k => k[0] === x && k[1] === y && k[2] === z && k[3] === id)) netKø.push([x, y, z, id]);
+};
 function sendKø(dt) {
   netKøT = Math.max(0, netKøT - dt);
   if (!netKø.length || !net || netKøT > 0) return;
@@ -904,7 +949,7 @@ const fyr = new Fyrværkeri(scene, kamera, { lyd: { fløjt: Lyd.fløjt, brag: Ly
 // Point på Skydebanen: ⭐ oppe i midten — og en lille fest for hver 25
 let point = gemt.point | 0;
 function nyePoint(n) {
-  if (!cfg.skyd) return;
+  if (!cfg.skyd && !cfg.point) return;
   const før = point;
   point += n; gemt.point = point;
   const el = $("point");
@@ -916,6 +961,7 @@ function nyePoint(n) {
 }
 $("point").textContent = `⭐ ${point}`;
 document.body.classList.toggle("skydebane", !!cfg.skyd);
+document.body.classList.toggle("med-point", !!(cfg.skyd || cfg.point));
 $("udKnap").addEventListener("pointerdown", e => { e.preventDefault(); Lyd.klar(); Lyd.klik(); skyd.stigUd(); });
 
 // En blød skumkugle rammer: en farveklat på skærmen, der falmer væk
@@ -1380,17 +1426,30 @@ function størrelse() {
 window.Effekter.vedStørrelse(størrelse);
 størrelse();
 
+// ---------- Brandmandsbyen: huse, der af og til brænder (kun alene — sammen styrer serveren ilden) ----------
+const RØGMØRK = new THREE.Color("#4a4a4e");
+const brand = cfg.brand && !ONLINE ? new Brandvæsen(verden, {
+  sæt: (x, y, z, id) => verden.sæt(x, y, z, id),
+  røg: (x, y, z) => partikel(x + (Math.random() - 0.5) * 0.8, y, z + (Math.random() - 0.5) * 0.8, RØGMØRK,
+    (Math.random() - 0.5) * 0.6, 2.4 + Math.random(), (Math.random() - 0.5) * 0.6, 3.6, -0.1, 6),
+  besked, alarm: () => Lyd.sirene(),
+  reddet: (x, y, z) => {
+    nyePoint(5); Lyd.reddet(); besked("🚒 Du reddede huset! ⭐", 3500);
+    const p = tilSkærm({ x, y, z }); E.konfetti(p.x, p.y, { antal: 50 });
+  },
+}) : null;
+
 let tid = 0, sidst = performance.now(), fejlVist = false;
 renderer.setAnimationLoop(nu => {
   try { tegnFrame(nu); } catch (fejl) { if (!fejlVist) { fejlVist = true; console.error(fejl); } }   // spillet kører videre selv hvis noget går galt
 });
 function tegnFrame(nu) {
-  const dt = Math.min(0.05, (nu - sidst) / 1000);
+  const dt = Math.max(0, Math.min(0.05, (nu - sidst) / 1000));
   sidst = nu; tid += dt;
   if (iGang && !pause) {
     if (skyd.kører) { skyd.styr(tast, sp.yaw, dt); sp.pitch = Math.max(-1.1, Math.min(0.45, sp.pitch)); } else opdaterSpiller(dt);
     opdaterHak(dt); genfød(dt); opdaterTNT(dt); sim?.tick(dt); opdaterGløder(dt);
-    skyd.opdater(dt); fyr.opdater(dt);
+    skyd.opdater(dt); fyr.opdater(dt); brand?.opdater(dt, sp.pos);
     if (valgtTing().v === "stjernekaster" && !skyd.kører) {
       stjernedrys(3, 1.6);
       if ((gnistLyd -= dt) <= 0) { gnistLyd = 0.15; Lyd.gnistre(); }
@@ -1450,7 +1509,8 @@ async function startSpil() {
   luk("start");
   document.body.classList.add("i-gang");
   besked(ONLINE ? `${figurIkon(minFigur)} Velkommen til ${onlineInfo?.navn || cfg.navn}!` : `${cfg.ikon} ${cfg.navn}`, 2400);
-  setTimeout(() => { if (iGang) besked(cfg.skyd ? "🎯 Tryk for at skyde · hold fingeren nede for at skyde mange · tryk på en grøn kampvogn for at køre"
+  setTimeout(() => { if (iGang) besked(cfg.brand ? "🚒 Tag brandslangen, og hold fingeren nede for at sprøjte · følg røgen, når det brænder"
+    : cfg.skyd ? "🎯 Tryk for at skyde · hold fingeren nede for at skyde mange · tryk på en grøn kampvogn for at køre"
     : cfg.fyrværkeri ? "🎆 Tryk for at sende en raket op · tænd fyrværkeri-kasserne med 🔥 tænderen"
     : nyVæske ? "NYT: 🪣 Vand, 🌋 lava og 🔥 ild! Find dem i ⋯" : nyTNT && !ONLINE ? "NYT: 🧨 TNT! Sæt den og slå på den med 🔨" : "Tryk = byg 🧱   🔨 = fjern   Træk = kig 👀", 5000); }, 2500);
   const tip = læs("broekraft-portaltip", 0);                      // de første par gange: sådan laver man en portal
@@ -1722,4 +1782,4 @@ if (ONLINE) {
 
 if (ONLINE) forberedOnline();
 window.broekraftKlar = true;
-if (location.search.includes("debug")) window.bk = { sp, verden, dyr, tast, cfg, andre, sim, get net() { return net; }, get tale() { return tale; }, get graf() { return graf; }, afspillere, skyd, fyr, tændPortal, visPortalValg };
+if (location.search.includes("debug")) window.bk = { sp, verden, dyr, tast, cfg, andre, sim, get net() { return net; }, get tale() { return tale; }, get graf() { return graf; }, afspillere, skyd, fyr, tændPortal, visPortalValg, brand, steg: n => { for (let i = 0; i < n; i++) tegnFrame(sidst + 1000 / 60); sidst = performance.now(); } };

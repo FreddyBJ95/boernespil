@@ -392,6 +392,21 @@ export function knitre(afstand = 0) {      // ild der knitrer
   for (let i = 0; i < 3; i++) sus(t + Math.random() * 0.25, 0.03, 3000 + Math.random() * 2000, 1500, 0.14 * v, "bandpass", 2);
   sus(t, 0.3, 500, 300, 0.05 * v, "lowpass");
 }
+// ---------- Brandmandsbyen ----------
+export function sirene() {                  // ba-bu ba-bu — brandbilen er på vej
+  if (!ac) return;
+  const t = nu();
+  for (let i = 0; i < 6; i++) glid(i % 2 ? 660 : 880, i % 2 ? 659 : 879, t + i * 0.42, 0.4, { type: "triangle", vol: 0.1 });
+}
+export function sprøjt() {                  // pssst — vand fra brandslangen
+  if (!ac) return;
+  sus(nu(), 0.24, 2600, 1700, 0.08, "bandpass", 0.9);
+}
+export function reddet() {                  // en lille fanfare: huset er reddet
+  if (!ac) return;
+  const t = nu();
+  [523, 659, 784, 1047].forEach((f, i) => tone(f, t + i * 0.1, 0.35, "triangle", 0.12));
+}
 export function portalTænd() {            // portalen åbner sig: en dyb brummen, der stiger, og klokker
   if (!ac) return;
   const t = nu();
@@ -501,6 +516,8 @@ export function dyrLyd(type, afstand = 0) {
     case "bipbop": [0, 0.1, 0.2, 0.3].forEach(d => tone(600 + Math.random() * 900, t + d, 0.08, "square", 0.08 * v)); break;
     case "pip": [0, 0.12].forEach(d => tone(2200, t + d, 0.06, "sine", 0.15 * v, 2800)); break;
     case "rawr": glid(340, 170, t, 0.45, { type: "sawtooth", vol: 0.2 * v, vibHz: 22, vib: 30, filter: 900, q: 2 }); sus(t, 0.35, 1200, 400, 0.12 * v, "bandpass", 1.5); break;
+    case "vov": for (const d of [0, 0.22]) glid(520, 300, t + d, 0.14, { type: "square", vol: 0.16 * v, filter: 1000, q: 2 }); break;
+    case "mjav": glid(600, 900, t, 0.25, { type: "sawtooth", vol: 0.13 * v, filter: 1500, q: 2 }); glid(900, 520, t + 0.25, 0.4, { type: "sawtooth", vol: 0.13 * v, vibHz: 7, vib: 20, filter: 1400, q: 2 }); break;
     default: tone(600, t, 0.1, "sine", 0.2 * v, 900);
   }
 }

@@ -106,6 +106,16 @@ export const BLOKKE = [
   { navn: "Rødt mos", tekstur: { top: "rødtMos", side: "rødtMosSide", bund: "rødsten" }, lyd: "græs" },
   { navn: "Rødstilk", tekstur: { top: "rødstilkTop", side: "rødstilk", bund: "rødstilkTop" }, lyd: "træ" },
   { navn: "Vortesvamp", tekstur: "vortesvamp", lyd: "uld" },
+  // --- Brandmandsbyen (ingen af dem kan brænde) ---
+  { navn: "Asfalt", tekstur: "asfalt", lyd: "sten" },
+  { navn: "Vejstribe", tekstur: "vejstribe", lyd: "sten" },
+  { navn: "Fliser", tekstur: "fliser", lyd: "sten" },
+  { navn: "Tagsten", tekstur: "tagsten", lyd: "sten" },
+  { navn: "Brandhane", tekstur: "brandhane", kryds: true, lyd: "metal" },
+  { navn: "Garageport", tekstur: "garageport", lyd: "metal" },
+  { navn: "Gul puds", tekstur: "puds:#f2d37a", lyd: "sten" },
+  { navn: "Hvid puds", tekstur: "puds:#f4f1ea", lyd: "sten" },
+  { navn: "Blå puds", tekstur: "puds:#a8c8ec", lyd: "sten" },
 ];
 
 export const ID = {};
@@ -411,6 +421,31 @@ const MØNSTRE = {
     set(x, y, lys(hex(d > 6.5 ? "#8a2a5a" : Math.floor(d) % 2 ? "#c8506a" : "#a83a5a"), 1 + (r() - 0.5) * 0.12));
   }),
   vortesvamp: (set, r) => { fyld(set, r, "#9a1420", 0.3); prik(set, r, ["#6a0a14", "#c82a36", "#ff5a4a"], 36); },
+
+  // --- Brandmandsbyen ---
+  asfalt: (set, r) => { fyld(set, r, "#3c3c42", 0.14); prik(set, r, ["#2e2e32", "#4a4a52", "#56565c"], 34); },
+  vejstribe: (set, r) => {
+    MØNSTRE.asfalt(set, r);
+    alle((x, y) => { if (x >= 4 && x <= 11 && y >= 4 && y <= 11) set(x, y, lys(hex("#f2f2ea"), 1 + (r() - 0.5) * 0.08)); });
+  },
+  fliser: (set, r) => alle((x, y) => set(x, y, x % 8 === 0 || y % 8 === 0 ? lys(hex("#9a9a92"), 1 + (r() - 0.5) * 0.1) : lys(hex("#cfcfc6"), 1 + (r() - 0.5) * 0.1))),
+  tagsten: (set, r) => alle((x, y) => {
+    const række = Math.floor(y / 4), bue = (x + (række % 2) * 4) % 8, kant = y % 4 === 3 || (bue === 0 && y % 4 > 0);
+    set(x, y, lys(hex(kant ? "#7a2418" : y % 4 === 0 ? "#d85a40" : "#b8402a"), 1 + (r() - 0.5) * 0.12));
+  }),
+  brandhane: (set, r) => {
+    alle((x, y) => set(x, y, [0, 0, 0], 0));
+    for (let y = 5; y < T; y++) for (let x = 5; x <= 10; x++) set(x, y, lys(hex(x === 5 ? "#ff6b5e" : x === 10 ? "#a81e16" : "#e0302a"), 1 + (r() - 0.5) * 0.08));
+    for (let y = 2; y <= 4; y++) for (let x = 6; x <= 9; x++) set(x, y, hex(y === 2 ? "#ff6b5e" : "#e0302a"));
+    set(7, 1, hex("#ffd23f")); set(8, 1, hex("#ffd23f"));
+    for (let y = 7; y <= 9; y++) { set(3, y, hex("#c8c8c8")); set(4, y, hex("#e0302a")); set(11, y, hex("#e0302a")); set(12, y, hex("#c8c8c8")); }
+    for (let x = 4; x <= 11; x++) set(x, 14, hex("#a81e16"));
+    set(7, 11, hex("#ffd23f")); set(8, 11, hex("#ffd23f"));
+  },
+  garageport: (set, r) => alle((x, y) => {
+    const kant = x === 0 || x === 15, fuge = y % 3 === 2;
+    set(x, y, lys(hex(kant ? "#6a1a10" : fuge ? "#9a2a1c" : "#d83a2a"), 1 + (r() - 0.5) * 0.08));
+  }),
 };
 
 // Portalens lilla hvirvler. fase 0–2π flytter mønstret blødt, og det går i ét fra blok til blok.
@@ -452,6 +487,10 @@ function maler(navn) {
     for (const [x, y] of [[6, 11], [5, 12], [9, 12], [10, 11]]) set(x, y, hex("#3f9b35"));
     alle((x, y) => { if ((x - 7.5) ** 2 + (y - 4.5) ** 2 < 11) set(x, y, lys(hex(farve), 1 + (r() - 0.5) * 0.25)); });
     for (const [x, y] of [[7, 4], [8, 4], [7, 5], [8, 5]]) set(x, y, hex("#fff3a0"));
+  };
+  if (type === "puds") return (set, r) => {
+    fyld(set, r, farve, 0.1);
+    prik(set, r, [lys(hex(farve), 0.9), lys(hex(farve), 1.06)].map(c => "#" + c.map(v => v.toString(16).padStart(2, "0")).join("")), 26);
   };
   if (type === "prikker") return (set, r) => {
     const prikFarve = navn.split(":")[2];

@@ -10,6 +10,7 @@
 //  hotbar:  det man starter med: bloknavne fra blokke.js, "v:gevær" = værktøj (vaerktoej.js), "æg:ko" = dyre-æg
 //  vis:     tre blokke der vises på verdens-kortet · skyd: balloner, kampvogne og point · fyrværkeri: nytårsnat
 //  sne:     true = sne der falder · "gløder" = gnister der stiger op · lavahav: havet er lava (man hopper ud af det)
+//  brand:   huse, der af og til brænder (brand.js) · point: vis ⭐-tælleren
 //  generer: opskriften på terrænet — får værktøjer fra verden.js (terræn, pynt, sæt, hent, R, støj …)
 
 export const VERDENER = [
@@ -534,6 +535,126 @@ export const VERDENER = [
       }
       a.pynt(a.antal(40), () => (R() < 0.6 ? ID.Glødesvamp : ID["Lille svamp"]), [ID["Rødt mos"], ID.Sjælesand]);
       a.pynt(a.antal(16), ID.Glødesten, [ID.Basalt, ID.Rødsten]);
+    },
+  },
+
+  {
+    id: "brandby", navn: "Brandmandsbyen", ikon: "🚒", tekst: "En by med veje, huse og en brandstation. Når det brænder, følger du røgen og slukker ilden med brandslangen!",
+    himmel: ["#5fa8f0", "#dff0ff"], tåge: [36, 92], hav: "#3f8fe0", sol: "#fff6b0", skyer: "#ffffff",
+    lys: ["#ffffff", "#8a8a7a", 2.2, 1.4], stemning: "glad", tyngde: 28,
+    størrelse: [128, 48, 128],
+    dyr: ["dalmatiner", "dalmatiner", "kat", "kat", "and"], antal: 10,
+    brand: true, point: true,                                    // huse der brænder, og ⭐ når man redder dem
+    hotbar: ["v:brandslange", "Mursten", "Tagsten", "Gul puds", "Asfalt", "Glas", "v:tænder", "Brandhane", "æg:dalmatiner"],
+    vis: ["Tagsten", "Brandhane", "Garageport"],
+    hent: ["Bygger husene…", "Asfalterer vejene…", "Pudser brandbilen…", "Ruller brandslangen ud…"],
+    generer(a) {
+      const { R, støj, ID, BX, BZ } = a, cx = BX / 2, cz = BZ / 2, H = 10, GAB = 22;
+      const rest = v => ((v % GAB) + GAB) % GAB;
+      const kantAf = (x, z) => Math.min(x, z, BX - 1 - x, BZ - 1 - z);
+      const iBy = (x, z) => kantAf(x, z) >= 10;
+      const vej = (x, z) => { const u = rest(x - cx), w = rest(z - cz); return u <= 2 || u >= GAB - 2 || w <= 2 || w >= GAB - 2; };
+      const fortov = (x, z) => { const u = rest(x - cx), w = rest(z - cz); return u === 3 || u === GAB - 3 || w === 3 || w === GAB - 3; };
+      const stribe = (x, z) => {                                  // stiplet midterstribe, men ikke i krydsene
+        const u = rest(x - cx), w = rest(z - cz);
+        return (u === 0 && w > 3 && w < GAB - 3 && rest(z) % 4 < 2) || (w === 0 && u > 3 && u < GAB - 3 && rest(x) % 4 < 2);
+      };
+      a.terræn((x, z) => { const k = kantAf(x, z); return k >= 10 ? H : Math.round(H + støj(x / 9, z / 9) * 5 * (1 - k / 10)); },
+        (x, z, y, h) => {
+          if (y === 0) return ID.Bundsten;
+          if (y < h - 3) return ID.Sten;
+          if (y < h) return ID.Jord;
+          if (!iBy(x, z)) return ID["Græs"];
+          return vej(x, z) ? (stribe(x, z) ? ID.Vejstribe : ID.Asfalt) : fortov(x, z) ? ID.Fliser : ID["Græs"];
+        });
+      const søjle = (x, z, y0, y1, blok) => { for (let y = y0; y <= y1; y++) a.sæt(x, y, z, blok); };
+      const MURE = [ID.Mursten, ID["Gul puds"], ID["Hvid puds"], ID["Blå puds"], ID.Mursten, ID.Fliser];
+
+      // Et hus med vinduer, dør, skorsten og et tag af tagsten (det er taget, der kan brænde)
+      const hus = (x0, z0) => {
+        const b = 7 + Math.floor(R() * 3), d = 7 + Math.floor(R() * 3), mur = MURE[Math.floor(R() * MURE.length)];
+        const hx = x0 + Math.floor((15 - b) / 2), hz = z0 + 2;
+        for (let x = hx; x < hx + b; x++) for (let z = hz; z < hz + d; z++) {
+          const langsX = z === hz || z === hz + d - 1, langsZ = x === hx || x === hx + b - 1;
+          a.sæt(x, H, z, ID.Planker);
+          for (let y = 1; y <= 4; y++) {
+            const vindue = !(langsX && langsZ) && (y === 2 || y === 3) && (langsX ? (x - hx) % 3 === 1 : (z - hz) % 3 === 1);
+            a.sæt(x, H + y, z, !(langsX || langsZ) ? 0 : vindue ? ID.Glas : mur);
+          }
+        }
+        const dør = hx + Math.floor(b / 2);
+        a.sæt(dør, H + 1, hz, 0); a.sæt(dør, H + 2, hz, 0);
+        for (let z = z0; z < hz; z++) a.sæt(dør, H, z, ID.Fliser);                    // en sti hen til døren
+        a.sæt(hx + 1, H + 1, hz + d - 2, ID.Lampe);
+        for (let k = 0; ; k++) {                                                      // taget: lag på lag, som en pyramide
+          const x1 = hx - 1 + k, x2 = hx + b - k, z1 = hz - 1 + k, z2 = hz + d - k;
+          if (x1 > x2 || z1 > z2) break;
+          for (let x = x1; x <= x2; x++) for (let z = z1; z <= z2; z++) a.sæt(x, H + 5 + k, z, ID.Tagsten);
+        }
+        søjle(hx + 1, hz + d - 2, H + 5, H + 8, ID.Mursten);                          // skorsten
+        for (let n = 0; n < 4; n++) { const x = x0 + Math.floor(R() * 15), z = z0 + 12 + Math.floor(R() * 3); if (a.hent(x, H, z) === ID["Græs"] && !a.hent(x, H + 1, z)) a.sæt(x, H + 1, z, R() < 0.5 ? ID["Rød blomst"] : ID["Gul blomst"]); }
+      };
+      // En park med træer, en lille sø og bænke
+      const park = (x0, z0) => {
+        for (let x = x0 + 5; x < x0 + 10; x++) for (let z = z0 + 5; z < z0 + 9; z++) { a.sæt(x, H, z, ID.Vand); a.sæt(x, H - 1, z, ID.Sand); }
+        for (const [dx, dz] of [[1, 1], [12, 2], [2, 12], [12, 12]]) {
+          const x = x0 + dx, z = z0 + dz;
+          søjle(x, z, H + 1, H + 4, ID.Træstamme);
+          for (let ix = -1; ix <= 1; ix++) for (let iz = -1; iz <= 1; iz++) for (let y = 4; y <= 5; y++) if (!a.hent(x + ix, H + y, z + iz)) a.sæt(x + ix, H + y, z + iz, ID.Blade);
+          a.sæt(x, H + 6, z, ID.Blade);
+        }
+        for (let x = x0 + 6; x <= x0 + 8; x++) a.sæt(x, H + 1, z0 + 11, ID.Planker);   // bænk
+        for (let n = 0; n < 8; n++) { const x = x0 + Math.floor(R() * 15), z = z0 + Math.floor(R() * 15); if (a.hent(x, H, z) === ID["Græs"] && !a.hent(x, H + 1, z)) a.sæt(x, H + 1, z, R() < 0.5 ? ID["Rød blomst"] : ID["Gul blomst"]); }
+      };
+      // Brandstationen lige ved startstedet — med to porte, et tårn og brandbilen
+      const station = (x0, z0) => {
+        const b = 13, d = 11, sx = x0 + 1, sz = z0 + 1;
+        for (let x = sx; x < sx + b; x++) for (let z = sz; z < sz + d; z++) {
+          const væg = x === sx || x === sx + b - 1 || z === sz || z === sz + d - 1;
+          a.sæt(x, H, z, ID.Fliser);
+          for (let y = 1; y <= 5; y++) a.sæt(x, H + y, z, væg ? (y === 3 && (x + z) % 3 === 0 && z !== sz ? ID.Glas : ID.Mursten) : 0);
+          a.sæt(x, H + 6, z, væg ? ID.Mursten : ID.Sten);
+        }
+        for (const px of [sx + 2, sx + 7]) for (let x = px; x < px + 4; x++) {
+          for (let y = 1; y <= 3; y++) a.sæt(x, H + y, sz, 0);
+          a.sæt(x, H + 4, sz, ID.Garageport);
+          for (let z = z0; z < sz; z++) a.sæt(x, H, z, ID.Fliser);
+        }
+        for (let y = 7; y <= 11; y++) for (const [dx, dz] of [[0, 0], [1, 0], [0, 1], [1, 1]]) a.sæt(sx + b - 2 + dx, H + y, sz + d - 2 + dz, ID.Mursten);
+        a.sæt(sx + b - 2, H + 12, sz + d - 2, ID.Lampe);
+        for (const x of [sx + 1, sx + 6, sx + 11]) a.sæt(x, H + 5, sz + 1, ID.Lampe);
+        // brandbilen i den første port: røde sider, hvid stribe, forrude, stige og blink på taget
+        const fx = sx + 2, fz = sz + 1;
+        for (let x = fx; x <= fx + 2; x++) for (let z = fz; z <= fz + 6; z++) {
+          a.sæt(x, H + 2, z, (x !== fx + 1 && z >= fz + 2) ? ID["Hvid uld"] : ID["Rød uld"]);
+          a.sæt(x, H + 3, z, z === fz ? ID.Glas : ID["Rød uld"]);
+        }
+        for (const x of [fx, fx + 2]) for (const z of [fz + 1, fz + 5]) a.sæt(x, H + 1, z, ID.Obsidian);
+        for (let z = fz + 2; z <= fz + 6; z++) a.sæt(fx + 1, H + 4, z, ID.Planker);
+        a.sæt(fx + 1, H + 4, fz, ID.Lampe);
+        // i den anden port: slanger på væggen og brandhaner
+        for (const x of [sx + 7, sx + 10]) a.sæt(x, H + 1, sz + d - 2, ID.Brandhane);
+        for (let x = sx + 7; x <= sx + 10; x++) a.sæt(x, H + 1, sz + 5, ID.Trækasse);
+      };
+
+      // Byen: grunde mellem vejene — brandstationen ved startstedet, ellers huse og parker
+      const n = Math.ceil(Math.max(BX, BZ) / GAB);
+      for (let i = -n; i <= n; i++) for (let j = -n; j <= n; j++) {
+        const x0 = cx + i * GAB + 4, z0 = cz + j * GAB + 4;
+        if (!iBy(x0, z0) || !iBy(x0 + 14, z0 + 14)) continue;
+        if (i === 0 && j === 0) station(x0, z0); else if (R() < 0.75) hus(x0, z0); else park(x0, z0);
+        søjle(x0 - 1, z0 - 1, H + 1, H + 3, ID.Sten); a.sæt(x0 - 1, H + 4, z0 - 1, ID.Lampe);     // gadelygte på hjørnet
+        if (R() < 0.6) a.sæt(x0 - 1, H + 1, z0 + 7, ID.Brandhane);
+      }
+      // Træer uden for byen
+      for (let k = 0; k < a.antal(26); k++) {
+        const x = 2 + Math.floor(R() * (BX - 4)), z = 2 + Math.floor(R() * (BZ - 4)), h = a.top[x + z * BX];
+        if (iBy(x, z) || kantAf(x, z) < 2 || a.hent(x, h, z) !== ID["Græs"] || a.hent(x, h + 1, z)) continue;
+        søjle(x, z, h + 1, h + 4, ID.Træstamme);
+        for (let ix = -1; ix <= 1; ix++) for (let iz = -1; iz <= 1; iz++) for (let y = 4; y <= 5; y++) if (!a.hent(x + ix, h + y, z + iz)) a.sæt(x + ix, h + y, z + iz, ID.Blade);
+        a.sæt(x, h + 6, z, ID.Blade);
+      }
+      a.pynt(a.antal(30), () => (R() < 0.5 ? ID["Rød blomst"] : ID["Gul blomst"]), [ID["Græs"]]);
     },
   },
 ];

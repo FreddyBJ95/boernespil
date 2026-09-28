@@ -21,6 +21,7 @@ export const VÆRKTØJ = {
   romerlys: { navn: "Romerlys", fyrværkeri: "romerlys", hold: 0.5 },
   lygte: { navn: "Ønskelygte", fyrværkeri: "lygte", hold: 1.2 },
   konfetti: { navn: "Konfettikanon", fyrværkeri: "konfetti", hold: 0.35 },
+  brandslange: { navn: "Brandslange", slange: true, hold: 0.1 },    // slukker ild og gør lava til sten
 };
 
 // ---------- Ikoner (pixel-tegninger) ----------
@@ -116,7 +117,18 @@ function konfetti(set) {
   for (let y = 11; y <= 14; y++) { set(3, y, "#2a2a2a"); set(4, y, "#2a2a2a"); }
   for (const [x, y, f] of [[12, 1, "#ff3b5c"], [14, 3, "#ffd23f"], [11, 3, "#4cd964"], [13, 6, "#3aa8ff"], [15, 1, "#ff8c1a"], [10, 0, "#c86bff"], [15, 6, "#ffffff"]]) set(x, y, f);
 }
-const TEGNERE = { tænder, gevær, bazooka, maling, raket, stjernekaster, romerlys, lygte, konfetti };
+// Brandslange: en rød slange med et messingmundstykke, der sprøjter vand
+function brandslange(set) {
+  for (let i = 0; i <= 9; i++) {
+    const x = 1 + i, y = 14 - Math.round(i * 0.65 + Math.sin(i / 9 * Math.PI) * 1.5);
+    set(x, y, "#e0302a"); set(x, y + 1, "#a81e16");
+  }
+  for (let x = 10; x <= 12; x++) for (let y = 6; y <= 8; y++) set(x, y, y === 6 ? "#ffe27a" : "#d9a520");
+  set(13, 7, "#b8860b");
+  for (const [x, y] of [[14, 6], [15, 5], [14, 8], [15, 9], [15, 7], [13, 4], [12, 3], [14, 3], [15, 2]]) set(x, y, "#8fc4ff");
+  set(15, 4, "#ffffff"); set(13, 2, "#3a7fe0");
+}
+const TEGNERE = { tænder, gevær, bazooka, maling, raket, stjernekaster, romerlys, lygte, konfetti, brandslange };
 export function værktøjIkon(id) {
   if (!ikoner[id]) ikoner[id] = tegn(set => (TEGNERE[id] ? TEGNERE[id](set) : spand(set, VÆRKTØJ[id].væske)));
   return ikoner[id];
@@ -175,6 +187,10 @@ export function værktøjModel(id) {
     tragt.rotation.x = Math.PI / 2; tragt.position.z = -0.3; model.add(tragt);
     model.add(kasse(0.26, 0.6, 0.3, "#2a2a2a", 0, -0.4, 0.35), kasse(0.3, 0.3, 0.5, "#9b4de0", 0, 0, 0.35));
     model.rotation.set(0.05, 0.1, 0);
+  } else if (id === "brandslange") {                        // mundstykket peger frem, slangen hænger bagud
+    model.add(kasse(0.26, 0.26, 0.9, "#d9a520"), kasse(0.16, 0.16, 0.25, "#b8860b", 0, 0, -0.55), kasse(0.34, 0.34, 0.12, "#8a6a10", 0, 0, 0.3));
+    model.add(kasse(0.24, 0.24, 0.7, "#e0302a", 0, -0.05, 0.7), kasse(0.24, 0.8, 0.24, "#e0302a", 0, -0.45, 1.0), kasse(0.2, 0.45, 0.24, "#2a2a2a", 0, -0.3, 0.05));
+    model.rotation.set(0.05, 0.12, 0);
   } else if (id === "stjernekaster") {                       // tynd tråd med et glimt, der gnistrer
     model.add(kasse(0.07, 1.5, 0.07, "#9aa3ad"), kasse(0.1, 0.5, 0.1, "#6b7078", 0, -0.55, 0));
     flamme = new THREE.Group();
