@@ -405,13 +405,86 @@ export function atomBip() {                // atombomben bipper, mens lunten br�
   if (!ac) return;
   tone(1250, nu(), 0.09, "square", 0.06);
 }
-export function atomBrag(afstand = 0) {    // et kæmpe, dybt brag og en lang rumlen bagefter
+export function atomBrag(afstand = 0, str = 1) {   // et kæmpe, dybt brag og en lang rumlen bagefter (str: 0.55 = lille, 1.5 = kæmpe)
   if (!ac) return;
-  const v = Math.max(0.3, 1 - afstand / 140), t = nu();
+  const v = Math.max(0.3, 1 - afstand / 160) * Math.min(1, 0.55 + str * 0.45), t = nu() + Math.min(0.5, afstand / 340), l = 0.6 + str * 0.4;
   sus(t, 0.35, 3000, 400, 0.35 * v, "lowpass", 0.7);
-  tone(70, t, 1.8, "sine", 0.45 * v, 28);
-  sus(t + 0.1, 4, 500, 40, 0.4 * v, "lowpass", 0.9);
-  glid(55, 30, t + 0.2, 3.5, { type: "sawtooth", vol: 0.1 * v, filter: 160, q: 1 });
+  tone(70, t, 1.8 * l, "sine", 0.45 * v, 28);
+  sus(t + 0.1, 4 * l, 500, 40, 0.4 * v, "lowpass", 0.9);
+  glid(55, 30, t + 0.2, 3.5 * l, { type: "sawtooth", vol: 0.1 * v, filter: 160, q: 1 });
+}
+export function nedtælling(n) {            // bip ved hvert tal — det sidste er lysest
+  if (!ac) return;
+  tone(n <= 1 ? 1320 : 880, nu(), 0.2, "square", 0.07);
+  tone(n <= 1 ? 1760 : 1175, nu() + 0.02, 0.18, "sine", 0.06);
+}
+export function alarm() {                  // en blød sirene, der stiger og falder, når knappen trykkes
+  if (!ac) return;
+  const t = nu();
+  for (let i = 0; i < 3; i++) glid(480, 880, t + i * 0.95, 0.9, { type: "triangle", vol: 0.09, vibHz: 3, vib: 20 });
+}
+export function missilStart(afstand = 0) { // missilet letter: en lang, dyb brølen
+  if (!ac) return;
+  const v = fjern(afstand), t = nu();
+  sus(t, 2.8, 200, 1000, 0.45 * v, "lowpass", 0.8);
+  glid(55, 120, t, 2.6, { type: "sawtooth", vol: 0.12 * v, filter: 320, q: 1 });
+  sus(t + 0.3, 2.4, 1500, 4000, 0.12 * v, "bandpass", 0.7);
+}
+export function missilFløjt(afstand = 0) { // missilet hviner ned mod jorden
+  if (!ac) return;
+  glid(1900, 480, nu(), 1.3, { type: "sine", vol: 0.07 * fjern(afstand), vibHz: 9, vib: 18 });
+}
+export function atomkasterSkud() {        // plop — den lille atombombe flyver af sted
+  if (!ac) return;
+  tone(170, nu(), 0.22, "sine", 0.35, 70);
+  sus(nu(), 0.45, 500, 2200, 0.22, "bandpass", 0.9);
+  glid(760, 320, nu(), 0.25, { type: "triangle", vol: 0.08 });
+}
+export function genladet(afstand = 0) {    // et nyt missil står klar i siloen
+  if (!ac) return;
+  const v = nær(afstand * 0.5);
+  if (v > 0) [659, 880, 1175].forEach((f, i) => tone(f, nu() + i * 0.09, 0.2, "triangle", 0.08 * v));
+}
+// ---------- Ildtornadoerne ----------
+let vind = null, vindT = 0;
+export function vindLyd(styrke) {          // tornadoens susen — jo tættere på, jo højere (0 = stille)
+  if (!ac) return;
+  if (!vind) {
+    const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+    s.buffer = støjBuf; s.loop = true;
+    f.type = "bandpass"; f.Q.value = 0.8; f.frequency.value = 400; g.gain.value = 0;
+    s.connect(f); f.connect(g); g.connect(ud); s.start();
+    vind = { f, g, sidste: 0 };
+  }
+  const t = ac.currentTime;
+  if (t - vindT < 0.1 && !(styrke === 0 && vind.sidste > 0)) return;   // højst ti gange i sekundet (men stille med det samme)
+  if (styrke === 0 && vind.sidste === 0) return;
+  vindT = t; vind.sidste = styrke;
+  vind.g.gain.setTargetAtTime(Math.min(0.45, styrke * 0.4), t, styrke > 0 ? 0.2 : 0.08);
+  vind.f.frequency.setTargetAtTime(260 + styrke * 650 + Math.sin(t * 2.3) * 90, t, 0.25);
+}
+export function suget() {                  // wiii — man bliver suget op i tornadoen
+  if (!ac) return;
+  glid(260, 1150, nu(), 1.3, { type: "triangle", vol: 0.12, vibHz: 6, vib: 35 });
+  sus(nu(), 1.3, 300, 2600, 0.2, "bandpass", 1);
+}
+export function slynget() {                // og så bliver man kastet blødt ud igen
+  if (!ac) return;
+  sus(nu(), 0.8, 2600, 300, 0.25, "bandpass", 0.8);
+  glid(950, 420, nu(), 0.5, { type: "triangle", vol: 0.1 });
+}
+export function tornadoTænd(afstand = 0) { // tornadoen bliver til en ildtornado
+  if (!ac) return;
+  const v = Math.max(0.2, 1 - afstand / 50), t = nu();
+  sus(t, 1, 200, 2600, 0.4 * v, "bandpass", 0.7);
+  tone(90, t, 0.7, "sine", 0.25 * v, 50);
+  knitre(afstand);
+}
+export function tornadoSlukket(afstand = 0) { // tsss — ildtornadoen er slukket, og en lille fanfare
+  if (!ac) return;
+  const v = Math.max(0.3, 1 - afstand / 40), t = nu();
+  sus(t, 1.6, 5000, 700, 0.3 * v, "highpass", 0.6);
+  [523, 659, 784, 1047].forEach((f, i) => tone(f, t + 0.4 + i * 0.1, 0.35, "triangle", 0.12 * v));
 }
 // ---------- Dinodalen ----------
 export function vulkan(afstand = 0) {      // en dyb rumlen, når vulkanen går i udbrud
@@ -555,7 +628,10 @@ export function dyrLyd(type, afstand = 0) {
     case "knips": [0, 0.12, 0.24].forEach(d => tone(2400, t + d, 0.04, "square", 0.08 * v)); break;
     case "blub": for (const d of [0, 0.15]) glid(380, 900, t + d, 0.12, { vol: 0.12 * v }); break;
     case "hval": glid(180, 120, t, 1.8, { type: "sine", vol: 0.25 * v, vibHz: 3, vib: 8 }); glid(240, 300, t + 1.2, 1.2, { type: "sine", vol: 0.15 * v, vibHz: 4, vib: 10 }); break;
-    case "vrinsk": glid(700, 1300, t, 0.3, { type: "triangle", vol: 0.14 * v, vibHz: 18, vib: 60 }); glid(1300, 600, t + 0.3, 0.5, { type: "triangle", vol: 0.12 * v, vibHz: 14, vib: 50 }); break;
+    case "jip": [0, 0.14, 0.28].forEach(d => glid(900, 1400, t + d, 0.09, { type: "triangle", vol: 0.13 * v })); break;
+    case "fønix": [988, 1319, 1568, 1319].forEach((f, i) => glid(f, f * 1.12, t + i * 0.13, 0.16, { type: "sine", vol: 0.12 * v, vibHz: 12, vib: 20 })); break;
+    case "rasl": sus(t, 0.35, 3500, 1800, 0.18 * v, "bandpass", 1.5); sus(t + 0.18, 0.25, 3000, 1500, 0.12 * v, "bandpass", 1.5); break;
+    case "vrinsk":glid(700, 1300, t, 0.3, { type: "triangle", vol: 0.14 * v, vibHz: 18, vib: 60 }); glid(1300, 600, t + 0.3, 0.5, { type: "triangle", vol: 0.12 * v, vibHz: 14, vib: 50 }); break;
     default: tone(600, t, 0.1, "sine", 0.2 * v, 900);
   }
 }

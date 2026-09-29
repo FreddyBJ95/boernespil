@@ -14,7 +14,10 @@
 //  portal:       lilla portal man kan gå igennem — tændes i en ramme af obsidian med 🔥 tænderen (spil.js)
 //  skat:         en skattekiste — slå den op med 🔨, så springer guldet ud · kanon: tryk med 🔨 eller 🔥, så skyder den
 //  dinoæg:       slå på det med 🔨, så kommer der en dino-unge ud
-//  atom:         en atombombe — tændes med 🔥 eller 🔨 og giver en kæmpe sprængning med en svampesky (spil.js)
+//  atom:         en atombombe — tændes med 🔥 eller 🔨 og giver en kæmpe sprængning med en svampesky (atom.js)
+//                "kæmpe" = endnu større (Kæmpebomben)
+//  missil:       en del af et missil (true = kroppen, "spids" = toppen) — tænd det med 🔥 eller 🔨, så flyver det
+//  knap:         den røde Affyringsknap — tryk på den, så flyver alle missiler i nærheden efter en nedtælling
 //  Nye blokke skal altid tilføjes NEDERST, så gemte verdener stadig passer.
 //  lyd:          "græs" | "sten" | "træ" | "sand" | "glas" | "uld" | "metal" | "vand" | "lava" | "ild"
 // Et nyt mønster er en funktion i MØNSTRE der tegner 16×16 pixels med set(x, y, farve).
@@ -172,7 +175,22 @@ export const BLOKKE = [
   { navn: "Atomtønde", tekstur: { top: "atomtøndeTop", side: "atomtønde", bund: "atomtøndeTop" }, tnt: true, lyd: "metal" },
   { navn: "Beton", tekstur: "beton", lyd: "sten" },
   { navn: "Aske", tekstur: "aske", lyd: "sand" },
-  { navn: "Atomslim", tekstur: "atomslim", lyser: true, lyd: "vand" },
+  { navn: "Atomslim", tekstur: "atomslim", lyser: true, hopper: true, lyd: "vand" },
+  // --- NUKE-banen: kæmpebomben, missiler og den røde knap ---
+  { navn: "Kæmpebombe", tekstur: { top: "kæmpebombeTop", side: "kæmpebombe", bund: "kæmpebombeTop" }, atom: "kæmpe", lyd: "metal" },
+  { navn: "Missil", tekstur: { top: "missilTop", side: "missil", bund: "missilTop" }, missil: true, lyd: "metal" },
+  { navn: "Missilspids", tekstur: { top: "tom", side: "missilspids", bund: "missilTop" }, missil: "spids", gennemsigtig: true, lyd: "metal" },
+  { navn: "Affyringsknap", tekstur: { top: "knapTop", side: "knapSide", bund: "stål" }, knap: true, lyd: "metal" },
+  { navn: "Advarselsstriber", tekstur: "advarsel", lyd: "metal" },
+  { navn: "Kontrolpult", tekstur: { top: "pultTop", side: "pultSide", bund: "stål" }, lyser: true, lyd: "metal" },
+  { navn: "Stålplade", tekstur: "stål", lyd: "metal" },
+  // --- Ildtornadoerne ---
+  { navn: "Tørt græs", tekstur: { top: "tørtGræsTop", side: "tørtGræsSide", bund: "jord" }, lyd: "græs" },
+  { navn: "Rødsandsten", tekstur: "rødsandsten", lyd: "sten" },
+  { navn: "Kaktus", tekstur: { top: "kaktusTop", side: "kaktus", bund: "kaktusTop" }, lyd: "græs" },
+  { navn: "Tør busk", tekstur: "tørBusk", kryds: true, lyd: "græs" },
+  { navn: "Brændt jord", tekstur: { top: "brændtJord", side: "brændtJordSide", bund: "jord" }, lyd: "sand" },
+  { navn: "Magma", tekstur: "magma", lyser: true, lyd: "sten" },
 ];
 
 export const ID = {};
@@ -524,6 +542,102 @@ const MØNSTRE = {
     fyld(set, r, "#4ae02a", 0.14);
     for (let i = 0; i < 7; i++) { const x = Math.floor(r() * 14), y = Math.floor(r() * 14); set(x, y, hex("#d8ffb0")); set(x + 1, y, hex("#a8ff7a")); set(x, y + 1, hex("#a8ff7a")); }
     prik(set, r, ["#2aa81a"], 10);
+  },
+  kæmpebombe: (set, r) => {
+    fyld(set, r, "#d42a2a", 0.06);
+    alle((x, y) => { if (x === 0 || x === 15 || y === 0 || y === 15) set(x, y, hex("#2a0a0a")); else if (y === 2 || y === 13) set(x, y, hex("#f5d02a")); });
+    alle((x, y) => { if (Math.hypot(x - 7.5, y - 7.5) < 5.4) set(x, y, hex("#f5d02a")); });
+    strålingstegn(set, 8, 8, 0.74, "#1a1a1a");
+  },
+  kæmpebombeTop: set => alle((x, y) => {
+    const d = Math.hypot(x - 7.5, y - 7.5);
+    set(x, y, hex(d < 3 ? "#f5d02a" : d < 4 ? "#1a1a1a" : ((x + y) >> 2) % 2 ? "#1a1a1a" : "#d42a2a"));
+  }),
+  // Missilet: hvid krop med et rødt bånd — spidsen er en rød kegle (resten af blokken er gennemsigtig)
+  missil: (set, r) => alle((x, y) => {
+    let f = y >= 6 && y <= 9 ? "#d8262a" : x < 2 || x > 13 ? "#c8ccd2" : "#f2f2ee";
+    if ((y === 2 || y === 13) && x >= 6 && x <= 9) f = "#2a2a2a";
+    set(x, y, lys(hex(f), 1 + (r() - 0.5) * 0.05));
+  }),
+  missilTop: (set, r) => alle((x, y) => {
+    const d = Math.hypot(x - 7.5, y - 7.5);
+    set(x, y, lys(hex(d > 6.5 ? "#c8ccd2" : d > 5 ? "#f2f2ee" : "#a8acb2"), 1 + (r() - 0.5) * 0.05));
+  }),
+  missilspids: (set, r) => alle((x, y) => {
+    const halv = (y + 1) / 2;                                    // hvor bred spidsen er i denne højde
+    if (Math.abs(x - 7.5) > halv) { set(x, y, [0, 0, 0], 0); return; }
+    set(x, y, lys(hex(y < 3 ? "#f2f2ee" : x - 7.5 < 2 - halv ? "#ff6a5e" : "#d8262a"), 1 + (r() - 0.5) * 0.06));
+  }),
+  tom: set => alle((x, y) => set(x, y, [0, 0, 0], 0)),
+  knapTop: (set, r) => alle((x, y) => {
+    const d = Math.hypot(x - 7.5, y - 7.5);
+    if (d < 4.6) set(x, y, lys(hex(Math.hypot(x - 6, y - 6) < 1.6 ? "#ff9a8a" : "#e0201a"), 1 + (r() - 0.5) * 0.05));
+    else if (d < 5.6) set(x, y, hex("#6a0a0a"));
+    else set(x, y, hex(((x + y) >> 1) % 2 ? "#1a1a1a" : "#f5d02a"));
+  }),
+  knapSide: (set, r) => alle((x, y) => set(x, y, y < 4 ? hex(y === 0 ? "#ff6a5e" : "#e0201a")
+    : lys(hex(((x + y) >> 1) % 2 ? "#1a1a1a" : "#f5d02a"), 1 + (r() - 0.5) * 0.05))),
+  advarsel: (set, r) => alle((x, y) => set(x, y, lys(hex(((x + y) >> 2) % 2 ? "#1a1a1a" : "#f5c518"), 1 + (r() - 0.5) * 0.08))),
+  // Kontrolpulten: en grøn radarskærm og farvede knapper
+  pultSide: (set, r) => alle((x, y) => {
+    let f = "#3a4048";
+    if (x >= 2 && x <= 13 && y >= 2 && y <= 8) {
+      const d = Math.hypot(x - 7.5, y - 5);
+      f = d < 0.8 ? "#c8ffb0" : Math.abs(d - 2) < 0.5 || Math.abs(d - 4) < 0.5 ? "#3ad02a" : "#0a2a0a";
+      if (x > 7.5 && Math.abs(y - 5 + (x - 7.5) * 0.6) < 0.6 && d < 5) f = "#8aff6a";      // radarstrålen
+    } else if (y === 11 && x % 3 === 1) f = ["#ff3b30", "#ffd23f", "#4cd964", "#3aa8ff"][Math.floor(x / 3) % 4];
+    else if (y === 13 && x >= 3 && x <= 12) f = "#5a626c";
+    set(x, y, lys(hex(f), 1 + (r() - 0.5) * 0.05));
+  }),
+  pultTop: (set, r) => alle((x, y) => set(x, y, lys(hex(x % 4 === 1 && y % 4 === 1 ? ["#ff3b30", "#ffd23f", "#4cd964", "#3aa8ff"][((x + y) >> 2) % 4] : "#4a5058"), 1 + (r() - 0.5) * 0.06))),
+  stål: (set, r) => {
+    fyld(set, r, "#8a929c", 0.08);
+    alle((x, y) => { if (x === 0 || y === 0) set(x, y, hex("#a8b0ba")); else if (x === 15 || y === 15) set(x, y, hex("#5a626c")); });
+    for (const [x, y] of [[2, 2], [12, 2], [2, 12], [12, 12]]) { set(x, y, hex("#d0d8e2")); set(x + 1, y + 1, hex("#4a525c")); }
+  },
+  // --- Ildtornadoerne ---
+  tørtGræsTop: (set, r) => { fyld(set, r, "#c8a84a", 0.22); prik(set, r, ["#a88a3a", "#dcc070", "#b89a42"], 30); },
+  tørtGræsSide: (set, r) => {
+    MØNSTRE.jord(set, r);
+    for (let x = 0; x < T; x++) {
+      const h = 3 + (r() < 0.5 ? 1 : 0) + (r() < 0.15 ? 1 : 0);
+      for (let y = 0; y < h; y++) set(x, y, lys(hex("#c8a84a"), 1 + (r() - 0.5) * 0.3));
+    }
+  },
+  rødsandsten: (set, r) => {
+    const bånd = ["#c8582a", "#d86a36", "#b84a24", "#e08a52"];
+    alle((x, y) => set(x, y, lys(hex(bånd[((y + (x > 9 ? 1 : 0)) >> 2) % 4]), 1 + (r() - 0.5) * 0.14)));
+    prik(set, r, ["#a04020", "#f0a070"], 10);
+  },
+  kaktus: (set, r) => alle((x, y) => {
+    const f = x % 4 === 2 && y % 4 === 1 ? "#f4f0c0" : x % 4 === 0 ? "#2a7a2a" : x % 4 === 2 ? "#5ac04a" : "#3fa03a";
+    set(x, y, lys(hex(f), 1 + (r() - 0.5) * 0.1));
+  }),
+  kaktusTop: (set, r) => alle((x, y) => {
+    const d = Math.hypot(x - 7.5, y - 7.5);                      // en lille lyserød blomst på toppen
+    set(x, y, lys(hex(d < 2 ? "#ff6fb5" : d < 2.8 ? "#ffd23f" : Math.floor(d) % 2 ? "#3fa03a" : "#5ac04a"), 1 + (r() - 0.5) * 0.1));
+  }),
+  tørBusk: (set, r) => {
+    alle((x, y) => set(x, y, [0, 0, 0], 0));
+    const grene = [[7.5, 15, 7.5, 7], [7.5, 12, 3, 5], [7.5, 11, 12.5, 4], [5, 8, 2, 2], [10, 7, 13, 1], [7.5, 9, 6, 1], [7.5, 9, 9.5, 2]];
+    for (const [x0, y0, x1, y1] of grene) for (let i = 0; i <= 10; i++) {
+      set(Math.round(x0 + (x1 - x0) * i / 10), Math.round(y0 + (y1 - y0) * i / 10), lys(hex("#8a6a3a"), 1 + (r() - 0.5) * 0.35));
+    }
+  },
+  brændtJord: (set, r) => { fyld(set, r, "#2a2624", 0.25); prik(set, r, ["#1a1818", "#3a3430", "#4a4440"], 26); prik(set, r, ["#ff8c1a", "#ffd23f"], 4); },
+  brændtJordSide: (set, r) => {
+    MØNSTRE.jord(set, r);
+    for (let x = 0; x < T; x++) for (let y = 0; y < 2 + (r() < 0.5 ? 1 : 0); y++) set(x, y, lys(hex("#2a2624"), 1 + (r() - 0.5) * 0.3));
+  },
+  magma: (set, r) => {
+    fyld(set, r, "#4a1a0e", 0.3);
+    for (let n = 0; n < 4; n++) {                                 // glødende sprækker
+      let x = Math.floor(r() * T), y = Math.floor(r() * T);
+      for (let i = 0; i < 9; i++) {
+        set(x, y, hex(i % 3 ? "#ff7a1a" : "#ffd23f"));
+        x = (x + (r() < 0.5 ? 1 : 0)) % T; y = (y + (r() < 0.6 ? 1 : T - 1)) % T;
+      }
+    }
   },
   // --- Dinodalen ---
   junglestamme: (set, r) => alle((x, y) => set(x, y, lys(hex(x % 4 === 0 ? "#4a3a1e" : (x + y * 3) % 11 === 0 ? "#5a7a2a" : "#6e5230"), 1 + (r() - 0.5) * 0.18))),

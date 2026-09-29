@@ -13,6 +13,7 @@ const VÅBEN = {
   bazooka: { fart: 24, tyngde: 0, liv: 2.5, brag: true },
   maling: { fart: 30, tyngde: 0.22, liv: 2 },
   kanon: { fart: 34, tyngde: 0.12, liv: 2.5, brag: true },      // kampvognens kanon
+  atom: { fart: 21, tyngde: 0.5, liv: 5, brag: true },          // atomkasteren: en lille atombombe i en bue (svampesky, se atom.js)
   skum: { fart: 13, tyngde: 0.35, liv: 4 },                     // fjendernes bløde skumkugler
 };
 const MALING = ["Rød uld", "Orange uld", "Gul uld", "Grøn uld", "Blå uld", "Lilla uld", "Lyserød uld"].map(n => ID[n]);
@@ -21,6 +22,7 @@ const KONFETTI = FARVER.map(f => new THREE.Color(f));
 const SKUM = ["#ff6fd0", "#c86bff", "#3aa8ff", "#4cd964", "#ffd23f"];
 const tilfældig = a => a[Math.floor(Math.random() * a.length)];
 const tmp = new THREE.Vector3();
+const ATOMGNIST = ["#8aff5a", "#f5d02a", "#c8ff7a"].map(f => new THREE.Color(f));
 
 // Små modeller til det, der flyver
 const GEO = { kasse: new THREE.BoxGeometry(1, 1, 1), kugle: new THREE.SphereGeometry(1, 10, 8), kegle: new THREE.ConeGeometry(1, 1, 8) };
@@ -35,6 +37,10 @@ function projektilModel(type, farve) {
     del(GEO.kasse, "#4f7a2e", [0.22, 0.22, 0.7]);
     const spids = del(GEO.kegle, "#e0302a", [0.13, 0.3, 0.13], [0, 0, 0.48]); spids.rotation.x = Math.PI / 2;
     del(GEO.kasse, "#ffd23f", [0.3, 0.04, 0.2], [0, 0, -0.3]);
+  } else if (type === "atom") {                                    // gul kugle med sort bælte og små finner
+    del(GEO.kugle, "#f5d02a", [0.3, 0.3, 0.3]);
+    del(GEO.kasse, "#1a1a1a", [0.62, 0.09, 0.62]);
+    del(GEO.kasse, "#1a1a1a", [0.5, 0.05, 0.22], [0, 0, -0.34]); del(GEO.kasse, "#1a1a1a", [0.05, 0.5, 0.22], [0, 0, -0.34]);
   } else del(GEO.kugle, farve, type === "kanon" ? [0.2, 0.2, 0.2] : type === "skum" ? [0.27, 0.27, 0.27] : [0.14, 0.14, 0.14], [0, 0, 0], type === "maling");
   return g;
 }
@@ -52,7 +58,7 @@ function ballonModel(farve) {
 }
 
 export class Skydning {
-  // spil: { scene, verden, kamera, sp, dyr, partikel, eksploder, bragEffekt, puf, lyd, net(), online, sæt(x,y,z,id),
+  // spil: { scene, verden, kamera, sp, dyr, partikel, eksploder, bragEffekt, puf, lyd, net(), online, sæt(x,y,z,id), atom(x,y,z),
   //         point(n), klat(farve), tyngde, bane (true på Skydebanen), start: [x, z] }
   constructor(spil) {
     this.s = spil;
@@ -80,15 +86,17 @@ export class Skydning {
 
   // Barnet trykker med et våben: kuglen flyver fra hånden mod det sted, fingeren peger på
   skydMod(type, kameraPos, stråle, afstand = 40) {
-    if (type === "bazooka" && this.cooldown > 0) return false;
+    if ((type === "bazooka" || type === "atom") && this.cooldown > 0) return false;
     const k = this.s.kamera, højre = new THREE.Vector3(), op = new THREE.Vector3(0, 1, 0), frem = new THREE.Vector3();
     k.getWorldDirection(frem); højre.crossVectors(frem, op).normalize();
     const mål = kameraPos.clone().addScaledVector(stråle, afstand);
     const fra = kameraPos.clone().addScaledVector(frem, 0.7).addScaledVector(højre, 0.28).addScaledVector(op, -0.22);
     const retning = mål.sub(fra).normalize();
     if (type === "maling") retning.y += 0.02;
+    if (type === "atom") retning.y += 0.14;                        // atombomben flyver i en bue
     this.affyr(type, fra, retning);
-    if (type === "gevær") this.s.lyd.skud(); else if (type === "bazooka") { this.s.lyd.bazookaSkud(); this.cooldown = 0.8; } else this.s.lyd.klask(0.4);
+    if (type === "gevær") this.s.lyd.skud(); else if (type === "bazooka") { this.s.lyd.bazookaSkud(); this.cooldown = 0.8; }
+    else if (type === "atom") { this.s.lyd.atomkasterSkud(); this.cooldown = 1.3; } else this.s.lyd.klask(0.4);
     if (type === "gevær") for (let i = 0; i < 3; i++) this.s.partikel(fra.x, fra.y, fra.z, KONFETTI[1], retning.x * 3 + (Math.random() - 0.5), retning.y * 3 + Math.random(), retning.z * 3 + (Math.random() - 0.5), 0.12, -0.1, 0.6);
     return true;
   }
@@ -96,7 +104,7 @@ export class Skydning {
   // ---------- Hvad der sker, når noget bliver ramt ----------
   ramtBlok(p, x, y, z, id) {
     const b = BLOKKE[id];
-    if (VÅBEN[p.type].brag) return this.brag(p.pos.clone().addScaledVector(p.vel.clone().normalize(), -0.4));
+    if (VÅBEN[p.type].brag) return this.brag(p.pos.clone().addScaledVector(p.vel.clone().normalize(), -0.4), p.type === "atom");
     if (p.type === "skum") return this.stænk(p.pos, p.farve, 10);
     if (p.type === "gevær" && b.skive) return this.skivePop(x, y, z);
     if (p.type === "maling" && !b.uknuselig && !b.tnt && !b.skive && !b.fyrværkeri && !b.lyser) {
@@ -106,7 +114,7 @@ export class Skydning {
     this.stænk(p.pos, p.type === "maling" ? p.farve : "#fff3a0", 5, 0.6);          // små gnister på alt andet
   }
   ramtDyr(p, d) {
-    if (VÅBEN[p.type].brag) return this.brag(p.pos.clone());
+    if (VÅBEN[p.type].brag) return this.brag(p.pos.clone(), p.type === "atom");
     if (d.def.klap === "puf") {
       if (--d.liv > 0) { d.klap(); d.flugt = 1.5; this.stænk(p.pos, "#fff3a0", 8, 1); return; }   // dinoen skal rammes to gange
       this.s.puf(d); this.s.point(d.def.liv ? 3 : 2); return;
@@ -115,7 +123,7 @@ export class Skydning {
     if (p.type === "maling") this.stænk(p.pos, p.farve, 10);
   }
   ramtKampvogn(p, kv) {
-    if (VÅBEN[p.type].brag) return this.brag(p.pos.clone());
+    if (VÅBEN[p.type].brag) return this.brag(p.pos.clone(), p.type === "atom");
     if (p.type === "maling") { kv.mal(p.farve); this.stænk(p.pos, p.farve, 12); }
     else this.stænk(p.pos, "#fff3a0", 6, 0.8);
     if (kv.fjende && kv.træf(1)) this.kampvognVæk(kv);
@@ -123,13 +131,15 @@ export class Skydning {
   }
 
   // Bazooka og kanon: et stort brag. Skiver, balloner og fjender i nærheden bliver ramt.
-  brag(c) {
+  // Atomkasteren (atom = true): en lille atomsprængning med svampesky (spil.js/atom.js)
+  brag(c, atom = false) {
     for (let x = Math.floor(c.x - 3.3); x <= c.x + 3.3; x++) for (let y = Math.floor(c.y - 3.3); y <= c.y + 3.3; y++) for (let z = Math.floor(c.z - 3.3); z <= c.z + 3.3; z++) {
       if (BLOKKE[this.s.verden.hent(x, y, z)]?.skive && Math.hypot(x + 0.5 - c.x, y + 0.5 - c.y, z + 0.5 - c.z) < 3) { this.genopstil.push({ x, y, z, tid: 15 }); this.s.point(1); }
     }
-    for (const b of [...this.balloner]) if (b.pos.distanceTo(c) < 4.5) this.ballonPop(b);
-    for (const kv of [...this.fjender]) if (kv.rammer(c, 2.5) && kv.træf(3)) this.kampvognVæk(kv);
-    if (this.s.online) this.s.net()?.brag(c.x, c.y, c.z);           // sammen: serveren sprænger og sender "bum" til alle
+    for (const b of [...this.balloner]) if (b.pos.distanceTo(c) < (atom ? 9 : 4.5)) this.ballonPop(b);
+    for (const kv of [...this.fjender]) if (kv.rammer(c, atom ? 5 : 2.5) && kv.træf(3)) this.kampvognVæk(kv);
+    if (atom) this.s.atom(c.x, c.y, c.z);
+    else if (this.s.online) this.s.net()?.brag(c.x, c.y, c.z);      // sammen: serveren sprænger og sender "bum" til alle
     else this.s.eksploder(c.x, c.y, c.z);
   }
 
@@ -337,7 +347,8 @@ export class Skydning {
         ramt = this.tjekRamt(p);
       }
       if (p.type === "bazooka" && Math.random() < 0.8) this.s.partikel(p.pos.x, p.pos.y, p.pos.z, new THREE.Color("#b0b0b0"), (Math.random() - 0.5) * 0.4, 0.4, (Math.random() - 0.5) * 0.4, 0.7, -0.08, 1.6);
-      if (!ramt && p.liv <= 0 && v.brag) { this.brag(p.pos.clone()); ramt = true; }
+      if (p.type === "atom" && Math.random() < 0.7) this.s.partikel(p.pos.x, p.pos.y, p.pos.z, ATOMGNIST[Math.floor(Math.random() * 3)], (Math.random() - 0.5) * 0.6, 0.5, (Math.random() - 0.5) * 0.6, 0.6, -0.05, 0.9);
+      if (!ramt && p.liv <= 0 && v.brag) { this.brag(p.pos.clone(), p.type === "atom"); ramt = true; }
       if (ramt || p.liv <= 0) { this.fjern(p); this.skud.splice(i, 1); continue; }
       p.model.position.copy(p.pos); this.retning(p);
     }

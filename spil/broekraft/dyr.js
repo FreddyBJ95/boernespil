@@ -3,13 +3,14 @@
 // Mål er i "pixels" ligesom i Minecraft: 16 pixels = 1 blok. y = 0 er jorden, +z er forrest (næsen).
 //  del:   { s: [bredde, højde, dybde], p: [x, y, z] = klodsens midte, f: farve, rolle, børn: [flere dele] }
 //  rolle: "ben" (svinger når dyret går) · "hoved" (kigger på dig) · "vinge" (basker) · "hale" (logrer)
-//         "arm" (zombie-arme) · "flamme" (vises kun når turbosneglen drøner af sted)
+//         "arm" (zombie-arme) · "flamme" (vises kun når turbosneglen drøner af sted) · "rul" (triller rundt)
 //  regnbue: true = klodsen skifter farve · lys: true = lyser selv · gennemsigtig: 0.8 = lidt gennemsigtig
-//  glød:  true = dyret lyser grønt og drysser små, grønne gnister (NUKE-banen)
+//  glød:  true = dyret lyser grønt og drysser små, grønne gnister (NUKE-banen) · "ild" = orange gnister
 //  evne:  "flyver" | "hopper" | "turbo" | "flagrer" (falder langsomt) | "zombie" (følger efter dig) | "svæver"
-//         "svømmer" (svømmer rundt i sin egen højde over havbunden)
+//         "svømmer" (svømmer rundt i sin egen højde over havbunden) · "ruller" (triller med vinden)
 //         "jæger" (spurter efter dig og skubber — se skyd.js) · liv: hvor mange skud der skal til (standard 1)
 //  klap:  "puf" = dyret forsvinder i konfetti og bliver til en blomst når man trykker på det
+//         slag: hvor mange tryk der skal til, før det siger puf (standard 1)
 //  skala: gør hele dyret større/mindre · fart: blokke pr. sekund
 //  lyd:   "muh" | "øf" | "mæh" | "kluk" | "kvæk" | "rap" | "wiii" | "uuuh" | "buuh" | "boing" | "bipbop" | "pip" | "rawr"
 //  æg:    to farver til dyre-ægget
@@ -591,13 +592,97 @@ export const DYR = [
       { s: [2, 2, 0.4], p: [0, 10.8, 4.1], f: "#ffffff" }, { s: [1, 1, 0.5], p: [0, 10.8, 4.2], f: "#1a1a1a" },
     ] },
   ] },
+  // NUKE-banen: en kæmpestor zombie med et fjollet grin — tryk på den tre gange, så bliver den til konfetti
+  { id: "kaempezombie", navn: "Kæmpezombie", lyd: "uuuh", fart: 0.8, evne: "zombie", klap: "puf", slag: 3, glød: true, skala: 1.4, æg: ["#5aff2a", "#4a2a6a"], dele: [
+    { s: [10, 12, 5], p: [0, 18, 0], f: "#4a2a6a" },
+    { s: [10.2, 2, 5.2], p: [0, 13, 0], f: "#2a1a3a" },
+    { s: [3, 3, 0.4], p: [2.5, 20, 2.6], f: "#7aff3a", lys: true },
+    { s: [4.5, 12, 4.5], p: [-2.5, 6, 0], f: "#2a2a4a", rolle: "ben", fase: 0 },
+    { s: [4.5, 12, 4.5], p: [2.5, 6, 0], f: "#2a2a4a", rolle: "ben", fase: Math.PI },
+    { s: [4, 4, 13], p: [-7, 22, 4.5], f: "#7aff3a", lys: true, rolle: "arm" },
+    { s: [4, 4, 13], p: [7, 22, 4.5], f: "#7aff3a", lys: true, rolle: "arm" },
+    { s: [10, 9, 9], p: [0, 28.5, 0], f: "#7aff3a", lys: true, rolle: "hoved", børn: [
+      { s: [3.5, 3.5, 0.4], p: [-2.5, 30, 4.6], f: "#ffff5a", lys: true }, { s: [1.6, 1.6, 0.5], p: [-2, 29.4, 4.7], f: "#1a3a1a" },
+      { s: [2.5, 2.5, 0.4], p: [2.8, 30.4, 4.6], f: "#ffff5a", lys: true }, { s: [1.2, 1.2, 0.5], p: [2.4, 30, 4.7], f: "#1a3a1a" },
+      { s: [6, 1.2, 0.4], p: [0, 26, 4.6], f: "#1a3a1a" }, { s: [1.2, 1.2, 0.4], p: [-3.4, 26.8, 4.6], f: "#1a3a1a" }, { s: [1.2, 1.2, 0.4], p: [3.4, 26.8, 4.6], f: "#1a3a1a" },
+      { s: [2, 2.5, 0.6], p: [1, 24.6, 4.6], f: "#ff6fa0" },
+      { s: [2, 3, 2], p: [-3, 34.5, 0], f: "#5aff2a", lys: true }, { s: [2, 4, 2], p: [0, 35, 1], f: "#5aff2a", lys: true }, { s: [2, 2.5, 2], p: [3, 34.2, -1], f: "#5aff2a", lys: true },
+    ] },
+  ] },
+  // NUKE-banen: en venlig ko med to hoveder og lysende pletter — begge hoveder kigger på dig
+  { id: "tohovedko", navn: "Tohovedet ko", lyd: "muh", fart: 1.1, æg: ["#d8c8a0", "#7aff3a"], dele: [
+    { s: [14, 10, 18], p: [0, 17, 0], f: "#d8c8a0" },
+    { s: [14.4, 3, 4], p: [0, 19, 2], f: "#7aff3a", lys: true },
+    { s: [5, 10.4, 4], p: [-3, 17, -5], f: "#7aff3a", lys: true },
+    ...fireBen([4, 12, 4], 5, 6, 6.5, "#b8a880"),
+    { s: [1, 8, 1], p: [0, 17, -9.5], f: "#b8a880", rolle: "hale" },
+    ...[-1, 1].map(s => ({ s: [7, 7, 6], p: [s * 4.2, 22, 11.5], f: "#d8c8a0", rolle: "hoved", børn: [
+      { s: [5, 2.5, 1], p: [s * 4.2, 19.5, 14.8], f: "#f0c8b8" },
+      { s: [1, 3, 1], p: [s * 4.2 - 2.6, 26.5, 11.5], f: "#fff5cc" }, { s: [1, 3, 1], p: [s * 4.2 + 2.6, 26.5, 11.5], f: "#fff5cc" },
+      ...[-1.6, 1.6].flatMap(e => [
+        { s: [2, 2, 0.4], p: [s * 4.2 + e, 23, 14.6], f: "#ffffff" },
+        { s: [1, 1, 0.5], p: [s * 4.2 + e - Math.sign(e) * 0.5, 22.5, 14.7], f: "#1a1a1a" },
+      ]),
+    ] })),
+  ] },
+  // Ildtornadoerne: en ørkenræv med kæmpestore ører
+  { id: "orkenraev", navn: "Ørkenræv", lyd: "jip", fart: 2.2, æg: ["#e8c890", "#ffffff"], dele: [
+    { s: [7, 6, 12], p: [0, 8, 0], f: "#e8c890" },
+    { s: [5, 2, 9], p: [0, 5.2, 0.5], f: "#fff0d8" },
+    ...fireBen([2, 5, 2], 2.2, 2.5, 4, "#d8b070"),
+    { s: [4, 4, 9], p: [0, 9, -9.5], f: "#e8c890", rolle: "hale", børn: [{ s: [4.2, 4.2, 3], p: [0, 9, -13], f: "#fff0d8" }] },
+    { s: [7, 6, 6], p: [0, 12, 8], f: "#e8c890", rolle: "hoved", børn: [
+      { s: [3, 2.5, 3], p: [0, 10.5, 12], f: "#fff0d8" }, { s: [1.4, 1.2, 0.6], p: [0, 11.4, 13.6], f: "#1a1a1a" },
+      { s: [3, 7, 1], p: [-3, 18, 7.5], f: "#e8c890" }, { s: [1.6, 5, 1.2], p: [-3, 17.5, 7.8], f: "#ffb0a0" },
+      { s: [3, 7, 1], p: [3, 18, 7.5], f: "#e8c890" }, { s: [1.6, 5, 1.2], p: [3, 17.5, 7.8], f: "#ffb0a0" },
+      ...øjne(1.8, 13, 11.1, 1.6),
+    ] },
+  ] },
+  // Ildtornadoerne: en lille præriehund, der hopper rundt
+  { id: "praeriehund", navn: "Præriehund", lyd: "pip", fart: 2, evne: "hopper", skala: 0.9, æg: ["#b0885a", "#f0d8b0"], dele: [
+    { s: [6, 8, 6], p: [0, 6, 0], f: "#b0885a" },
+    { s: [4, 5, 0.5], p: [0, 5.5, 3.1], f: "#f0d8b0" },
+    { s: [2, 2, 3], p: [-2, 1, 2], f: "#8a6a40", rolle: "ben", fase: 0 }, { s: [2, 2, 3], p: [2, 1, 2], f: "#8a6a40", rolle: "ben", fase: Math.PI },
+    { s: [1.5, 2.5, 1.5], p: [-2.5, 8, 3.2], f: "#8a6a40" }, { s: [1.5, 2.5, 1.5], p: [2.5, 8, 3.2], f: "#8a6a40" },
+    { s: [2, 2, 4], p: [0, 3, -4.5], f: "#8a6a40", rolle: "hale" },
+    { s: [5, 5, 5], p: [0, 12.5, 0.5], f: "#b0885a", rolle: "hoved", børn: [
+      { s: [3, 2, 1], p: [0, 11, 3.5], f: "#f0d8b0" }, { s: [1, 0.8, 0.4], p: [0, 11.8, 4.1], f: "#1a1a1a" },
+      { s: [1.4, 1.4, 1], p: [-2.2, 15.4, 0.5], f: "#8a6a40" }, { s: [1.4, 1.4, 1], p: [2.2, 15.4, 0.5], f: "#8a6a40" },
+      ...øjne(1.3, 13.5, 3.1, 1.3),
+    ] },
+  ] },
+  // Ildtornadoerne: en rullebusk, der triller hen over prærien med vinden
+  { id: "rullebusk", navn: "Rullebusk", lyd: "rasl", fart: 2.6, evne: "ruller", æg: ["#b08a50", "#6a4a2a"], dele: [
+    { s: [3, 3, 3], p: [0, 7, 0], f: "#8a6a3a", rolle: "rul", børn: [
+      { s: [12, 1, 1], p: [0, 7, 0], f: "#9a7a44" }, { s: [1, 12, 1], p: [0, 7, 0], f: "#9a7a44" }, { s: [1, 1, 12], p: [0, 7, 0], f: "#9a7a44" },
+      ...Array.from({ length: 26 }, (_, i) => {                  // små kviste jævnt fordelt på en kugle
+        const h = 1 - 2 * (i + 0.5) / 26, rr = Math.sqrt(1 - h * h), v = i * 2.4;
+        return { s: [2.2, 2.2, 2.2], p: [Math.cos(v) * rr * 6, 7 + h * 6, Math.sin(v) * rr * 6], f: i % 3 ? "#b08a50" : "#7a5a30" };
+      }),
+    ] },
+  ] },
+  // Ildtornadoerne: en føniks — en lysende ildfugl, der flyver rundt og drysser gnister
+  { id: "foniks", navn: "Føniks", lyd: "fønix", fart: 1.6, evne: "flyver", glød: "ild", skala: 1.2, æg: ["#ff4d2e", "#ffd23f"], dele: [
+    { s: [6, 6, 9], p: [0, 8, 0], f: "#ff5a1f", lys: true },
+    { s: [4, 3, 6], p: [0, 6, 1], f: "#ffd23f", lys: true },
+    { s: [1.5, 4, 1.5], p: [-1.5, 2.5, 0], f: "#d88a1a", rolle: "ben", fase: 0 }, { s: [1.5, 4, 1.5], p: [1.5, 2.5, 0], f: "#d88a1a", rolle: "ben", fase: Math.PI },
+    { s: [9, 1, 6], p: [-7, 9, 0], f: "#ff8c1a", lys: true, rolle: "vinge", børn: [{ s: [5, 1.2, 3], p: [-10, 9, -1.5], f: "#ffd23f", lys: true }] },
+    { s: [9, 1, 6], p: [7, 9, 0], f: "#ff8c1a", lys: true, rolle: "vinge", børn: [{ s: [5, 1.2, 3], p: [10, 9, -1.5], f: "#ffd23f", lys: true }] },
+    { s: [2, 1.5, 10], p: [-1.5, 8, -9], f: "#ff3b1a", lys: true, rolle: "hale", børn: [{ s: [2, 1.5, 6], p: [-2, 8.5, -16], f: "#ffd23f", lys: true }] },
+    { s: [2, 1.5, 12], p: [1.5, 8.5, -10], f: "#ff8c1a", lys: true, rolle: "hale", børn: [{ s: [2, 1.5, 5], p: [2, 9, -18], f: "#fff3a0", lys: true }] },
+    { s: [5, 5, 5], p: [0, 13, 5], f: "#ff5a1f", lys: true, rolle: "hoved", børn: [
+      { s: [2, 1.5, 3], p: [0, 12.5, 8.5], f: "#ffd23f", lys: true },
+      { s: [1, 3, 1], p: [0, 16.5, 4.5], f: "#ffd23f", lys: true }, { s: [1, 2, 1], p: [-1.2, 16, 4], f: "#ff8c1a", lys: true }, { s: [1, 2, 1], p: [1.2, 16, 4], f: "#ff8c1a", lys: true },
+      ...øjne(1.3, 14, 7.6, 1.4),
+    ] },
+  ] },
 ];
 // ---------- Byg et dyr af klodser ----------
 const kasse = new THREE.BoxGeometry(1, 1, 1);
 const S = 1 / 16;
 export function byggDyr(def) {
   const g = new THREE.Group();
-  const u = { ben: [], hoved: [], vinge: [], hale: [], arm: [], flamme: [], regnbue: [] };
+  const u = { ben: [], hoved: [], vinge: [], hale: [], arm: [], flamme: [], regnbue: [], rul: [] };
   function del(d, forælder, fp) {
     const [w, h, dd] = d.s, [x, y, z] = d.p;
     const pivot = d.rolle === "ben" ? [x, y + h / 2, z]
@@ -647,6 +732,11 @@ export class Dyr {
   opdater(dt, spiller) {
     const d = this.def, u = this.model.userData;
     this.t += dt; this.tid -= dt;
+    if (this.holdt) {                                      // en tornado snurrer dyret rundt (tornado.js flytter det)
+      this.model.position.copy(this.pos);
+      this.model.rotation.set(Math.sin(this.t * 7) * 0.3, this.model.rotation.y + dt * 9, 0);
+      return;
+    }
     if (this.tid <= 0) {                                   // find på noget nyt at lave
       this.går = Math.random() < 0.65;
       this.tid = 1.5 + Math.random() * 3.5;
@@ -669,6 +759,11 @@ export class Dyr {
         this.målYaw = Math.atan2(tilX, tilZ); this.går = afst > 0.6; this.tid = 1;
         if (this.jord && afst > 2 && afst < 6 && Math.random() < dt * 1.5) this.vel.y = 7;     // et spring frem
       }
+    }
+    if (d.evne === "ruller") {                            // rullebusken triller med vinden og hopper lidt
+      if (this.vind === undefined) this.vind = Math.random() * Math.PI * 2;
+      this.målYaw = this.vind + Math.sin(this.t * 0.3) * 0.4; this.går = true; this.tid = 1;
+      if (this.jord && Math.random() < dt * 1.2) this.vel.y = 4.5;
     }
     let dy = this.målYaw - this.yaw;
     dy = ((dy + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
@@ -712,6 +807,7 @@ export class Dyr {
       if (this.jord && !this.v.kolliderer(tmp, this.b, this.h)) this.vel.y = 7.5;
       else if (jæger && this.jord && !this.v.kolliderer(tmp.setY(this.pos.y + 2.05), this.b, this.h)) this.vel.y = 11;   // dinoen springer højt
       else if (jæger) { this.omvej = 0.7; this.omvejYaw = this.yaw + (Math.random() < 0.5 ? 1 : -1) * Math.PI / 2; }  // løb udenom
+      else if (d.evne === "ruller") this.vind += Math.PI * (0.6 + Math.random() * 0.8);                                // vinden vender
       else this.målYaw += Math.PI * (0.5 + Math.random());
     }
 
@@ -724,6 +820,7 @@ export class Dyr {
     for (const f of u.flamme) { f.visible = this.turbo > 0; f.scale.setScalar(0.8 + Math.random() * 0.6); }
     for (const a of u.arm) a.rotation.x = this.danser ? -0.8 + Math.sin(this.t * 9) * 0.6 : Math.sin(this.t * 2.5 + a.userData.side) * 0.12;
     for (const m of u.regnbue) m.color.setHSL((this.t * 0.2) % 1, 0.75, 0.72);
+    for (const r of u.rul) r.rotation.x += vandret * dt * 2.3;
     let kig = Math.sin(this.t * 0.7) * 0.4;
     if (afst < 6) { kig = Math.atan2(tilX, tilZ) - this.yaw; kig = ((kig + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; kig = Math.max(-0.9, Math.min(0.9, kig)); }
     for (const h of u.hoved) { h.rotation.y += (kig - h.rotation.y) * Math.min(1, dt * 5); h.rotation.x = Math.sin(this.t * 2) * 0.05; }

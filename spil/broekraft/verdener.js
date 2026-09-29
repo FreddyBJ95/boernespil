@@ -14,10 +14,15 @@
 //  undervand: hele verdenen er under vandet — man svømmer overalt, og overfladen er langt oppe
 //  vand:    "chokolade" = floderne og havet er af chokolade
 //  vulkan:  (BX, BZ) => [x, z] — hvor vulkanen står (den ryger og går af og til i udbrud i spil.js)
+//  atomtårne: (BX, BZ) => [[x, z], …] — køletårne, der damper · atommål: (BX, BZ) => [x, z] — hvor missilerne lander
+//  tornado: tornadoer drøner rundt af sig selv (tornado.js)
 //  generer: opskriften på terrænet — får værktøjer fra verden.js (terræn, pynt, sæt, hent, R, støj …)
 
 // Hvor vulkanen i Dinodalen står (bruges både af opskriften og af spil.js)
 const dinoVulkan = (BX, BZ) => [Math.min(BX - 22, BX / 2 + 30), Math.max(22, BZ / 2 - 28)];
+// NUKE-banen: hvor køletårnene står, og hvor Dukkebyen ligger (bruges både af opskriften og af spil.js)
+const atomtårne = (BX, BZ) => { const x = Math.max(14, BX / 2 - 36), z = Math.min(BZ - 16, BZ / 2 + 30); return [[x, z], [x + 16, z + 4]]; };
+const atommål = (BX, BZ) => [Math.min(BX - 18, BX / 2 + 44), Math.min(BZ - 18, BZ / 2 + 12)];
 
 export const VERDENER = [
   {
@@ -1210,29 +1215,51 @@ export const VERDENER = [
   },
 
   {
-    id: "atom", navn: "NUKE-banen", ikon: "☢️", tekst: "Et ødeland med ruiner og lysende grønt slim. Tænd atombomberne, og løb væk — og pas på de lysende zombier!",
-    himmel: ["#1f2a14", "#9ab04a"], tåge: [26, 82], hav: "#5ad02a", sol: "#f0ffb0", solStr: 30, skyer: "#8a9a6a",
+    id: "atom", navn: "NUKE-banen", ikon: "☢️", tekst: "Et kæmpe ødeland med missilsiloer, et atomkraftværk og en dukkeby. Tryk på den røde knap i bunkeren — og se svampeskyerne!",
+    himmel: ["#1f2a14", "#9ab04a"], tåge: [30, 92], hav: "#5ad02a", sol: "#f0ffb0", solStr: 30, skyer: "#8a9a6a",
     lys: ["#e0ffb0", "#3a4a2a", 1.9, 1.0], stemning: "uhyggelig", tyngde: 28,
-    størrelse: [144, 48, 144],
-    dyr: ["atomzombie", "atomzombie", "atomzombie", "atomfro"], antal: 12, genfød: true,
+    størrelse: [176, 48, 176],
+    dyr: ["atomzombie", "atomzombie", "atomzombie", "kaempezombie", "atomfro", "tohovedko"], antal: 14, genfød: true,
     sne: "atom",                                                 // små, grønne gnister i luften
-    hotbar: ["Atombombe", "Atomtønde", "TNT", "Beton", "Aske", "Atomslim", "v:tænder", "v:brandslange", "æg:atomzombie"],
-    vis: ["Atombombe", "Atomtønde", "Atomslim"],
-    hent: ["Bygger bunkeren…", "Fylder tønderne med slim…", "Vækker de lysende zombier…", "Tæller ned: 3… 2… 1…"],
+    atomtårne, atommål,                                          // damp fra køletårnene · missilerne flyver mod Dukkebyen
+    hotbar: ["Atombombe", "Kæmpebombe", "v:atomkaster", "Missil", "Missilspids", "Affyringsknap", "Beton", "v:tænder", "æg:atomzombie"],
+    vis: ["Kæmpebombe", "Missilspids", "Atomslim"],
+    hent: ["Bygger bunkeren…", "Stiller missilerne op…", "Fylder tønderne med slim…", "Vækker de lysende zombier…", "Tæller ned: 3… 2… 1…"],
     generer(a) {
-      const { R, støj, ID, BX, BZ, top } = a, cx = BX / 2, cz = BZ / 2, h0 = (x, z) => top[x + z * BX];
+      const { R, støj, ID, BX, BZ, top } = a, cx = BX / 2, cz = BZ / 2;
+      const h0 = (x, z) => top[Math.max(0, Math.min(BX - 1, x)) + Math.max(0, Math.min(BZ - 1, z)) * BX];
+      const søjle = (x, z, y0, y1, blok) => { for (let y = y0; y <= y1; y++) a.sæt(x, y, z, blok); };
+      const [mx, mz] = atommål(BX, BZ), tårne = atomtårne(BX, BZ), [kx0, kz0] = tårne[0];
+      const sz = Math.max(10, cz - 20), lx = Math.max(14, cx - 34), lz = Math.max(14, cz - 30), rx = kx0 + 8, rz = kz0 - 13;
+      // De store steder — her må der ikke komme ruiner og bilvrag
+      const zoner = [[cx, cz, 12], [mx, mz, 18], [cx, sz, 18], [lx, lz, 13], [rx, rz, 9], ...tårne.map(([x, z]) => [x, z, 10])];
+      const ledig = (x, z, r = 0) => zoner.every(([zx, zz, zr]) => Math.hypot(x - zx, z - zz) > zr + r);
+      // Gør et område fladt i højden h (fylder op og graver væk) — rundt eller firkantet
+      const flad = (x0, z0, rX, rZ, h, overflade, rund = true) => {
+        for (let x = Math.floor(x0 - rX); x <= x0 + rX; x++) for (let z = Math.floor(z0 - rZ); z <= z0 + rZ; z++) {
+          if (x < 1 || z < 1 || x >= BX - 1 || z >= BZ - 1 || (rund && Math.hypot(x - x0, z - z0) > rX)) continue;
+          const i = x + z * BX;
+          for (let y = Math.min(top[i], h) + 1; y < h; y++) a.sæt(x, y, z, ID.Jord);
+          for (let y = h + 1; y <= Math.max(top[i], h) + 1; y++) a.sæt(x, y, z, 0);
+          a.sæt(x, h, z, overflade); top[i] = h;
+        }
+      };
+
       a.terræn((x, z) => {
         const kant = Math.min(1, Math.min(x, z, BX - 1 - x, BZ - 1 - z) / 10);
-        const midt = Math.max(0, 1 - Math.hypot(x - cx, z - cz) / 12);
-        const h = 10 + (støj(x / 22, z / 22) * 5 + støj(x / 7 + 11, z / 7) * 1.5 - 3) * (1 - midt);
+        const midt = Math.max(0, 1 - Math.hypot(x - cx, z - cz) / 14);
+        const h = 10 + (støj(x / 24, z / 24) * 6 + støj(x / 7 + 11, z / 7) * 1.5 - 3.5) * (1 - midt);
         return Math.round(5 + (h - 5) * kant);
       }, (x, z, y, h) => (y === 0 ? ID.Bundsten : y < h - 3 ? ID.Sten : y < h ? ID.Jord : støj(x / 8 + 40, z / 8) > 0.58 ? ID["Mørkt græs"] : ID.Aske));
-      const søjle = (x, z, y0, y1, blok) => { for (let y = y0; y <= y1; y++) a.sæt(x, y, z, blok); };
+      const hB = h0(cx, cz), hS = Math.max(8, h0(cx, sz)), hT = Math.max(8, h0(mx, mz)), hK = Math.max(8, h0(kx0 + 8, kz0 - 4)), hL = h0(lx, lz);
+      flad(cx, sz, 18, 6, hS, ID.Beton, false);                    // missilmarken
+      flad(mx, mz, 17, 17, hT, ID["Græs"]);                         // Dukkebyen
+      flad(kx0 + 8, kz0 - 4, 20, 20, hK, ID.Aske);                  // atomkraftværket
 
       // Gamle kratere med lysende slim i bunden
-      for (let n = 0; n < a.antal(8); n++) {
-        const kx = 8 + Math.floor(R() * (BX - 16)), kz = 8 + Math.floor(R() * (BZ - 16)), r = 3 + R() * 2.5;
-        if (a.nærStart(kx, kz, 20)) continue;
+      for (let n = 0; n < a.antal(9); n++) {
+        const kx = 8 + Math.floor(R() * (BX - 16)), kz = 8 + Math.floor(R() * (BZ - 16)), r = 3 + R() * 3;
+        if (!ledig(kx, kz, r)) continue;
         for (let x = Math.floor(kx - r); x <= kx + r; x++) for (let z = Math.floor(kz - r); z <= kz + r; z++) {
           const d = Math.hypot(x - kx, z - kz);
           if (d > r) continue;
@@ -1241,10 +1268,20 @@ export const VERDENER = [
           a.sæt(x, top[i], z, d < r * 0.45 ? ID.Atomslim : ID.Aske);
         }
       }
+      // Slimsøen: en stor sø af lysende, grønt slim, man kan hoppe på
+      for (let x = lx - 12; x <= lx + 12; x++) for (let z = lz - 12; z <= lz + 12; z++) {
+        if (x < 1 || z < 1 || x >= BX - 1 || z >= BZ - 1) continue;
+        const d = Math.hypot(x - lx, z - lz) + (støj(x / 4 + 70, z / 4) - 0.5) * 3;
+        if (d > 11) continue;
+        const i = x + z * BX, bund = hL - (d < 8.5 ? 1 : 0);
+        for (let y = bund + 1; y <= top[i] + 1; y++) a.sæt(x, y, z, 0);
+        søjle(x, z, Math.min(top[i], bund), bund, d < 8.5 ? ID.Atomslim : ID.Aske);
+        top[i] = bund;
+      }
       // Ruinbyen: betonhuse med huller i murene og uden tag, og bunker af murbrokker
       for (let n = 0; n < a.antal(16); n++) {
         const b = 5 + Math.floor(R() * 5), d = 5 + Math.floor(R() * 5), x0 = 4 + Math.floor(R() * (BX - b - 8)), z0 = 4 + Math.floor(R() * (BZ - d - 8));
-        if (a.nærStart(x0 + b / 2, z0 + d / 2, 18)) continue;
+        if (!ledig(x0 + b / 2, z0 + d / 2, 6)) continue;
         const h = h0(x0, z0), hs = 4 + Math.floor(R() * 8);
         for (let x = x0; x < x0 + b; x++) for (let z = z0; z < z0 + d; z++) {
           const væg = x === x0 || x === x0 + b - 1 || z === z0 || z === z0 + d - 1;
@@ -1257,47 +1294,238 @@ export const VERDENER = [
       }
       // Bilvrag i mange farver
       const BILER = [ID["Rød uld"], ID["Blå uld"], ID["Gul uld"], ID["Grøn uld"], ID["Hvid uld"]];
+      const bil = (x, z, h, f, vrag) => {
+        for (let dz = 0; dz < 4; dz++) for (let dx = 0; dx < 2; dx++) {
+          a.sæt(x + dx, h + 1, z + dz, (dz === 0 || dz === 3) ? (vrag ? ID.Obsidian : ID.Stålplade) : f);
+          if (dz === 1 || dz === 2) a.sæt(x + dx, h + 2, z + dz, dz === 1 ? ID.Glas : f);
+        }
+      };
       for (let n = 0; n < a.antal(10); n++) {
         const x = 5 + Math.floor(R() * (BX - 10)), z = 5 + Math.floor(R() * (BZ - 10)), h = h0(x, z), f = BILER[Math.floor(R() * BILER.length)];
-        if (a.nærStart(x, z, 14) || a.hent(x, h + 1, z)) continue;
-        for (let dz = 0; dz < 4; dz++) for (let dx = 0; dx < 2; dx++) { a.sæt(x + dx, h + 1, z + dz, (dz === 0 || dz === 3) ? ID.Obsidian : f); if (dz === 1 || dz === 2) a.sæt(x + dx, h + 2, z + dz, dz === 1 ? ID.Glas : f); }
+        if (!ledig(x, z, 3) || a.hent(x, h + 1, z)) continue;
+        bil(x, z, h, f, true);
       }
-      // Døde træer og atomtønder rundt omkring
+      // Døde træer
       for (let n = 0; n < a.antal(12); n++) {
         const x = 3 + Math.floor(R() * (BX - 6)), z = 3 + Math.floor(R() * (BZ - 6)), h = h0(x, z);
-        if (a.hent(x, h + 1, z) || a.nærStart(x, z, 10)) continue;
+        if (a.hent(x, h + 1, z) || !ledig(x, z, 2)) continue;
         const hs = 3 + Math.floor(R() * 3);
         søjle(x, z, h + 1, h + hs, ID["Død stamme"]);
         if (R() < 0.6) a.sæt(x + 1, h + hs - 1, z, ID["Død stamme"]);
       }
-      a.pynt(a.antal(22), ID.Atomtønde, [ID.Aske, ID["Mørkt græs"]]);
 
-      // Bunkeren ved startstedet: en betonplads, sandsække, lamper og et stativ med atombomber
-      const hB = h0(cx, cz);
-      for (let x = cx - 6; x <= cx + 6; x++) for (let z = cz - 6; z <= cz + 6; z++) {
+      // Bunkeren ved startstedet: betonplads, sandsække, lamper, et stativ med bomber og kontrolpulten med den røde knap
+      for (let x = cx - 7; x <= cx + 7; x++) for (let z = cz - 7; z <= cz + 7; z++) {
         søjle(x, z, Math.min(hB, h0(x, z)), hB, ID.Beton);
-        for (let y = hB + 1; y <= hB + 6; y++) a.sæt(x, y, z, 0);
+        for (let y = hB + 1; y <= hB + 8; y++) a.sæt(x, y, z, 0);
         top[x + z * BX] = hB;
-        const kant = Math.abs(x - cx) === 6 || Math.abs(z - cz) === 6;
+        const kant = Math.abs(x - cx) === 7 || Math.abs(z - cz) === 7;
         if (kant && Math.abs(x - cx) > 1 && Math.abs(z - cz) > 1) a.sæt(x, hB + 1, z, ID.Sandsæk);
       }
-      for (const [dx, dz] of [[-6, -6], [6, -6], [-6, 6], [6, 6]]) { søjle(cx + dx, cz + dz, hB + 1, hB + 2, ID.Beton); a.sæt(cx + dx, hB + 3, cz + dz, ID.Lampe); }
-      for (let x = cx - 3; x <= cx + 3; x++) { a.sæt(x, hB + 1, cz - 4, ID.Planker); a.sæt(x, hB + 2, cz - 4, x === cx ? ID.Atomtønde : ID.Atombombe); }
-      // Missilet i siloen: tænd bomben i bunden, så går det af
-      { const sx = Math.min(BX - 8, cx + 16), sz = Math.max(8, cz - 14), h = h0(sx, sz);
-        for (let x = sx - 3; x <= sx + 3; x++) for (let z = sz - 3; z <= sz + 3; z++) {
-          const d = Math.hypot(x - sx, z - sz);
-          if (d > 3.4) continue;
-          søjle(x, z, h - 1, h - 1, ID.Beton);
-          for (let y = h; y <= h + 3; y++) a.sæt(x, y, z, d > 2.5 ? ID.Beton : 0);
+      for (const [dx, dz] of [[-7, -7], [7, -7], [-7, 7], [7, 7]]) { søjle(cx + dx, cz + dz, hB + 1, hB + 2, ID.Beton); a.sæt(cx + dx, hB + 3, cz + dz, ID.Lampe); }
+      for (let x = cx - 3; x <= cx + 3; x++) { a.sæt(x, hB + 1, cz - 5, ID.Planker); a.sæt(x, hB + 2, cz - 5, x === cx ? ID.Kæmpebombe : ID.Atombombe); }
+      for (let z = cz - 2; z <= cz + 2; z++) a.sæt(cx + 6, hB + 1, z, ID.Kontrolpult);
+      for (let x = cx + 3; x <= cx + 5; x++) for (let z = cz - 1; z <= cz + 1; z++) a.sæt(x, hB, z, ID.Advarselsstriber);
+      a.sæt(cx + 4, hB + 1, cz, ID.Affyringsknap);
+      for (let z = sz + 7; z < cz - 7; z++) for (let x = cx - 1; x <= cx + 1; x++) a.sæt(x, h0(x, z), z, ID.Beton);   // vejen til missilerne
+
+      // Missilmarken: fire siloer med et missil i hver — tryk på den røde knap i bunkeren, så flyver de
+      for (const dx of [-12, -4, 4, 12]) {
+        const x0 = cx + dx, bund = hS - 3;
+        for (let x = x0 - 4; x <= x0 + 4; x++) for (let z = sz - 4; z <= sz + 4; z++) {
+          const d = Math.hypot(x - x0, z - sz);
+          if (d > 3.5) continue;
+          if (d > 2.5) { søjle(x, z, bund, hS - 1, ID.Beton); a.sæt(x, hS, z, ID.Advarselsstriber); }
+          else { a.sæt(x, bund, z, ID.Stålplade); for (let y = bund + 1; y <= hS + 1; y++) a.sæt(x, y, z, 0); }
         }
-        a.sæt(sx, h, sz, ID.Atombombe);
-        søjle(sx, sz, h + 1, h + 8, ID["Hvid puds"]);
-        søjle(sx, sz, h + 9, h + 10, ID["Rød uld"]);
-        for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) søjle(sx + dx, sz + dz, h + 1, h + 2, ID["Rød uld"]);
-        a.sæt(sx, h + 5, sz + 1, ID.Atombombe);
+        a.sæt(x0 + 1, bund + 1, sz + 2, ID.Beton); søjle(x0, sz + 2, bund + 1, bund + 2, ID.Beton);   // trappetrin, så man kan gå op igen
+        søjle(x0, sz, bund + 1, bund + 6, ID.Missil);
+        a.sæt(x0, bund + 7, sz, ID.Missilspids);
       }
+
+      // Dukkebyen: små, farvede huse rundt om en stor skydeskive — her lander missilerne fra den røde knap
+      for (let x = mx - 6; x <= mx + 6; x++) for (let z = mz - 6; z <= mz + 6; z++) {
+        const d = Math.hypot(x - mx, z - mz);
+        if (d <= 5.6) a.sæt(x, hT, z, Math.floor(d / 1.4) % 2 ? ID["Hvid uld"] : ID["Rød uld"]);
+      }
+      const hus = (x0, z0, h, væg) => {
+        const tilX = Math.abs(mx - x0) > Math.abs(mz - z0), dørX = tilX ? Math.sign(mx - x0) : 0, dørZ = tilX ? 0 : Math.sign(mz - z0) || 1;
+        for (let x = x0 - 2; x <= x0 + 2; x++) for (let z = z0 - 2; z <= z0 + 2; z++) {
+          const kant = Math.abs(x - x0) === 2 || Math.abs(z - z0) === 2, hjørne = Math.abs(x - x0) === 2 && Math.abs(z - z0) === 2;
+          a.sæt(x, h, z, ID.Planker);
+          for (let y = h + 1; y <= h + 3; y++) {
+            if (!kant) { a.sæt(x, y, z, 0); continue; }
+            const dør = y <= h + 2 && (dørX ? x === x0 + dørX * 2 && z === z0 : z === z0 + dørZ * 2 && x === x0);
+            const vindue = y === h + 2 && !hjørne && (Math.abs(x - x0) === 1 || Math.abs(z - z0) === 1);
+            a.sæt(x, y, z, dør ? 0 : vindue ? ID.Glas : væg);
+          }
+        }
+        for (let k = 0; k <= 2; k++) for (let x = x0 - 3 + k; x <= x0 + 3 - k; x++) for (let z = z0 - 3 + k; z <= z0 + 3 - k; z++) a.sæt(x, h + 4 + k, z, ID.Tagsten);
+      };
+      const VÆGGE = [ID["Gul puds"], ID["Blå puds"], ID["Lyserød uld"], ID["Hvid puds"], ID["Orange uld"], ID["Grøn uld"], ID["Lilla uld"], ID.Mursten];
+      for (let k = 0; k < 8; k++) {
+        const v = k / 8 * Math.PI * 2 + 0.2;
+        hus(Math.round(mx + Math.cos(v) * 12), Math.round(mz + Math.sin(v) * 12), hT, VÆGGE[k]);
+        const x = Math.round(mx + Math.cos(v + 0.39) * 8.5), z = Math.round(mz + Math.sin(v + 0.39) * 8.5);   // mellem husene: træer og biler
+        if (k % 2) bil(x, z, hT, BILER[k % BILER.length], false);
+        else { søjle(x, z, hT + 1, hT + 3, ID.Træstamme); for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) søjle(x + dx, z + dz, hT + 3 + (dx || dz ? 0 : 1), hT + 4, ID.Blade); }
+      }
+      a.pynt(a.antal(25), () => (R() < 0.5 ? ID["Rød blomst"] : ID["Gul blomst"]), [ID["Græs"]]);
+
+      // Atomkraftværket: to store køletårne, der damper (spil.js), og en reaktor med en kuppel
+      const HT = 18;
+      for (const [x0, z0] of tårne) {
+        const h = h0(x0, z0);
+        for (let y = 0; y <= HT; y++) {
+          const r = 4.5 + 2.8 * ((y - 12) / 12) ** 2;
+          for (let x = Math.floor(x0 - r - 1); x <= x0 + r + 1; x++) for (let z = Math.floor(z0 - r - 1); z <= z0 + r + 1; z++) {
+            const d = Math.hypot(x - x0, z - z0), dør = y <= 2 && Math.abs(z - z0) <= 1 && x > x0;   // en åbning, så man kan gå ind og kigge op
+            if (Math.abs(d - r) < 0.75 && !dør) a.sæt(x, h + 1 + y, z, y === HT || y % 6 === 5 ? ID["Hvid puds"] : ID.Beton);
+          }
+        }
+      }
+      { const h = h0(rx, rz), RK = 6;
+        for (let x = rx - RK - 1; x <= rx + RK + 1; x++) for (let z = rz - RK - 1; z <= rz + RK + 1; z++) for (let y = 0; y <= RK + 1; y++) {
+          const d = Math.hypot(x - rx, y, z - rz);
+          if (d > RK + 0.5 || d < RK - 0.6) continue;
+          const dør = Math.abs(z - rz) <= 1 && x > rx && y <= 2;
+          a.sæt(x, h + 1 + y, z, dør ? 0 : y < 2 ? ID.Stålplade : y === 3 ? ID.Advarselsstriber : ID.Beton);
+        }
+        a.sæt(rx, h + 1, rz, ID.Atomslim);                           // reaktorkernen lyser grønt
+        for (const [dx, dz] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) a.sæt(rx + dx, h + 1, rz + dz, ID.Atomtønde);
+        for (let k = 0; k < 4; k++) a.sæt(rx + 8 + k, h + 1, rz, ID.Atomtønde);   // en stabel tønder
+        for (let k = 0; k < 2; k++) a.sæt(rx + 9 + k, h + 2, rz, ID.Atomtønde);
+      }
+
+      a.pynt(a.antal(22), ID.Atomtønde, [ID.Aske, ID["Mørkt græs"]]);
       a.pynt(a.antal(18), ID.Atomslim, [ID.Aske]);
+    },
+  },
+
+  {
+    id: "tornado", navn: "Ildtornadoerne", ikon: "🌪️", tekst: "En varm prærie med røde klipper, kaktusser og en flod. Tornadoer drøner rundt — gå ind i dem for en snurretur, og sluk ildtornadoerne med brandslangen!",
+    himmel: ["#4a2a6a", "#ff9a52"], tåge: [34, 100], hav: "#c89048", sol: "#ffe070", solStr: 56, skyer: "#ffb07a",
+    lys: ["#ffe6c0", "#8a4a2a", 2.1, 1.3], stemning: "rolig", tyngde: 28,
+    størrelse: [176, 48, 176],
+    dyr: ["orkenraev", "praeriehund", "praeriehund", "rullebusk", "rullebusk", "foniks"], antal: 14,
+    sne: "tornado", point: true, tornado: true,                  // gløder i luften · ⭐ for slukkede tornadoer · tornadoer (tornado.js)
+    hotbar: ["v:brandslange", "v:tornado", "v:tænder", "Tørt græs", "Rødsandsten", "Kaktus", "Magma", "Planker", "æg:foniks"],
+    vis: ["Tørt græs", "Rødsandsten", "Kaktus"],
+    hent: ["Tørrer præriegræsset…", "Bygger de røde klipper…", "Pisker vinden op…", "Tænder tornadoerne…"],
+    generer(a) {
+      const { R, støj, ID, BX, BY, BZ, top } = a, cx = BX / 2, cz = BZ / 2;
+      const h0 = (x, z) => top[Math.max(0, Math.min(BX - 1, x)) + Math.max(0, Math.min(BZ - 1, z)) * BX];
+      const søjle = (x, z, y0, y1, blok) => { for (let y = y0; y <= y1; y++) a.sæt(x, y, z, blok); };
+      // Gør en firkant flad i højden h (fylder op og graver væk)
+      const flad = (x0, z0, x1, z1, h, overflade) => {
+        for (let x = Math.max(1, x0); x <= Math.min(BX - 2, x1); x++) for (let z = Math.max(1, z0); z <= Math.min(BZ - 2, z1); z++) {
+          const i = x + z * BX;
+          søjle(x, z, Math.min(top[i], h) + 1, h - 1, ID.Jord);
+          for (let y = h + 1; y <= Math.max(top[i], h) + 8; y++) a.sæt(x, y, z, 0);
+          a.sæt(x, h, z, overflade); top[i] = h;
+        }
+      };
+
+      // Prærien: bløde bakker med tørt græs og pletter af sand
+      a.terræn((x, z) => {
+        const kant = Math.min(1, Math.min(x, z, BX - 1 - x, BZ - 1 - z) / 12);
+        const midt = Math.max(0, 1 - Math.hypot(x - cx, z - cz) / 12);
+        const h = 10 + (støj(x / 26, z / 26) * 5 + støj(x / 9 + 7, z / 9) * 1.5 - 3) * (1 - midt);
+        return Math.round(7 + (h - 7) * kant);
+      }, (x, z, y, h) => {
+        const sand = støj(x / 13 + 90, z / 13 + 40) > 0.68;
+        return y === 0 ? ID.Bundsten : y < h - 3 ? ID.Rødsandsten : y < h ? (sand ? ID.Sand : ID.Jord) : sand ? ID.Sand : ID["Tørt græs"];
+      });
+      // En flod i en lav dal — vand slukker de ildtornadoer, der kører hen over den
+      const flodZ = x => cz + 34 + Math.sin(x / 19) * 9 + Math.sin(x / 7) * 2;
+      for (let x = 0; x < BX; x++) {
+        const fz = flodZ(x);
+        for (let z = Math.floor(fz - 9); z <= fz + 9; z++) {
+          if (z < 1 || z >= BZ - 1) continue;
+          const d = Math.abs(z - fz), i = x + z * BX;
+          if (d > 8) continue;
+          const h = d < 2.5 ? 6 : Math.min(top[i], 7 + Math.round((d - 2.5) * 1.1));
+          for (let y = h + 1; y <= top[i]; y++) a.sæt(x, y, z, 0);
+          a.sæt(x, h, z, d < 4 ? ID.Sand : ID["Tørt græs"]);
+          if (d < 2.5) a.sæt(x, 7, z, ID.Vand);
+          top[i] = h;
+        }
+      }
+      // Røde klipper med flad top (mesaer) — nogle små, nogle store
+      for (let n = 0; n < a.antal(7); n++) {
+        const px = 10 + Math.floor(R() * (BX - 20)), pz = 10 + Math.floor(R() * (BZ - 20)), r = 3 + R() * 6;
+        const hm = Math.min(BY - 8, h0(px, pz) + 5 + Math.floor(R() * (r > 6 ? 12 : 7)));
+        if (a.nærStart(px, pz, 20 + r) || Math.abs(pz - flodZ(px)) < r + 6) continue;
+        for (let x = Math.floor(px - r - 3); x <= px + r + 3; x++) for (let z = Math.floor(pz - r - 3); z <= pz + r + 3; z++) {
+          if (x < 1 || z < 1 || x >= BX - 1 || z >= BZ - 1) continue;
+          const d = Math.hypot(x - px, z - pz) + (støj(x / 3 + n * 7, z / 3) - 0.5) * 2;
+          if (d > r + 2) continue;
+          const i = x + z * BX, h = d <= r ? hm : hm - Math.round((d - r) * 4);   // en skrå fod forneden
+          if (h <= top[i]) continue;
+          søjle(x, z, top[i] + 1, h, ID.Rødsandsten);
+          if (d <= r - 1) a.sæt(x, h, z, ID["Tørt græs"]);
+          top[i] = h;
+        }
+      }
+      // Ildmarken: magma og små lavahuller — her bliver tornadoerne til ildtornadoer
+      for (let n = 0; n < a.antal(6); n++) {
+        const px = 8 + Math.floor(R() * (BX - 16)), pz = 8 + Math.floor(R() * (BZ - 16)), r = 2 + R() * 3;
+        if (a.nærStart(px, pz, 22) || Math.abs(pz - flodZ(px)) < r + 5) continue;
+        for (let x = Math.floor(px - r); x <= px + r; x++) for (let z = Math.floor(pz - r); z <= pz + r; z++) {
+          const d = Math.hypot(x - px, z - pz) + (støj(x / 2 + 30, z / 2) - 0.5) * 1.5;
+          if (d <= r) a.sæt(x, top[x + z * BX], z, d < r * 0.35 ? ID.Lava : ID.Magma);
+        }
+      }
+      // Akacietræer med flade kroner (de kan brænde — sluk dem med brandslangen)
+      for (let n = 0; n < a.antal(18); n++) {
+        const x = 4 + Math.floor(R() * (BX - 8)), z = 4 + Math.floor(R() * (BZ - 8)), h = h0(x, z), s = R() < 0.5 ? 1 : -1;
+        if (a.hent(x, h, z) !== ID["Tørt græs"] || a.hent(x, h + 1, z) || a.nærStart(x, z, 9)) continue;
+        søjle(x, z, h + 1, h + 2, ID.Træstamme); søjle(x + s, z, h + 3, h + 4, ID.Træstamme);
+        for (let dx = -3; dx <= 3; dx++) for (let dz = -3; dz <= 3; dz++) if (Math.abs(dx) + Math.abs(dz) <= 4) a.sæt(x + s + dx, h + 5, z + dz, ID.Blade);
+        for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) a.sæt(x + s + dx, h + 6, z + dz, ID.Blade);
+      }
+      // Kaktusser — nogle med en arm
+      for (let n = 0; n < a.antal(34); n++) {
+        const x = 3 + Math.floor(R() * (BX - 6)), z = 3 + Math.floor(R() * (BZ - 6)), h = h0(x, z), hs = 1 + Math.floor(R() * 3);
+        if (![ID["Tørt græs"], ID.Sand].includes(a.hent(x, h, z)) || a.hent(x, h + 1, z) || a.nærStart(x, z, 8)) continue;
+        søjle(x, z, h + 1, h + hs, ID.Kaktus);
+        if (hs === 3 && R() < 0.7) { const [dx, dz] = [[1, 0], [-1, 0], [0, 1], [0, -1]][Math.floor(R() * 4)]; søjle(x + dx, z + dz, h + 2, h + 3, ID.Kaktus); }
+      }
+
+      // Ranchen: en rød lade, en indhegning og høballer (ladetræ og hegn kan ikke brænde)
+      { const x0 = Math.max(4, cx - 34), z0 = Math.max(4, cz - 30), h = h0(x0 + 4, z0 + 3);
+        flad(x0 - 1, z0 - 2, x0 + 21, z0 + 8, h, ID["Tørt græs"]);
+        for (let x = x0; x <= x0 + 8; x++) for (let z = z0; z <= z0 + 6; z++) {
+          const kant = x === x0 || x === x0 + 8 || z === z0 || z === z0 + 6, port = z === z0 && x >= x0 + 3 && x <= x0 + 5;
+          for (let y = h + 1; y <= h + 5; y++) a.sæt(x, y, z, kant && !(port && y <= h + 4) ? ID.Ladetræ : 0);
+        }
+        for (let k = 0; k <= 4; k++) for (let x = x0 - 1; x <= x0 + 9; x++) for (let z = z0 - 1 + k; z <= z0 + 7 - k; z++) a.sæt(x, h + 6 + k, z, ID.Tagsten);   // saddeltag
+        for (let x = x0 + 10; x <= x0 + 20; x++) for (let z = z0; z <= z0 + 7; z++) {
+          const kant = x === x0 + 10 || x === x0 + 20 || z === z0 || z === z0 + 7;
+          if (kant && !(z === z0 && x === x0 + 15)) a.sæt(x, h + 1, z, ID.Hegn);
+        }
+        for (const [dx, dz] of [[12, 2], [13, 2], [12, 3], [18, 5], [17, 5]]) a.sæt(x0 + dx, h + 1, z0 + dz, ID.Høballe);
+      }
+      // Tornadostationen ved startstedet: fliser, et lille hus, et vandtårn, en vindpose, brandhaner og et vandbassin
+      const hS = h0(cx, cz);
+      flad(cx - 6, cz - 6, cx + 6, cz + 6, hS, ID.Fliser);
+      for (let x = cx - 6; x <= cx - 2; x++) for (let z = cz + 2; z <= cz + 6; z++) {       // huset mod sydvest
+        const kant = x === cx - 6 || x === cx - 2 || z === cz + 2 || z === cz + 6;
+        for (let y = hS + 1; y <= hS + 3; y++) {
+          const dør = x === cx - 4 && z === cz + 2 && y <= hS + 2, vindue = y === hS + 2 && (x === cx - 4 || z === cz + 4);
+          a.sæt(x, y, z, !kant || dør ? 0 : vindue ? ID.Glas : ID.Mursten);
+        }
+        a.sæt(x, hS + 4, z, ID.Tagsten);
+      }
+      for (const [dx, dz] of [[3, 3], [5, 3], [3, 5], [5, 5]]) søjle(cx + dx, cz + dz, hS + 1, hS + 5, ID.Sten);   // vandtårnet mod sydøst
+      for (let x = cx + 3; x <= cx + 5; x++) for (let z = cz + 3; z <= cz + 5; z++) { søjle(x, z, hS + 6, hS + 8, ID["Blå puds"]); a.sæt(x, hS + 9, z, ID["Hvid puds"]); }
+      søjle(cx + 5, cz - 5, hS + 1, hS + 5, ID.Hegn);                                          // vindposen
+      [ID["Rød uld"], ID["Hvid uld"], ID["Rød uld"]].forEach((f, k) => a.sæt(cx + 4 - k, hS + 5, cz - 5, f));
+      a.sæt(cx - 1, hS + 1, cz + 5, ID.Brandhane); a.sæt(cx + 5, hS + 1, cz, ID.Brandhane);
+      for (let x = cx - 5; x <= cx - 2; x++) for (let z = cz - 5; z <= cz - 3; z++) a.sæt(x, hS, z, ID.Vand);   // et lille vandbassin
+
+      a.pynt(a.antal(80), ID["Tør busk"], [ID["Tørt græs"], ID.Sand]);
+      a.pynt(a.antal(20), () => (R() < 0.6 ? ID["Rød blomst"] : ID["Gul blomst"]), [ID["Tørt græs"]]);
     },
   },
 ];

@@ -23,6 +23,8 @@ import { Stemmegraf, STEMMER, stemmeAf } from "./stemmeeffekt.js";
 import { Skydning } from "./skyd.js";
 import { Fyrværkeri } from "./fyrvaerkeri.js";
 import { Brandvæsen } from "./brand.js";
+import { Atom, STØRRELSE } from "./atom.js";
+import { Tornadoer } from "./tornado.js";
 
 const E = window.Effekter, $ = id => document.getElementById(id);
 const RÆKKE = 7, HAKTID = 0.4;                                  // hvor langt man når, og hvor længe en blok tager at hakke
@@ -122,6 +124,7 @@ const SNEARTER = {
   bobler: { farver: ["#e8f8ff", "#bfe8ff", "#ffffff"], fart: -1.1, str: 0.13, antal: 450 },
   slik: { farver: ["#ff5fa8", "#ffd23f", "#5fd3ff", "#8aff7a", "#c86bff", "#ffffff", "#ff8c1a"], fart: 1.6, str: 0.18, antal: 900 },
   atom: { farver: ["#8aff5a", "#c8ff7a", "#5aff3a"], fart: -0.4, str: 0.12, antal: 500, glød: true },
+  tornado: { farver: ["#ff8c1a", "#ffd23f", "#ff5a1f"], fart: -0.5, str: 0.1, antal: 260, glød: true },
 };
 let sne = null;
 if (cfg.sne) {
@@ -296,7 +299,7 @@ function gem() {
 }
 let gemTimer = 0;
 const gemSnart = () => { if (!gemTimer) gemTimer = setTimeout(() => { gemTimer = 0; gem(); }, 1500); };   // højst hvert 1,5 sekund
-document.addEventListener("visibilitychange", () => { if (document.hidden) gem(); });
+document.addEventListener("visibilitychange", () => { if (document.hidden) { gem(); Lyd.vindLyd(0); } });
 window.addEventListener("pagehide", gem);
 
 // ---------- Dyr ----------
@@ -448,22 +451,26 @@ function tryk(x, y) {
   if (værk?.våben) { if (skyd.skydMod(værk.våben, kamera.position, ray.ray.direction)) sving = 1; return; }
   if (værk?.slange) { sprøjt(); return; }
   if (værk?.fyrværkeri) { fyrTryk(valgt.v, hit); return; }
+  if (værk?.tornado) { tornado.lav(hit, ray.ray); sving = 1; return; }          // 🌪️ en ny tornado
+  if (valgt.v === "tænder" && tornado.tændVed(ray.ray)) { sving = 1; return; }  // 🔥 tornadoen bliver til en ildtornado
   let bedst = null;
   for (const d of dyr) {
     const h = ray.intersectObject(d.model, true)[0];
     if (h && h.distance < RÆKKE && (!bedst || h.distance < bedst.afst)) bedst = { d, afst: h.distance };
   }
   if (bedst && (!hit || bedst.afst < hit.t)) {
-    if (bedst.d.def.klap === "puf") { puf(bedst.d); return; }
+    if (bedst.d.def.klap === "puf") { if (!slag(bedst.d)) puf(bedst.d); return; }
     bedst.d.klap();
     const p = tilSkærm(bedst.d.pos, bedst.d.h + 0.3);
     E.tekstPop(p.x, p.y, "❤️", { s: 50 });
     return;
   }
   if (!hit) return;
+  if (BLOKKE[hit.id].knap) { atom.trykKnap(hit); sving = 1; return; }     // den røde knap: missilerne flyver efter en nedtælling
   if (valgtTing().hammer) {                                      // hammeren fjerner blokken med det samme
     if (BLOKKE[hit.id].fyrværkeri) { tændFyrkasse(hit); return; }        // fyrværkeri-kassen går i gang
     if (BLOKKE[hit.id].kanon) { affyrKanon(hit); return; }               // bum — kanonkuglen flyver
+    if (BLOKKE[hit.id].missil) { atom.tændMissil(hit); sving = 1; return; }   // missilet letter
     if (BLOKKE[hit.id].tnt || BLOKKE[hit.id].atom) { tændSprængstof(hit); sving = 1; return; }   // … men TNT og bomber bliver tændt!
     if (!BLOKKE[hit.id].uknuselig) { knus(hit, true); sving = 1; }
     return;
@@ -547,6 +554,7 @@ function brugVærktøj(v, hit) {
   const b = BLOKKE[hit.id];
   if (v === "tænder" && b.fyrværkeri) { tændFyrkasse(hit); return; }
   if (v === "tænder" && b.kanon) { affyrKanon(hit); return; }
+  if (v === "tænder" && b.missil) { atom.tændMissil(hit); sving = 1; return; }
   if (v === "tænder" && cfg.undervand) { besked("Ild kan ikke brænde under vandet 🫧", 2500); return; }
   if (v === "tænder" && (b.tnt || b.atom)) { tændSprængstof(hit); sving = 1; return; }
   let tx = hit.x + hit.n[0], ty = hit.y + hit.n[1], tz = hit.z + hit.n[2];
@@ -588,67 +596,109 @@ if (!ONLINE) for (let i = 0; i < verden.data.length; i++) if (verden.data[i] ===
   plantSpire(i % verden.BX, Math.floor(i / lag), Math.floor((i % lag) / verden.BX));
 }
 
-// ---------- NUKE-banen: atombomben laver et kæmpe glimt, en trykbølge, en svampesky og et stort krater ----------
-// (ingen kommer til skade: zombierne bliver til konfetti, og alle andre bliver bare blæst lidt væk)
-const ATOMR = 9;
-const svampeskyer = [], PUFGEO = new THREE.BoxGeometry(1, 1, 1);
-function atomEksplosion(cx, cy, cz, kunVis) {
-  const afst = Math.hypot(cx - sp.pos.x, cz - sp.pos.z);
-  if (!kunVis) eksploder(cx, cy, cz, ATOMR); else bragEffekt(cx, cy, cz, ATOMR);
-  svampesky(cx, cy - 0.5, cz);
-  E.flash("#ffffff"); himmelBlink(new THREE.Color("#fff6d0"), 3);
-  rystelse = Math.min(2.2, rystelse + Math.max(0.4, 2 - afst / 40));
-  Lyd.atomBrag(afst);
+// ---------- NUKE-banen: atombomber, missiler og svampeskyer (atom.js) ----------
+// Et kæmpe glimt, en trykbølge og en svampesky. Himlen gløder orange et stykke tid, og krateret får aske,
+// lysende slim og små flammer i bunden. Ingen kommer til skade: zombierne bliver til konfetti,
+// og alle andre bliver bare blæst lidt væk. slags: "mini" (atomkasteren), "atom" eller "kæmpe".
+function atomEksplosion(cx, cy, cz, kunVis, slags = "atom") {
+  const S = STØRRELSE[slags] || STØRRELSE.atom, afst = Math.hypot(cx - sp.pos.x, cz - sp.pos.z);
+  if (!kunVis) eksploder(cx, cy, cz, S.R); else bragEffekt(cx, cy, cz, S.R);
+  if (!kunVis && !ONLINE) atomKrater(cx, cy, cz, S.R);
+  atom.svampesky(cx, cy - 0.5, cz, S.sky);
+  if (slags !== "mini") { E.flash("#ffffff"); himmelBlink(new THREE.Color("#fff6d0"), 3); }
+  himmelGlød = Math.min(1.3, himmelGlød + S.sky * 0.8);
+  rystelse = Math.min(2.4, rystelse + Math.max(0.3, 2 * S.sky - afst / 40));
+  Lyd.atomBrag(afst, S.sky);
 }
-function svampesky(x, y, z) {
-  const g = new THREE.Group(); g.position.set(x, y, z); scene.add(g);
-  // skyen får lys og skygge (Lambert), så man kan se de enkelte klumper — og tågen må ikke gøre den grå
-  const mat = f => new THREE.MeshLambertMaterial({ color: f, emissive: new THREE.Color(f).multiplyScalar(0.5), transparent: true, fog: false });
-  const m = { stamme: mat("#ff8a2a"), hat: mat("#ffb040"), fod: mat("#c8a070"), kerne: new THREE.MeshBasicMaterial({ color: "#fffbe0", transparent: true, depthWrite: false, fog: false }) };
-  const puf = [], ny = (del, data) => { const k = new THREE.Mesh(PUFGEO, m[del]); g.add(k); puf.push({ k, del, ...data }); };
-  for (let i = 0; i < 18; i++) ny("stamme", { h: i / 17, v: Math.random() * 6.3, r: Math.random() * 0.8, s: 2 + Math.random() * 1.4 });
-  for (let i = 0; i < 34; i++) ny("hat", { v: i / 34 * Math.PI * 2 + Math.random() * 0.2, r: 0.35 + Math.random() * 0.65, dy: (Math.random() - 0.35) * 1.4, s: 2.6 + Math.random() * 2.4 });
-  for (let i = 0; i < 20; i++) ny("fod", { v: i / 20 * Math.PI * 2, r: 0.7 + Math.random() * 0.3, s: 1.8 + Math.random() * 1.4 });
-  ny("kerne", { s: 1 });
-  const ring = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: "#ffffff", transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
-  ring.position.y = 0.6; g.add(ring);
-  svampeskyer.push({ g, puf, m, ring, t: 0 });
+// Atomkasteren: en lille atomsprængning (sammen: serveren sprænger, og svampeskyen vises her)
+function miniAtom(x, y, z) {
+  if (ONLINE) { net?.brag(x, y, z); atomEksplosion(x, y, z, true, "mini"); } else atomEksplosion(x, y, z, false, "mini");
 }
-const GRÅ = new THREE.Color("#8a8580"), ORANGE = new THREE.Color("#ff8a2a"), GUL = new THREE.Color("#ffc050");
-function opdaterSvampeskyer(dt) {
-  for (const s of [...svampeskyer]) {
-    s.t += dt;
-    const t = s.t, T = 10, k = 1 - Math.pow(1 - Math.min(1, t / 3.5), 3), H = 3 + 20 * k, CR = 2 + 7.5 * (1 - Math.pow(1 - Math.min(1, t / 4.5), 3));
-    const gløder = Math.max(0, 1 - Math.pow(t / 7, 1.5)), falm = t > T - 3 ? Math.max(0, (T - t) / 3) : 1;
-    for (const p of s.puf) {
-      if (p.del === "stamme") { p.k.position.set(Math.cos(p.v) * p.r * (1 + k * 0.6), p.h * H, Math.sin(p.v) * p.r * (1 + k * 0.6)); p.k.scale.setScalar(p.s * (0.5 + 0.6 * k)); }
-      else if (p.del === "hat") { p.k.position.set(Math.cos(p.v) * CR * p.r, H + p.dy * (1 + CR * 0.35), Math.sin(p.v) * CR * p.r); p.k.scale.setScalar(p.s * (0.4 + 0.9 * k)); }
-      else if (p.del === "fod") { const rr = (2 + 16 * Math.min(1, t / 2.5)) * p.r; p.k.position.set(Math.cos(p.v) * rr, 0.6 + t * 0.15, Math.sin(p.v) * rr); p.k.scale.setScalar(p.s * (1 + t * 0.25)); }
-      else { p.k.scale.setScalar(t < 0.35 ? 2 + t * 70 : Math.max(0.01, 26 * (1 - (t - 0.35) / 0.9))); p.k.position.y = 1.5; }
-      p.k.rotation.y += dt * 0.3;
-    }
-    s.m.stamme.color.copy(GRÅ).lerp(ORANGE, gløder); s.m.hat.color.copy(GRÅ).lerp(GUL, gløder);
-    s.m.stamme.emissive.copy(s.m.stamme.color).multiplyScalar(0.25 + 0.4 * gløder); s.m.hat.emissive.copy(s.m.hat.color).multiplyScalar(0.25 + 0.4 * gløder);
-    for (const n of ["stamme", "hat"]) s.m[n].opacity = falm;
-    s.m.fod.opacity = Math.max(0, 1 - t / 6) * falm;
-    s.m.kerne.opacity = Math.max(0, 1 - t / 1.2);
-    s.ring.scale.setScalar(1 + 48 * Math.min(1, t / 1.6)); s.ring.material.opacity = Math.max(0, 0.85 * (1 - t / 1.6));
-    if (t > T) {
-      scene.remove(s.g); s.g.traverse(c => { if (c.isMesh && c.geometry !== PUFGEO) c.geometry.dispose(); });
-      for (const x of Object.values(s.m)) x.dispose(); s.ring.material.dispose();
-      svampeskyer.splice(svampeskyer.indexOf(s), 1);
-    }
+// Krateret: aske i bunden, lysende slim i midten og små flammer — og grønt lys, der stiger op et stykke tid
+const kraterGlød = [];
+function atomKrater(cx, cy, cz, R) {
+  for (let x = Math.floor(cx - R); x <= cx + R; x++) for (let z = Math.floor(cz - R); z <= cz + R; z++) {
+    const d = Math.hypot(x + 0.5 - cx, z + 0.5 - cz);
+    if (d > R * 0.95 || !verden.inde(x, 0, z)) continue;
+    const y = verden.topY(x, z), id = verden.hent(x, y, z);
+    if (!id || BLOKKE[id].uknuselig || BLOKKE[id].væske || y > cy) continue;
+    const k = Math.random();
+    if (d < R * 0.35 && k < 0.3) verden.sæt(x, y, z, ID.Atomslim);
+    else if (k < 0.55) verden.sæt(x, y, z, ID.Aske);
+    else if (k > 0.97 && !verden.hent(x, y + 1, z)) verden.sæt(x, y + 1, z, ID.Ild);
+  }
+  kraterGlød.push({ x: cx, z: cz, r: R, t: 14 });
+}
+function opdaterKraterGlød(dt) {
+  for (let i = kraterGlød.length - 1; i >= 0; i--) {
+    const k = kraterGlød[i];
+    if ((k.t -= dt) <= 0) { kraterGlød.splice(i, 1); continue; }
+    if (Math.abs(k.x - sp.pos.x) > 60 || Math.abs(k.z - sp.pos.z) > 60 || Math.random() > dt * 14) continue;
+    const v = Math.random() * Math.PI * 2, r = Math.random() * k.r * 0.7, x = k.x + Math.cos(v) * r, z = k.z + Math.sin(v) * r;
+    partikel(x, verden.topY(Math.floor(x), Math.floor(z)) + 1.1, z, GRØNGLØD[Math.floor(Math.random() * 3)],
+      (Math.random() - 0.5) * 0.4, 0.8 + Math.random(), (Math.random() - 0.5) * 0.4, 1.6, -0.05, 1.1);
   }
 }
-// Dyr med glød: true drysser små, grønne gnister
+// Himlen gløder orange efter et brag og falmer langsomt tilbage
+let himmelGlød = 0, glødVist = false;
+const GLØDFARVE = new THREE.Color("#ffb070"), HVID = new THREE.Color("#ffffff"), TÅGEFARVE = scene.fog.color.clone();
+function opdaterHimmelGlød(dt) {
+  if (himmelGlød <= 0 && !glødVist) return;
+  himmelGlød = Math.max(0, himmelGlød - dt * 0.12);
+  const k = Math.min(1, himmelGlød);
+  himmel.material.color.copy(HVID).lerp(GLØDFARVE, k * 0.65).multiplyScalar(1 + k * 0.35);
+  scene.fog.color.copy(TÅGEFARVE).lerp(GLØDFARVE, k * 0.35);
+  glødVist = k > 0;
+}
+// Damp fra atomkraftværkets køletårne (cfg.atomtårne)
+const DAMPHVID = new THREE.Color("#f4f4f2");
+const køletårne = cfg.atomtårne ? cfg.atomtårne(VX, VZ).map(([x, z]) => ({ x, z, y: null, t: 0 })) : [];
+function opdaterDamp(dt) {
+  for (const k of køletårne) {
+    if (Math.abs(k.x - sp.pos.x) > 110 || Math.abs(k.z - sp.pos.z) > 110 || !verden.hentet(k.x, k.z) || (k.t -= dt) > 0) continue;
+    k.t = 0.16;
+    if (k.y === null || Math.random() < 0.02) k.y = verden.topY(k.x + 5, k.z) + 1;   // toppen af tårnet
+    const v = Math.random() * Math.PI * 2, r = Math.random() * 3.5;
+    partikel(k.x + 0.5 + Math.cos(v) * r, k.y, k.z + 0.5 + Math.sin(v) * r, DAMPHVID, (Math.random() - 0.5) * 0.6, 1.4 + Math.random() * 0.8,
+      (Math.random() - 0.5) * 0.6 + 0.3, 5 + Math.random() * 2, -0.02, 14 + Math.random() * 10);
+  }
+}
+// Store tal midt på skærmen, når en bombe eller den røde knap tæller ned
+let talTimer = 0;
+function visTal(n) {
+  const el = $("nedtælling");
+  clearTimeout(talTimer);
+  el.textContent = n; el.classList.remove("vis"); void el.offsetWidth; el.classList.add("vis");
+  talTimer = setTimeout(() => el.classList.remove("vis"), 950);
+}
+// Store dyr skal have flere tryk, før de siger puf (Kæmpezombien) — svarer true, hvis dyret klarede den
+function slag(d) {
+  if (!d.def.slag) return false;
+  d.slag = (d.slag ?? d.def.slag) - 1;
+  if (d.slag <= 0) return false;
+  d.klap();
+  for (let i = 0; i < 14; i++) partikel(d.pos.x, d.pos.y + d.h, d.pos.z, GRØNGLØD[i % 3], (Math.random() - 0.5) * 4, 2 + Math.random() * 3, (Math.random() - 0.5) * 4, 0.7, 0.8, 1);
+  return true;
+}
+// Dyr med glød drysser små gnister: true = grønne (NUKE-banen), "ild" = orange (føniksen)
 const GRØNGLØD = ["#8aff5a", "#c8ff7a", "#5aff3a"].map(f => new THREE.Color(f));
 let gløddyrT = 0;
 function opdaterGløddyr(dt) {
   if ((gløddyrT -= dt) > 0) return;
   gløddyrT = 0.18;
   for (const d of dyr) if (d.def.glød && Math.abs(d.pos.x - sp.pos.x) < 30 && Math.abs(d.pos.z - sp.pos.z) < 30)
-    partikel(d.pos.x + (Math.random() - 0.5) * 0.6, d.pos.y + Math.random() * d.h, d.pos.z + (Math.random() - 0.5) * 0.6, GRØNGLØD[Math.floor(Math.random() * 3)],
+    partikel(d.pos.x + (Math.random() - 0.5) * 0.6, d.pos.y + Math.random() * d.h, d.pos.z + (Math.random() - 0.5) * 0.6, (d.def.glød === "ild" ? ILD : GRØNGLØD)[Math.floor(Math.random() * 3)],
       (Math.random() - 0.5) * 0.5, 0.6 + Math.random() * 0.6, (Math.random() - 0.5) * 0.5, 0.9, -0.05, 0.7);
+}
+// Inde i tornadoen: skærmen hvirvler grå eller orange
+let slørNu = "";
+function tornadoSlør(til, ild = 0) {
+  const nyt = til ? (ild > 0.5 ? "ild" : "støv") : "";
+  if (nyt === slørNu) return;                                     // kun når det skifter
+  slørNu = nyt;
+  const el = $("tornadoSlør");
+  el.classList.toggle("aktiv", til);
+  if (til) el.style.setProperty("--tf", nyt === "ild" ? "rgba(255,110,30,.5)" : "rgba(140,125,110,.5)");
 }
 
 // ---------- Dinodalen: dino-æg, der klækkes, og en vulkan, der ryger og af og til går i udbrud (kun pynt) ----------
@@ -742,6 +792,7 @@ function sprøjt() {
     if (ramt) break;
   }
   if (damp && tid - tssLyd > 0.35) { tssLyd = tid; Lyd.tss(); }
+  tornado.sprøjt(fra, r);                                         // vandet slukker ildtornadoer
   for (const d of dyr) {                                          // dyrene bliver våde og hopper
     tmp.copy(d.pos).sub(fra);
     const t = tmp.dot(r);
@@ -1022,13 +1073,14 @@ const tændte = [];
 let rystelse = 0, tntTip = false;
 const RØG = new THREE.Color("#8f8f8f"), ILD = ["#fff3a0", "#ffd23f", "#ff8c1a", "#ff4d2e"].map(f => new THREE.Color(f));
 // TNT, atomtønder og atombomber: sammen tænder serveren TNT'en — de andre fjernes og giver et brag fra serveren
+// (barnet tænder den selv: atombomber tæller ned på skærmen — 3, 2, 1 · Kæmpebomben fra 5)
 function tændSprængstof({ x, y, z, id }) {
-  const lunte = BLOKKE[id].atom ? 3.5 : 2.2;
-  if (!ONLINE) { tændTNT(x, y, z, lunte, false, id); return; }
+  const lunte = BLOKKE[id].atom === "kæmpe" ? 5.5 : BLOKKE[id].atom ? 3.5 : 2.2;
+  if (!ONLINE) { tændTNT(x, y, z, lunte, false, id, true); return; }
   if (id === ID.TNT) net?.tænd(x, y, z); else net?.sæt(x, y, z, 0);
-  tændTNT(x, y, z, lunte, true, id);
+  tændTNT(x, y, z, lunte, true, id, true);
 }
-function tændTNT(x, y, z, lunte = 2.2, kunVis = false, blok = ID.TNT) {
+function tændTNT(x, y, z, lunte = 2.2, kunVis = false, blok = ID.TNT, tæl = false) {
   if (!kunVis) verden.sæt(x, y, z, 0);
   if (tændte.length >= 40) return;
   const g = new THREE.Group();
@@ -1037,7 +1089,8 @@ function tændTNT(x, y, z, lunte = 2.2, kunVis = false, blok = ID.TNT) {
   g.add(hvid);
   scene.add(g);
   tændte.push({ g, hvid, pos: new THREE.Vector3(x + 0.5, y, z + 0.5), vel: new THREE.Vector3(0, lunte < 1 ? 3 : 2, 0), tid: 0, lunte, røgT: 0, kunVis,
-    atom: !!BLOKKE[blok]?.atom, brag: kunVis && ONLINE && blok !== ID.TNT });
+    atom: BLOKKE[blok]?.atom ? (BLOKKE[blok].atom === "kæmpe" ? "kæmpe" : "atom") : null, tæl: tæl && !!BLOKKE[blok]?.atom, tal: 0,
+    brag: kunVis && ONLINE && blok !== ID.TNT });
   Lyd.tænd();
   if (!kunVis) gemSnart();
 }
@@ -1059,11 +1112,15 @@ function opdaterTNT(dt) {
       if (i < 2) Lyd.lunte();
       if (t.atom && Math.floor(t.tid * 4) !== Math.floor((t.tid - dt) * 4)) Lyd.atomBip();
     }
+    if (t.tæl) {                                                 // nedtællingen på skærmen
+      const n = Math.ceil(rest - 0.5);
+      if (n !== t.tal && n >= 1 && n <= 5) { t.tal = n; visTal(n); Lyd.nedtælling(n); }
+    }
     if (rest <= 0) {
       tændte.splice(i, 1);
       scene.remove(t.g);
       t.g.traverse(c => { if (c.isMesh) { c.geometry.dispose(); c.material.dispose(); } });
-      if (t.atom) atomEksplosion(t.pos.x, t.pos.y + 0.5, t.pos.z, t.kunVis);
+      if (t.atom) atomEksplosion(t.pos.x, t.pos.y + 0.5, t.pos.z, t.kunVis, t.atom);
       else if (!t.kunVis) eksploder(t.pos.x, t.pos.y + 0.5, t.pos.z);
       if (t.brag) net?.brag(t.pos.x, t.pos.y + 0.5, t.pos.z);
     }
@@ -1131,9 +1188,22 @@ function bragEffekt(cx, cy, cz, R = 3.3) {
 const skyd = new Skydning({
   scene, verden, kamera, sp, dyr, partikel, eksploder, bragEffekt, puf, lyd: Lyd, net: () => net, online: ONLINE,
   sæt: (x, y, z, id) => { verden.sæt(x, y, z, id); gemSnart(); }, point: n => nyePoint(n), klat: f => klat(f),
-  tyngde: TYNGDE, bane: !!cfg.skyd, start: [VX / 2, VZ / 2],
+  tyngde: TYNGDE, bane: !!cfg.skyd, start: [VX / 2, VZ / 2], atom: (x, y, z) => miniAtom(x, y, z),
 });
 const fyr = new Fyrværkeri(scene, kamera, { lyd: { fløjt: Lyd.fløjt, brag: Lyd.fyrBrag, knitre: Lyd.fyrKnitre }, blink: himmelBlink });
+// Atombomber, missiler og den røde knap (atom.js) — sammen fjernes blokkene lidt ad gangen, og serveren sprænger
+const atom = new Atom({
+  scene, verden, sp, partikel, lyd: Lyd, online: ONLINE, besked, tal: visTal, sæt: sætHer,
+  mål: cfg.atommål ? cfg.atommål(VX, VZ) : null, ryst: n => { rystelse = Math.min(2.4, rystelse + n); },
+  sprængning: (x, y, z, slags) => { if (ONLINE) { net?.brag(x, y, z); atomEksplosion(x, y, z, true, slags); } else atomEksplosion(x, y, z, false, slags); },
+});
+// Tornadoer (tornado.js) — i Ildtornadoerne kommer de af sig selv, og 🌪️ Tornadomageren virker i alle verdener
+const tornado = new Tornadoer({
+  scene, verden, sp, dyr, partikel, lyd: Lyd, online: ONLINE, natur: !!cfg.tornado, B, HØJ, besked,
+  sæt: (x, y, z, id) => { verden.sæt(x, y, z, id); gemSnart(); }, point: n => nyePoint(n),
+  fest: p => { const s = tilSkærm(p); E.konfetti(s.x, s.y, { antal: 50 }); },
+  slør: (til, ild) => tornadoSlør(til, ild), stopFlyv: () => skiftFlyv(), kører: () => !!skyd.kører,
+});
 
 // Point på Skydebanen: ⭐ oppe i midten — og en lille fest for hver 25
 let point = gemt.point | 0;
@@ -1578,7 +1648,7 @@ $("musikKnap").addEventListener("click", () => {
   $("musikKnap").textContent = musikTekst();
 });
 $("musikKnap").textContent = musikTekst();
-$("hjemStart").addEventListener("click", () => { Lyd.klik(); skyd.stigUd(); startSted(); if (sp.flyver) skiftFlyv(); luk("menu"); gemSnart(); });
+$("hjemStart").addEventListener("click", () => { Lyd.klik(); skyd.stigUd(); tornado.slip(); startSted(); if (sp.flyver) skiftFlyv(); luk("menu"); gemSnart(); });
 $("udsynKnap").textContent = `👀 Udsyn: ${UDSYN[udsynNr].navn}`;
 $("udsynKnap").addEventListener("click", () => {                  // hvor langt kan man se (online)
   udsynNr = (udsynNr + 1) % UDSYN.length; skriv("broekraft-udsyn", udsynNr); Lyd.klik();
@@ -1638,15 +1708,18 @@ function tegnFrame(nu) {
   const dt = Math.max(0, Math.min(0.05, (nu - sidst) / 1000));
   sidst = nu; tid += dt;
   if (iGang && !pause) {
-    if (skyd.kører) { skyd.styr(tast, sp.yaw, dt); sp.pitch = Math.max(-1.1, Math.min(0.45, sp.pitch)); } else opdaterSpiller(dt);
+    if (skyd.kører) { skyd.styr(tast, sp.yaw, dt); sp.pitch = Math.max(-1.1, Math.min(0.45, sp.pitch)); }
+    else if (!tornado.styrSpiller(dt)) opdaterSpiller(dt);                       // i en tornado snurrer man rundt
     opdaterHak(dt); genfød(dt); opdaterTNT(dt); sim?.tick(dt); opdaterGløder(dt);
     skyd.opdater(dt); fyr.opdater(dt); brand?.opdater(dt, sp.pos); opdaterKugler(dt); opdaterSpirer(dt); opdaterVulkan(dt); opdaterGløddyr(dt);
+    tornado.opdater(dt); opdaterKraterGlød(dt); opdaterDamp(dt);
     if (valgtTing().v === "stjernekaster" && !skyd.kører) {
       stjernedrys(3, 1.6);
       if ((gnistLyd -= dt) <= 0) { gnistLyd = 0.15; Lyd.gnistre(); }
     }
   }
   else if (!iGang) sp.yaw += dt * 0.06;                                           // titelskærm: kig langsomt rundt
+  if (!iGang || pause) tornado.stille();
   for (const d of dyr) d.opdater(dt, sp.pos);
   if (ONLINE) opdaterOnline(dt);
   verden.opdater(ONLINE ? 6 : verden.snavset.size > 40 ? 12 : 4);
@@ -1654,7 +1727,7 @@ function tegnFrame(nu) {
   tegnPortalSlør(dt);
   opdaterVærktøj(håndFlamme, tid);
   opdaterStykker(dt);
-  opdaterSvampeskyer(dt);
+  atom.opdater(dt); opdaterHimmelGlød(dt);
   for (const s of skyer) {                                                        // skyerne driver og følger med
     s.position.x += dt * 0.8;
     if (s.position.x - kamera.position.x > 120) s.position.x -= 240; else if (s.position.x - kamera.position.x < -120) s.position.x += 240;
@@ -1701,7 +1774,8 @@ async function startSpil() {
   luk("start");
   document.body.classList.add("i-gang");
   besked(ONLINE ? `${figurIkon(minFigur)} Velkommen til ${onlineInfo?.navn || cfg.navn}!` : `${cfg.ikon} ${cfg.navn}`, 2400);
-  setTimeout(() => { if (iGang) besked(cfg.id === "atom" ? "☢️ Tænd atombomben med 🔥 eller 🔨 — og løb langt væk! · tryk på de grønne zombier"
+  setTimeout(() => { if (iGang) besked(cfg.id === "atom" ? "☢️ Tryk på den røde knap i bunkeren — så flyver missilerne! · tænd bomberne med 🔥 eller 🔨"
+    : cfg.tornado ? "🌪️ Gå ind i en tornado for en snurretur · sluk ildtornadoerne med brandslangen og få ⭐"
     : cfg.id === "dino" ? "🦕 Find dino-æggene, og slå på dem med 🔨 hammeren · pas på, vulkanen ryger!"
     : cfg.id === "bondegaard" ? "🌱 Plant spirer, og se dem gro · høst med 🔨 hammeren for ⭐"
     : cfg.id === "sky" ? "☁️ Hop på skyerne og trampolinerne · falder du ned, så hop op igen på trampolinerne"
@@ -1714,6 +1788,9 @@ async function startSpil() {
     : nyVæske ? "NYT: 🪣 Vand, 🌋 lava og 🔥 ild! Find dem i ⋯" : nyTNT && !ONLINE ? "NYT: 🧨 TNT! Sæt den og slå på den med 🔨" : "Tryk = byg 🧱   🔨 = fjern   Træk = kig 👀", 5000); }, 2500);
   const tip = læs("broekraft-portaltip", 0);                      // de første par gange: sådan laver man en portal
   if (tip < 3 && !portalKom) { skriv("broekraft-portaltip", tip + 1); setTimeout(() => { if (iGang) besked("NYT: 🌀 Byg en ramme af obsidian, og tænd den med 🔥 — så får du en portal!", 5500); }, 8500); }
+  const ekstra = cfg.tornado ? "🌪️ Lav din egen tornado med Tornadomageren — og tænd den med 🔥"
+    : cfg.id === "atom" ? "🚀 Byg dit eget missil: Missil-blokke med en Missilspids på toppen · jo længere, jo større brag" : "";
+  if (ekstra) setTimeout(() => { if (iGang) besked(ekstra, 5500); }, 16000);
 }
 tegnHotbar();
 opdaterHånd();
@@ -1981,4 +2058,4 @@ if (ONLINE) {
 
 if (ONLINE) forberedOnline();
 window.broekraftKlar = true;
-if (location.search.includes("debug")) window.bk = { sp, verden, dyr, tast, cfg, andre, sim, get net() { return net; }, get tale() { return tale; }, get graf() { return graf; }, afspillere, skyd, fyr, tændPortal, visPortalValg, brand, tændSprængstof, steg: n => { for (let i = 0; i < n; i++) tegnFrame(sidst + 1000 / 60); sidst = performance.now(); } };
+if (location.search.includes("debug")) window.bk = { sp, verden, dyr, tast, cfg, andre, sim, get net() { return net; }, get tale() { return tale; }, get graf() { return graf; }, afspillere, skyd, fyr, tændPortal, visPortalValg, brand, tændSprængstof, atom, tornado, steg: n => { for (let i = 0; i < n; i++) tegnFrame(sidst + 1000 / 60); sidst = performance.now(); } };
