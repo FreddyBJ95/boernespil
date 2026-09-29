@@ -11,7 +11,7 @@
 //         "jæger" (spurter efter dig og skubber — se skyd.js) · liv: hvor mange skud der skal til (standard 1)
 //  klap:  "puf" = dyret forsvinder i konfetti og bliver til en blomst når man trykker på det
 //         slag: hvor mange tryk der skal til, før det siger puf (standard 1)
-//  skala: gør hele dyret større/mindre · fart: blokke pr. sekund
+//  skala: gør hele dyret større/mindre · fart: blokke pr. sekund · ride: man kan ride på det (se listen under DYR)
 //  lyd:   "muh" | "øf" | "mæh" | "kluk" | "kvæk" | "rap" | "wiii" | "uuuh" | "buuh" | "boing" | "bipbop" | "pip" | "rawr"
 //  æg:    to farver til dyre-ægget
 
@@ -677,6 +677,11 @@ export const DYR = [
     ] },
   ] },
 ];
+// Dyr, man kan ride på: tryk på dem, så sidder man på ryggen (biler.js og spil.js)
+for (const id of ["ko", "gris", "svampeko", "rensdyr", "dalmatiner", "enhjorning", "drage", "hest", "langhals", "triceratops", "tohovedko", "foniks"]) {
+  const d = DYR.find(x => x.id === id);
+  if (d) d.ride = true;
+}
 // ---------- Byg et dyr af klodser ----------
 const kasse = new THREE.BoxGeometry(1, 1, 1);
 const S = 1 / 16;

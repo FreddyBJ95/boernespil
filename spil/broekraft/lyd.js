@@ -463,6 +463,10 @@ export function vindLyd(styrke) {          // tornadoens susen — jo tættere p
   vind.g.gain.setTargetAtTime(Math.min(0.45, styrke * 0.4), t, styrke > 0 ? 0.2 : 0.08);
   vind.f.frequency.setTargetAtTime(260 + styrke * 650 + Math.sin(t * 2.3) * 90, t, 0.25);
 }
+export function bask() {                    // vinger, der basker — svup
+  if (!ac) return;
+  sus(nu(), 0.2, 380, 1300, 0.2, "bandpass", 1.4);
+}
 export function suget() {                  // wiii — man bliver suget op i tornadoen
   if (!ac) return;
   glid(260, 1150, nu(), 1.3, { type: "triangle", vol: 0.12, vibHz: 6, vib: 35 });

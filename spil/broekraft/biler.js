@@ -6,6 +6,7 @@
 
 import * as THREE from "./three.js";
 import { Kampvogn } from "./kampvogn.js";
+import { byggDyr } from "./dyr.js";
 
 const KASSE = new THREE.BoxGeometry(1, 1, 1);
 export const BILER = {
@@ -107,5 +108,85 @@ export class Bil extends Kampvogn {
       this.blinkT = 0.22; this.blinkNr = (this.blinkNr || 0) + 1;
       this.blink.forEach((b, i) => b.m.material.color.copy(b.farve).multiplyScalar((i + this.blinkNr) % 2 ? 1.3 : 0.15));
     }
+  }
+}
+
+// En lille klodsrytter, der sidder på ryggen af dyret (over kroppen, ikke hovedet eller halen)
+function byggRytter(krop) {
+  const u = krop.userData, ikke = new Set([...u.hoved, ...u.hale, ...u.vinge]), boks = new THREE.Box3();
+  krop.updateMatrixWorld(true);
+  krop.traverse(m => {
+    if (!m.isMesh) return;
+    for (let p = m; p && p !== krop; p = p.parent) if (ikke.has(p)) return;
+    boks.expandByObject(m);
+  });
+  if (boks.isEmpty()) boks.setFromObject(krop);
+  const r = new THREE.Group();
+  const klods = (b, h, l, f, x, y, z, til = r) => {
+    const m = new THREE.Mesh(KASSE, new THREE.MeshLambertMaterial({ color: f }));
+    m.scale.set(b, h, l); m.position.set(x, y, z); til.add(m);
+    return m;
+  };
+  const bred = Math.min(0.5, (boks.max.x - boks.min.x) / 2 + 0.06);
+  for (const s of [-1, 1]) { klods(0.16, 0.18, 0.4, "#2a4ad8", s * 0.13, 0.08, 0.12); klods(0.14, 0.4, 0.16, "#2a4ad8", s * bred, -0.12, 0.26); }  // benene på hver side
+  klods(0.42, 0.44, 0.24, "#3a9bff", 0, 0.38, 0);                                    // trøjen
+  const hoved = new THREE.Group(); hoved.position.set(0, 0.8, 0); r.add(hoved);
+  klods(0.38, 0.38, 0.38, "#f1c28d", 0, 0, 0, hoved);                                // hovedet
+  klods(0.4, 0.12, 0.4, "#7a4a22", 0, 0.19, -0.01, hoved); klods(0.4, 0.2, 0.08, "#7a4a22", 0, 0.08, -0.17, hoved);   // håret
+  for (const s of [-1, 1]) klods(0.07, 0.07, 0.02, "#222", s * 0.09, 0.03, 0.19, hoved);   // øjnene
+  const arme = [-1, 1].map(s => { const a = new THREE.Group(); a.position.set(s * 0.27, 0.56, 0); klods(0.13, 0.36, 0.13, "#3a9bff", 0, -0.14, 0.06, a); a.rotation.x = -0.9; r.add(a); return a; });
+  r.position.set(0, boks.max.y - 0.04, (boks.min.z + boks.max.z) / 2 - 0.05);
+  Object.assign(r.userData, { hoved, arme, y: r.position.y });
+  return r;
+}
+
+// ---------- Dyr, man kan ride på (ride: true i dyr.js) ----------
+// Dyret kører som en bil, men benene går, halen logrer, og vingerne basker, når det hopper (⬆).
+// Dyr med vinger (dragen, føniksen, pegasusser …) kan flyve: hold ⬆ for at baske opad, slip for at svæve ned.
+// Små dyr bliver lidt større, mens man rider, så man kan sidde på dem.
+export class Ridedyr extends Kampvogn {
+  constructor(scene, verden, def) {
+    let krop = null;
+    super(scene, verden, { fart: 7.5, model: () => {
+      const g = new THREE.Group();
+      krop = byggDyr(def);
+      const h = new THREE.Box3().setFromObject(krop).getSize(new THREE.Vector3()).y;
+      if (h < 1.3) krop.scale.multiplyScalar(1.3 / h);
+      g.add(krop, byggRytter(krop));
+      return { g, tårn: new THREE.Group(), kanon: new THREE.Group(), lak: [] };
+    } });
+    Object.assign(this, { dyrDef: def, krop, navn: def.navn, fase: 0, rytter: this.model.children[1], vinger: krop.userData.vinge.length > 0, bask: 0 });
+  }
+  // ⬆: hop — og har dyret vinger, basker det sig højere op, så længe man holder knappen
+  hop(styrke = 1) {
+    if (!this.vinger || this.jord) return super.hop(styrke);
+    if (this.t - this.bask < 0.28 || this.pos.y > this.verden.BY + 8) return false;
+    this.bask = this.t; this.vel.y = Math.max(this.vel.y, 7);
+    return true;
+  }
+  kør(frem, drej, dt, tyngde) {
+    super.kør(frem, drej, dt, tyngde);
+    if (this.vinger && this.vel.y < -3) this.vel.y = -3;              // vingerne bremser faldet: den svæver ned
+  }
+  rammer(p, ekstra = 0) {
+    const dx = p.x - this.pos.x, dz = p.z - this.pos.z, dy = p.y - this.pos.y;
+    return Math.hypot(dx, dz) < 1.3 + ekstra && dy > -0.3 - ekstra && dy < 2.4 + ekstra;
+  }
+  opdater(dt) {
+    this.t += dt;
+    const u = this.krop.userData, fart = Math.hypot(this.vel.x, this.vel.z), luft = !this.jord;
+    this.fase += fart * dt * 2.2;
+    for (const b of u.ben) b.rotation.x = Math.sin(this.fase + b.userData.fase) * 0.8 * Math.min(1, fart / 3);
+    for (const h of u.hale) h.rotation.y = Math.sin(this.t * 6) * 0.35;
+    for (const v of u.vinge) v.rotation.z = v.userData.side * ((luft ? Math.sin(this.t * 18) * 0.7 : Math.sin(this.t * 3) * 0.1) - 0.1);
+    for (const m of u.regnbue) m.color.setHSL((this.t * 0.2) % 1, 0.75, 0.72);
+    for (const hd of u.hoved) hd.rotation.x = Math.sin(this.t * 2) * 0.05 + (fart > 0.5 ? Math.sin(this.fase * 2) * 0.06 : 0);
+    const ry = this.rytter.userData;                                  // rytteren hopper med og vinker i luften
+    this.rytter.position.y = ry.y + (fart > 0.5 && this.jord ? Math.abs(Math.sin(this.fase + 0.6)) * 0.06 : 0);
+    ry.hoved.rotation.y = Math.sin(this.t * 0.7) * 0.25;
+    ry.arme.forEach((a, i) => { a.rotation.x = luft ? -2.6 + Math.sin(this.t * 14 + i * 3) * 0.3 : -0.9 + Math.sin(this.fase + i) * 0.1; });
+    this.model.position.copy(this.pos);
+    if (fart > 0.5 && this.jord) this.model.position.y += Math.abs(Math.sin(this.fase)) * 0.12;   // lidt galop
+    this.model.rotation.y = this.yaw;
   }
 }

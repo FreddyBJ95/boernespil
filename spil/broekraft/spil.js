@@ -446,6 +446,7 @@ function tryk(x, y, somHammer = false) {
   if (skyd.kører) {                                                          // i kampvognen skyder kanonen …
     if (skyd.kører.vand) vandkanon();                                        // … brandbilen sprøjter vand
     else if (skyd.kører.bil) Lyd.dyt();                                      // … og de andre biler dytter
+    else if (skyd.kører.dyrDef) { Lyd.dyrLyd(skyd.kører.dyrDef.lyd); skyd.kører.hop(0.6); }   // … og dyret siger noget og hopper
     else skyd.kanon(ray.ray.direction.clone());
     return;
   }
@@ -472,6 +473,7 @@ function tryk(x, y, somHammer = false) {
   }
   if (bedst && (!hit || bedst.afst < hit.t)) {
     if (bedst.d.def.klap === "puf") { if (!slag(bedst.d)) puf(bedst.d); return; }
+    if (bedst.d.def.ride) { rid(bedst.d); return; }                 // op på ryggen af ponyen, dragen eller dinoen
     bedst.d.klap();
     const p = tilSkærm(bedst.d.pos, bedst.d.h + 0.3);
     E.tekstPop(p.x, p.y, "❤️", { s: 50 });
@@ -1213,7 +1215,7 @@ function bragEffekt(cx, cy, cz, R = 3.3) {
 
 // ---------- Skydning og fyrværkeri (skyd.js, kampvogn.js og fyrvaerkeri.js) ----------
 const skyd = new Skydning({
-  scene, verden, kamera, sp, dyr, partikel, eksploder, bragEffekt, puf, lyd: Lyd, net: () => net, online: ONLINE,
+  scene, verden, kamera, sp, dyr, partikel, eksploder, bragEffekt, puf, lyd: Lyd, stegAf: kv => stegAf(kv), net: () => net, online: ONLINE,
   sæt: (x, y, z, id) => { verden.sæt(x, y, z, id); gemSnart(); }, point: n => nyePoint(n), klat: f => klat(f),
   tyngde: TYNGDE, bane: !!cfg.skyd, start: [VX / 2, VZ / 2], atom: (x, y, z) => miniAtom(x, y, z),
 });
@@ -1258,6 +1260,18 @@ function sætBil(slags, hit) {
   Lyd.motor(); sving = 1;
   for (let i = 0; i < 24; i++) partikel(x, bil.pos.y + 1, z, KONFETTI[i % KONFETTI.length], (Math.random() - 0.5) * 6, 2 + Math.random() * 4, (Math.random() - 0.5) * 6, 1, 0.4, 0.8);
   besked(`${bil.ikon} Tryk på ${bil.navn} for at køre i den`, 2600);
+}
+// Rid på et dyr: dyret bliver til noget, man kan styre — og når man stiger af, går det sin egen vej igen
+function rid(d) {
+  const kv = skyd.nyRidedyr(d.def, d.pos.x, d.pos.y, d.pos.z, d.yaw);
+  d.fjern(); dyr.splice(dyr.indexOf(d), 1);
+  skyd.stigInd(kv); Lyd.dyrLyd(d.def.lyd);
+  besked(`🐾 Du rider på ${d.def.navn}! ${mus ? "Styr med WASD · shift = stig af" : "Styr med joysticket"} · ${kv.vinger ? "hold ⬆ = flyv" : "⬆ = hop"}`, 4000);
+}
+function stegAf(kv) {
+  skyd.egne.splice(skyd.egne.indexOf(kv), 1); kv.fjern();
+  const d = nytDyr(kv.dyrDef, kv.pos.x, kv.pos.y + 0.05, kv.pos.z);
+  d.yaw = d.målYaw = kv.yaw; d.klapTid = 0.5;
 }
 // Sirenerne hyler, mens de er tændt
 function opdaterSirener(dt) {
@@ -1897,9 +1911,11 @@ function tegnFrame(nu) {
   const bob = sp.jord && !sp.flyver ? Math.abs(Math.sin(gangFase * Math.PI)) * 0.06 : 0;
   if (skyd.kører) {                                                               // kameraet bag og over kampvognen
     const kv = skyd.kører, cp = Math.cos(sp.pitch), fx = -Math.sin(sp.yaw) * cp, fy = Math.sin(sp.pitch), fz = -Math.cos(sp.yaw) * cp;
-    let afst = 7.5;
-    for (let d = 1.5; d <= 7.5; d += 0.5) if (verden.erFast(Math.floor(kv.pos.x - fx * d), Math.floor(kv.pos.y + 2.4 - fy * d), Math.floor(kv.pos.z - fz * d))) { afst = d - 0.6; break; }
-    kamera.position.set(kv.pos.x - fx * afst, kv.pos.y + 2.4 - fy * afst, kv.pos.z - fz * afst);
+    const maks = kv.dyrDef ? 5.5 : 7.5, op = kv.dyrDef ? 2 : 2.4;                // dyrene er mindre end bilerne
+    let afst = maks;
+    for (let d = 1.5; d <= maks; d += 0.5) if (verden.erFast(Math.floor(kv.pos.x - fx * d), Math.floor(kv.pos.y + op - fy * d), Math.floor(kv.pos.z - fz * d))) { afst = d - 0.6; break; }
+    kamera.position.set(kv.pos.x - fx * afst, kv.pos.y + op - fy * afst, kv.pos.z - fz * afst);
+    if (kv.rytter) kv.rytter.visible = afst > 2.6;                               // rytteren står ikke i vejen for kameraet
   } else kamera.position.set(sp.pos.x, sp.pos.y + ØJE + bob, sp.pos.z);
   if (rystelse > 0) {                                                             // skærmen ryster efter et brag
     rystelse = Math.max(0, rystelse - dt * 1.6);
@@ -2218,4 +2234,4 @@ if (ONLINE) {
 
 if (ONLINE) forberedOnline();
 window.broekraftKlar = true;
-if (location.search.includes("debug")) window.bk = { sp, verden, dyr, tast, cfg, andre, sim, get net() { return net; }, get tale() { return tale; }, get graf() { return graf; }, afspillere, skyd, fyr, tændPortal, visPortalValg, brand, tændSprængstof, atom, tornado, musBrug, nytår, steg: n => { for (let i = 0; i < n; i++) tegnFrame(sidst + 1000 / 60); sidst = performance.now(); } };
+if (location.search.includes("debug")) window.bk = { sp, kamera, verden, dyr, tast, cfg, andre, sim, get net() { return net; }, get tale() { return tale; }, get graf() { return graf; }, afspillere, skyd, fyr, tændPortal, visPortalValg, brand, tændSprængstof, atom, tornado, musBrug, nytår, steg: n => { for (let i = 0; i < n; i++) tegnFrame(sidst + 1000 / 60); sidst = performance.now(); } };

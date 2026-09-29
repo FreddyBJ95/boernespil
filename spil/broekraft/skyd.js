@@ -7,7 +7,7 @@
 import * as THREE from "./three.js";
 import { BLOKKE, ID } from "./blokke.js";
 import { Kampvogn, KV_B, KV_H } from "./kampvogn.js";
-import { Bil } from "./biler.js";
+import { Bil, Ridedyr } from "./biler.js";
 
 const VÅBEN = {
   gevær: { fart: 55, tyngde: 0, liv: 1.1 },
@@ -211,6 +211,15 @@ export class Skydning {
     this.egne.push(bil);
     return bil;
   }
+  // Et dyr, man rider på (biler.js): det står, hvor dyret stod
+  nyRidedyr(def, x, y, z, yaw = 0) {
+    const { scene, verden } = this.s, kv = new Ridedyr(scene, verden, def);
+    kv.pos.set(x, y, z); kv.yaw = kv.tårnYaw = yaw;
+    while (verden.kolliderer(kv.pos, KV_B, KV_H) && kv.pos.y < verden.BY) kv.pos.y += 1;
+    kv.opdater(0);
+    this.egne.push(kv);
+    return kv;
+  }
   fjernBil(bil) {
     if (this.kører === bil) this.stigUd();
     this.egne.splice(this.egne.indexOf(bil), 1); bil.fjern();
@@ -239,7 +248,7 @@ export class Skydning {
   }
   stigInd(kv) {
     this.kører = kv; kv.tårnYaw = kv.yaw;
-    if (kv.bil) this.s.lyd.motor?.(); else this.s.lyd.kanonSkud?.();
+    if (kv.bil) this.s.lyd.motor?.(); else if (!kv.dyrDef) this.s.lyd.kanonSkud?.();
     document.body.classList.add("i-kampvogn");
   }
   stigUd() {
@@ -251,12 +260,13 @@ export class Skydning {
     sp.pos.set(kv.pos.x + Math.sin(side) * 2.4, kv.pos.y + 0.2, kv.pos.z + Math.cos(side) * 2.4);
     while (verden.kolliderer(sp.pos, 0.3, 1.7) && sp.pos.y < verden.BY + 2) sp.pos.y += 1;
     sp.vel.set(0, 0, 0);
+    if (kv.dyrDef) this.s.stegAf?.(kv);                              // dyret går sin egen vej igen
   }
   // Styr kampvognen med pilene. Tårnet følger kameraet.
   styr(tast, kameraYaw, dt) {
     const kv = this.kører;
     if (kv.bil) { if (tast.hop && !this.hopFør) kv.skiftSirene(); this.hopFør = !!tast.hop; }   // ⬆ = bilens sirene
-    else if (tast.hop && kv.hop()) this.s.lyd.boing();              // ⬆ = kampvognen hopper
+    else if (tast.hop && kv.hop()) (kv.vinger && !kv.jord ? this.s.lyd.bask : this.s.lyd.boing)();   // ⬆ = hop (og bask med vingerne)
     kv.kør(tast.frem - tast.tilbage, tast.hoejre - tast.venstre, dt, this.s.tyngde);
     kv.sigt(kameraYaw + Math.PI, dt, 4);
     this.s.sp.pos.set(kv.pos.x, kv.pos.y + 0.6, kv.pos.z);
