@@ -25,6 +25,7 @@ import { Fyrværkeri } from "./fyrvaerkeri.js";
 import { Brandvæsen } from "./brand.js";
 import { Atom, STØRRELSE } from "./atom.js";
 import { Tornadoer } from "./tornado.js";
+import { Nytår } from "./nytaar.js";
 
 const E = window.Effekter, $ = id => document.getElementById(id);
 const RÆKKE = 7, HAKTID = 0.4;                                  // hvor langt man når, og hvor længe en blok tager at hakke
@@ -462,6 +463,7 @@ function tryk(x, y, somHammer = false) {
   if (værk?.fyrværkeri) { fyrTryk(valgt.v, hit); return; }
   if (værk?.tornado) { tornado.lav(hit, ray.ray); sving = 1; return; }          // 🌪️ en ny tornado
   if (værk?.bil) { sætBil(værk.bil, hit); return; }                              // 🚒 en bil, man kan køre i
+  if (nytår.trykHjul(ray.ray)) { sving = 1; return; }                             // 🎡 stig ind i en gondol
   if (valgt.v === "tænder" && tornado.tændVed(ray.ray)) { sving = 1; return; }  // 🔥 tornadoen bliver til en ildtornado
   let bedst = null;
   for (const d of dyr) {
@@ -477,9 +479,12 @@ function tryk(x, y, somHammer = false) {
   }
   if (!hit) return;
   if (BLOKKE[hit.id].knap) { atom.trykKnap(hit); sving = 1; return; }     // den røde knap: missilerne flyver efter en nedtælling
+  if (BLOKKE[hit.id].ur) { nytår.trykUr(); sving = 1; return; }            // nytårsuret tæller ned
+  if (BLOKKE[hit.id].raketTur) { nytår.raketTur(hit); sving = 1; return; } // flyv med kæmperaketten
   if (valgt.hammer) {                                            // hammeren fjerner blokken med det samme
     if (BLOKKE[hit.id].fyrværkeri) { tændFyrkasse(hit); return; }        // fyrværkeri-kassen går i gang
     if (BLOKKE[hit.id].kanon) { affyrKanon(hit); return; }               // bum — kanonkuglen flyver
+    if (BLOKKE[hit.id].droner) { startDroner(hit); return; }             // dronerne letter
     if (BLOKKE[hit.id].missil) { atom.tændMissil(hit); sving = 1; return; }   // missilet letter
     if (BLOKKE[hit.id].tnt || BLOKKE[hit.id].atom) { tændSprængstof(hit); sving = 1; return; }   // … men TNT og bomber bliver tændt!
     if (!BLOKKE[hit.id].uknuselig) { knus(hit, true); sving = 1; }
@@ -564,6 +569,7 @@ function brugVærktøj(v, hit) {
   const b = BLOKKE[hit.id];
   if (v === "tænder" && b.fyrværkeri) { tændFyrkasse(hit); return; }
   if (v === "tænder" && b.kanon) { affyrKanon(hit); return; }
+  if (v === "tænder" && b.droner) { startDroner(hit); return; }
   if (v === "tænder" && b.missil) { atom.tændMissil(hit); sving = 1; return; }
   if (v === "tænder" && cfg.undervand) { besked("Ild kan ikke brænde under vandet 🫧", 2500); return; }
   if (v === "tænder" && (b.tnt || b.atom)) { tændSprængstof(hit); sving = 1; return; }
@@ -1211,7 +1217,20 @@ const skyd = new Skydning({
   sæt: (x, y, z, id) => { verden.sæt(x, y, z, id); gemSnart(); }, point: n => nyePoint(n), klat: f => klat(f),
   tyngde: TYNGDE, bane: !!cfg.skyd, start: [VX / 2, VZ / 2], atom: (x, y, z) => miniAtom(x, y, z),
 });
-const fyr = new Fyrværkeri(scene, kamera, { lyd: { fløjt: Lyd.fløjt, brag: Lyd.fyrBrag, knitre: Lyd.fyrKnitre }, blink: himmelBlink });
+const fyr = new Fyrværkeri(scene, kamera, { lyd: { fløjt: Lyd.fløjt, brag: Lyd.fyrBrag, knitre: Lyd.fyrKnitre, droner: Lyd.droner, figur: Lyd.figur }, blink: himmelBlink });
+// Nytårsaften (nytaar.js): pariserhjulet, nedtællingen ved uret og kæmperaketten med faldskærm
+let faldskærm = false;
+const nytår = new Nytår({
+  scene, verden, sp, fyr, partikel, lyd: Lyd, tal: visTal, besked, sæt: sætHer, get tast() { return tast; },
+  faldskærm: til => { faldskærm = til; }, fest: () => { E.fanfare?.(); E.konfetti(window.innerWidth / 2, 90, { antal: 90 }); },
+  stopFlyv: () => { if (sp.flyver) skiftFlyv(); }, startFlyv: () => { if (!sp.flyver) skiftFlyv(); },
+  hjul: cfg.pariserhjul ? cfg.pariserhjul(VX, VZ) : null, torv: cfg.nytår ? [VX / 2, VZ / 2] : null,
+});
+// Dronekassen: dronerne letter og tegner figurer på himlen (højst ét show ad gangen)
+function startDroner({ x, y, z }) {
+  if (!fyr.droneshow(x + 0.5, y, z + 0.5)) { besked("🛸 Dronerne er allerede i luften — vent lidt", 2500); return; }
+  sætHer(x, y, z, 0); Lyd.tænd(); sving = 1; gemSnart();
+}
 // Atombomber, missiler og den røde knap (atom.js) — sammen fjernes blokkene lidt ad gangen, og serveren sprænger
 const atom = new Atom({
   scene, verden, sp, partikel, lyd: Lyd, online: ONLINE, besked, tal: visTal, sæt: sætHer,
@@ -1599,6 +1618,7 @@ function opdaterSpiller(dt) {
   } else {
     if (tast.hop && sp.jord) { sp.vel.y = HOP; Lyd.hop(); }
     sp.vel.y = Math.max(-40, sp.vel.y - TYNGDE * dt);
+    if (faldskærm) sp.vel.y = Math.max(sp.vel.y, -4.2);                        // i faldskærm daler man langsomt
   }
   const fald = sp.vel.y;
   const r = verden.bevæg(sp.pos, tmp.copy(sp.vel).multiplyScalar(dt), B, HØJ);
@@ -1783,7 +1803,7 @@ $("musikKnap").addEventListener("click", () => {
   $("musikKnap").textContent = musikTekst();
 });
 $("musikKnap").textContent = musikTekst();
-$("hjemStart").addEventListener("click", () => { Lyd.klik(); skyd.stigUd(); tornado.slip(); startSted(); if (sp.flyver) skiftFlyv(); luk("menu"); gemSnart(); });
+$("hjemStart").addEventListener("click", () => { Lyd.klik(); skyd.stigUd(); tornado.slip(); nytår.tur = null; startSted(); if (sp.flyver) skiftFlyv(); luk("menu"); gemSnart(); });
 $("udsynKnap").textContent = `👀 Udsyn: ${UDSYN[udsynNr].navn}`;
 $("udsynKnap").addEventListener("click", () => {                  // hvor langt kan man se (online)
   udsynNr = (udsynNr + 1) % UDSYN.length; skriv("broekraft-udsyn", udsynNr); Lyd.klik();
@@ -1847,10 +1867,10 @@ function tegnFrame(nu) {
   sidst = nu; tid += dt;
   if (iGang && !pause) {
     if (skyd.kører) { skyd.styr(tast, sp.yaw, dt); sp.pitch = Math.max(-1.1, Math.min(0.45, sp.pitch)); }
-    else if (!tornado.styrSpiller(dt)) opdaterSpiller(dt);                       // i en tornado snurrer man rundt
+    else if (!tornado.styrSpiller(dt) && !nytår.styrSpiller(dt)) opdaterSpiller(dt);   // i en tornado, en gondol eller på en raket styrer de
     opdaterHak(dt); opdaterMusHold(dt); genfød(dt); opdaterTNT(dt); sim?.tick(dt); opdaterGløder(dt);
     skyd.opdater(dt); fyr.opdater(dt); brand?.opdater(dt, sp.pos); opdaterKugler(dt); opdaterSpirer(dt); opdaterVulkan(dt); opdaterGløddyr(dt);
-    tornado.opdater(dt); opdaterKraterGlød(dt); opdaterDamp(dt); opdaterSirener(dt);
+    tornado.opdater(dt); nytår.opdater(dt, tid); opdaterKraterGlød(dt); opdaterDamp(dt); opdaterSirener(dt);
     if (bilSteder.length) lavBiler();
     if (valgtTing().v === "stjernekaster" && !skyd.kører) {
       stjernedrys(3, 1.6);
@@ -1924,7 +1944,7 @@ async function startSpil() {
     : cfg.id === "pirat" ? "🏴‍☠️ Find de røde krydser i sandet, og grav skatten op med 🔨 hammeren · tryk på kanonerne!"
     : cfg.brand ? "🚒 Tryk på en brandbil for at køre · ⬆ = sirene · følg røgen, og sprøjt vand på ilden"
     : cfg.skyd ? "🎯 Tryk for at skyde · hold fingeren nede for at skyde mange · tryk på en grøn kampvogn for at køre"
-    : cfg.fyrværkeri ? "🎆 Tryk for at sende en raket op · tænd fyrværkeri-kasserne med 🔥 tænderen"
+    : cfg.fyrværkeri ? "🎆 Tryk på uret i klokketårnet, så tæller vi ned til nytår · kør i pariserhjulet · flyv med kæmperaketten"
     : nyVæske ? "NYT: 🪣 Vand, 🌋 lava og 🔥 ild! Find dem i ⋯" : nyTNT && !ONLINE ? "NYT: 🧨 TNT! Sæt den og slå på den med 🔨" : "Tryk = byg 🧱   🔨 = fjern   Træk = kig 👀", 5000); }, 2500);
   const tip = læs("broekraft-portaltip", 0);                      // de første par gange: sådan laver man en portal
   if (tip < 3 && !portalKom) { skriv("broekraft-portaltip", tip + 1); setTimeout(() => { if (iGang) besked("NYT: 🌀 Byg en ramme af obsidian, og tænd den med 🔥 — så får du en portal!", 5500); }, 8500); }
@@ -2198,4 +2218,4 @@ if (ONLINE) {
 
 if (ONLINE) forberedOnline();
 window.broekraftKlar = true;
-if (location.search.includes("debug")) window.bk = { sp, verden, dyr, tast, cfg, andre, sim, get net() { return net; }, get tale() { return tale; }, get graf() { return graf; }, afspillere, skyd, fyr, tændPortal, visPortalValg, brand, tændSprængstof, atom, tornado, musBrug, steg: n => { for (let i = 0; i < n; i++) tegnFrame(sidst + 1000 / 60); sidst = performance.now(); } };
+if (location.search.includes("debug")) window.bk = { sp, verden, dyr, tast, cfg, andre, sim, get net() { return net; }, get tale() { return tale; }, get graf() { return graf; }, afspillere, skyd, fyr, tændPortal, visPortalValg, brand, tændSprængstof, atom, tornado, musBrug, nytår, steg: n => { for (let i = 0; i < n; i++) tegnFrame(sidst + 1000 / 60); sidst = performance.now(); } };

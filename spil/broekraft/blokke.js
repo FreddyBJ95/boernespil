@@ -18,6 +18,9 @@
 //                "kæmpe" = endnu større (Kæmpebomben)
 //  missil:       en del af et missil (true = kroppen, "spids" = toppen) — tænd det med 🔥 eller 🔨, så flyver det
 //  knap:         den røde Affyringsknap — tryk på den, så flyver alle missiler i nærheden efter en nedtælling
+//  ur:           nytårsuret — tryk på det, så tæller det ned til nytår med en stor finale (nytaar.js)
+//  raketTur:     kæmperaketten — tryk på den, så flyver man selv op med den og daler ned i faldskærm (nytaar.js)
+//  droner:       dronekassen — tænd den med 🔥 eller 🔨, så letter dronerne og tegner figurer på himlen
 //  Nye blokke skal altid tilføjes NEDERST, så gemte verdener stadig passer.
 //  lyd:          "græs" | "sten" | "træ" | "sand" | "glas" | "uld" | "metal" | "vand" | "lava" | "ild"
 // Et nyt mønster er en funktion i MØNSTRE der tegner 16×16 pixels med set(x, y, farve).
@@ -191,6 +194,10 @@ export const BLOKKE = [
   { navn: "Tør busk", tekstur: "tørBusk", kryds: true, lyd: "græs" },
   { navn: "Brændt jord", tekstur: { top: "brændtJord", side: "brændtJordSide", bund: "jord" }, lyd: "sand" },
   { navn: "Magma", tekstur: "magma", lyser: true, lyd: "sten" },
+  // --- Fyrværkeri: nytårsuret, kæmperaketten og dronekassen ---
+  { navn: "Ur", tekstur: { top: "sten", side: "ur", bund: "sten" }, ur: true, lyser: true, lyd: "sten" },
+  { navn: "Kæmperaket", tekstur: { top: "kæmperaketTop", side: "kæmperaket", bund: "fyrBund" }, raketTur: true, lyd: "metal" },
+  { navn: "Dronekasse", tekstur: { top: "dronekasseTop", side: "dronekasse", bund: "fyrBund" }, droner: true, lyd: "metal" },
 ];
 
 export const ID = {};
@@ -639,6 +646,31 @@ const MØNSTRE = {
       }
     }
   },
+  // --- Fyrværkeri: uret, kæmperaketten og dronekassen ---
+  ur: (set, r) => {
+    fyld(set, r, "#6a6a70", 0.1);
+    alle((x, y) => {
+      const d = Math.hypot(x - 7.5, y - 7.5);
+      if (d < 6.6) set(x, y, hex(d > 5.8 ? "#d8b040" : "#fffbe8"));                   // gul kant og hvid skive
+    });
+    for (const [x, y] of [[7, 2], [8, 2], [13, 7], [13, 8], [7, 13], [8, 13], [2, 7], [2, 8]]) set(x, y, hex("#1a1a1a"));   // 12, 3, 6 og 9
+    for (let y = 3; y <= 8; y++) set(7, y, hex("#1a1a1a"));                          // viserne står næsten på 12
+    for (let x = 7; x <= 10; x++) set(x, 8, hex("#1a1a1a"));
+    set(8, 3, hex("#e0302a")); set(8, 4, hex("#e0302a"));
+  },
+  kæmperaket: (set, r) => alle((x, y) => {
+    let f = (y >> 2) % 2 ? "#f4f4f0" : "#e0302a";
+    if (x < 2 || x > 13) f = y % 4 === 0 ? "#b8bec6" : "#8a929c";
+    if (Math.hypot(x - 7.5, y - 6.5) < 2.4) f = Math.hypot(x - 7, y - 6) < 1 ? "#ffffff" : "#5fb0ff";   // et rundt vindue
+    set(x, y, lys(hex(f), 1 + (r() - 0.5) * 0.05));
+  }),
+  kæmperaketTop: set => alle((x, y) => { const d = Math.hypot(x - 7.5, y - 7.5); set(x, y, hex(d < 2.5 ? "#ffd23f" : d < 5 ? "#e0302a" : "#f4f4f0")); }),
+  dronekasse: (set, r) => {
+    fyld(set, r, "#2a2e3a", 0.1);
+    alle((x, y) => { if (x === 0 || x === 15 || y === 0 || y === 15) set(x, y, hex("#5ff0ff")); });
+    for (const [x, y, f] of [[4, 5, "#ff3b5c"], [8, 4, "#ffd23f"], [11, 6, "#4cd964"], [6, 9, "#3aa8ff"], [10, 10, "#c86bff"], [5, 12, "#ff8c1a"]]) { set(x, y, hex(f)); set(x + 1, y, hex(f)); }
+  },
+  dronekasseTop: (set, r) => alle((x, y) => set(x, y, lys(hex((x % 5 === 2 && y % 5 === 2) ? "#5ff0ff" : "#3a3e4a"), 1 + (r() - 0.5) * 0.08))),
   // --- Dinodalen ---
   junglestamme: (set, r) => alle((x, y) => set(x, y, lys(hex(x % 4 === 0 ? "#4a3a1e" : (x + y * 3) % 11 === 0 ? "#5a7a2a" : "#6e5230"), 1 + (r() - 0.5) * 0.18))),
   jungleTop: (set, r) => alle((x, y) => { const d = Math.max(Math.abs(x - 7.5), Math.abs(y - 7.5)); set(x, y, lys(hex(d > 6.5 ? "#4a3a1e" : Math.floor(d) % 2 ? "#a88a58" : "#8a6e44"), 1 + (r() - 0.5) * 0.1)); }),

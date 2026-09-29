@@ -36,6 +36,27 @@ const FORMER = {
   },
 };
 
+// Tal af små lysprikker (3 × 5), til droneshowets årstal
+const TAL = { 0: "111101101101111", 1: "010110010010111", 2: "111001111100111", 3: "111001111001111", 4: "101101111001001",
+  5: "111100111001111", 6: "111100111101111", 7: "111001001001001", 8: "111101111101111", 9: "111101111001111" };
+function talPunkter(tekst) {
+  const p = [], b = tekst.length * 4 - 1, h = (b - 1) / 2, tændt = new Set();
+  [...tekst].forEach((c, i) => { const f = TAL[c]; if (f) for (let k = 0; k < 15; k++) if (f[k] === "1") tændt.add(`${i * 4 + (k % 3)},${Math.floor(k / 3)}`); });
+  for (const n of tændt) {                                         // hver prik — og en prik mellem naboer, så stregerne hænger sammen
+    const [x, y] = n.split(",").map(Number);
+    p.push([x, y]);
+    if (tændt.has(`${x + 1},${y}`)) p.push([x + 0.5, y]);
+    if (tændt.has(`${x},${y + 1}`)) p.push([x, y + 0.5]);
+  }
+  return p.map(([x, y]) => [(x - h) / h, (2 - y) / h]);
+}
+// Droneshowets figurer og deres farver
+const DRONEFIGURER = {
+  hjerte: { pkt: n => FORMER.hjerte(n), farver: ["#ff4f8b", "#ff7eb6", "#ffc2dc"] },
+  stjerne: { pkt: n => FORMER.stjerne(n), farver: ["#ffd23f", "#fff3a0"] },
+  smiley: { pkt: n => FORMER.smiley(n), farver: ["#ffd23f", "#ffe066"] },
+};
+
 // En sværm af glødende prikker. size = hvor store de er (blokke).
 class Sværm {
   constructor(scene, maks, size) {
@@ -139,6 +160,60 @@ export class Fyrværkeri {
 
   afstand(x, y, z) { const k = this.kamera.position; return Math.hypot(x - k.x, y - k.y, z - k.z); }
 
+  // ---------- Droneshow: 150 lysende droner letter fra (x, y, z) og tegner figurer på himlen ----------
+  // figurer: navne i DRONEFIGURER · tal: fx "2027" til sidst. Figurerne vender mod kameraet, når showet starter.
+  droneshow(x, y, z, { figurer = ["hjerte", "stjerne", "smiley"], tal = null } = {}) {
+    if (this.droner) return false;
+    const N = 150, frem = new THREE.Vector3(); this.kamera.getWorldDirection(frem); frem.y = 0;
+    if (frem.lengthSq() < 0.01) frem.set(0, 0, -1);
+    frem.normalize();
+    const højre = new THREE.Vector3(-frem.z, 0, frem.x), C = new THREE.Vector3(x, y + 24, z);
+    const iHimlen = (a, b, S) => [C.x + højre.x * a * S, C.y + b * S, C.z + højre.z * a * S];
+    const figur = (pkt, S) => Array.from({ length: N }, (_, i) => { const [a, b] = pkt[i % pkt.length]; return iHimlen(a + (i >= pkt.length ? (Math.random() - 0.5) * 0.04 : 0), b, S); });
+    const pude = Array.from({ length: N }, (_, i) => [x + ((i % 15) - 7) * 0.45, y + 0.4, z + (Math.floor(i / 15) - 5) * 0.45]);
+    const sky = Array.from({ length: N }, () => { const v = Math.random() * Math.PI * 2, u = Math.random() * 2 - 1, r = 4 + Math.random() * 5; return [C.x + Math.cos(v) * r, C.y + u * r * 0.6, C.z + Math.sin(v) * r]; });
+    const trin = [{ mål: sky, farver: ["#ffffff", "#5ff0ff"], tid: 3.5 }];
+    for (const navn of figurer) if (DRONEFIGURER[navn]) trin.push({ mål: figur(DRONEFIGURER[navn].pkt(N), 10), farver: DRONEFIGURER[navn].farver, tid: 6, figur: true });
+    if (tal) trin.push({ mål: figur(talPunkter(tal), 13), farver: FARVER, tid: 8, figur: true });
+    trin.push({ mål: pude, farver: ["#5ff0ff"], tid: 4.5 });
+    const pos = new Float32Array(N * 3), farve = new Float32Array(N * 3), geo = new THREE.BufferGeometry();
+    pude.forEach((p, i) => pos.set(p, i * 3));
+    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3)); geo.setAttribute("color", new THREE.BufferAttribute(farve, 3));
+    const punkter = new THREE.Points(geo, new THREE.PointsMaterial({ size: 1.05, map: this.stor.punkter.material.map, vertexColors: true, transparent: true,
+      depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+    punkter.frustumCulled = false; punkter.renderOrder = 5;
+    this.scene.add(punkter);
+    const c = new THREE.Color("#5ff0ff"), fraFarve = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) fraFarve.set([c.r, c.g, c.b], i * 3);
+    this.droner = { N, pos, farve, punkter, trin, nr: 0, t: 0, fra: Float32Array.from(pos), fraFarve, målFarve: new Float32Array(N * 3) };
+    this.dronerTrin();
+    this.lyd.droner?.();
+    return true;
+  }
+  dronerTrin() {                                                  // næste figur: husk hvor dronerne er, og find de nye farver
+    const d = this.droner, trin = d.trin[d.nr];
+    d.fra.set(d.pos); d.fraFarve.set(d.målFarve.some(v => v) ? d.målFarve : d.fraFarve);
+    for (let i = 0; i < d.N; i++) { const f = this.farveTmp.set(trin.farver[i % trin.farver.length]); d.målFarve.set([f.r, f.g, f.b], i * 3); }
+    d.t = 0; d.lydSpillet = false;
+  }
+  opdaterDroner(dt) {
+    const d = this.droner;
+    if (!d) return;
+    d.t += dt;
+    const trin = d.trin[d.nr], s = Math.min(1, d.t / Math.min(2.4, trin.tid * 0.6)), e = s * s * (3 - 2 * s);
+    for (let i = 0; i < d.N; i++) {
+      const j = i * 3, [mx, my, mz] = trin.mål[i], blink = 0.75 + 0.25 * Math.sin(d.t * 5 + i * 1.7);
+      d.pos[j] = d.fra[j] + (mx - d.fra[j]) * e; d.pos[j + 1] = d.fra[j + 1] + (my - d.fra[j + 1]) * e + Math.sin(d.t * 2 + i) * 0.04; d.pos[j + 2] = d.fra[j + 2] + (mz - d.fra[j + 2]) * e;
+      for (let k = 0; k < 3; k++) d.farve[j + k] = (d.fraFarve[j + k] + (d.målFarve[j + k] - d.fraFarve[j + k]) * e) * blink;
+    }
+    d.punkter.geometry.attributes.position.needsUpdate = true; d.punkter.geometry.attributes.color.needsUpdate = true;
+    if (trin.figur && s >= 1 && !d.lydSpillet) { d.lydSpillet = true; this.lyd.figur?.(); }
+    if (d.t < trin.tid) return;
+    if (++d.nr < d.trin.length) { this.dronerTrin(); return; }
+    this.scene.remove(d.punkter); d.punkter.geometry.dispose(); d.punkter.material.dispose();
+    this.droner = null;
+  }
+
   // Raketten springer ud
   brag(r) {
     const k = this.kamera, fremad = new THREE.Vector3(), højre = new THREE.Vector3(), op = new THREE.Vector3();
@@ -193,6 +268,7 @@ export class Fyrværkeri {
       l.papir.opacity = Math.min(0.92, Math.max(0, (32 - l.alder) / 4)) * (0.85 + Math.sin(l.t * 9) * 0.07);
       if (l.alder > 32) this.fjernLygte(l);
     }
+    this.opdaterDroner(dt);
     this.stor.opdater(dt); this.lille.opdater(dt);
   }
 }

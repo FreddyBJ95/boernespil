@@ -612,6 +612,17 @@ export function fyrKnitre(afstand = 0) {   // gnister, der knitrer
   const v = fjern(afstand), t = nu() + 0.3;
   for (let i = 0; i < 16; i++) sus(t + Math.random() * 1.3, 0.025, 5000 + Math.random() * 3000, 2500, 0.12 * v, "highpass", 1);
 }
+export function droner() {                 // dronerne letter: en blød summen, der stiger
+  if (!ac) return;
+  const t = nu();
+  glid(180, 360, t, 3, { type: "sawtooth", vol: 0.03, vibHz: 9, vib: 6, filter: 900, q: 2 });
+  glid(240, 480, t, 3, { type: "triangle", vol: 0.04 });
+}
+export function figur() {                  // en figur er tegnet på himlen: en lille klokke
+  if (!ac) return;
+  const t = nu();
+  [1047, 1319, 1568, 2093].forEach((f, i) => tone(f, t + i * 0.08, 0.5, "sine", 0.07));
+}
 export function gnistre() {                // stjernekasteren
   if (ac) sus(nu(), 0.06, 7000, 4000, 0.03, "highpass", 1);
 }

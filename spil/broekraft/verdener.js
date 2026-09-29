@@ -20,6 +20,8 @@
 
 // Hvor vulkanen i Dinodalen står (bruges både af opskriften og af spil.js)
 const dinoVulkan = (BX, BZ) => [Math.min(BX - 22, BX / 2 + 30), Math.max(22, BZ / 2 - 28)];
+// Fyrværkeri: hvor pariserhjulet står (bruges både af opskriften og af spil.js)
+const fyrHjul = (BX, BZ) => [Math.max(16, BX / 2 - 30), Math.min(BZ - 12, BZ / 2 + 24)];
 // Brandmandsbyen: hvor bilerne holder — to brandbiler i brandstationens porte, ambulancen ved hospitalet og
 // politibilen ved politistationen (grundene ligger 22 blokke fra hinanden, se opskriften)
 const brandbyBiler = (BX, BZ) => {
@@ -328,13 +330,14 @@ export const VERDENER = [
   },
 
   {
-    id: "fyrvaerkeri", navn: "Fyrværkeri", ikon: "🎆", tekst: "Nytårsnat med sne, nordlys, juletræ og is. Send raketter, fontæner og ønskelygter op!",
+    id: "fyrvaerkeri", navn: "Fyrværkeri", ikon: "🎆", tekst: "Nytårsnat med sne, nordlys, pariserhjul og droneshow. Flyv med kæmperaketten, og tæl ned til nytår ved klokketårnet!",
     himmel: ["#070b24", "#1e2a5a"], tåge: [44, 110], hav: "#1a2a50", sol: "#f5f3e0", solStr: 30, stjerner: true, skyer: null,
     lys: ["#b8c8ff", "#303a60", 1.6, 0.8], stemning: "rolig", tyngde: 28,
-    størrelse: [160, 48, 160],
-    dyr: ["pingvin", "pingvin", "rensdyr", "hone", "and"], antal: 12,
+    størrelse: [192, 48, 192],
+    dyr: ["pingvin", "pingvin", "rensdyr", "hone", "and"], antal: 14,
     fyrværkeri: true, sne: true, nordlys: true,                // sne der falder og nordlys på himlen (spil.js)
-    hotbar: ["v:raket", "v:romerlys", "v:lygte", "v:konfetti", "Show-kasse", "Fontæne", "Fyrværkeri", "v:tænder", "v:stjernekaster"],
+    pariserhjul: fyrHjul, nytår: true,                         // pariserhjulet og nedtællingen til nytår på torvet (nytaar.js)
+    hotbar: ["v:raket", "v:romerlys", "v:lygte", "v:konfetti", "Show-kasse", "Fontæne", "Kæmperaket", "Dronekasse", "v:tænder"],
     vis: ["Show-kasse", "Lyskæde", "Is"],
     hent: ["Pakker raketterne ud…", "Lader det sne…", "Pynter juletræet…", "Fryser søen til is…", "Tænder nordlyset…"],
     generer(a) {
@@ -384,6 +387,25 @@ export const VERDENER = [
         for (let x = x0; x < x0 + 11; x++) for (let z = z0; z < z0 + 4; z++) a.sæt(x, hT + 1, z, ID.Planker);
         [[1, ID["Show-kasse"]], [3, ID.Fontæne], [5, ID["Show-kasse"]], [7, ID.Fontæne], [9, ID["Show-kasse"]]].forEach(([dx, blok]) => a.sæt(x0 + dx, hT + 2, z0 + 1, blok));
         for (const dx of [2, 4, 6, 8]) a.sæt(x0 + dx, hT + 2, z0 + 2, ID.Fyrværkeri);
+        for (const dx of [1, 9]) a.sæt(x0 + dx, hT + 2, z0 + 3, ID.Dronekasse);   // dronekasser: tænd dem, så kommer der droneshow
+      }
+      // Pariserhjulets plads: sten og lyskæder (selve hjulet laves i nytaar.js, fordi det drejer)
+      { const [px, pz] = fyrHjul(BX, BZ), h = grund(px - 11, pz - 4, 23, 9, ID.Sten);
+        for (let x = px - 11; x < px + 12; x++) for (const z of [pz - 4, pz + 4]) if ((x + z) % 2 === 0) a.sæt(x, h + 1, z, ID.Lyskæde);
+        for (const dx of [-11, 11]) { søjle(px + dx, pz, h + 1, h + 3, ID.Planker); a.sæt(px + dx, h + 4, pz, ID.Lampe); }
+      }
+      // Klokketårnet med nytårsuret — tryk på uret, så tæller det ned til nytår (også et ur nede ved jorden)
+      { const tx = cx + 15, tz = cz - 15, h = grund(tx - 2, tz - 2, 5, 5, ID.Sten);
+        for (let x = tx - 1; x <= tx + 1; x++) for (let z = tz - 1; z <= tz + 1; z++) søjle(x, z, h + 1, h + 12, ID.Mursten);
+        for (const [dx, dz] of [[0, -2], [0, 2], [-2, 0], [2, 0]]) a.sæt(tx + dx, h + 10, tz + dz, ID.Ur);
+        for (let k = 0; k <= 2; k++) for (let x = tx - 2 + k; x <= tx + 2 - k; x++) for (let z = tz - 2 + k; z <= tz + 2 - k; z++) a.sæt(x, h + 13 + k, z, ID.Tagsten);
+        a.sæt(tx, h + 16, tz, ID.Stjerneblok);
+        a.sæt(tx - 2, h + 2, tz, ID.Ur);
+      }
+      // Startrampen med tre kæmperaketter, man kan flyve op med
+      { const rx = cx - 22, rz = cz - 19, h = grund(rx - 1, rz - 1, 9, 5, ID.Stålplade);
+        for (let k = 0; k < 3; k++) a.sæt(rx + k * 3, h + 1, rz + 1, ID.Kæmperaket);
+        for (let x = rx - 1; x < rx + 8; x++) { a.sæt(x, h, rz - 1, ID.Advarselsstriber); a.sæt(x, h, rz + 3, ID.Advarselsstriber); }
       }
       // Lygtepæle i hjørnerne og lyskæder langs torvets kanter
       for (const [dx, dz] of [[-12, -12], [12, -12], [-12, 12], [12, 12], [0, -12], [0, 12], [-12, 0], [12, 0]]) {
