@@ -1,6 +1,6 @@
 // ===== Service Worker — gør spillene installerbare og tilgængelige offline =====
 // Bump dette tal når der ændres filer, så de gamle bliver hentet på ny.
-const CACHE = "boernespil-v36";
+const CACHE = "boernespil-v37";
 
 const SPIL = [
   "tryk-paa-dyret", "slange", "tegne", "balloner", "find-par", "fang",
@@ -23,6 +23,9 @@ const FILER = [
   "manifest.json",
   "icon-192.png",
   "icon-512.png",
+  // billederne fra spillene på forsiden
+  ...["fyrvaerkeri", "tornado", "nuke", "brandby", "dino", "hav", "slik", "sky", "pirat", "droner", "pariserhjul",
+    "underverden", "graesoe", "skydebane", "nytaar", "fisk", "svampesky"].map(n => `billeder/${n}.jpg`),
   ...SPIL.flatMap(s => [`spil/${s}/`, `spil/${s}/index.html`]),
   ...EKSTRA
 ];

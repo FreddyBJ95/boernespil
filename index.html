@@ -8,24 +8,34 @@
 
   <!-- PWA: gør siden installerbar som app -->
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#2a1a5e">
+  <meta name="theme-color" content="#120b2e">
   <link rel="apple-touch-icon" href="icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Børnespil">
 </head>
 <body>
-  <!-- Aurora-baggrund + svævende lys-kugler -->
-  <div class="pynt"></div>
-  <div class="orb" style="width:200px;height:200px;background:#ff6ec7;left:8%;top:30%;animation-duration:13s"></div>
-  <div class="orb" style="width:160px;height:160px;background:#4cc9f0;right:10%;top:18%;animation-duration:17s"></div>
-  <div class="orb" style="width:220px;height:220px;background:#b15bff;left:55%;top:70%;animation-duration:15s"></div>
+  <!-- Baggrunden: billeder fra spillene, der ruller langsomt forbi (som på Netflix). Rækkerne laves nederst i scriptet. -->
+  <div class="billedvaeg" id="billedvaeg" aria-hidden="true"></div>
+  <div class="vaeg-skygge" aria-hidden="true"></div>
 
   <header>
     <h1>Spil for ungerne</h1>
     <p class="undertekst">✨ Tryk på et kort og leg ✨</p>
     <button class="installer" id="installer" hidden>💻 Installér som app på computeren</button>
   </header>
+
+  <!-- Det store banner øverst: de nyeste Broekraft-verdener skifter af sig selv. ▶ Spil åbner den verden, der vises. -->
+  <section class="helt" id="helt" aria-label="Nyt i Broekraft">
+    <div class="helt-billeder" id="heltBilleder"></div>
+    <div class="helt-indhold">
+      <div class="helt-maerke">⛏️ BROEKRAFT <span>NYT</span></div>
+      <h2 class="helt-navn" id="heltNavn"></h2>
+      <p class="helt-tekst" id="heltTekst"></p>
+      <a class="helt-knap" id="heltKnap" href="spil/broekraft/">▶ Spil</a>
+    </div>
+    <div class="helt-prikker" id="heltPrikker"></div>
+  </section>
 
   <!-- Faner: vælg hvilken slags spil der vises. Appen husker den sidste fane. -->
   <nav class="faner" aria-label="Kategorier">
@@ -37,18 +47,19 @@
   </nav>
 
   <!-- Spillene i kategorier. Tilføj et nyt spil ved at kopiere et kort ind i den rigtige kategori.
-       data-ny="ÅÅÅÅ-MM-DD" giver et NY!-mærke i tre uger. -->
+       data-ny="ÅÅÅÅ-MM-DD" giver et NY!-mærke i tre uger · data-billede = et billede fra spillet bag kortet
+       data-anim = hvordan ikonet bevæger sig: hop, svæv, vip, sving, pust, snur, kør, flyv -->
   <main>
     <section class="kategori" data-kat="3d">
       <h2 class="kat-titel"><span>🧊</span>3D-spil</h2>
       <div class="spil-gitter">
-        <a class="spil-kort" href="spil/broekraft/" style="--farve:#7cc35a" data-ny="2026-09-27">
+        <a class="spil-kort plakat" href="spil/broekraft/" style="--farve:#7cc35a" data-ny="2026-09-27" data-billede="billeder/graesoe.jpg" data-anim="sving">
           <span class="ikon">⛏️</span><span class="navn">Broekraft</span>
         </a>
-        <a class="spil-kort" href="spil/fisk/" style="--farve:#4895ef" data-ny="2026-09-27">
+        <a class="spil-kort plakat" href="spil/fisk/" style="--farve:#4895ef" data-ny="2026-09-27" data-billede="billeder/fisk.jpg" data-anim="svæv">
           <span class="ikon">🎣</span><span class="navn">Mærkelige fisk</span>
         </a>
-        <a class="spil-kort" href="tilslut/" style="--farve:#a6e3a0">
+        <a class="spil-kort plakat" href="tilslut/" style="--farve:#a6e3a0" data-billede="billeder/skydebane.jpg" data-anim="pust">
           <span class="ikon">📷</span><span class="navn">Spil sammen</span>
         </a>
       </div>
@@ -57,28 +68,28 @@
     <section class="kategori" data-kat="2d">
       <h2 class="kat-titel"><span>🎮</span>2D-spil</h2>
       <div class="spil-gitter">
-        <a class="spil-kort" href="spil/tryk-paa-dyret/" style="--farve:#ffd166">
+        <a class="spil-kort" href="spil/tryk-paa-dyret/" style="--farve:#ffb627" data-anim="hop">
           <span class="ikon">🐮</span><span class="navn">Tryk på dyret</span>
         </a>
-        <a class="spil-kort" href="spil/balloner/" style="--farve:#4cc9f0">
+        <a class="spil-kort" href="spil/balloner/" style="--farve:#2ec4f1" data-anim="svæv">
           <span class="ikon">🎈</span><span class="navn">Pop ballonerne</span>
         </a>
-        <a class="spil-kort" href="spil/fang/" style="--farve:#b15bff">
+        <a class="spil-kort" href="spil/fang/" style="--farve:#a45bff" data-anim="vip">
           <span class="ikon">🧺</span><span class="navn">Fang frugten</span>
         </a>
-        <a class="spil-kort" href="spil/muldvarp/" style="--farve:#52b788">
+        <a class="spil-kort" href="spil/muldvarp/" style="--farve:#34c77b" data-anim="sving">
           <span class="ikon">🔨</span><span class="navn">Slå muldvarpen</span>
         </a>
-        <a class="spil-kort" href="spil/undvig/" style="--farve:#48cae4">
+        <a class="spil-kort" href="spil/undvig/" style="--farve:#3a86ff" data-anim="flyv">
           <span class="ikon">🚀</span><span class="navn">Undvig stenene</span>
         </a>
-        <a class="spil-kort" href="spil/slange/" style="--farve:#80ed99">
+        <a class="spil-kort" href="spil/slange/" style="--farve:#5fd068" data-anim="vip">
           <span class="ikon">🐍</span><span class="navn">Fjollet Slange</span>
         </a>
-        <a class="spil-kort" href="spil/skibidi/" style="--farve:#ff477e">
+        <a class="spil-kort" href="spil/skibidi/" style="--farve:#ff477e" data-anim="hop">
           <span class="ikon">🚽</span><span class="navn">Skibidi Toilet</span>
         </a>
-        <a class="spil-kort" href="spil/vask/" style="--farve:#56cfe1" data-ny="2026-09-27">
+        <a class="spil-kort" href="spil/vask/" style="--farve:#22b8cf" data-ny="2026-09-27" data-anim="kør">
           <span class="ikon">🚜</span><span class="navn">Vaskehallen</span>
         </a>
       </div>
@@ -87,16 +98,16 @@
     <section class="kategori" data-kat="laer">
       <h2 class="kat-titel"><span>🧠</span>Lær og tænk</h2>
       <div class="spil-gitter">
-        <a class="spil-kort" href="spil/tael/" style="--farve:#ff9e6d">
+        <a class="spil-kort" href="spil/tael/" style="--farve:#ff8a4c" data-anim="pust">
           <span class="ikon">🔢</span><span class="navn">Tæl dyrene</span>
         </a>
-        <a class="spil-kort" href="spil/find-par/" style="--farve:#ffb703">
+        <a class="spil-kort" href="spil/find-par/" style="--farve:#ffb703" data-anim="snur">
           <span class="ikon">🧠</span><span class="navn">Find par</span>
         </a>
-        <a class="spil-kort" href="spil/simon/" style="--farve:#c77dff">
+        <a class="spil-kort" href="spil/simon/" style="--farve:#b45cff" data-anim="hop">
           <span class="ikon">🎵</span><span class="navn">Husk farverne</span>
         </a>
-        <a class="spil-kort" href="spil/puslespil/" style="--farve:#90e0a0">
+        <a class="spil-kort" href="spil/puslespil/" style="--farve:#4cc38a" data-anim="snur">
           <span class="ikon">🧩</span><span class="navn">Skydepuslespil</span>
         </a>
       </div>
@@ -105,10 +116,10 @@
     <section class="kategori" data-kat="kreativ">
       <h2 class="kat-titel"><span>🎨</span>Tegn &amp; musik</h2>
       <div class="spil-gitter">
-        <a class="spil-kort" href="spil/tegne/" style="--farve:#ff8fab">
+        <a class="spil-kort" href="spil/tegne/" style="--farve:#ff6fa0" data-anim="vip">
           <span class="ikon">🎨</span><span class="navn">Tegn!</span>
         </a>
-        <a class="spil-kort" href="spil/piano/" style="--farve:#ff70a6">
+        <a class="spil-kort" href="spil/piano/" style="--farve:#ff5c8a" data-anim="hop">
           <span class="ikon">🎹</span><span class="navn">Dyre-piano</span>
         </a>
       </div>
@@ -135,6 +146,64 @@
       const m = document.createElement("span");
       m.className = "ny-maerke"; m.textContent = "NY!";
       k.appendChild(m);
+    });
+
+    // ----- Kortene: billeder bag 3D-spillene, og ikonerne bevæger sig hver i sit tempo -----
+    document.querySelectorAll(".spil-kort").forEach((k, i) => {
+      if (k.dataset.billede) k.style.setProperty("--billede", `url("${k.dataset.billede}")`);
+      k.style.setProperty("--forsinkelse", `${-(i * 0.37) % 3}s`);           // ikke alle hopper på samme tid
+      k.style.setProperty("--glimt", `${(i * 1.3) % 7}s`);                    // lysglimtet kommer forskudt
+    });
+
+    // ----- Billedvæggen: fire rækker, der ruller hver sin vej -----
+    const BILLEDER = ["fyrvaerkeri", "tornado", "nuke", "brandby", "dino", "hav", "slik", "sky", "pirat", "droner",
+      "pariserhjul", "underverden", "graesoe", "skydebane", "nytaar", "fisk", "svampesky"];
+    const vaeg = document.getElementById("billedvaeg");
+    for (let r = 0; r < 4; r++) {
+      const række = document.createElement("div");
+      række.className = "vaeg-raekke" + (r % 2 ? " baglaens" : "");
+      række.style.animationDuration = `${70 + r * 12}s`;
+      const liste = BILLEDER.map((_, i) => BILLEDER[(i * 5 + r * 3) % BILLEDER.length]);
+      for (const navn of [...liste, ...liste]) {                               // to gange, så den kan rulle i ring
+        const img = new Image(); img.src = `billeder/${navn}.jpg`; img.alt = ""; img.decoding = "async"; img.loading = r > 1 ? "lazy" : "eager";
+        række.appendChild(img);
+      }
+      vaeg.appendChild(række);
+    }
+
+    // ----- Banneret: de nye verdener skifter hvert sjette sekund. ▶ Spil åbner den verden, der vises -----
+    const HELTE = [
+      { billede: "fyrvaerkeri", verden: "fyrvaerkeri", navn: "🎆 Fyrværkeri", tekst: "Pariserhjul, droneshow, kæmperaket — og nedtælling til nytår" },
+      { billede: "tornado", verden: "tornado", navn: "🌪️ Ildtornadoerne", tekst: "Bliv suget op i en tornado — og sluk ilden med brandslangen" },
+      { billede: "nuke", verden: "atom", navn: "☢️ NUKE-banen", tekst: "Tryk på den røde knap, og se missilerne flyve" },
+      { billede: "brandby", verden: "brandby", navn: "🚒 Brandmandsbyen", tekst: "Kør brandbilen med sirene, og sluk ilden med vandkanonen" },
+    ];
+    const heltBilleder = document.getElementById("heltBilleder"), prikker = document.getElementById("heltPrikker");
+    let heltNr = 0, heltTimer = 0;
+    HELTE.forEach((h, i) => {
+      const img = new Image(); img.src = `billeder/${h.billede}.jpg`; img.alt = ""; heltBilleder.appendChild(img);
+      const p = document.createElement("button"); p.setAttribute("aria-label", h.navn);
+      p.addEventListener("click", () => visHelt(i, true)); prikker.appendChild(p);
+    });
+    function visHelt(i, trykket = false) {
+      heltNr = (i + HELTE.length) % HELTE.length;
+      const h = HELTE[heltNr];
+      heltBilleder.querySelectorAll("img").forEach((img, j) => img.classList.toggle("vist", j === heltNr));
+      prikker.querySelectorAll("button").forEach((p, j) => p.classList.toggle("vist", j === heltNr));
+      const navn = document.getElementById("heltNavn"), tekst = document.getElementById("heltTekst");
+      navn.textContent = h.navn; tekst.textContent = h.tekst;
+      for (const el of [navn, tekst]) { el.classList.remove("ind"); void el.offsetWidth; el.classList.add("ind"); }
+      clearTimeout(heltTimer); heltTimer = setTimeout(() => visHelt(heltNr + 1), trykket ? 12000 : 6000);
+    }
+    visHelt(0);
+    // Broekraft åbner i den verden, man valgte i banneret
+    document.getElementById("heltKnap").addEventListener("click", () => {
+      const id = HELTE[heltNr].verden;
+      try {
+        localStorage.setItem("broekraft-verden", JSON.stringify(id));
+        const hentet = JSON.parse(localStorage.getItem("broekraft-hentet") || "[]");
+        if (Array.isArray(hentet) && !hentet.includes(id)) { hentet.push(id); localStorage.setItem("broekraft-hentet", JSON.stringify(hentet)); }
+      } catch (_) {}
     });
   </script>
 

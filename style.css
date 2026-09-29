@@ -1,4 +1,4 @@
-/* ===== Moderne forside ===== */
+/* ===== Forsiden: billeder fra spillene i baggrunden, et stort banner og levende kort ===== */
 
 :root {
   --skrift: ui-rounded, "SF Pro Rounded", "Baloo 2", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -11,50 +11,56 @@ body {
   min-height: 100dvh;
   font-family: var(--skrift);
   color: #1a1033;
-  background: #0f0a24;
+  background: #0d0822;
   overflow-x: hidden;
   -webkit-user-select: none; user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Aurora-baggrund: bløde farveskyer der langsomt bevæger sig */
-.pynt {
-  position: fixed; inset: -20%; z-index: 0; overflow: hidden; pointer-events: none;
+/* ---------- Baggrunden: rækker af billeder fra spillene, der ruller langsomt hver sin vej ---------- */
+.billedvaeg {
+  position: fixed; inset: -25% -30%; z-index: 0; pointer-events: none; overflow: hidden;
+  display: flex; flex-direction: column; justify-content: center; gap: 16px;
+  transform: rotate(-8deg);
+}
+.vaeg-raekke {
+  display: flex; gap: 16px; width: max-content;
+  animation: rul 80s linear infinite; will-change: transform;
+}
+.vaeg-raekke.baglaens { animation-direction: reverse; }
+.vaeg-raekke img {
+  width: 260px; height: 195px; object-fit: cover; border-radius: 16px; flex: none;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.5);
+}
+@keyframes rul { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+/* En mørk hinde over billederne, så kortene og teksten kan ses tydeligt */
+.vaeg-skygge {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
   background:
-    radial-gradient(40% 40% at 20% 25%, #ff6ec7aa, transparent 70%),
-    radial-gradient(45% 45% at 80% 20%, #4cc9f0aa, transparent 70%),
-    radial-gradient(50% 50% at 70% 80%, #b15bffaa, transparent 70%),
-    radial-gradient(45% 45% at 25% 85%, #ffd23faa, transparent 70%),
-    linear-gradient(160deg, #1b1245, #2a1a5e);
-  filter: saturate(125%);
-  animation: drift 24s ease-in-out infinite alternate;
+    radial-gradient(ellipse 75% 65% at 50% 40%, rgba(13,8,34,0.2), rgba(13,8,34,0.72) 80%),
+    linear-gradient(180deg, rgba(13,8,34,0.35), rgba(40,14,80,0.25) 40%, rgba(13,8,34,0.85));
 }
-@keyframes drift {
-  0%   { transform: scale(1) translate(0, 0); }
-  100% { transform: scale(1.15) translate(-3%, 2%); }
-}
-/* Et par svævende lys-kugler ovenpå for dybde */
-.orb { position: fixed; border-radius: 50%; z-index: 0; pointer-events: none;
-  filter: blur(30px); opacity: .5; mix-blend-mode: screen; animation: svaev linear infinite; }
-@keyframes svaev { from { transform: translateY(8vh); } to { transform: translateY(-8vh); } }
 
-header { position: relative; z-index: 1; text-align: center; padding: 40px 16px 10px; }
+header { position: relative; z-index: 1; text-align: center; padding: 34px 16px 6px; }
 
 h1 {
   font-size: clamp(36px, 8vw, 72px);
   font-weight: 900;
   letter-spacing: -1px;
   margin: 0;
-  background: linear-gradient(92deg, #ffffff, #ffe0f5 40%, #c9f3ff 70%, #ffffff);
+  background: linear-gradient(92deg, #ffffff, #ffd6f4 30%, #bdf2ff 60%, #fff3b0 80%, #ffffff);
+  background-size: 200% 100%;
   -webkit-background-clip: text; background-clip: text; color: transparent;
-  filter: drop-shadow(0 4px 16px rgba(0,0,0,0.35));
-  animation: aande 4s ease-in-out infinite;
+  filter: drop-shadow(0 4px 18px rgba(0,0,0,0.55));
+  animation: skin 6s linear infinite, aande 4s ease-in-out infinite;
 }
+@keyframes skin { to { background-position: -200% 0; } }
 @keyframes aande { 0%,100% { transform: scale(1); } 50% { transform: scale(1.03); } }
 
 .undertekst {
   position: relative; z-index: 1; text-align: center; margin: 8px 0 4px;
-  color: rgba(255,255,255,0.82); font-size: clamp(15px, 3vw, 20px); font-weight: 600;
+  color: rgba(255,255,255,0.88); font-size: clamp(15px, 3vw, 20px); font-weight: 700;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.6);
 }
 
 /* Knap: installér siden som app på computeren (vises kun, når browseren kan — Chrome og Edge) */
@@ -62,21 +68,84 @@ h1 {
   margin-top: 10px; padding: 8px 18px; border-radius: 999px; cursor: pointer;
   font: inherit; font-weight: 800; font-size: 16px; color: #fff;
   background: rgba(255,255,255,0.14); border: 2px solid rgba(255,255,255,0.55);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
 }
 .installer:hover { background: rgba(255,255,255,0.26); }
 .installer[hidden] { display: none; }
 
-/* Faner med kategorier — store ikoner, så de mindste kan bruge dem uden at læse */
+/* ---------- Banneret: de nyeste verdener i stort format ---------- */
+.helt {
+  position: relative; z-index: 1; overflow: hidden;
+  max-width: 916px; margin: 16px auto 4px; aspect-ratio: 16 / 7; min-height: 230px;
+  border-radius: 28px; border: 1px solid rgba(255,255,255,0.3);
+  box-shadow: 0 24px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(0,0,0,0.3);
+  background: #1b1240;
+}
+@media (max-width: 960px) { .helt { margin-left: 22px; margin-right: 22px; } }
+.helt-billeder img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  opacity: 0; transform: scale(1.12); transition: opacity 1.2s ease, transform 7s ease-out;
+}
+.helt-billeder img.vist { opacity: 1; transform: scale(1); }
+.helt::after {                                                   /* mørkt i venstre side, så teksten kan læses */
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(90deg, rgba(10,6,28,0.88) 0%, rgba(10,6,28,0.55) 42%, rgba(10,6,28,0) 70%),
+    linear-gradient(0deg, rgba(10,6,28,0.6), transparent 45%);
+}
+.helt-indhold {
+  position: absolute; z-index: 1; left: 30px; bottom: 28px; right: 30px; max-width: 460px; color: #fff;
+}
+.helt-maerke {
+  display: inline-flex; align-items: center; gap: 8px; font-weight: 900; font-size: 15px; letter-spacing: 2px;
+  color: rgba(255,255,255,0.9); text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+}
+.helt-maerke span {
+  letter-spacing: 1px; font-size: 12px; padding: 3px 8px; border-radius: 8px; background: #ff3b5c; color: #fff;
+  animation: ny-pust 1.2s ease-in-out infinite;
+}
+.helt-navn {
+  margin: 6px 0 4px; font-size: clamp(28px, 5.6vw, 50px); font-weight: 900; line-height: 1.05; letter-spacing: -0.5px;
+  text-shadow: 0 4px 16px rgba(0,0,0,0.7);
+}
+.helt-tekst { margin: 0 0 16px; font-size: clamp(15px, 2.4vw, 19px); font-weight: 700; color: rgba(255,255,255,0.92); text-shadow: 0 2px 8px rgba(0,0,0,0.7); }
+.helt-navn.ind, .helt-tekst.ind { animation: glidInd .6s cubic-bezier(.2,1,.3,1) both; }
+.helt-tekst.ind { animation-delay: .08s; }
+@keyframes glidInd { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: none; } }
+.helt-knap {
+  display: inline-flex; align-items: center; gap: 8px; padding: 14px 30px; border-radius: 16px;
+  font-weight: 900; font-size: 22px; color: #1a1033; text-decoration: none;
+  background: linear-gradient(180deg, #ffffff, #e8e4ff);
+  box-shadow: 0 10px 26px rgba(0,0,0,0.45), inset 0 -3px 0 rgba(0,0,0,0.12);
+  transition: transform .15s cubic-bezier(.2,1,.3,1);
+  animation: knapPuls 2.2s ease-in-out infinite;
+}
+.helt-knap:hover { transform: scale(1.06); }
+.helt-knap:active { transform: scale(0.95); }
+@keyframes knapPuls { 0%,100% { box-shadow: 0 10px 26px rgba(0,0,0,0.45), 0 0 0 0 rgba(255,255,255,0.55); } 50% { box-shadow: 0 10px 26px rgba(0,0,0,0.45), 0 0 0 12px rgba(255,255,255,0); } }
+.helt-prikker { position: absolute; z-index: 1; right: 20px; bottom: 20px; display: flex; gap: 8px; }
+.helt-prikker button {
+  width: 14px; height: 14px; padding: 0; border-radius: 50%; border: 2px solid rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.15); cursor: pointer; transition: all .3s;
+}
+.helt-prikker button.vist { width: 34px; border-radius: 8px; background: #fff; }
+@media (max-width: 560px) {
+  .helt { aspect-ratio: auto; height: 300px; }
+  .helt-indhold { left: 18px; right: 18px; bottom: 44px; }
+  .helt::after { background: linear-gradient(0deg, rgba(10,6,28,0.92) 0%, rgba(10,6,28,0.5) 55%, rgba(10,6,28,0.1)); }
+  .helt-prikker { right: 50%; transform: translateX(50%); bottom: 14px; }
+}
+
+/* ---------- Faner med kategorier — store ikoner, så de mindste kan bruge dem uden at læse ---------- */
 .faner {
   position: sticky; top: 10px; z-index: 5;
   display: flex; gap: 8px; justify-content: center;
-  width: fit-content; max-width: calc(100vw - 20px); margin: 10px auto 0; padding: 8px;
+  width: fit-content; max-width: calc(100vw - 20px); margin: 18px auto 0; padding: 8px;
   border-radius: 999px;
-  background: linear-gradient(160deg, rgba(255,255,255,0.24), rgba(255,255,255,0.08));
-  backdrop-filter: blur(16px) saturate(150%);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
-  border: 1px solid rgba(255,255,255,0.35);
-  box-shadow: 0 10px 28px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.4);
+  background: linear-gradient(160deg, rgba(40,26,90,0.72), rgba(20,12,50,0.72));
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgba(255,255,255,0.28);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.25);
 }
 .fane {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
@@ -86,30 +155,32 @@ h1 {
   -webkit-tap-highlight-color: transparent;
   transition: transform .15s cubic-bezier(.2,1,.3,1), background .2s, color .2s;
 }
-.fane-ikon { font-size: 30px; line-height: 1.15; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.25)); }
+.fane-ikon { font-size: 30px; line-height: 1.15; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3)); transition: transform .3s cubic-bezier(.2,1.6,.4,1); }
 .fane[aria-pressed="true"] {
-  background: rgba(255,255,255,0.92); color: #2a1a5e; text-shadow: none;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+  background: rgba(255,255,255,0.95); color: #2a1a5e; text-shadow: none;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.3);
 }
+.fane[aria-pressed="true"] .fane-ikon { transform: scale(1.18) rotate(-6deg); }
 .fane:active { transform: scale(0.93); }
 
-/* Et afsnit pr. kategori */
+/* ---------- Et afsnit pr. kategori ---------- */
 .kategori { position: relative; z-index: 1; max-width: 960px; margin: 0 auto; animation: frem .35s cubic-bezier(.2,1,.3,1); }
 @keyframes frem { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 .kat-titel {
-  display: flex; align-items: center; gap: 10px; margin: 24px 22px -8px;
+  display: flex; align-items: center; gap: 10px; margin: 26px 22px -8px;
   color: #fff; font-size: clamp(22px, 4.2vw, 30px); font-weight: 900; letter-spacing: -0.3px;
-  text-shadow: 0 2px 10px rgba(0,0,0,0.4);
+  text-shadow: 0 2px 10px rgba(0,0,0,0.6);
 }
+.kat-titel::after { content: ""; flex: 1; height: 3px; margin-left: 8px; border-radius: 3px; background: linear-gradient(90deg, rgba(255,255,255,0.5), transparent); }
 .kat-titel span { font-size: 1.15em; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
-main { padding-bottom: 30px; }
+main { padding-bottom: 40px; }
 
 /* NY!-mærke på nye spil */
 .ny-maerke {
-  position: absolute; top: 10px; right: 10px; z-index: 2;
-  padding: 4px 9px; border-radius: 10px; background: #ff477e; color: #fff;
+  position: absolute; top: 10px; right: 10px; z-index: 3;
+  padding: 4px 9px; border-radius: 10px; background: #ff3b5c; color: #fff;
   font-size: 13px; font-weight: 900; letter-spacing: 0.5px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.3); transform: rotate(8deg);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.35); transform: rotate(8deg);
   animation: ny-pust 1.2s ease-in-out infinite;
 }
 @keyframes ny-pust { 50% { transform: rotate(8deg) scale(1.12); } }
@@ -120,55 +191,98 @@ main { padding-bottom: 30px; }
   .fane-ikon { font-size: 25px; }
 }
 
-/* Gitter af spil-kort */
+/* ---------- Gitter af spil-kort ---------- */
 .spil-gitter {
   position: relative; z-index: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(164px, 1fr));
   gap: 18px;
   padding: 22px;
   max-width: 960px; margin: 0 auto;
 }
 
-/* Frosted-glas-kort */
+/* Kortet: en farvestrålende "app-knap" med glans, en lysstribe der glider hen over, og et ikon der bevæger sig */
 .spil-kort {
   --farve: #ffd166;
   position: relative;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
-  padding: 22px 12px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  padding: 22px 12px 18px; min-height: 176px;
   text-decoration: none; color: #fff;
-  border-radius: 26px;
-  background: linear-gradient(160deg, rgba(255,255,255,0.22), rgba(255,255,255,0.07));
-  backdrop-filter: blur(16px) saturate(150%);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
-  border: 1px solid rgba(255,255,255,0.35);
-  box-shadow: 0 14px 34px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.45);
-  transition: transform .18s cubic-bezier(.2,1,.3,1), box-shadow .18s;
+  border-radius: 28px;
+  background:
+    radial-gradient(120% 90% at 25% 10%, rgba(255,255,255,0.45), transparent 55%),
+    linear-gradient(160deg, color-mix(in srgb, var(--farve) 88%, white), var(--farve) 45%, color-mix(in srgb, var(--farve) 55%, #1a0d3a));
+  border: 2px solid rgba(255,255,255,0.45);
+  box-shadow: 0 16px 34px rgba(0,0,0,0.45), 0 0 26px color-mix(in srgb, var(--farve) 45%, transparent), inset 0 2px 0 rgba(255,255,255,0.55), inset 0 -6px 0 rgba(0,0,0,0.18);
+  transition: transform .2s cubic-bezier(.2,1.4,.4,1), box-shadow .2s;
   overflow: hidden;
 }
-/* Farvet glød øverst i kortet */
-.spil-kort::before {
-  content: ""; position: absolute; top: -40%; left: 50%; transform: translateX(-50%);
-  width: 140%; height: 80%;
-  background: radial-gradient(closest-side, var(--farve), transparent 75%);
-  opacity: .5; pointer-events: none;
+/* Lysstriben, der glider hen over kortet af og til */
+.spil-kort::after {
+  content: ""; position: absolute; top: -20%; bottom: -20%; left: -60%; width: 45%; pointer-events: none; z-index: 2;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,0.55), transparent);
+  transform: skewX(-18deg); animation: glimt 7s ease-in-out infinite; animation-delay: var(--glimt, 0s);
 }
-.spil-kort:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 20px 40px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.5); }
-.spil-kort:active { transform: translateY(2px) scale(0.98); }
+@keyframes glimt { 0%, 78% { left: -60%; } 100% { left: 130%; } }
+.spil-kort:hover { transform: translateY(-6px) scale(1.04) rotate(-1deg); box-shadow: 0 22px 44px rgba(0,0,0,0.5), 0 0 40px color-mix(in srgb, var(--farve) 65%, transparent), inset 0 2px 0 rgba(255,255,255,0.55); }
+.spil-kort:active { transform: translateY(2px) scale(0.96); }
 
-/* Emoji i en farvet "chip" */
+/* Ikonet: stort og blankt med skygge */
 .ikon {
   position: relative; z-index: 1;
-  width: 86px; height: 86px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 50px; border-radius: 24px;
-  background: linear-gradient(160deg, color-mix(in srgb, var(--farve) 85%, white), var(--farve));
-  box-shadow: 0 10px 20px rgba(0,0,0,0.28), inset 0 2px 4px rgba(255,255,255,0.6);
-  filter: drop-shadow(0 2px 2px rgba(0,0,0,0.15));
+  font-size: 64px; line-height: 1;
+  filter: drop-shadow(0 6px 6px rgba(0,0,0,0.35)) drop-shadow(0 0 14px rgba(255,255,255,0.35));
+  animation-duration: 2.4s; animation-iteration-count: infinite; animation-timing-function: ease-in-out;
+  animation-delay: var(--forsinkelse, 0s);
 }
 .spil-kort .navn {
   position: relative; z-index: 1;
-  font-size: clamp(16px, 3.4vw, 21px); font-weight: 800;
-  text-shadow: 0 1px 6px rgba(0,0,0,0.4);
+  font-size: clamp(16px, 3.4vw, 21px); font-weight: 900;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.55);
   text-align: center;
+}
+
+/* Sådan bevæger ikonerne sig */
+[data-anim="hop"] .ikon { animation-name: hop; animation-duration: 1.5s; }
+[data-anim="svæv"] .ikon { animation-name: svaev; animation-duration: 3s; }
+[data-anim="vip"] .ikon { animation-name: vip; animation-duration: 1.8s; }
+[data-anim="sving"] .ikon { animation-name: sving; animation-duration: 1.6s; transform-origin: 70% 85%; }
+[data-anim="pust"] .ikon { animation-name: pust; animation-duration: 2s; }
+[data-anim="snur"] .ikon { animation-name: snur; animation-duration: 3.2s; }
+[data-anim="kør"] .ikon { animation-name: koer; animation-duration: 3s; }
+[data-anim="flyv"] .ikon { animation-name: flyv; animation-duration: 2.2s; }
+@keyframes hop { 0%, 55%, 100% { transform: translateY(0) scale(1, 1); } 20% { transform: translateY(-16px) scale(0.95, 1.06); } 40% { transform: translateY(0) scale(1.1, 0.9); } }
+@keyframes svaev { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-12px) rotate(4deg); } }
+@keyframes vip { 0%, 100% { transform: rotate(-9deg); } 50% { transform: rotate(9deg); } }
+@keyframes sving { 0%, 60%, 100% { transform: rotate(0); } 25% { transform: rotate(-30deg); } 40% { transform: rotate(12deg); } }
+@keyframes pust { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.14); } }
+@keyframes snur { 0%, 70%, 100% { transform: rotate(0); } 85% { transform: rotate(360deg); } }
+@keyframes koer { 0%, 100% { transform: translateX(-14px) scaleX(1); } 45% { transform: translateX(14px) scaleX(1); } 50% { transform: translateX(14px) scaleX(-1); } 95% { transform: translateX(-14px) scaleX(-1); } }
+@keyframes flyv { 0%, 100% { transform: translate(0, 0) rotate(0); } 25% { transform: translate(6px, -10px) rotate(8deg); } 50% { transform: translate(-4px, -4px) rotate(-4deg); } 75% { transform: translate(4px, -12px) rotate(6deg); } }
+
+/* 3D-spillene: kortet er et billede fra spillet (som en filmplakat), med ikonet og navnet forneden */
+.spil-kort.plakat {
+  justify-content: flex-end; min-height: 210px; padding-bottom: 16px;
+  background: var(--billede) center / cover no-repeat, var(--farve);
+}
+.spil-kort.plakat::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: linear-gradient(0deg, rgba(10,6,28,0.85), rgba(10,6,28,0.15) 55%, transparent);
+}
+.spil-kort.plakat .ikon { font-size: 54px; }
+
+/* Telefoner: to kort pr. række */
+@media (max-width: 480px) {
+  .spil-gitter { grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 16px 14px; }
+  .spil-kort { min-height: 150px; border-radius: 24px; gap: 8px; padding: 16px 8px 14px; }
+  .spil-kort.plakat { min-height: 170px; }
+  .ikon, .spil-kort.plakat .ikon { font-size: 50px; }
+  .spil-kort .navn { font-size: 16px; }
+  .kat-titel { margin: 22px 16px -8px; }
+  .vaeg-raekke img { width: 190px; height: 142px; }
+}
+
+/* Mindre bevægelse, hvis enheden beder om det */
+@media (prefers-reduced-motion: reduce) {
+  .vaeg-raekke, .ikon, .spil-kort::after, h1, .helt-knap { animation: none !important; }
 }
