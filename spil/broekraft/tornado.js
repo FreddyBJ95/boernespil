@@ -240,13 +240,13 @@ export class Tornadoer {
     }
   }
   // Brandslangen: gå hen ad vandstrålen og se, om den rammer en tornado (vandet går igennem den)
-  sprøjt(fra, r) {
+  sprøjt(fra, r, maks = 11, mængde = 0.07) {
     for (const t of this.liste) {
       if (t.døende) continue;
-      for (let s = 1; s <= 11; s += 0.5) {
+      for (let s = 1; s <= maks; s += 0.5) {
         const x = fra.x + r.x * s, y = fra.y + r.y * s - 0.012 * s * s, z = fra.z + r.z * s;
         if (!this.inde(t, x, y, z, 0.6)) continue;
-        this.vand(t, 0.07, x, y, z);
+        this.vand(t, mængde, x, y, z);
         break;
       }
     }

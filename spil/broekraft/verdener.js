@@ -20,6 +20,15 @@
 
 // Hvor vulkanen i Dinodalen står (bruges både af opskriften og af spil.js)
 const dinoVulkan = (BX, BZ) => [Math.min(BX - 22, BX / 2 + 30), Math.max(22, BZ / 2 - 28)];
+// Brandmandsbyen: hvor bilerne holder — to brandbiler i brandstationens porte, ambulancen ved hospitalet og
+// politibilen ved politistationen (grundene ligger 22 blokke fra hinanden, se opskriften)
+const brandbyBiler = (BX, BZ) => {
+  const cx = BX / 2, cz = BZ / 2, y = 11;
+  return [
+    { slags: "brandbil", x: cx + 9, y, z: cz + 9.5, yaw: Math.PI }, { slags: "brandbil", x: cx + 14, y, z: cz + 9.5, yaw: Math.PI },
+    { slags: "ambulance", x: cx + 33.5, y, z: cz + 1.5, yaw: Math.PI / 2 }, { slags: "politi", x: cx - 10.5, y, z: cz + 1.5, yaw: -Math.PI / 2 },
+  ];
+};
 // NUKE-banen: hvor køletårnene står, og hvor Dukkebyen ligger (bruges både af opskriften og af spil.js)
 const atomtårne = (BX, BZ) => { const x = Math.max(14, BX / 2 - 36), z = Math.min(BZ - 16, BZ / 2 + 30); return [[x, z], [x + 16, z + 4]]; };
 const atommål = (BX, BZ) => [Math.min(BX - 18, BX / 2 + 44), Math.min(BZ - 18, BZ / 2 + 12)];
@@ -550,13 +559,14 @@ export const VERDENER = [
   },
 
   {
-    id: "brandby", navn: "Brandmandsbyen", ikon: "🚒", tekst: "En by med veje, huse og en brandstation. Når det brænder, følger du røgen og slukker ilden med brandslangen!",
+    id: "brandby", navn: "Brandmandsbyen", ikon: "🚒", tekst: "En stor by med brandstation, hospital og politi. Kør brandbilen, tænd sirenen, og sluk ilden med vandkanonen!",
     himmel: ["#5fa8f0", "#dff0ff"], tåge: [36, 92], hav: "#3f8fe0", sol: "#fff6b0", skyer: "#ffffff",
     lys: ["#ffffff", "#8a8a7a", 2.2, 1.4], stemning: "glad", tyngde: 28,
-    størrelse: [128, 48, 128],
-    dyr: ["dalmatiner", "dalmatiner", "kat", "kat", "and"], antal: 10,
+    størrelse: [192, 48, 192],
+    dyr: ["dalmatiner", "dalmatiner", "kat", "kat", "and"], antal: 12,
     brand: true, point: true,                                    // huse der brænder, og ⭐ når man redder dem
-    hotbar: ["v:brandslange", "Mursten", "Tagsten", "Gul puds", "Asfalt", "Glas", "v:tænder", "Brandhane", "æg:dalmatiner"],
+    biler: brandbyBiler,                                         // brandbiler, ambulance og politibil, man kan køre i (biler.js)
+    hotbar: ["v:brandslange", "v:brandbil", "v:ambulance", "v:politibil", "Mursten", "Tagsten", "Asfalt", "v:tænder", "æg:dalmatiner"],
     vis: ["Tagsten", "Brandhane", "Garageport"],
     hent: ["Bygger husene…", "Asfalterer vejene…", "Pudser brandbilen…", "Ruller brandslangen ud…"],
     generer(a) {
@@ -634,18 +644,57 @@ export const VERDENER = [
         for (let y = 7; y <= 11; y++) for (const [dx, dz] of [[0, 0], [1, 0], [0, 1], [1, 1]]) a.sæt(sx + b - 2 + dx, H + y, sz + d - 2 + dz, ID.Mursten);
         a.sæt(sx + b - 2, H + 12, sz + d - 2, ID.Lampe);
         for (const x of [sx + 1, sx + 6, sx + 11]) a.sæt(x, H + 5, sz + 1, ID.Lampe);
-        // brandbilen i den første port: røde sider, hvid stribe, forrude, stige og blink på taget
-        const fx = sx + 2, fz = sz + 1;
-        for (let x = fx; x <= fx + 2; x++) for (let z = fz; z <= fz + 6; z++) {
-          a.sæt(x, H + 2, z, (x !== fx + 1 && z >= fz + 2) ? ID["Hvid uld"] : ID["Rød uld"]);
-          a.sæt(x, H + 3, z, z === fz ? ID.Glas : ID["Rød uld"]);
+        // bagerst: brandhaner og kasser med slanger — i portene holder to brandbiler, man kan køre i (cfg.biler)
+        for (const x of [sx + 1, sx + 11]) a.sæt(x, H + 1, sz + d - 2, ID.Brandhane);
+        for (const x of [sx + 1, sx + 11]) a.sæt(x, H + 1, sz + d - 3, ID.Trækasse);
+      };
+      // Hospitalet: en stor, hvid bygning med røde kors, mange vinduer og en landingsplads på taget
+      const hospital = (x0, z0) => {
+        const sx = x0 + 1, sz = z0 + 2, b = 13, d = 11, top = 8;
+        for (let x = sx; x < sx + b; x++) for (let z = sz; z < sz + d; z++) {
+          const væg = x === sx || x === sx + b - 1 || z === sz || z === sz + d - 1;
+          a.sæt(x, H, z, ID.Fliser);
+          for (let y = 1; y <= top; y++) a.sæt(x, H + y, z, !væg ? (y === 4 ? ID.Fliser : 0) : y % 4 === 2 && (x + z) % 2 === 0 ? ID.Glas : ID["Hvid puds"]);
+          a.sæt(x, H + top + 1, z, væg ? ID["Hvid puds"] : ID.Asfalt);
         }
-        for (const x of [fx, fx + 2]) for (const z of [fz + 1, fz + 5]) a.sæt(x, H + 1, z, ID.Obsidian);
-        for (let z = fz + 2; z <= fz + 6; z++) a.sæt(fx + 1, H + 4, z, ID.Planker);
-        a.sæt(fx + 1, H + 4, fz, ID.Lampe);
-        // i den anden port: slanger på væggen og brandhaner
-        for (const x of [sx + 7, sx + 10]) a.sæt(x, H + 1, sz + d - 2, ID.Brandhane);
-        for (let x = sx + 7; x <= sx + 10; x++) a.sæt(x, H + 1, sz + 5, ID.Trækasse);
+        for (let k = -2; k <= 2; k++) { a.sæt(sx + 4, H + top + 1, sz + 5 + k, ID["Hvid uld"]); a.sæt(sx + 8, H + top + 1, sz + 5 + k, ID["Hvid uld"]); }   // et stort H på taget
+        for (let x = sx + 5; x <= sx + 7; x++) a.sæt(x, H + top + 1, sz + 5, ID["Hvid uld"]);
+        for (let k = -1; k <= 1; k++) { a.sæt(sx + 6 + k, H + 6, sz, ID["Rød uld"]); a.sæt(sx + 6, H + 6 + k, sz, ID["Rød uld"]); }   // rødt kors over indgangen
+        for (let x = sx + 5; x <= sx + 7; x++) for (let y = 1; y <= 2; y++) a.sæt(x, H + y, sz, 0);   // indgangen
+        for (let z = z0; z < sz; z++) for (let x = sx + 5; x <= sx + 7; x++) a.sæt(x, H, z, ID.Fliser);
+        a.sæt(sx + 1, H + 1, sz + 1, ID.Lampe); a.sæt(sx + b - 2, H + 1, sz + 1, ID.Lampe);
+      };
+      // Politistationen: blå med en blå lampe over døren
+      const politi = (x0, z0) => {
+        const sx = x0 + 2, sz = z0 + 2, b = 11, d = 9;
+        for (let x = sx; x < sx + b; x++) for (let z = sz; z < sz + d; z++) {
+          const væg = x === sx || x === sx + b - 1 || z === sz || z === sz + d - 1;
+          a.sæt(x, H, z, ID.Fliser);
+          for (let y = 1; y <= 5; y++) a.sæt(x, H + y, z, !væg ? 0 : y === 3 && (x + z) % 3 === 0 ? ID.Glas : y === 5 ? ID["Hvid puds"] : ID["Blå puds"]);
+          a.sæt(x, H + 6, z, ID.Sten);
+        }
+        for (let y = 1; y <= 2; y++) a.sæt(sx + 5, H + y, sz, 0);
+        a.sæt(sx + 5, H + 4, sz, ID["Blå uld"]); a.sæt(sx + 5, H + 7, sz + 1, ID.Lampe);
+        for (let z = z0; z < sz; z++) a.sæt(sx + 5, H, z, ID.Fliser);
+      };
+      // Et højt hus med tre etager og tag af tagsten (også det kan brænde — så skal brandbilens vandkanon op)
+      const højhus = (x0, z0) => {
+        const mur = MURE[Math.floor(R() * MURE.length)], hx = x0 + 3, hz = z0 + 3, b = 9, d = 9, top = 12;
+        for (let x = hx; x < hx + b; x++) for (let z = hz; z < hz + d; z++) {
+          const langsX = z === hz || z === hz + d - 1, langsZ = x === hx || x === hx + b - 1;
+          a.sæt(x, H, z, ID.Planker);
+          for (let y = 1; y <= top; y++) {
+            const vindue = !(langsX && langsZ) && y % 4 !== 0 && y % 4 !== 1 && (langsX ? (x - hx) % 2 === 1 : (z - hz) % 2 === 1);
+            a.sæt(x, H + y, z, !(langsX || langsZ) ? (y % 4 === 0 ? ID.Planker : 0) : vindue ? ID.Glas : mur);
+          }
+        }
+        a.sæt(hx + 4, H + 1, hz, 0); a.sæt(hx + 4, H + 2, hz, 0);
+        for (let z = z0; z < hz; z++) a.sæt(hx + 4, H, z, ID.Fliser);
+        for (let k = 0; ; k++) {
+          const x1 = hx - 1 + k, x2 = hx + b - k, z1 = hz - 1 + k, z2 = hz + d - k;
+          if (x1 > x2 || z1 > z2) break;
+          for (let x = x1; x <= x2; x++) for (let z = z1; z <= z2; z++) a.sæt(x, H + top + 1 + k, z, ID.Tagsten);
+        }
       };
 
       // Byen: grunde mellem vejene — brandstationen ved startstedet, ellers huse og parker
@@ -653,7 +702,11 @@ export const VERDENER = [
       for (let i = -n; i <= n; i++) for (let j = -n; j <= n; j++) {
         const x0 = cx + i * GAB + 4, z0 = cz + j * GAB + 4;
         if (!iBy(x0, z0) || !iBy(x0 + 14, z0 + 14)) continue;
-        if (i === 0 && j === 0) station(x0, z0); else if (R() < 0.75) hus(x0, z0); else park(x0, z0);
+        const k = R();
+        if (i === 0 && j === 0) station(x0, z0);
+        else if (i === 1 && j === 0) hospital(x0, z0);
+        else if (i === -1 && j === 0) politi(x0, z0);
+        else if (k < 0.55) hus(x0, z0); else if (k < 0.78) højhus(x0, z0); else park(x0, z0);
         søjle(x0 - 1, z0 - 1, H + 1, H + 3, ID.Sten); a.sæt(x0 - 1, H + 4, z0 - 1, ID.Lampe);     // gadelygte på hjørnet
         if (R() < 0.6) a.sæt(x0 - 1, H + 1, z0 + 7, ID.Brandhane);
       }

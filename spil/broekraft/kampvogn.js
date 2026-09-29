@@ -35,9 +35,10 @@ function byggModel(farve, øjne) {
 }
 
 export class Kampvogn {
-  constructor(scene, verden, { farve = "#5a8a3a", fjende = false } = {}) {
-    Object.assign(this, { scene, verden, fjende });
-    const m = byggModel(farve, fjende);
+  // model: en anden krop (biler.js bruger den til brandbiler, ambulancer og politibiler) · fart: blokke pr. sekund
+  constructor(scene, verden, { farve = "#5a8a3a", fjende = false, model = byggModel, fart = 6.5 } = {}) {
+    Object.assign(this, { scene, verden, fjende, fart });
+    const m = model(farve, fjende);
     Object.assign(this, { model: m.g, tårn: m.tårn, kanon: m.kanon, lak: m.lak });
     scene.add(this.model);
     this.pos = new THREE.Vector3(); this.vel = new THREE.Vector3();
@@ -48,7 +49,7 @@ export class Kampvogn {
   // frem: -1..1 (tilbage/frem) · drej: -1..1 (venstre/højre)
   kør(frem, drej, dt, tyngde) {
     this.yaw -= drej * dt * 1.7;
-    const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw), fart = frem * 6.5;
+    const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw), fart = frem * this.fart;
     this.vel.x += (fx * fart - this.vel.x) * Math.min(1, dt * 4);
     this.vel.z += (fz * fart - this.vel.z) * Math.min(1, dt * 4);
     this.vel.y = Math.max(-30, this.vel.y - tyngde * dt);

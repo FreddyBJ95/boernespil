@@ -7,6 +7,7 @@
 import * as THREE from "./three.js";
 import { BLOKKE, ID } from "./blokke.js";
 import { Kampvogn, KV_B, KV_H } from "./kampvogn.js";
+import { Bil } from "./biler.js";
 
 const VÅBEN = {
   gevær: { fart: 55, tyngde: 0, liv: 1.1 },
@@ -201,6 +202,19 @@ export class Skydning {
     }
     return null;
   }
+  // En bil (biler.js), man kan køre i: "brandbil", "ambulance" eller "politi" — den står, hvor den sættes
+  nyBil(slags, x, y, z, yaw = 0) {
+    const { scene, verden } = this.s, bil = new Bil(scene, verden, slags);
+    bil.pos.set(x, y, z); bil.yaw = bil.tårnYaw = yaw;
+    while (verden.kolliderer(bil.pos, KV_B, KV_H) && bil.pos.y < verden.BY) bil.pos.y += 1;
+    bil.opdater(0);
+    this.egne.push(bil);
+    return bil;
+  }
+  fjernBil(bil) {
+    if (this.kører === bil) this.stigUd();
+    this.egne.splice(this.egne.indexOf(bil), 1); bil.fjern();
+  }
   kampvognVæk(kv) {
     this.fjender.splice(this.fjender.indexOf(kv), 1);
     const c = kv.pos.clone(); c.y += 1.2;
@@ -224,7 +238,8 @@ export class Skydning {
     return bedst;
   }
   stigInd(kv) {
-    this.kører = kv; this.s.lyd.kanonSkud?.(); kv.tårnYaw = kv.yaw;
+    this.kører = kv; kv.tårnYaw = kv.yaw;
+    if (kv.bil) this.s.lyd.motor?.(); else this.s.lyd.kanonSkud?.();
     document.body.classList.add("i-kampvogn");
   }
   stigUd() {
@@ -240,7 +255,8 @@ export class Skydning {
   // Styr kampvognen med pilene. Tårnet følger kameraet.
   styr(tast, kameraYaw, dt) {
     const kv = this.kører;
-    if (tast.hop && kv.hop()) this.s.lyd.boing();                   // ⬆ = kampvognen hopper
+    if (kv.bil) { if (tast.hop && !this.hopFør) kv.skiftSirene(); this.hopFør = !!tast.hop; }   // ⬆ = bilens sirene
+    else if (tast.hop && kv.hop()) this.s.lyd.boing();              // ⬆ = kampvognen hopper
     kv.kør(tast.frem - tast.tilbage, tast.hoejre - tast.venstre, dt, this.s.tyngde);
     kv.sigt(kameraYaw + Math.PI, dt, 4);
     this.s.sp.pos.set(kv.pos.x, kv.pos.y + 0.6, kv.pos.z);

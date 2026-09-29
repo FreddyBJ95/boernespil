@@ -442,17 +442,26 @@ const overlap = (x, y, z, p, b, h) => x + 1 > p.x - b && x < p.x + b && y + 1 > 
 function tryk(x, y, somHammer = false) {
   const valgt = somHammer ? { hammer: true } : valgtTing(), værk = valgt.v && VÆRKTØJ[valgt.v];
   const hit = stråleFra(x, y, !!valgt.hammer);
-  if (skyd.kører) { skyd.kanon(ray.ray.direction.clone()); return; }       // i kampvognen skyder kanonen
-  const kv = skyd.kampvognVed(ray.ray, RÆKKE + 4);                           // tryk på en grøn kampvogn = stig ind
+  if (skyd.kører) {                                                          // i kampvognen skyder kanonen …
+    if (skyd.kører.vand) vandkanon();                                        // … brandbilen sprøjter vand
+    else if (skyd.kører.bil) Lyd.dyt();                                      // … og de andre biler dytter
+    else skyd.kanon(ray.ray.direction.clone());
+    return;
+  }
+  const kv = skyd.kampvognVed(ray.ray, RÆKKE + 4);                           // tryk på en grøn kampvogn eller en bil = stig ind
   if (kv && (!hit || kv.afst < hit.t)) {
     skyd.stigInd(kv.kv); Lyd.vælg();
-    besked(mus ? "Du sidder i kampvognen! Kør med WASD, og klik for at skyde 🎯 · shift = stig ud" : "Du sidder i kampvognen! Kør med joysticket, og tryk for at skyde 🎯", 4000);
+    const b = kv.kv, kør = mus ? "Kør med WASD" : "Kør med joysticket", ud = mus ? " · shift = stig ud" : "";
+    besked(!b.bil ? `Du sidder i kampvognen! ${kør}, og ${mus ? "klik" : "tryk"} for at skyde 🎯${ud}`
+      : b.vand ? `${b.ikon} Du kører ${b.navn}! ${kør} · ${mus ? "klik" : "tryk"} for at sprøjte vand · ⬆ = sirene${ud}`
+      : `${b.ikon} Du kører ${b.navn}! ${kør} · ⬆ = sirene · ${mus ? "klik" : "tryk"} = dyt${ud}`, 4500);
     return;
   }
   if (værk?.våben) { if (skyd.skydMod(værk.våben, kamera.position, ray.ray.direction)) sving = 1; return; }
   if (værk?.slange) { sprøjt(); return; }
   if (værk?.fyrværkeri) { fyrTryk(valgt.v, hit); return; }
   if (værk?.tornado) { tornado.lav(hit, ray.ray); sving = 1; return; }          // 🌪️ en ny tornado
+  if (værk?.bil) { sætBil(værk.bil, hit); return; }                              // 🚒 en bil, man kan køre i
   if (valgt.v === "tænder" && tornado.tændVed(ray.ray)) { sving = 1; return; }  // 🔥 tornadoen bliver til en ildtornado
   let bedst = null;
   for (const d of dyr) {
@@ -763,24 +772,28 @@ function opdaterKugler(dt) {
 }
 
 // ---------- Brandslangen: en stråle vand, der slukker ild, gør lava til sten og får dyrene til at hoppe ----------
-const SPRØJT = new THREE.Color("#e6f4ff");
+const SPRØJT = new THREE.Color("#e6f4ff"), KANONVAND = ["#3a8ae8", "#e6f4ff", "#1f6ad0"].map(f => new THREE.Color(f));
 let sprøjtLyd = 0, tssLyd = 0;
-function sprøjt() {
-  sving = Math.max(sving, 0.35);
-  const r = new THREE.Vector3(); kamera.getWorldDirection(r);
-  const fra = kamera.position.clone().addScaledVector(r, 0.7); fra.y -= 0.3;
-  for (let i = 0; i < 16; i++) {
-    const f = 11 + Math.random() * 4;
-    partikel(fra.x, fra.y, fra.z, i % 3 ? VANDFARVE : SPRØJT, r.x * f + (Math.random() - 0.5) * 1.6, r.y * f + 1.5 + (Math.random() - 0.5) * 1.6,
-      r.z * f + (Math.random() - 0.5) * 1.6, 0.55 + Math.random() * 0.35, 1.1, 0.65);
+// (stor = brandbilens vandkanon: længere, bredere og mere vand — fra og r er mundstykket og retningen)
+function sprøjt(fra, r, stor = false) {
+  if (!fra) {                                                     // brandslangen i hånden
+    sving = Math.max(sving, 0.35);
+    r = new THREE.Vector3(); kamera.getWorldDirection(r);
+    fra = kamera.position.clone().addScaledVector(r, 0.7); fra.y -= 0.3;
+  }
+  const fart = stor ? 19 : 11, spred = stor ? 2.2 : 1.6, rækkevidde = stor ? 18 : 10, b = stor ? 1.2 : 0.7;
+  for (let i = 0; i < (stor ? 30 : 16); i++) {
+    const f = fart + Math.random() * 4;
+    partikel(fra.x, fra.y, fra.z, stor ? KANONVAND[i % 3] : i % 3 ? VANDFARVE : SPRØJT, r.x * f + (Math.random() - 0.5) * spred, r.y * f + 1.5 + (Math.random() - 0.5) * spred,
+      r.z * f + (Math.random() - 0.5) * spred, (0.55 + Math.random() * 0.35) * (stor ? 1.2 : 1), stor ? 0.7 : 1.1, stor ? 2.6 + Math.random() * 1.4 : 0.65);
   }
   if (tid - sprøjtLyd > 0.2) { sprøjtLyd = tid; Lyd.sprøjt(); }
   let damp = false;
-  const set = new Set();
-  for (let t = 0.8; t <= 10; t += 0.5) {                          // gå hen ad strålen og se, hvad den rammer
-    const px = fra.x + r.x * t, py = fra.y + r.y * t - 0.012 * t * t, pz = fra.z + r.z * t;
+  const set = new Set(), fald = stor ? 0.006 : 0.012;
+  for (let t = 0.8; t <= rækkevidde; t += 0.5) {                  // gå hen ad strålen og se, hvad den rammer
+    const px = fra.x + r.x * t, py = fra.y + r.y * t - fald * t * t, pz = fra.z + r.z * t;
     let ramt = false;
-    for (const [ox, oy, oz] of [[0, 0, 0], [0.7, 0, 0], [-0.7, 0, 0], [0, 0.7, 0], [0, -0.7, 0], [0, 0, 0.7], [0, 0, -0.7]]) {
+    for (const [ox, oy, oz] of [[0, 0, 0], [b, 0, 0], [-b, 0, 0], [0, b, 0], [0, -b, 0], [0, 0, b], [0, 0, -b]]) {
       const x = Math.floor(px + ox), y = Math.floor(py + oy), z = Math.floor(pz + oz), k = `${x},${y},${z}`;
       if (set.has(k)) continue;
       set.add(k);
@@ -793,12 +806,19 @@ function sprøjt() {
     if (ramt) break;
   }
   if (damp && tid - tssLyd > 0.35) { tssLyd = tid; Lyd.tss(); }
-  tornado.sprøjt(fra, r);                                         // vandet slukker ildtornadoer
+  tornado.sprøjt(fra, r, rækkevidde + 1, stor ? 0.1 : 0.07);      // vandet slukker ildtornadoer
   for (const d of dyr) {                                          // dyrene bliver våde og hopper
     tmp.copy(d.pos).sub(fra);
     const t = tmp.dot(r);
-    if (t > 0.5 && t < 9 && tmp.addScaledVector(r, -t).length() < 1.3 && !(d.vådT > tid)) { d.vådT = tid + 1; d.klap(); }
+    if (t > 0.5 && t < rækkevidde - 1 && tmp.addScaledVector(r, -t).length() < 1.3 + b - 0.7 && !(d.vådT > tid)) { d.vådT = tid + 1; d.klap(); }
   }
+}
+// Brandbilens vandkanon: den drejer derhen, man kigger, og sprøjter en stor stråle vand
+function vandkanon() {
+  const kv = skyd.kører, r = new THREE.Vector3(); kamera.getWorldDirection(r);
+  r.y += 0.06; r.normalize();
+  kv.sigt(Math.atan2(r.x, r.z), 1, 100);
+  sprøjt(kv.munding().pos, r, true);
 }
 function dampSky(x, y, z) {
   for (let i = 0; i < 6; i++) partikel(x + Math.random(), y + 0.5, z + Math.random(), DAMP, Math.random() - 0.5, 1.5 + Math.random(), Math.random() - 0.5, 1.1, -0.08, 2.2);
@@ -1198,6 +1218,34 @@ const atom = new Atom({
   mål: cfg.atommål ? cfg.atommål(VX, VZ) : null, ryst: n => { rystelse = Math.min(2.4, rystelse + n); },
   sprængning: (x, y, z, slags) => { if (ONLINE) { net?.brag(x, y, z); atomEksplosion(x, y, z, true, slags); } else atomEksplosion(x, y, z, false, slags); },
 });
+// Biler (biler.js): i Brandmandsbyen holder brandbilerne, ambulancen og politibilen klar (cfg.biler).
+// Med 🚒-værktøjerne kan man selv sætte biler, i alle verdener (højst fire ad gangen).
+const bilSteder = cfg.biler ? cfg.biler(VX, VZ) : [], mineBiler = [];
+function lavBiler() {                                             // (når jorden under dem er hentet)
+  for (let i = bilSteder.length - 1; i >= 0; i--) {
+    const b = bilSteder[i];
+    if (!verden.hentet(Math.floor(b.x), Math.floor(b.z))) continue;
+    skyd.nyBil(b.slags, b.x, b.y, b.z, b.yaw); bilSteder.splice(i, 1);
+  }
+}
+function sætBil(slags, hit) {
+  const fx = -Math.sin(sp.yaw), fz = -Math.cos(sp.yaw);
+  let x = hit ? hit.x + 0.5 : sp.pos.x + fx * 5, z = hit ? hit.z + 0.5 : sp.pos.z + fz * 5;
+  if (Math.hypot(x - sp.pos.x, z - sp.pos.z) < 3.2) { x = sp.pos.x + fx * 4.5; z = sp.pos.z + fz * 4.5; }   // ikke oven i barnet
+  if (!verden.inde(Math.floor(x), 0, Math.floor(z))) return;
+  if (mineBiler.length >= 4) skyd.fjernBil(mineBiler.shift());
+  const bil = skyd.nyBil(slags, x, verden.topY(Math.floor(x), Math.floor(z)) + 1, z, sp.yaw + Math.PI);
+  mineBiler.push(bil);
+  Lyd.motor(); sving = 1;
+  for (let i = 0; i < 24; i++) partikel(x, bil.pos.y + 1, z, KONFETTI[i % KONFETTI.length], (Math.random() - 0.5) * 6, 2 + Math.random() * 4, (Math.random() - 0.5) * 6, 1, 0.4, 0.8);
+  besked(`${bil.ikon} Tryk på ${bil.navn} for at køre i den`, 2600);
+}
+// Sirenerne hyler, mens de er tændt
+function opdaterSirener(dt) {
+  for (const kv of skyd.egne) if (kv.sirene && (kv.sireneT -= dt) <= 0) {
+    kv.sireneT = 2.5; Lyd.sirene(kv === skyd.kører ? 0 : Math.hypot(kv.pos.x - sp.pos.x, kv.pos.z - sp.pos.z));
+  }
+}
 // Tornadoer (tornado.js) — i Ildtornadoerne kommer de af sig selv, og 🌪️ Tornadomageren virker i alle verdener
 const tornado = new Tornadoer({
   scene, verden, sp, dyr, partikel, lyd: Lyd, online: ONLINE, natur: !!cfg.tornado, B, HØJ, besked,
@@ -1476,7 +1524,7 @@ function opdaterMusHold(dt) {                                     // knappen hol
   if (!musHold || !musLåst()) return;
   if ((musHold.t -= dt) > 0) return;
   const værk = valgtTing().v && VÆRKTØJ[valgtTing().v];
-  musHold.t = skyd.kører ? 0.9 : værk?.hold || 0.25;
+  musHold.t = skyd.kører ? (skyd.kører.vand ? 0.1 : skyd.kører.bil ? 0.6 : 0.9) : værk?.hold || 0.25;
   musBrug(musHold.højre);
 }
 
@@ -1489,7 +1537,7 @@ function opdaterHak(dt) {
   const værk = valgtTing().v && VÆRKTØJ[valgtTing().v];
   if (f && (værk?.hold || skyd.kører)) {
     markør.visible = revne.visible = false;
-    if ((f.skudT = (f.skudT ?? 0) - dt) <= 0) { f.skudT = skyd.kører ? 0.9 : værk.hold; tryk(f.x, f.y); }
+    if ((f.skudT = (f.skudT ?? 0) - dt) <= 0) { f.skudT = skyd.kører ? (skyd.kører.vand ? 0.1 : skyd.kører.bil ? 0.6 : 0.9) : værk.hold; tryk(f.x, f.y); }
     return;
   }
   const hit = f && stråleFra(f.x, f.y);
@@ -1788,6 +1836,9 @@ const brand = cfg.brand && !ONLINE ? new Brandvæsen(verden, {
 }) : null;
 
 let tid = 0, sidst = performance.now(), fejlVist = false, skjulT = 0;
+// Fototilstand (?debug&foto): ingen knapper og ingen hånd — til billederne på forsiden
+let fotoTilstand = PARAM.has("foto") && PARAM.has("debug");
+document.body.classList.toggle("foto", fotoTilstand);
 renderer.setAnimationLoop(nu => {
   try { tegnFrame(nu); } catch (fejl) { if (!fejlVist) { fejlVist = true; console.error(fejl); } }   // spillet kører videre selv hvis noget går galt
 });
@@ -1799,7 +1850,8 @@ function tegnFrame(nu) {
     else if (!tornado.styrSpiller(dt)) opdaterSpiller(dt);                       // i en tornado snurrer man rundt
     opdaterHak(dt); opdaterMusHold(dt); genfød(dt); opdaterTNT(dt); sim?.tick(dt); opdaterGløder(dt);
     skyd.opdater(dt); fyr.opdater(dt); brand?.opdater(dt, sp.pos); opdaterKugler(dt); opdaterSpirer(dt); opdaterVulkan(dt); opdaterGløddyr(dt);
-    tornado.opdater(dt); opdaterKraterGlød(dt); opdaterDamp(dt);
+    tornado.opdater(dt); opdaterKraterGlød(dt); opdaterDamp(dt); opdaterSirener(dt);
+    if (bilSteder.length) lavBiler();
     if (valgtTing().v === "stjernekaster" && !skyd.kører) {
       stjernedrys(3, 1.6);
       if ((gnistLyd -= dt) <= 0) { gnistLyd = 0.15; Lyd.gnistre(); }
@@ -1848,7 +1900,7 @@ function tegnFrame(nu) {
   const s = Math.sin(sving * Math.PI);
   hånd.position.set(0.4 + Math.cos(gangFase * Math.PI * 2) * 0.012, -0.36 + bob * 0.4 - s * 0.1, -0.9 - s * 0.1);
   hånd.rotation.x = -s * 0.8;
-  hånd.visible = iGang && !skyd.kører;
+  hånd.visible = iGang && !skyd.kører && !fotoTilstand;
   renderer.render(scene, kamera);
 }
 
@@ -1870,7 +1922,7 @@ async function startSpil() {
     : cfg.id === "slik" ? "🍭 Hop på skumfiduserne · pas på, floden er af chokolade!"
     : cfg.undervand ? "🐠 Du kan svømme overalt! ⬆ svøm op · ⬇ dyk ned · find skattekisterne"
     : cfg.id === "pirat" ? "🏴‍☠️ Find de røde krydser i sandet, og grav skatten op med 🔨 hammeren · tryk på kanonerne!"
-    : cfg.brand ? "🚒 Tag brandslangen, og hold fingeren nede for at sprøjte · følg røgen, når det brænder"
+    : cfg.brand ? "🚒 Tryk på en brandbil for at køre · ⬆ = sirene · følg røgen, og sprøjt vand på ilden"
     : cfg.skyd ? "🎯 Tryk for at skyde · hold fingeren nede for at skyde mange · tryk på en grøn kampvogn for at køre"
     : cfg.fyrværkeri ? "🎆 Tryk for at sende en raket op · tænd fyrværkeri-kasserne med 🔥 tænderen"
     : nyVæske ? "NYT: 🪣 Vand, 🌋 lava og 🔥 ild! Find dem i ⋯" : nyTNT && !ONLINE ? "NYT: 🧨 TNT! Sæt den og slå på den med 🔨" : "Tryk = byg 🧱   🔨 = fjern   Træk = kig 👀", 5000); }, 2500);

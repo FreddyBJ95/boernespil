@@ -237,7 +237,9 @@
     }
     #musTip small { display: block; font-size: 15px; font-weight: 700; opacity: .85; margin-top: 4px; }
     .i-gang.mus:not(.låst) #musTip { display: block; }
-    .uden-lås #musTip { display: none !important; }              /* browseren kan ikke låse musen: så trækker man for at kigge */
+    .uden-lås #musTip { display: none !important; }
+    /* Fototilstand (?debug&foto): kun selve verdenen — til billederne på forsiden */
+    .foto .top, .foto .styring, .foto .top-hoejre, .foto .besked, .foto .point, .foto #udKnap, .foto #sigte, .foto #musTip, .foto .ting-navn { display: none !important; }              /* browseren kan ikke låse musen: så trækker man for at kigge */
     /* Tornadoen: skærmen hvirvler grå eller orange, mens man snurrer rundt */
     #tornadoSlør {
       position: fixed; inset: -30vmax; pointer-events: none; z-index: 4; display: none; opacity: .75;

@@ -56,7 +56,7 @@ export class Brandvæsen {
     for (const f of flammer) this.h.sæt(f.x, f.y, f.z, ID.Ild);
     this.brænder.push({ hus, flammer });
     this.h.alarm();
-    this.h.besked("🚒 Det brænder i et hus! Følg røgen, og sluk ilden med brandslangen", 5000);
+    this.h.besked("🚒 Det brænder i et hus! Følg røgen — kør brandbilen derhen, eller sluk ilden med brandslangen", 5000);
   }
 
   // Brandslangen har slukket en flamme her

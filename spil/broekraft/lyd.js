@@ -499,10 +499,22 @@ export function groet(afstand = 0) {       // plop — spiren er blevet til en a
   const v = nær(afstand);
   if (v > 0) { glid(500, 1100, nu(), 0.15, { vol: 0.12 * v }); tone(1320, nu() + 0.12, 0.2, "triangle", 0.06 * v); }
 }
-export function sirene() {                  // ba-bu ba-bu — brandbilen er på vej
+export function sirene(afstand = 0) {      // ba-bu ba-bu — brandbilen er på vej
+  if (!ac) return;
+  const t = nu(), v = Math.max(0.12, 1 - afstand / 60);
+  for (let i = 0; i < 6; i++) glid(i % 2 ? 660 : 880, i % 2 ? 659 : 879, t + i * 0.42, 0.4, { type: "triangle", vol: 0.1 * v });
+}
+export function motor() {                   // brum-brum — man sætter sig ind i bilen
   if (!ac) return;
   const t = nu();
-  for (let i = 0; i < 6; i++) glid(i % 2 ? 660 : 880, i % 2 ? 659 : 879, t + i * 0.42, 0.4, { type: "triangle", vol: 0.1 });
+  glid(55, 110, t, 0.5, { type: "sawtooth", vol: 0.14, filter: 400, q: 1 });
+  glid(110, 80, t + 0.5, 0.5, { type: "sawtooth", vol: 0.1, filter: 350, q: 1 });
+  sus(t, 0.8, 300, 900, 0.1, "bandpass", 1);
+}
+export function dyt() {                     // båt-båt — bilens horn
+  if (!ac) return;
+  const t = nu();
+  for (const d of [0, 0.22]) { tone(392, t + d, 0.18, "square", 0.07); tone(494, t + d, 0.18, "square", 0.05); }
 }
 export function sprøjt() {                  // pssst — vand fra brandslangen
   if (!ac) return;

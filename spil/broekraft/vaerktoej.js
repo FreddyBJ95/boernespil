@@ -25,6 +25,9 @@ export const VÆRKTØJ = {
   brandslange: { navn: "Brandslange", slange: true, hold: 0.1 },    // slukker ild og gør lava til sten
   atomkaster: { navn: "Atomkaster", våben: "atom", hold: 1.6 },      // skyder en lille atombombe i en bue (skyd.js)
   tornado: { navn: "Tornadomager", tornado: true, hold: 1.5 },     // laver en tornado, der hvor man trykker (tornado.js)
+  brandbil: { navn: "Brandbil", bil: "brandbil" },                 // sætter en bil, man kan køre i (biler.js)
+  ambulance: { navn: "Ambulance", bil: "ambulance" },
+  politibil: { navn: "Politibil", bil: "politi" },
 };
 
 // ---------- Ikoner (pixel-tegninger) ----------
@@ -150,7 +153,22 @@ function tornado(set) {
   }
   for (const [x, y] of [[2, 3], [14, 5], [3, 9], [13, 11]]) set(x, y, "#8a6a3a");
 }
-const TEGNERE = { tænder, gevær, bazooka, maling, raket, stjernekaster, romerlys, lygte, konfetti, brandslange, atomkaster, tornado };
+// Biler set fra siden: krop, ruder, hjul og blinklys på taget
+function bil(set, lak, stribe, lys, høj = false) {
+  const top = høj ? 3 : 5;
+  for (let x = 1; x <= 14; x++) for (let y = top; y <= 11; y++) {
+    const førerhus = x >= 10;
+    if (!høj && y < 7 && !førerhus) continue;                      // lav kasse bagved, højt førerhus foran
+    set(x, y, y === 9 ? stribe : lak);
+  }
+  for (let y = top + 1; y <= top + 2; y++) for (let x = 11; x <= 13; x++) set(x, y, "#9fd8ff");
+  for (const cx of [4, 12]) for (let x = cx - 1; x <= cx + 1; x++) for (let y = 11; y <= 13; y++) set(x, y, x === cx && y === 12 ? "#b8bec6" : "#2a2a2a");
+  set(10, top - 1, lys[0]); set(11, top - 1, lys[1]);
+}
+const brandbil = set => { bil(set, "#d8262a", "#f4f4f0", ["#3a7bff", "#3a7bff"]); for (let x = 2; x <= 9; x++) set(x, 5, "#d0d6de"); for (let x = 2; x <= 9; x += 2) set(x, 6, "#d0d6de"); };
+const ambulance = set => { bil(set, "#f4f4f0", "#e0302a", ["#3a7bff", "#ff5a4a"], true); for (const [x, y] of [[5, 5], [5, 6], [5, 7], [4, 6], [6, 6]]) set(x, y, "#e0302a"); };
+const politibil = set => bil(set, "#f4f4f0", "#2a4ad8", ["#3a7bff", "#e0302a"]);
+const TEGNERE = { tænder, gevær, bazooka, maling, raket, stjernekaster, romerlys, lygte, konfetti, brandslange, atomkaster, tornado, brandbil, ambulance, politibil };
 export function værktøjIkon(id) {
   if (!ikoner[id]) ikoner[id] = tegn(set => (TEGNERE[id] ? TEGNERE[id](set) : spand(set, VÆRKTØJ[id].væske)));
   return ikoner[id];
@@ -219,6 +237,12 @@ export function værktøjModel(id) {
     bombe.position.z = -1.1;
     model.add(bombe, kasse(0.76, 0.12, 0.12, "#1a1a1a", 0, 0, -1.1), kasse(0.2, 0.55, 0.24, "#2a2a2a", 0, -0.5, 0.2));
     model.rotation.set(0.04, 0.1, 0); model.position.set(0.1, 0.1, 0.2);
+  } else if (VÆRKTØJ[id].bil) {                             // en lille legetøjsbil i hånden
+    const [lak, stribe] = { brandbil: ["#d8262a", "#f4f4f0"], ambulance: ["#f4f4f0", "#e0302a"], politi: ["#f4f4f0", "#2a4ad8"] }[VÆRKTØJ[id].bil];
+    model.add(kasse(0.6, 0.35, 1.2, lak, 0, 0.1, 0), kasse(0.6, 0.3, 0.45, lak, 0, 0.42, 0.3), kasse(0.62, 0.1, 1.22, stribe, 0, 0.08, 0));
+    model.add(kasse(0.5, 0.18, 0.05, "#9fd8ff", 0, 0.45, 0.53, true), kasse(0.14, 0.08, 0.14, "#3a7bff", -0.15, 0.62, 0.3, true), kasse(0.14, 0.08, 0.14, "#3a7bff", 0.15, 0.62, 0.3, true));
+    for (const s of [-1, 1]) for (const z of [-0.4, 0.4]) model.add(kasse(0.1, 0.22, 0.22, "#2a2a2a", s * 0.32, -0.08, z));
+    model.rotation.set(0.25, 0.8, 0);
   } else if (id === "tornado") {                            // en lille tornado, der vugger i hånden
     flamme = new THREE.Group();
     for (let i = 0; i < 6; i++) flamme.add(kasse(0.16 + i * 0.13, 0.2, 0.16 + i * 0.13, i % 2 ? "#c8ccd2" : "#8a929c", Math.sin(i) * 0.06, -0.5 + i * 0.2, 0));
