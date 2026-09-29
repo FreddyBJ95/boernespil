@@ -1215,11 +1215,11 @@ export const VERDENER = [
   },
 
   {
-    id: "atom", navn: "NUKE-banen", ikon: "☢️", tekst: "Et kæmpe ødeland med missilsiloer, et atomkraftværk og en dukkeby. Tryk på den røde knap i bunkeren — og se svampeskyerne!",
+    id: "atom", navn: "NUKE-banen", ikon: "☢️", tekst: "Et kæmpe ødeland med missilsiloer, et atomkraftværk, en flyveplads og en dukkeby. Tryk på den røde knap i bunkeren — og se svampeskyerne!",
     himmel: ["#1f2a14", "#9ab04a"], tåge: [30, 92], hav: "#5ad02a", sol: "#f0ffb0", solStr: 30, skyer: "#8a9a6a",
     lys: ["#e0ffb0", "#3a4a2a", 1.9, 1.0], stemning: "uhyggelig", tyngde: 28,
-    størrelse: [176, 48, 176],
-    dyr: ["atomzombie", "atomzombie", "atomzombie", "kaempezombie", "atomfro", "tohovedko"], antal: 14, genfød: true,
+    størrelse: [256, 48, 256],
+    dyr: ["atomzombie", "atomzombie", "atomzombie", "kaempezombie", "atomfro", "tohovedko"], antal: 16, genfød: true,
     sne: "atom",                                                 // små, grønne gnister i luften
     atomtårne, atommål,                                          // damp fra køletårnene · missilerne flyver mod Dukkebyen
     hotbar: ["Atombombe", "Kæmpebombe", "v:atomkaster", "Missil", "Missilspids", "Affyringsknap", "Beton", "v:tænder", "æg:atomzombie"],
@@ -1233,6 +1233,7 @@ export const VERDENER = [
       const sz = Math.max(10, cz - 20), lx = Math.max(14, cx - 34), lz = Math.max(14, cz - 30), rx = kx0 + 8, rz = kz0 - 13;
       // De store steder — her må der ikke komme ruiner og bilvrag
       const zoner = [[cx, cz, 12], [mx, mz, 18], [cx, sz, 18], [lx, lz, 13], [rx, rz, 9], ...tårne.map(([x, z]) => [x, z, 10])];
+      if (BX >= 224 && BZ >= 224) zoner.push([cx - 46, cz + 66, 44]);                 // flyvepladsen (se nederst)
       const ledig = (x, z, r = 0) => zoner.every(([zx, zz, zr]) => Math.hypot(x - zx, z - zz) > zr + r);
       // Gør et område fladt i højden h (fylder op og graver væk) — rundt eller firkantet
       const flad = (x0, z0, rX, rZ, h, overflade, rund = true) => {
@@ -1395,6 +1396,43 @@ export const VERDENER = [
         for (const [dx, dz] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) a.sæt(rx + dx, h + 1, rz + dz, ID.Atomtønde);
         for (let k = 0; k < 4; k++) a.sæt(rx + 8 + k, h + 1, rz, ID.Atomtønde);   // en stabel tønder
         for (let k = 0; k < 2; k++) a.sæt(rx + 9 + k, h + 2, rz, ID.Atomtønde);
+      }
+
+      // Flyvepladsen (kun i de store verdener): en landingsbane, et stort bombefly med en atombombe under maven,
+      // to hangarer og et kontroltårn
+      if (BX >= 224 && BZ >= 224) {
+        const x0 = cx - 78, z0 = cz + 60, L = 64, hF = Math.max(8, h0(x0 + 32, z0 + 4));
+        flad(x0 + 32, z0 + 6, 38, 20, hF, ID.Aske, false);
+        for (let x = x0; x < x0 + L; x++) for (let z = z0; z <= z0 + 8; z++) a.sæt(x, hF, z, z === z0 + 4 && x % 4 < 2 ? ID.Vejstribe : ID.Asfalt);
+        for (let x = x0; x < x0 + L; x += 6) { a.sæt(x, hF, z0 - 1, ID.Lampe); a.sæt(x, hF, z0 + 9, ID.Lampe); }   // lys langs banen
+        // bombeflyet: krop, cockpit, vinger, motorer, hale — og hjul
+        const px = x0 + 14, pz = z0 + 4, py = hF + 2;
+        for (let x = px; x < px + 16; x++) for (let dz = -1; dz <= 1; dz++) for (let dy = 0; dy <= 2; dy++) {
+          const hjørne = Math.abs(dz) === 1 && (dy === 0 || dy === 2);
+          if (!hjørne || (x > px + 1 && x < px + 14)) a.sæt(x, py + dy, pz + dz, x >= px + 14 && dy >= 1 ? ID.Glas : dy === 1 && Math.abs(dz) === 1 && x % 2 ? ID.Glas : ID.Stålplade);
+        }
+        for (let z = pz - 9; z <= pz + 9; z++) for (let x = px + 6; x <= px + 9 - Math.floor(Math.abs(z - pz) / 4); x++) a.sæt(x, py + 1, z, ID["Hvid puds"]);
+        for (const dz of [-6, -3, 3, 6]) { a.sæt(px + 9, py + 1, pz + dz, ID.Obsidian); a.sæt(px + 10, py + 1, pz + dz, ID.Stålplade); }
+        for (let y = py + 3; y <= py + 6; y++) for (let x = px; x <= px + 3 - (y - py - 3); x++) a.sæt(x, y, pz, ID["Rød uld"]);
+        for (let z = pz - 4; z <= pz + 4; z++) { a.sæt(px, py + 2, z, ID["Hvid puds"]); a.sæt(px + 1, py + 2, z, ID["Hvid puds"]); }
+        for (const [x, z] of [[px + 3, pz - 1], [px + 3, pz + 1], [px + 12, pz]]) a.sæt(x, hF + 1, z, ID.Obsidian);
+        a.sæt(px + 7, hF + 1, pz, ID.Atombombe);                       // atombomben under maven — slå på den, hvis du tør!
+        for (let k = 0; k < 3; k++) { a.sæt(px + 22 + k, hF + 1, z0 + 11, ID.Planker); a.sæt(px + 22 + k, hF + 2, z0 + 11, k === 1 ? ID.Kæmpebombe : ID.Atombombe); }
+        // to hangarer (halve rør af stålplader) mod syd, med åbningen mod banen
+        for (const hx of [x0 + 8, x0 + 26]) for (let x = hx; x < hx + 12; x++) for (let dz = -6; dz <= 6; dz++) for (let dy = 0; dy <= 6; dy++) {
+          const d = Math.hypot(dz, dy);
+          if (d <= 6.4 && d >= 5.4) a.sæt(x, hF + 1 + dy, z0 + 20 + dz, ID.Stålplade);
+        }
+        for (const hx of [x0 + 8, x0 + 26]) for (let x = hx + 3; x <= hx + 8; x++) for (let dy = 0; dy <= 4; dy++) a.sæt(x, hF + 1 + dy, z0 + 14, 0);   // porten
+        // kontroltårnet ved enden af banen
+        { const tx = x0 + L + 2, tz = z0 + 12;
+          for (let x = tx - 1; x <= tx + 1; x++) for (let z = tz - 1; z <= tz + 1; z++) søjle(x, z, hF + 1, hF + 8, ID.Beton);
+          for (let x = tx - 2; x <= tx + 2; x++) for (let z = tz - 2; z <= tz + 2; z++) {
+            const kant = Math.abs(x - tx) === 2 || Math.abs(z - tz) === 2;
+            a.sæt(x, hF + 9, z, ID.Stålplade); a.sæt(x, hF + 10, z, kant ? ID.Glas : 0); a.sæt(x, hF + 11, z, kant ? ID.Glas : 0); a.sæt(x, hF + 12, z, ID.Stålplade);
+          }
+          a.sæt(tx, hF + 10, tz, ID.Kontrolpult); a.sæt(tx, hF + 13, tz, ID.Lampe);
+        }
       }
 
       a.pynt(a.antal(22), ID.Atomtønde, [ID.Aske, ID["Mørkt græs"]]);

@@ -279,7 +279,17 @@ export class Verden {
     if (m) { m.geometry.dispose(); m.geometry = g; return; }
     m = new THREE.Mesh(g, navn === "fast" ? this.mat : this.animMat?.[navn] || this.mat);
     if (navn === "vand" || navn === "portal") m.renderOrder = navn === "vand" ? 1 : 2;   // det gennemsigtige tegnes efter alt det faste
+    const [cx, , cz] = nøgle.split(",").map(Number);
+    m.userData.midt = [cx * CS + CS / 2, cz * CS + CS / 2];          // klumpens midte (til at skjule klumper langt væk)
     this.scene.add(m); this.klumper.set(k, m);
+  }
+  // Skjul klumper, der er længere væk end man kan se (tågen) — så får store verdener meget mindre at tegne
+  skjulFjerne(x, z, maks) {
+    const m2 = (maks + CS) * (maks + CS);
+    for (const m of this.klumper.values()) {
+      const [mx, mz] = m.userData.midt;
+      m.visible = (mx - x) * (mx - x) + (mz - z) * (mz - z) < m2;
+    }
   }
 
   // ---------- Vand og lava: overfladen er lavere, jo tyndere strømmen er ----------

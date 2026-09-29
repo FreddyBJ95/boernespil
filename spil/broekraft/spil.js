@@ -1787,7 +1787,7 @@ const brand = cfg.brand && !ONLINE ? new Brandvæsen(verden, {
   },
 }) : null;
 
-let tid = 0, sidst = performance.now(), fejlVist = false;
+let tid = 0, sidst = performance.now(), fejlVist = false, skjulT = 0;
 renderer.setAnimationLoop(nu => {
   try { tegnFrame(nu); } catch (fejl) { if (!fejlVist) { fejlVist = true; console.error(fejl); } }   // spillet kører videre selv hvis noget går galt
 });
@@ -1810,6 +1810,7 @@ function tegnFrame(nu) {
   for (const d of dyr) d.opdater(dt, sp.pos);
   if (ONLINE) opdaterOnline(dt);
   verden.opdater(ONLINE ? 6 : verden.snavset.size > 40 ? 12 : 4);
+  if ((skjulT -= dt) <= 0) { skjulT = 0.25; verden.skjulFjerne(kamera.position.x, kamera.position.z, scene.fog.far + 8); }   // kun det, man kan se
   animerVæsker();
   tegnPortalSlør(dt);
   opdaterVærktøj(håndFlamme, tid);
