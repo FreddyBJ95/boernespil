@@ -222,11 +222,43 @@ if (cfg.stjerner) {
   stjerner.renderOrder = -1;
   scene.add(stjerner);
 }
-if (cfg.hav) {
-  const str = Math.max(900, Math.max(VX, VZ) * 3);
-  const hav = new THREE.Mesh(new THREE.PlaneGeometry(str, str).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: cfg.hav }));
-  hav.position.set(VX / 2, HAV, VZ / 2);
-  scene.add(hav);
+// ---------- Havet rundt om øen ----------
+// Inde i verdenen tegnes havet kun, hvor jorden lå under havet fra start. Ellers ville et dybt
+// krater (fx efter en atombombe) vise en flad havflade midt i hullet, som man falder igennem.
+const havMat = cfg.hav ? new THREE.MeshBasicMaterial({ color: cfg.hav }) : null;
+const havCelle = cfg.hav ? new Uint8Array(VX * VZ) : null;            // 1 = her er hav
+const havSøjler = new Set();                                          // online: søjler, der er tjekket
+function erHav(x, z) {
+  if (!cfg.hav) return false;
+  x = Math.floor(x); z = Math.floor(z);
+  return x < 0 || z < 0 || x >= VX || z >= VZ || havCelle[x + z * VX] === 1;
+}
+function havMesh(firkanter) {                                          // flade firkanter [x0, z0, x1, z1] i havets højde
+  if (!firkanter.length) return;
+  const pos = [], idx = [];
+  for (const [x0, z0, x1, z1] of firkanter) {
+    const n = pos.length / 3;
+    pos.push(x0, HAV, z0, x1, HAV, z0, x1, HAV, z1, x0, HAV, z1);
+    idx.push(n, n + 2, n + 1, n, n + 3, n + 2);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
+  scene.add(new THREE.Mesh(g, havMat));
+}
+function lavHav(x0, z0, x1, z1) {                                      // hver række af felter, hvor jorden ligger under havet
+  if (!cfg.hav) return;
+  const firkanter = [];
+  for (let z = z0; z < z1; z++) for (let x = x0; x < x1;) {
+    if (verden.topY(x, z) >= HAV) { x++; continue; }
+    const start = x;
+    while (x < x1 && verden.topY(x, z) < HAV) havCelle[x++ + z * VX] = 1;
+    firkanter.push([start, z, x, z + 1]);
+  }
+  havMesh(firkanter);
+}
+if (cfg.hav) {                                                         // havet uden for verdenen
+  const str = Math.max(900, Math.max(VX, VZ) * 3), a = VX / 2 - str / 2, b = VX / 2 + str / 2, c = VZ / 2 - str / 2, d = VZ / 2 + str / 2;
+  havMesh([[a, c, 0, d], [VX, c, b, d], [0, c, VX, 0], [0, VZ, VX, d]]);
 }
 const skyer = [];
 if (cfg.skyer) {
@@ -253,6 +285,7 @@ if (cfg.vand === "chokolade") { animMat.vand.map = atlas.anim.chokolade; animMat
 verden.tyngde = TYNGDE;
 if (!ONLINE) {                                    // alene: lav øen her. Sammen: serveren sender verdenen
   verden.generer(cfg.generer);
+  lavHav(0, 0, VX, VZ);                           // før børnenes ændringer, så gamle kratere ikke bliver til hav
   verden.anvend(gemt.ændringer);
   verden.bygOmkring(gemt.spiller?.[0] ?? VX / 2, gemt.spiller?.[2] ?? VZ / 2);   // tæt på først, resten lidt efter lidt
 }
@@ -770,7 +803,7 @@ function opdaterKugler(dt) {
   for (const k of [...kugler]) {
     k.v.y -= TYNGDE * 0.6 * dt; k.m.position.addScaledVector(k.v, dt); k.liv -= dt;
     const p = k.m.position, x = Math.floor(p.x), y = Math.floor(p.y), z = Math.floor(p.z);
-    const iVand = (cfg.hav && p.y < HAV) || verden.væske[verden.hent(x, y, z)] === "vand";
+    const iVand = (p.y < HAV && erHav(p.x, p.z)) || verden.væske[verden.hent(x, y, z)] === "vand";
     if (!iVand && !verden.erFast(x, y, z) && k.liv > 0) continue;
     const afst = Math.hypot(p.x - sp.pos.x, p.z - sp.pos.z);
     if (iVand) { stænk(p.x, Math.max(p.y, HAV), p.z, VANDFARVE, 26); Lyd.plask(afst); }
@@ -878,7 +911,7 @@ let varmeTid = 0;
 function tjekVarme(fod, krop, dt) {
   varmeTid -= dt;
   const hed = id => verden.væske[id] === "lava" || !!BLOKKE[id]?.ild;
-  const iLavahav = cfg.lavahav && !sp.flyver && sp.pos.y < HAV + 0.3;          // havet i Underverdenen er lava
+  const iLavahav = cfg.lavahav && !sp.flyver && sp.pos.y < HAV + 0.3 && erHav(sp.pos.x, sp.pos.z);          // havet i Underverdenen er lava
   if (varmeTid > 0 || !(hed(fod) || hed(krop) || iLavahav)) return;
   varmeTid = 0.9;
   sp.vel.set(Math.sin(sp.yaw) * 5, 10, Math.cos(sp.yaw) * 5);
@@ -2026,7 +2059,11 @@ async function forbindOnline() {
     net = await forbind(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`, { figur: minFigur });
   } catch (fejl) { visFejl("Kunne ikke finde computeren 😕", "Er den tændt, og er I på samme wifi?"); return false; }
   net.addEventListener("velkommen", e => velkommen(e.detail));
-  net.addEventListener("klump", e => verden.søjle(e.detail.cx, e.detail.cz, e.detail.data));
+  net.addEventListener("klump", e => {
+    const { cx, cz } = e.detail;
+    verden.søjle(cx, cz, e.detail.data);
+    if (!havSøjler.has(cx + "," + cz)) { havSøjler.add(cx + "," + cz); lavHav(cx * 16, cz * 16, cx * 16 + 16, cz * 16 + 16); }
+  });
   net.addEventListener("glem", e => verden.glemSøjle(e.detail.cx, e.detail.cz));
   net.addEventListener("blok", e => blokFraServer(e.detail));
   net.addEventListener("ind", e => {
