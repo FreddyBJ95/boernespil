@@ -222,6 +222,22 @@
         repeating-conic-gradient(rgba(210,160,255,.45) 0 10deg, rgba(90,20,180,.45) 10deg 20deg);
     }
     #portalSlør.aktiv { display: block; animation: portalHvirvel 2.4s linear infinite; }
+    /* Mus og tastatur (pc): ingen joystick og knapper — et sigtekorn i midten, og "klik for at spille" når musen er fri */
+    .mus .joystick, .mus #flyKnap, .mus #hopKnap, .mus #nedKnap { display: none !important; }
+    #sigte { display: none; position: fixed; left: 50%; top: 50%; width: 24px; height: 24px; margin: -12px 0 0 -12px; z-index: 5; pointer-events: none; }
+    #sigte::before, #sigte::after { content: ""; position: absolute; background: rgba(255,255,255,.9); box-shadow: 0 0 0 1px rgba(0,0,0,.45); }
+    #sigte::before { left: 11px; top: 0; width: 2px; height: 24px; }
+    #sigte::after { left: 0; top: 11px; width: 24px; height: 2px; }
+    .i-gang.mus.låst #sigte { display: block; }
+    .i-kampvogn #sigte { display: none !important; }
+    #musTip {
+      display: none; position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 4; pointer-events: none;
+      font-weight: 900; font-size: 24px; text-align: center; padding: 14px 22px; background: rgba(0,0,0,.55); border: 3px solid rgba(255,255,255,.6);
+      text-shadow: 2px 2px 0 #000;
+    }
+    #musTip small { display: block; font-size: 15px; font-weight: 700; opacity: .85; margin-top: 4px; }
+    .i-gang.mus:not(.låst) #musTip { display: block; }
+    .uden-lås #musTip { display: none !important; }              /* browseren kan ikke låse musen: så trækker man for at kigge */
     /* Tornadoen: skærmen hvirvler grå eller orange, mens man snurrer rundt */
     #tornadoSlør {
       position: fixed; inset: -30vmax; pointer-events: none; z-index: 4; display: none; opacity: .75;
@@ -279,6 +295,8 @@
   <div id="klatter"></div>
   <div id="tornadoSlør"></div>
   <div id="nedtælling"></div>
+  <div id="sigte"></div>
+  <div id="musTip">🖱️ Klik for at spille<small>Esc = få musen fri</small></div>
   <div class="point" id="point">⭐ 0</div>
   <button class="mc" id="udKnap" aria-label="Stig ud af kampvognen">🚪 Stig ud</button>
 

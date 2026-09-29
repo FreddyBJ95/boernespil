@@ -1,7 +1,7 @@
 {
   "name": "Spil for ungerne",
   "short_name": "Børnespil",
-  "description": "Sjove små spil til iPad og tablet — til ungerne.",
+  "description": "Sjove små spil til tablet og computer — til ungerne.",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
@@ -12,5 +12,15 @@
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Broekraft",
+      "short_name": "Broekraft",
+      "url": "spil/broekraft/",
+      "icons": [
+        { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }
+      ]
+    }
   ]
 }

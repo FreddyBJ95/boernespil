@@ -1,6 +1,6 @@
 // ===== Service Worker — gør spillene installerbare og tilgængelige offline =====
 // Bump dette tal når der ændres filer, så de gamle bliver hentet på ny.
-const CACHE = "boernespil-v32";
+const CACHE = "boernespil-v33";
 
 const SPIL = [
   "tryk-paa-dyret", "slange", "tegne", "balloner", "find-par", "fang",
@@ -32,7 +32,8 @@ self.addEventListener("install", e => {
   e.waitUntil(
     caches.open(CACHE)
       // ignorér enkeltfiler der evt. fejler, så install ikke knækker
-      .then(c => Promise.allSettled(FILER.map(f => c.add(f))))
+      // (cache: "reload" = hent altid den nye fil fra nettet, ikke en gammel kopi fra browserens egen cache)
+      .then(c => Promise.allSettled(FILER.map(f => c.add(new Request(f, { cache: "reload" })))))
       .then(() => self.skipWaiting())
   );
 });

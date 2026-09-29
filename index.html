@@ -24,6 +24,7 @@
   <header>
     <h1>Spil for ungerne</h1>
     <p class="undertekst">✨ Tryk på et kort og leg ✨</p>
+    <button class="installer" id="installer" hidden>💻 Installér som app på computeren</button>
   </header>
 
   <!-- Faner: vælg hvilken slags spil der vises. Appen husker den sidste fane. -->
@@ -142,6 +143,17 @@
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
     }
+    // Installér som app på computeren: knappen vises kun, når browseren tilbyder det (Chrome og Edge)
+    let installering = null;
+    const installKnap = document.getElementById("installer");
+    window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installering = e; installKnap.hidden = false; });
+    installKnap.addEventListener("click", async () => {
+      if (!installering) return;
+      installering.prompt();
+      try { await installering.userChoice; } catch (_) {}
+      installering = null; installKnap.hidden = true;
+    });
+    window.addEventListener("appinstalled", () => { installKnap.hidden = true; });
   </script>
 </body>
 </html>

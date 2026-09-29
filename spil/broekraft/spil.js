@@ -438,14 +438,15 @@ function tilSkærm(p, dy = 0) {
 }
 const overlap = (x, y, z, p, b, h) => x + 1 > p.x - b && x < p.x + b && y + 1 > p.y && y < p.y + h && z + 1 > p.z - b && z < p.z + b;
 
-function tryk(x, y) {
-  const valgt = valgtTing(), værk = valgt.v && VÆRKTØJ[valgt.v];
+// (somHammer: venstreklik med musen virker som hammeren, lige meget hvad man har i hånden)
+function tryk(x, y, somHammer = false) {
+  const valgt = somHammer ? { hammer: true } : valgtTing(), værk = valgt.v && VÆRKTØJ[valgt.v];
   const hit = stråleFra(x, y, !!valgt.hammer);
   if (skyd.kører) { skyd.kanon(ray.ray.direction.clone()); return; }       // i kampvognen skyder kanonen
   const kv = skyd.kampvognVed(ray.ray, RÆKKE + 4);                           // tryk på en grøn kampvogn = stig ind
   if (kv && (!hit || kv.afst < hit.t)) {
     skyd.stigInd(kv.kv); Lyd.vælg();
-    besked("Du sidder i kampvognen! Kør med joysticket, og tryk for at skyde 🎯", 4000);
+    besked(mus ? "Du sidder i kampvognen! Kør med WASD, og klik for at skyde 🎯 · shift = stig ud" : "Du sidder i kampvognen! Kør med joysticket, og tryk for at skyde 🎯", 4000);
     return;
   }
   if (værk?.våben) { if (skyd.skydMod(værk.våben, kamera.position, ray.ray.direction)) sving = 1; return; }
@@ -467,7 +468,7 @@ function tryk(x, y) {
   }
   if (!hit) return;
   if (BLOKKE[hit.id].knap) { atom.trykKnap(hit); sving = 1; return; }     // den røde knap: missilerne flyver efter en nedtælling
-  if (valgtTing().hammer) {                                      // hammeren fjerner blokken med det samme
+  if (valgt.hammer) {                                            // hammeren fjerner blokken med det samme
     if (BLOKKE[hit.id].fyrværkeri) { tændFyrkasse(hit); return; }        // fyrværkeri-kassen går i gang
     if (BLOKKE[hit.id].kanon) { affyrKanon(hit); return; }               // bum — kanonkuglen flyver
     if (BLOKKE[hit.id].missil) { atom.tændMissil(hit); sving = 1; return; }   // missilet letter
@@ -475,7 +476,7 @@ function tryk(x, y) {
     if (!BLOKKE[hit.id].uknuselig) { knus(hit, true); sving = 1; }
     return;
   }
-  if (valgtTing().v) { brugVærktøj(valgtTing().v, hit); return; }
+  if (valgt.v) { brugVærktøj(valgt.v, hit); return; }
   sætBlok(hit);
 }
 
@@ -1320,8 +1321,16 @@ window.addEventListener("keydown", e => {
   if (e.code === "KeyE" && !e.repeat) visInventar();
   if (e.code === "KeyQ" || e.code === "Digit0") vælgSlot(-1);
   if (/^Digit[1-9]$/.test(e.code)) vælgSlot(+e.code.slice(5) - 1);
+  if ((e.code === "ShiftLeft" || e.code === "ShiftRight") && skyd.kører) { Lyd.klik(); skyd.stigUd(); }   // shift = stig ud af kampvognen
 });
 window.addEventListener("keyup", e => { if (TASTER[e.code]) tast[TASTER[e.code]] = 0; if (e.code === "Space") tast.hop = 0; });
+// Esc (eller E igen) lukker inventaret og menuen — før tasten når spillet, så E ikke åbner inventaret igen
+window.addEventListener("keydown", e => {
+  if (e.repeat || !(e.code === "Escape" || e.code === "KeyE")) return;
+  for (const id of ["inventar", "menu", "verdener"]) if (!$(id).classList.contains("skjult") && (e.code === "Escape" || id === "inventar")) {
+    Lyd.klik(); luk(id); e.stopPropagation(); return;
+  }
+}, true);
 window.addEventListener("blur", () => { for (const k in tast) tast[k] = 0; });
 
 // Knapper på skærmen (pile, hop, ned, flyv)
@@ -1371,6 +1380,7 @@ const FØL = { touch: 0.0065, pen: 0.0065, mouse: 0.0045 };
 cv.addEventListener("pointerdown", e => {
   if (!iGang || pause) return;
   Lyd.klar();
+  if (musKlik(e)) return;                                         // pc: musen er låst til spillet
   try { cv.setPointerCapture(e.pointerId); } catch (_) {}
   const f = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now(), flyttet: false, hakker: false, hak: 0, mål: null, type: e.pointerType, knap: e.button, lydT: 0 };
   fingre.set(e.pointerId, f);
@@ -1392,12 +1402,83 @@ const slip = e => {
   const f = fingre.get(e.pointerId);
   if (!f) return;
   fingre.delete(e.pointerId);
-  if (!f.flyttet && !f.hakker && f.knap === 0 && performance.now() - f.t < 350) tryk(f.sx, f.sy);
+  if (!f.flyttet && !f.hakker && f.knap === 0 && performance.now() - f.t < 350) {
+    if (mus && f.type === "mouse") musBrug(false, f.sx, f.sy); else tryk(f.sx, f.sy);   // musen uden lås: venstreklik = fjern
+  }
 };
 cv.addEventListener("pointerup", slip);
 cv.addEventListener("pointercancel", slip);
 cv.addEventListener("contextmenu", e => e.preventDefault());
 cv.addEventListener("wheel", e => { e.preventDefault(); if (iGang) vælgSlot((gemt.valgt + (e.deltaY > 0 ? 2 : 10)) % 10 - 1); }, { passive: false });
+
+// ---------- Mus og tastatur (pc) — som i Minecraft ----------
+// Bruger man en mus, skjules joysticket og knapperne. Et klik låser musen til spillet (Esc slipper den):
+// musen drejer kameraet, venstreklik fjerner (eller skyder), højreklik bygger og bruger det, man holder.
+// Holder man knappen nede, bliver det ved. Rører man skærmen, kommer knapperne tilbage.
+const KAN_LÅSE = "requestPointerLock" in cv;
+let mus = KAN_LÅSE && !navigator.maxTouchPoints && matchMedia("(hover: hover) and (pointer: fine)").matches;
+let musHold = null;                                               // { højre, t } mens en museknap holdes nede
+function musLåst() { return document.pointerLockElement === cv; }
+function sætMus(til) {
+  mus = til && KAN_LÅSE;
+  document.body.classList.toggle("mus", mus);
+  $("startTekst").innerHTML = mus ? MUSHJÆLP : TRYKHJÆLP;
+}
+const TRYKHJÆLP = $("startTekst").innerHTML;
+const MUSHJÆLP = "⌨️ WASD = gå &nbsp;·&nbsp; mellemrum = hop (to gange = flyv) &nbsp;·&nbsp; shift = ned<br>"
+  + "🖱️ musen = kig &nbsp;·&nbsp; venstreklik = fjern &nbsp;·&nbsp; højreklik = byg<br>"
+  + "1–9 og hjulet = vælg &nbsp;·&nbsp; E = alle blokke &nbsp;·&nbsp; Esc = få musen fri";
+sætMus(mus);
+document.addEventListener("pointerdown", e => {                   // hvilken slags "finger" bruger barnet?
+  if (e.pointerType === "mouse" && !mus) sætMus(true);
+  else if (e.pointerType === "touch" && mus) { sætMus(false); if (musLåst()) document.exitPointerLock(); }
+}, true);
+// Kan browseren ikke låse musen, trækker man i stedet med musen for at kigge (klik virker som før)
+// (kun når barnet selv har klikket på spillet — og ikke lige efter Esc, for så må man ikke låse igen)
+let låsVirker = KAN_LÅSE, sidstFri = 0, klikForsøg = 0;
+function låsFejlede() {
+  const nu = performance.now();
+  if (nu - klikForsøg > 1500 || klikForsøg - sidstFri < 1500) return;
+  låsVirker = false; document.body.classList.add("uden-lås");
+}
+function låsMus(klik = false) {
+  if (!mus || !låsVirker || musLåst() || !iGang || pause) return;
+  if (klik) klikForsøg = performance.now();
+  try { const p = cv.requestPointerLock(); p?.catch?.(låsFejlede); } catch (_) { låsFejlede(); }
+  if (klik) setTimeout(() => { if (!musLåst() && iGang && !pause) låsFejlede(); }, 1200);   // (nogle browsere svarer slet ikke)
+}
+document.addEventListener("pointerlockerror", låsFejlede);
+document.addEventListener("pointerlockchange", () => {
+  document.body.classList.toggle("låst", musLåst());
+  if (!musLåst()) { musHold = null; sidstFri = performance.now(); }
+});
+document.addEventListener("mousemove", e => {                     // musen drejer kameraet
+  if (!musLåst() || !iGang || pause) return;
+  sp.yaw -= e.movementX * 0.0024;
+  sp.pitch = Math.max(-1.55, Math.min(1.55, sp.pitch - e.movementY * 0.0024));
+});
+// Et klik på spillet: lås musen — eller, når den er låst, fjern (venstre) eller byg (højre) midt på skærmen
+function musKlik(e) {
+  if (!mus || !låsVirker || e.pointerType !== "mouse") return false;
+  if (!musLåst()) { låsMus(true); return true; }
+  if (e.button !== 0 && e.button !== 2) return true;
+  musHold = { højre: e.button === 2, t: 0.3 };
+  musBrug(musHold.højre);
+  return true;
+}
+function musBrug(højre, x = window.innerWidth / 2, y = window.innerHeight / 2) {
+  const s = valgtTing(), værk = s.v && VÆRKTØJ[s.v];
+  const brug = højre || s.hammer || skyd.kører || værk?.våben || værk?.slange || værk?.fyrværkeri || værk?.tornado;
+  tryk(x, y, !brug);                                              // venstreklik med en blok i hånden = hammeren
+}
+cv.addEventListener("pointerup", e => { if (e.pointerType === "mouse") musHold = null; });
+function opdaterMusHold(dt) {                                     // knappen holdes nede: bliv ved med at bygge, fjerne eller skyde
+  if (!musHold || !musLåst()) return;
+  if ((musHold.t -= dt) > 0) return;
+  const værk = valgtTing().v && VÆRKTØJ[valgtTing().v];
+  musHold.t = skyd.kører ? 0.9 : værk?.hold || 0.25;
+  musBrug(musHold.højre);
+}
 
 function opdaterHak(dt) {
   let f = null;
@@ -1543,8 +1624,14 @@ function vælgSlot(i) {
   gemSnart();
 }
 
-function vis(id) { $(id).classList.remove("skjult"); pause = true; joySlip(); for (const k in tast) tast[k] = 0; fingre.clear(); }
-function luk(id) { $(id).classList.add("skjult"); pause = !!document.querySelector(".overlay:not(.skjult)"); }
+function vis(id) {
+  $(id).classList.remove("skjult"); pause = true; joySlip(); for (const k in tast) tast[k] = 0; fingre.clear();
+  if (musLåst()) document.exitPointerLock();                       // musen skal kunne trykke i menuen
+}
+function luk(id) {
+  $(id).classList.add("skjult"); pause = !!document.querySelector(".overlay:not(.skjult)");
+  låsMus();                                                        // tilbage i spillet: musen låses igen
+}
 document.querySelectorAll("[data-luk]").forEach(b => b.addEventListener("click", () => { Lyd.klik(); luk(b.dataset.luk); }));
 
 function visInventar() {
@@ -1710,7 +1797,7 @@ function tegnFrame(nu) {
   if (iGang && !pause) {
     if (skyd.kører) { skyd.styr(tast, sp.yaw, dt); sp.pitch = Math.max(-1.1, Math.min(0.45, sp.pitch)); }
     else if (!tornado.styrSpiller(dt)) opdaterSpiller(dt);                       // i en tornado snurrer man rundt
-    opdaterHak(dt); genfød(dt); opdaterTNT(dt); sim?.tick(dt); opdaterGløder(dt);
+    opdaterHak(dt); opdaterMusHold(dt); genfød(dt); opdaterTNT(dt); sim?.tick(dt); opdaterGløder(dt);
     skyd.opdater(dt); fyr.opdater(dt); brand?.opdater(dt, sp.pos); opdaterKugler(dt); opdaterSpirer(dt); opdaterVulkan(dt); opdaterGløddyr(dt);
     tornado.opdater(dt); opdaterKraterGlød(dt); opdaterDamp(dt);
     if (valgtTing().v === "stjernekaster" && !skyd.kører) {
@@ -2058,4 +2145,4 @@ if (ONLINE) {
 
 if (ONLINE) forberedOnline();
 window.broekraftKlar = true;
-if (location.search.includes("debug")) window.bk = { sp, verden, dyr, tast, cfg, andre, sim, get net() { return net; }, get tale() { return tale; }, get graf() { return graf; }, afspillere, skyd, fyr, tændPortal, visPortalValg, brand, tændSprængstof, atom, tornado, steg: n => { for (let i = 0; i < n; i++) tegnFrame(sidst + 1000 / 60); sidst = performance.now(); } };
+if (location.search.includes("debug")) window.bk = { sp, verden, dyr, tast, cfg, andre, sim, get net() { return net; }, get tale() { return tale; }, get graf() { return graf; }, afspillere, skyd, fyr, tændPortal, visPortalValg, brand, tændSprængstof, atom, tornado, musBrug, steg: n => { for (let i = 0; i < n; i++) tegnFrame(sidst + 1000 / 60); sidst = performance.now(); } };
