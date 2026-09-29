@@ -125,6 +125,28 @@
     .stang-evner { font-size: 15px; white-space: pre-line; line-height: 1.4; }
     .stang-tekst { font-size: 14px; opacity: .75; }
 
+    /* Vælg sted: søen eller havet */
+    .baner { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; margin-bottom: 14px; }
+    .bane-kort {
+      font: inherit; color: #10324a; cursor: pointer; border: 4px solid transparent; border-radius: 26px;
+      width: min(250px, 42vw); padding: 16px 12px; display: flex; flex-direction: column; align-items: center; gap: 4px;
+      background: rgba(255,255,255,.95); box-shadow: 0 10px 26px rgba(0,0,0,.3);
+    }
+    .bane-kort:active { transform: scale(.96); }
+    .bane-kort:disabled { opacity: .5; }
+    .bane-kort.valgt { border-color: #ffd23f; }
+    .bane-ikon { font-size: 64px; line-height: 1.1; animation: svøm 2.4s ease-in-out infinite; }
+    .bane-kort:nth-child(2) .bane-ikon { animation-delay: -1.2s; }
+    .bane-kort b { font-size: 26px; font-weight: 900; }
+    .bane-kort small { font-size: 15px; opacity: .75; }
+
+    /* Sejl videre (på havet) */
+    .sejl {
+      position: fixed; right: 18px; bottom: 90px; z-index: 10; width: 76px; height: 76px; min-width: 76px; font-size: 40px;
+      background: linear-gradient(180deg, #8fe3ff, #3a86ff); animation: vip 1.6s ease-in-out infinite;
+    }
+    @keyframes vip { 50% { transform: rotate(-8deg) translateY(-3px); } }
+
     @media (max-width: 480px) {
       .rund { width: 46px; height: 46px; min-width: 46px; font-size: 22px; }
       .taeller { font-size: 22px; padding: 6px 14px; }
@@ -138,6 +160,7 @@
     <a class="rund" href="../../" aria-label="Til forsiden">🏠</a>
     <div class="taeller">🐟 <span id="tal">0</span></div>
     <div class="hoejre">
+      <button class="rund" id="stedKnap" aria-label="Skift sted">🗺️</button>
       <button class="rund" id="stangKnap" aria-label="Vælg fiskestang">🎣</button>
       <button class="rund" id="bogKnap" aria-label="Fangstbog">📖</button>
     </div>
@@ -149,6 +172,7 @@
     <span class="kampmaal">🙂</span>
   </div>
   <div class="besked skjult" id="besked"></div>
+  <button class="rund sejl skjult" id="sejlKnap" aria-label="Sejl videre">🚤</button>
 
   <div class="kort skjult" id="kort">
     <div class="ny" id="kortNy">NY!</div>
@@ -163,7 +187,11 @@
     <div class="indhold">
       <div class="start-fisk">🐡</div>
       <h1 class="titel">Mærkelige fisk</h1>
-      <p class="undertitel" id="startTekst">Tryk for at kaste — hold fingeren nede for at spole ind.<br>Hvad mon der bider? 🐟</p>
+      <p class="undertitel" id="startTekst">Tryk for at kaste — hold fingeren nede for at spole ind.<br>Hvor vil du fiske? 🐟</p>
+      <div class="baner">
+        <button class="bane-kort" data-bane="sø" disabled><span class="bane-ikon">🏞️</span><b>Søen</b><small>Brygge, and og åkander</small></button>
+        <button class="bane-kort" data-bane="hav" disabled><span class="bane-ikon">🚤</span><b>Havet</b><small>I båd blandt hajer og hvaler</small></button>
+      </div>
       <button class="knap" id="startKnap" disabled>Henter…</button>
     </div>
   </div>

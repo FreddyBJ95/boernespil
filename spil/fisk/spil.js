@@ -1,11 +1,12 @@
 // ===== Mærkelige fisk — 3D-fiskespil =====
 // Tryk for at kaste. Hold fingeren nede for at spole ind. Se hvilken mærkelig fisk der bider!
+// Man kan fiske fra broen ved søen eller fra en båd på havet (verden.js). På havet kan man sejle videre med 🚤.
 // Fiskene står i fisk.js og fiskestængerne i staenger.js — tilføj flere dér.
 
 import * as THREE from "./three.js";
 import { FISKE, byggFisk, animerFisk, rydOp } from "./fisk.js";
 import { STÆNGER, byggStang } from "./staenger.js";
-import { byggVerden, bølge } from "./verden.js";
+import { byggVerden } from "./verden.js";
 import * as Lyd from "./lyd.js";
 
 const E = window.Effekter;
@@ -18,6 +19,13 @@ const GEM = "maerkelige-fisk-v1";
 const gemt = { fangst: {}, stang: "spinne", total: 0 };
 try { Object.assign(gemt, JSON.parse(localStorage.getItem(GEM)) || {}); } catch (_) {}
 const gem = () => { try { localStorage.setItem(GEM, JSON.stringify(gemt)); } catch (_) {} };
+
+// ---------- Hvor fisker vi? Søen eller havet (vælges på startskærmen) ----------
+const BANE_GEM = "maerkelige-fisk-bane";
+let BANE = "sø";
+try { if (localStorage.getItem(BANE_GEM) === "hav") BANE = "hav"; } catch (_) {}
+const fiskeHer = FISKE.filter(f => !f.sted || f.sted === BANE);
+Lyd.sætBane(BANE);
 
 // ---------- Oplæsning på dansk (kun hvis enheden har en dansk stemme) ----------
 let stemme = null;
@@ -40,10 +48,10 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 const scene = new THREE.Scene();
 const kamera = new THREE.PerspectiveCamera(60, 1, 0.05, 900);
 kamera.rotation.order = "YXZ";
-kamera.position.set(0, 2.1, 4.2);
-kamera.rotation.x = -0.14;
 scene.add(kamera);
-const verden = byggVerden(scene, renderer);
+const verden = byggVerden(scene, renderer, { bane: BANE, fiskeHer, lyd: (navn, ...x) => Lyd[navn]?.(...x) });
+kamera.position.copy(verden.kamera.pos);
+kamera.rotation.x = verden.kamera.rx;
 
 // Mål selve billedfladen (ikke vinduet), så billedet aldrig bliver strakt — heller ikke når telefonen vendes
 function størrelse() {
@@ -118,6 +126,21 @@ const mørke = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshBas
 mørke.position.z = -3.4;
 kamera.add(stråler, mørke);
 
+// ---------- Små stjerner, der drejer rundt om fangsten ----------
+const stjerneForm = new THREE.Shape();
+for (let i = 0; i <= 10; i++) {
+  const a = Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 0.4 : 1;
+  if (i === 0) stjerneForm.moveTo(Math.cos(a) * r, Math.sin(a) * r); else stjerneForm.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+}
+const stjerneGeo = new THREE.ShapeGeometry(stjerneForm), glimmer = new THREE.Group();
+for (let i = 0; i < 12; i++) {
+  const m = new THREE.Mesh(stjerneGeo, new THREE.MeshBasicMaterial({ color: i % 3 ? "#fff3a0" : "#ffffff", transparent: true, opacity: 0, fog: false, depthWrite: false }));
+  m.userData = { a: i / 12 * Math.PI * 2, r: 0.55 + (i % 3) * 0.12, s: 0.03 + (i % 4) * 0.012, f: 0.6 + (i % 5) * 0.15 };
+  glimmer.add(m);
+}
+glimmer.position.copy(VIS_POS);
+kamera.add(glimmer);
+
 // ---------- Tilstand ----------
 const ANKER = new THREE.Vector3(0.25, 0, 1.0);        // her ender flåddet når det er spolet helt ind
 let fase = "start", faseTid = 0, tid = 0;
@@ -129,20 +152,24 @@ let fisk = null, fiskDef = null, fiskCm = 0, fiskSkala = 1, visSkala = 1, sidste
 let springer = -1, springTid = 0, rykTid = 0, ryk = 0, ringTid = 0, spinTid = -1;
 let bøjMål = 0.05, bøjNu = 0.05, sideMål = 0, sideNu = 0, sving = 0, spinFart = 0, klikV = 0, visVip = 0, stråleOp = 0;
 const landFra = new THREE.Vector3(), landQ = new THREE.Quaternion(), qTmp = new THREE.Quaternion(), qFlip = new THREE.Quaternion();
+const qVis = new THREE.Quaternion(), qMål = new THREE.Quaternion(), Y_AKSE = new THREE.Vector3(0, 1, 0);
+let nytSted = false;                                   // lige sejlet til et nyt sted: de sjældne fisk bider lidt oftere
 const X_AKSE = new THREE.Vector3(1, 0, 0), vSpids = new THREE.Vector3(), vMund = new THREE.Vector3(), vTmp = new THREE.Vector3();
 
-const beskedEl = $("besked"), kampbarEl = $("kampbar"), kampFyld = $("kampfyld"), kampFisk = $("kampfisk"), kortEl = $("kort"), talEl = $("tal");
+const sejlKnap = $("sejlKnap"), beskedEl = $("besked"), kampbarEl = $("kampbar"), kampFyld = $("kampfyld"), kampFisk = $("kampfisk"), kortEl = $("kort"), talEl = $("tal");
 talEl.textContent = gemt.total || 0;
 
 const BESKED = {
   start: "", klar: "Tryk for at kaste! 🎣", kast: "Svup! 🎣", vent: "Hold fingeren nede for at spole ind 🌀",
   bid: "Fisk på! 🐟", kamp: "Hold nede og spol! Den kæmper! 💪", land: "Den kommer op! 🌊", vis: "", spand: "",
+  sejl: "Brrrum! Vi sejler ud til et nyt sted… 🚤",
 };
 function sætFase(f) {
   fase = f; faseTid = 0;
   beskedEl.textContent = BESKED[f] || "";
   beskedEl.classList.toggle("skjult", !BESKED[f]);
   kampbarEl.classList.toggle("skjult", f !== "kamp");
+  sejlKnap.classList.toggle("skjult", !(BANE === "hav" && f === "klar"));
 }
 
 function tilSkærm(v) {
@@ -156,16 +183,18 @@ const prøvFisk = new URLSearchParams(location.search).get("fisk");   // fx ?fis
 function vælgFisk() {
   const valgt = prøvFisk && FISKE.find(f => f.id === prøvFisk);
   if (valgt) return valgt;
-  const v = FISKE.map(f => {
+  const bonus = nytSted ? 1.8 : 1;
+  nytSted = false;
+  const v = fiskeHer.map(f => {
     let w = f.chance;
-    if (f.chance < 0.06) w *= stangDef.held;
+    if (f.chance < 0.06) w *= stangDef.held * bonus;
     if (!gemt.fangst[f.id]) w *= 1.6;
     if (f.id === sidsteId) w *= 0.25;
     return w;
   });
   let r = Math.random() * v.reduce((a, b) => a + b, 0);
-  for (let i = 0; i < FISKE.length; i++) { r -= v[i]; if (r <= 0) { sidsteId = FISKE[i].id; return FISKE[i]; } }
-  return FISKE[0];
+  for (let i = 0; i < fiskeHer.length; i++) { r -= v[i]; if (r <= 0) { sidsteId = fiskeHer[i].id; return fiskeHer[i]; } }
+  return fiskeHer[0];
 }
 
 // ---------- Handlinger ----------
@@ -198,8 +227,9 @@ function startBid() {
 
 function startLand() {
   Lyd.knirk(0); Lyd.plask(1.4);
-  verden.plask(fisk.position, 1.6);
+  verden.plask(fisk.position, 2.2); verden.dråber(fisk.position, 20, 5);
   landFra.copy(fisk.position); landQ.copy(fisk.quaternion);
+  qVis.setFromAxisAngle(Y_AKSE, fisk.userData.visDrej || 0);
   const dybde = -VIS_POS.z, synH = 2 * dybde * Math.tan(THREE.MathUtils.degToRad(kamera.fov / 2)), synB = synH * kamera.aspect;
   visSkala = Math.min(synB * 0.62 / fisk.userData.længde, synH * 0.42 / fisk.userData.højde, 1.6);
   flåd.visible = blink.visible = false;
@@ -217,6 +247,12 @@ function visFangst() {
   $("kortNy").style.display = før ? "none" : "";
   kortEl.classList.remove("skjult");
   E.fest(window.innerWidth / 2, window.innerHeight * 0.35);
+  const sjælden = fiskDef.chance <= 0.035;              // de sjældne fisk får guldstråler og ekstra fest
+  stråler.material.color.set(sjælden ? "#ffd23f" : "#ffffff");
+  if (sjælden) {
+    setTimeout(() => E.fest(window.innerWidth * 0.2, window.innerHeight * 0.3), 450);
+    setTimeout(() => E.fest(window.innerWidth * 0.8, window.innerHeight * 0.3), 900);
+  }
   const def = fiskDef;
   setTimeout(() => Lyd.fiskeLyd(def.lyd), 800);
   setTimeout(() => sig(def.tale || `Du fangede en ${def.navn}!`), 1500);
@@ -257,7 +293,7 @@ function opdaterFase(dt) {
         flådPos.y += Math.sin(Math.PI * s) * (2.5 + D * 0.18);
         spinFart = 30 * (1 - s);
         if (s >= 1) {
-          flådPos.y = bølge(landing.x, landing.z, tid);
+          flådPos.y = verden.bølge(landing.x, landing.z, tid);
           verden.plask(landing, 1); Lyd.plask(1);
           afstand = startAfstand = vTmp.subVectors(landing, ANKER).dot(retning);
           bidOm = rnd(1.6, 4);
@@ -271,16 +307,17 @@ function opdaterFase(dt) {
       if (holder) { afstand = Math.max(2.6, afstand - stangDef.spolFart * 0.55 * dt); spinFart = 14; }
       bidOm -= dt;
       flådPos.copy(ANKER).addScaledVector(retning, afstand);
-      flådPos.y = bølge(flådPos.x, flådPos.z, tid) + 0.02;
+      flådPos.y = verden.bølge(flådPos.x, flådPos.z, tid) + 0.02;
       bøjMål = holder ? 0.18 : 0.08;
       ringTid -= dt;
       if (holder && ringTid <= 0) { verden.ring(flådPos, 0.6); ringTid = 0.35; }
+      if (bidOm < 1.4 && Math.random() < dt * 6) verden.bobler(flådPos);   // bobler: nu kommer der en fisk!
       if (bidOm <= 0 || afstand <= 5) startBid();
       break;
 
     case "bid": {
       const s = Math.min(1, faseTid / 0.7);
-      flådPos.y = bølge(flådPos.x, flådPos.z, tid) - Math.sin(Math.PI * s) * 0.35;
+      flådPos.y = verden.bølge(flådPos.x, flådPos.z, tid) - Math.sin(Math.PI * s) * 0.35;
       bøjMål = 0.7;
       animerFisk(fisk, tid, 2);
       if (s >= 1) sætFase("kamp");
@@ -304,7 +341,7 @@ function opdaterFase(dt) {
       }
       side = Math.sin(tid * 1.5) * (0.8 + træk * 1.6) * Math.min(1, afstand / 8);
       flådPos.copy(ANKER).addScaledVector(retning, afstand).addScaledVector(vinkelret, side);
-      const vy = bølge(flådPos.x, flådPos.z, tid);
+      const vy = verden.bølge(flådPos.x, flådPos.z, tid);
       flådPos.y = vy - ryk * 0.25 + Math.sin(tid * 9) * 0.03;
 
       // fisken svømmer lige under flåddet og hopper en gang imellem
@@ -348,7 +385,7 @@ function opdaterFase(dt) {
       const mål = kamera.localToWorld(VIS_POS.clone());
       fisk.position.lerpVectors(landFra, mål, e);
       fisk.position.y += Math.sin(Math.PI * s) * 2.4;
-      qTmp.slerpQuaternions(landQ, kamera.quaternion, e);
+      qTmp.slerpQuaternions(landQ, qMål.copy(kamera.quaternion).multiply(qVis), e);
       qFlip.setFromAxisAngle(X_AKSE, e * Math.PI * 2);           // en flot saltomortale op af vandet
       fisk.quaternion.copy(qTmp).multiply(qFlip);
       fisk.scale.setScalar(THREE.MathUtils.lerp(fiskSkala, visSkala, e));
@@ -370,12 +407,20 @@ function opdaterFase(dt) {
         drej += blød(Math.min(1, spinTid)) * Math.PI * 2;
         if (spinTid >= 1) spinTid = -1;
       }
-      fisk.rotation.set(0, drej, Math.sin(tid * 1.7) * 0.06);
+      fisk.rotation.set(0, drej + (fisk.userData.visDrej || 0), Math.sin(tid * 1.7) * 0.06);
       fisk.position.set(VIS_POS.x, VIS_POS.y + Math.sin(tid * 2) * 0.03, VIS_POS.z);
       animerFisk(fisk, tid, 1);
       bøjMål = 0.05;
       break;
     }
+
+    case "sejl":                          // båden sejler (verden.js), grejet hænger stille
+      bøjMål = 0.05; sving = 0;
+      if (!verden.sejler) {
+        nytSted = true; sætFase("klar");
+        beskedEl.textContent = "Nyt fiskested! 🌊 Tryk for at kaste"; beskedEl.classList.remove("skjult");
+      }
+      break;
 
     case "spand": {
       const s = Math.min(1, faseTid / 0.9), e = blød(s);
@@ -398,7 +443,7 @@ function opdaterFase(dt) {
   }
 
   // Grejet hænger fra stangens spids, når det ikke er ude i vandet
-  const hænger = fase === "klar" || fase === "start" || fase === "spand" || (fase === "kast" && !kastet) || fase === "land" || fase === "vis";
+  const hænger = fase === "klar" || fase === "start" || fase === "spand" || fase === "sejl" || (fase === "kast" && !kastet) || fase === "land" || fase === "vis";
   if (hænger) {
     vTmp.set(spids.x + Math.sin(tid * 1.3) * 0.05, spids.y - 0.5, spids.z + Math.cos(tid * 1.1) * 0.04);
     flådPos.lerp(vTmp, Math.min(1, dt * 10));
@@ -429,6 +474,14 @@ function opdaterStang(dt) {
   mørke.material.opacity = stråleOp * 0.35;
   stråler.visible = mørke.visible = stråleOp > 0.01;
   stråler.rotation.z += dt * 0.3;
+  glimmer.visible = stråleOp > 0.01;
+  if (glimmer.visible) for (const m of glimmer.children) {
+    const u = m.userData, a = u.a + tid * u.f;
+    m.position.set(Math.cos(a) * u.r * 1.3, Math.sin(a) * u.r * 0.75, 0.15);
+    m.scale.setScalar(u.s * (1 + Math.sin(tid * 6 + u.a * 3) * 0.35));
+    m.rotation.z = tid * 2 + u.a;
+    m.material.opacity = stråleOp;
+  }
 }
 
 function opdaterGrej(hænger) {
@@ -451,8 +504,10 @@ let sidst = performance.now();
 renderer.setAnimationLoop(nu => {
   const dt = Math.min(0.05, (nu - sidst) / 1000);
   sidst = nu; tid += dt; faseTid += dt;
-  kamera.position.y = 2.1 + Math.sin(tid * 0.8) * 0.015;          // man står og vugger lidt
-  kamera.rotation.z = Math.sin(tid * 0.5) * 0.004;
+  const vug = verden.vugge(tid);                                   // man vugger lidt på broen — og meget i båden
+  kamera.position.y = verden.kamera.pos.y + vug.y;
+  kamera.rotation.x = verden.kamera.rx + vug.rx * 0.9;
+  kamera.rotation.z = vug.rz * 0.9;
   const hænger = opdaterFase(dt);
   opdaterStang(dt);
   verden.opdater(tid, dt);
@@ -471,7 +526,7 @@ function ramt(e, obj) {
 function trykNed(e) {
   if (fase === "start") return;
   Lyd.klar();
-  if (e && ramt(e, verden.and)) { Lyd.rap(); verden.and.userData.hop = 1; return; }
+  for (const k of verden.klikbare) if (e && ramt(e, k.obj)) { Lyd[k.lyd]?.(); k.tryk(); return; }   // and, frø og måger
   if (fase === "vis") {
     if (e && fisk && ramt(e, fisk)) { spinTid = 0; Lyd.fiskeLyd(fiskDef.lyd); }
     return;
@@ -513,7 +568,7 @@ function miniBillede(def, fanget) {
   }
   const f = byggFisk(def);
   f.scale.setScalar(Math.min(2.9 / f.userData.længde, 1.9 / f.userData.højde));
-  f.rotation.y = -0.35;
+  f.rotation.y = -0.35 + (f.userData.visDrej || 0);
   miniScene.overrideMaterial = fanget ? null : silhuet;
   miniScene.add(f);
   animerFisk(f, 1.2, 1);
@@ -536,7 +591,8 @@ $("bogKnap").addEventListener("click", () => {
     const img = new Image(); img.src = miniBillede(f, !!g); img.alt = g ? f.navn : "Ukendt fisk";
     const navn = document.createElement("div"); navn.className = "bog-navn"; navn.textContent = g ? f.navn : "???";
     const info = document.createElement("div"); info.className = "bog-info";
-    info.textContent = g ? `×${g.antal} · største ${g.størst} cm` : stjerner(f);
+    const hvor = f.sted === "hav" ? " · 🌊" : f.sted === "sø" ? " · 🏞️" : "";
+    info.textContent = (g ? `×${g.antal} · største ${g.størst} cm` : stjerner(f)) + hvor;
     d.append(img, navn, info);
     grid.appendChild(d);
   }
@@ -573,15 +629,35 @@ Held ${"🍀".repeat(niveau(s.held, 1, 3))}`;
   vis("staenger");
 });
 
-const startKnap = $("startKnap");
-startKnap.textContent = "🎣 Start";
-startKnap.disabled = false;
-startKnap.addEventListener("click", () => {
+// ---------- Sejl videre (kun på havet) ----------
+sejlKnap.addEventListener("click", () => {
+  Lyd.klar();
+  if (fase !== "klar" || !verden.sejl()) return;
+  Lyd.tryk(); sætFase("sejl");
+});
+
+// ---------- Startskærmen: vælg søen eller havet ----------
+$("startKnap").classList.add("skjult");
+function begynd() {
   Lyd.klar();
   try { if ("speechSynthesis" in window) speechSynthesis.speak(new SpeechSynthesisUtterance("")); } catch (_) {}
   luk("start");
   Lyd.tryk();
-  sætFase("klar");
+  if (fase === "start") sætFase("klar");
+}
+document.querySelectorAll(".bane-kort").forEach(k => {
+  k.disabled = false;
+  k.classList.toggle("valgt", k.dataset.bane === BANE);
+  k.addEventListener("click", () => {
+    if (k.dataset.bane === BANE) { begynd(); return; }
+    try { localStorage.setItem(BANE_GEM, k.dataset.bane); sessionStorage.setItem("fisk-start", "1"); } catch (_) {}
+    location.reload();                                  // byg det andet sted
+  });
 });
+$("stedKnap").addEventListener("click", () => { Lyd.klar(); Lyd.tryk(); vis("start"); });
 sætFase("start");
+let direkte = false;                                     // lige skiftet sted: spring startskærmen over
+try { direkte = sessionStorage.getItem("fisk-start") === "1"; sessionStorage.removeItem("fisk-start"); } catch (_) {}
+if (direkte) { luk("start"); sætFase("klar"); }
 window.fiskKlar = true;
+if (location.search.includes("debug")) window.fisk = { verden, scene, kamera };   // til afprøvning
