@@ -20,8 +20,10 @@ Første gang skal der være internet. Bagefter virker spillene også offline.
 ## Spil
 Forsiden har faner, så man kan vælge kategori (appen husker den sidste):
 
-- 🧊 **3D:** ⛏️ Broekraft (byggespil i Minecraft-stil med mange verdener), 🎣 Mærkelige fisk, 🏁 Rulle Rasmus (styr en blob gennem fem baner ved at vippe iPad'en eller trykke)
-- 🎮 **2D:** 🎈 Pop ballonerne (stryg over ballonerne som i Fruit Ninja), 🚜 Vaskehallen, 🐍 Fjollet Slange
+- 🧊 **3D:** ⛏️ Broekraft (byggespil i Minecraft-stil med mange verdener), 🎣 Mærkelige fisk, 🏁 Rulle Rasmus (styr en blob gennem fem baner ved at vippe iPad'en eller trykke),
+  🍔 Burgerløbet (saml ingredienser på vejen, og send burgeren ind i munden på kæmpen)
+- 🎮 **2D:** 🎈 Pop ballonerne (stryg over ballonerne som i Fruit Ninja), 🍔 Byg en burger (byg en burger og giv den til den sultne mand),
+  🚜 Vaskehallen, 🐍 Fjollet Slange
 - 🎨 **Tegn & musik:** 🎨 Tegn! (hold to fingre nede, så kommer der en streg imellem dem), 🎹 Dyre-piano
 
 Nederst på forsiden ligger "For voksne" med 📷 Spil sammen (forbind tabletten til Broekraft Server).
@@ -84,3 +86,15 @@ Byggespillet ligger i `spil/broekraft/` og er delt op på samme måde:
 tilføjes nederst i `BLOKKE`, så gemte verdener stadig passer. Hver verden gemmes for sig på enheden;
 "🌍 Verdener" skifter verden, og "Start forfra" i menuen (⏸) laver verdenen helt ny. `spil/broekraft/?debug` giver adgang til
 spilleren i konsollen (`bk.sp`), hvis man vil fejlsøge.
+
+## Burgerløbet
+3D-løbespillet ligger i `spil/burgerloeb/`. Man trækker fingeren til siden for at styre den lille burger.
+
+| Fil | Indhold |
+|---|---|
+| `figurer.js` | Burgerens lag (`LAG`), den lille burger med ben og kæmpen for enden |
+| `bane.js` | Banen: bordet med dugen, tingene, kagerullerne, portene og pynten i siderne (`TEMAER` = farverne) |
+| `spil.js` | Selve spillet: løb, saml, målet og kameraet |
+| `lyd.js` | Lydene (Web Audio, ingen lydfiler) |
+
+`spil/burgerloeb/?niveau=3` starter på en bestemt bane, og `?debug` giver adgang til spillet i konsollen (`bl`).

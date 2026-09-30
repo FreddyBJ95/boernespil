@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Burgerløbet 🍔</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; }
+    body {
+      font-family: ui-rounded, "SF Pro Rounded", "Baloo 2", system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: #8fd3ff; color: #3a1d08;
+      -webkit-user-select: none; user-select: none;
+      -webkit-tap-highlight-color: transparent; touch-action: none;
+    }
+    #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+    .skjult { display: none !important; }
+
+    /* Øverst: hjem · hvor langt der er til kæmpen · antal lag */
+    .top {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+      display: flex; align-items: center; justify-content: space-between; gap: 14px;
+      padding: 12px 14px; pointer-events: none;
+    }
+    .top > * { pointer-events: auto; }
+    .rund {
+      font-size: 26px; text-decoration: none; background: rgba(255,255,255,.92); border-radius: 50%;
+      width: 52px; height: 52px; min-width: 52px; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 14px rgba(0,0,0,.2);
+    }
+    .frem {
+      position: relative; flex: 1; max-width: 420px; height: 16px; border-radius: 8px; pointer-events: none;
+      background: rgba(255,255,255,.75); box-shadow: 0 4px 14px rgba(0,0,0,.18), inset 0 1px 3px rgba(0,0,0,.2);
+    }
+    .frem-fyld { height: 100%; width: 0; border-radius: 8px; background: linear-gradient(90deg, #ffd23f, #ff9f1c); }
+    .frem-mig { position: absolute; top: -9px; left: -14px; font-size: 28px; }
+    .frem-maal { position: absolute; top: -12px; right: -18px; font-size: 34px; }
+    .taeller {
+      font-size: 26px; font-weight: 900; background: rgba(255,255,255,.92); border-radius: 999px;
+      padding: 8px 18px; box-shadow: 0 4px 14px rgba(0,0,0,.18); white-space: nowrap;
+    }
+    .taeller.hop { animation: hop .35s cubic-bezier(.2,1.6,.4,1); }
+    @keyframes hop { 40% { transform: scale(1.3); } }
+
+    /* En finger, der viser at man trækker til siden */
+    .hint {
+      position: fixed; left: 50%; bottom: 14%; z-index: 9; font-size: 64px; pointer-events: none;
+      animation: træk 1.4s ease-in-out infinite;
+    }
+    @keyframes træk { 0%, 100% { transform: translateX(-120%); } 50% { transform: translateX(20%); } }
+
+    /* Start- og slutkortet */
+    .overlay {
+      position: fixed; inset: 0; z-index: 20; display: flex; align-items: flex-end; justify-content: center;
+      padding: 20px 20px 7vh; background: linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(40,20,5,.35));
+    }
+    .kort {
+      width: min(460px, 100%); text-align: center; padding: 18px 24px 22px; border-radius: 30px;
+      background: rgba(255,255,255,.94); box-shadow: 0 18px 50px rgba(60,30,5,.35);
+      animation: ind .5s cubic-bezier(.2,1.4,.4,1);
+    }
+    @keyframes ind { from { transform: translateY(40px) scale(.9); opacity: 0; } }
+    .kort h1 {
+      margin: 0; font-size: clamp(40px, 8vw, 64px); font-weight: 900; letter-spacing: -1px;
+      background: linear-gradient(92deg, #ff9f1c, #e8463a, #b15bff); -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .kort p { margin: 6px 0 12px; font-size: 19px; font-weight: 700; color: #6b3a12; }
+    .start-burger { font-size: 64px; line-height: 1; animation: vip 1.6s ease-in-out infinite; }
+    @keyframes vip { 50% { transform: rotate(-10deg) translateY(-6px); } }
+    .bane-nr { display: inline-block; margin-bottom: 12px; padding: 4px 14px; border-radius: 999px; background: #fff0c2; font-weight: 900; color: #a8590a; }
+    .knap {
+      font: 900 44px ui-rounded, system-ui, sans-serif; color: #fff; border: none; cursor: pointer;
+      width: 120px; height: 84px; border-radius: 28px;
+      background: linear-gradient(180deg, #4cd964, #26a346); box-shadow: 0 6px 0 #1b7a33, 0 10px 24px rgba(0,0,0,.25);
+    }
+    .knap:active { transform: translateY(4px); box-shadow: 0 2px 0 #1b7a33; }
+    .knap.lille { width: 84px; background: linear-gradient(180deg, #ffc94a, #f29d1f); box-shadow: 0 6px 0 #b86d08, 0 10px 24px rgba(0,0,0,.25); }
+    .knapper { display: flex; gap: 16px; justify-content: center; margin-top: 14px; }
+    .res-tal { font-size: clamp(56px, 11vw, 84px); font-weight: 900; line-height: 1; }
+    .res-stjerner { display: flex; gap: 6px; justify-content: center; font-size: 54px; margin-top: 6px; }
+    .res-stjerner span { animation: stjerne .45s cubic-bezier(.2,1.8,.4,1) both; }
+    .res-stjerner span:nth-child(2) { animation-delay: .25s; }
+    .res-stjerner span:nth-child(3) { animation-delay: .5s; }
+    .res-stjerner span.slukket { filter: grayscale(1); opacity: .25; }
+    @keyframes stjerne { from { transform: scale(0) rotate(-90deg); } }
+
+    @media (max-width: 520px) {
+      .rund { width: 44px; height: 44px; min-width: 44px; font-size: 22px; }
+      .taeller { font-size: 20px; padding: 6px 12px; }
+      .frem-mig { font-size: 22px; top: -5px; }
+      .frem-maal { font-size: 26px; top: -8px; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+
+  <div class="top">
+    <a class="rund" href="../../">🏠</a>
+    <div class="frem" id="frem"><div class="frem-fyld" id="fremFyld"></div><span class="frem-mig" id="fremMig">🍔</span><span class="frem-maal">😋</span></div>
+    <div class="taeller" id="taeller">🍔 <span id="tal">0</span></div>
+  </div>
+  <div class="hint skjult" id="hint">👆</div>
+
+  <div class="overlay" id="startSkærm">
+    <div class="kort">
+      <div class="start-burger">🍔</div>
+      <h1>Burgerløbet</h1>
+      <p>Saml alt det lækre på burgeren, og giv den til kæmpen</p>
+      <div class="bane-nr" id="baneNr">Bane 1</div><br>
+      <button class="knap" id="startKnap" aria-label="Start">▶</button>
+    </div>
+  </div>
+  <div class="overlay skjult" id="slutSkærm">
+    <div class="kort">
+      <div class="res-tal">🍔 <span id="resTal">0</span></div>
+      <div class="res-stjerner" id="resStjerner"><span>⭐</span><span>⭐</span><span>⭐</span></div>
+      <div class="knapper">
+        <button class="knap lille" id="igenKnap" aria-label="Samme bane igen">↺</button>
+        <button class="knap" id="næsteKnap" aria-label="Næste bane">▶</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../effekter.js"></script>
+  <script type="module" src="spil.js"></script>
+</body>
+</html>
