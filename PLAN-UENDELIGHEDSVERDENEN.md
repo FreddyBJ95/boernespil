@@ -1,0 +1,133 @@
+# Uendelighedsverdenen ♾️ — plan for en ny Broekraft-verden
+
+Aftalt med ejeren den 30. september 2026. Claude bygger den (design, 3D og spil). Når den senere skal
+kunne spilles sammen over serveren, er det en opgave til Codex.
+
+## Idéen
+
+En verden **uden kanter**: man kan gå, ride og flyve i al uendelighed, og der dukker hele tiden nyt land op.
+Årstiderne ligger forskellige steder, så man kan gå fra sommer ind i vinter. En spådame giver små opgaver,
+man får guld, og seks magiske sten fra de andre verdener kalder til sidst **Guld-føniksen**, der flyver
+barnet op til **guldslottet i himlen**.
+
+## Det er besluttet
+
+- **Årstider efter sted**, med bløde overgange, der bugter sig:
+  - mod nord bliver det ❄️ vinter
+  - mod syd ☀️ sommer
+  - mod øst 🍂 efterår
+  - mod vest 🌸 forår
+- **Bjerge** med sne på toppen, vandfald og grotter med glødende krystaller.
+- **Dag, nat og vejr**:
+  - solnedgang, stjerner, ildfluer og glødende svampe
+  - regn med regnbue bagefter og sne i vinterlandet
+- **Kort og 🏠-knap**, så de små ikke farer vild.
+- **Spådamen** giver små opgaver og læser dem **højt og tydeligt** med en dansk stemme.
+  Opgaverne vises også som store billeder, og der er en 🔊-knap til at høre dem igen.
+- **Guld** som belønning, med **både en butik og en skattekiste**, der fyldes op.
+- **Seks sten, én fra hver sin verden.** Hver sten giver en superkraft i uendelighedsverdenen.
+- **Finalen:** Guld-føniksen henter barnet op til guldslottet i himlen.
+
+## Årstiderne
+
+| Årstid | Landskab | Dyr og ting |
+|---|---|---|
+| 🌸 Forår | Blomsterenge, træer i blomst, bække | Lam, kyllinger, sommerfugle |
+| ☀️ Sommer | Grønne bakker, strand og badesø, solsikker | Bier, jordbær, is-bod |
+| 🍂 Efterår | Røde og orange træer, blade der falder, græskar, svampe | Egern, pindsvin, drager at flyve med |
+| ❄️ Vinter | Sne, frosne søer man glider på, kælkebakker, juletræer, nordlys | Pingviner, rensdyr, snemænd |
+
+Bjerge, søer og hav findes i alle årstider. Hav og øer er der, hvor landet ligger lavt.
+
+## De seks sten
+
+Spådamen fortæller, hvor den næste sten er. Man går gennem en portal og henter den i den anden verden,
+og stenen bliver husket, når man kommer tilbage.
+
+| Sten | Findes i | Superkraft i uendelighedsverdenen |
+|---|---|---|
+| 🔴 Ildstenen | Underverdenen, ved lavaen | Man tåler ild og lava |
+| 🟠 Dinostenen | Dinodalen, inde i vulkanen | Kald en dino frem at ride på |
+| 🟡 Stjernestenen | Fyrværkeri, i tårnuret | Stjerner og fyrværkeri fra hånden |
+| 🟢 Atomstenen | NUKE-banen, i bunkeren | Bliv kæmpestor et øjeblik |
+| 🔵 Havstenen | Havbunden, ved det sunkne skib | Svøm lynhurtigt under vand |
+| 🟣 Skystenen | Skyøerne, på den højeste ø | Flyv |
+
+Midt i uendelighedsverdenen står en **stor stenring med seks tomme huller**.
+
+## Finalen: Guld-føniksen og guldslottet
+
+1. Når den sidste sten sættes i ringen, bliver himlen mørk og fuld af stjerner.
+2. De seks sten svæver op og snurrer rundt om hinanden i hver sin farve. De smelter sammen til
+   **Guld-føniksen**, en kæmpe fugl af guld og ild.
+3. Føniksen lander blidt. Barnet sætter sig på ryggen, og den flyver op gennem skyerne. Det er en flot
+   tur, som man ikke kan gøre forkert.
+4. **Guldslottet i himlen** har:
+   - tårne af guld over skyerne
+   - en tronsal, hvor barnet får en krone
+   - et skatkammer med barnets egen skattekiste
+   - en balkon med udsigt over hele verdenen
+
+   Spådamen tager imod: *"Du fandt alle seks sten. Du er helten fra uendelighedsverdenen!"* Så kommer
+   et stort fyrværkeri.
+5. Barnet får en **guldfløjte**, der altid kan kalde føniksen og flyve op til slottet igen.
+
+## Spådamen 🔮
+
+Hun bor i et farverigt telt med en krystalkugle tæt ved start, og der kan også bo en i hver landsby.
+Opgaverne er små og til at forstå for 3–6-årige:
+
+- Pluk tre blomster.
+- Klap fem får.
+- Rid på en hest.
+- Byg et tårn, der er fem blokke højt.
+- Lav en snemand i vinterlandet.
+- Find en pingvin.
+- Gå op på toppen af bjerget. Stedet vises på kortet.
+- Find en skattekiste.
+- Tænd et fyrværkeri.
+- Find en sten (de store opgaver).
+
+Når opgaven er klaret, siger hun *"Godt klaret!"*, og der regner guldmønter ned med en fanfare.
+Stemmen er tablettens egen danske stemme, lidt langsommere end normalt. Teksten og billederne står
+altid ved siden af.
+
+## Guld: butik og skattekiste
+
+- **Skattekisten derhjemme** viser, hvor meget guld man har samlet.
+- **Butikken i landsbyen** sælger:
+  - et kæledyr, der følger efter én
+  - hatte
+  - særlige blokke som guld og regnbue
+  - fyrværkeri
+  - en egen hest
+
+## Sådan bygges det, i bidder der hver især virker
+
+1. **Det uendelige land** med de fire årstider, bjerge, søer, hav og en 🏠-knap. Verdenen kan vælges
+   i menuen og nås gennem portaler.
+2. **Dag, nat og vejr.**
+3. **Kortet**, der viser hvor man har været, hjemmet og steder at finde.
+4. **Ting at opdage**: landsbyer, skattekister, grotter med krystaller og kæmpetræer.
+5. **Spådamen, opgaverne, guldet, skattekisten og butikken.**
+6. **De seks sten** i de andre verdener og stenringen.
+7. **Guld-føniksen, guldslottet og guldfløjten.**
+
+## Teknik (kort)
+
+- **Landet laves stykke for stykke** (16 × 16 søjler) omkring barnet, ud fra et tal og stedet. Det bliver
+  derfor det samme hver gang. Søjler langt væk glemmes igen. Den måde, `verden.js` allerede modtager
+  søjler på fra serveren, kan genbruges, bare med en lokal "generator" i stedet for serveren.
+- **Kun det, børnene bygger og graver, gemmes.** Landet selv laves på ny ud fra tallet.
+- **Årstiderne** bestemmes af et "temperatur-kort" (nord/syd) og et "fugtigheds-kort" (øst/vest), med
+  lidt støj, så grænserne bugter sig. Bjergene kommer fra et stort, langsomt støjkort.
+- **Til iPad** vises kun det nærmeste land (6–8 søjler ud), og det bygges lidt ad gangen, ligesom de
+  store verdener gør nu.
+- **Først kun alene**, altså uden server. At spille sammen kræver en uendelig generator på serveren
+  (Codex).
+- Nye blokke sættes altid **nederst** i `BLOKKE`, fx efterårsblade, krystal, guldblok og stensokkel.
+
+## Ikke besluttet endnu
+
+- Skal verdenen være helt fredelig, eller må der komme lidt zombier om natten?
+- Transport over lange afstande: et tog, luftballoner, eller er det nok at ride og flyve?
