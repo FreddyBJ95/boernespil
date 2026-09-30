@@ -111,14 +111,17 @@ export class Bil extends Kampvogn {
   }
 }
 
-// En lille klodsrytter, der sidder på ryggen af dyret (over kroppen, ikke hovedet eller halen)
+// En lille klodsrytter, der sidder på ryggen af dyret: oven på den største klods (kroppen),
+// så den ikke ender oppe på halsen af hesten eller giraffen
 function byggRytter(krop) {
-  const u = krop.userData, ikke = new Set([...u.hoved, ...u.hale, ...u.vinge]), boks = new THREE.Box3();
+  const u = krop.userData, ikke = new Set([...u.hoved, ...u.hale, ...u.vinge, ...u.ben]), boks = new THREE.Box3(), b = new THREE.Box3();
   krop.updateMatrixWorld(true);
+  let størst = 0;
   krop.traverse(m => {
     if (!m.isMesh) return;
     for (let p = m; p && p !== krop; p = p.parent) if (ikke.has(p)) return;
-    boks.expandByObject(m);
+    const s = b.setFromObject(m).getSize(new THREE.Vector3()), rum = s.x * s.y * s.z;
+    if (rum > størst) { størst = rum; boks.copy(b); }
   });
   if (boks.isEmpty()) boks.setFromObject(krop);
   const r = new THREE.Group();

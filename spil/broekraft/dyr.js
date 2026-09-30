@@ -809,8 +809,9 @@ export class Dyr {
     if (r.væg && this.går) {                             // hop op ad et trin, eller vend om
       tmp.copy(this.pos); tmp.y += 1.05; tmp.x += fx * 0.3; tmp.z += fz * 0.3;
       const jæger = d.evne === "jæger";
-      if (this.jord && !this.v.kolliderer(tmp, this.b, this.h)) this.vel.y = 7.5;
-      else if (jæger && this.jord && !this.v.kolliderer(tmp.setY(this.pos.y + 2.05), this.b, this.h)) this.vel.y = 11;   // dinoen springer højt
+      const hopFart = blokke => Math.sqrt(2 * g * (blokke + 0.45));   // højt nok til at komme helt op over kanten
+      if (this.jord && !this.v.kolliderer(tmp, this.b, this.h)) this.vel.y = hopFart(1);
+      else if (jæger && this.jord && !this.v.kolliderer(tmp.setY(this.pos.y + 2.05), this.b, this.h)) this.vel.y = hopFart(2);   // dinoen springer højt
       else if (jæger) { this.omvej = 0.7; this.omvejYaw = this.yaw + (Math.random() < 0.5 ? 1 : -1) * Math.PI / 2; }  // løb udenom
       else if (d.evne === "ruller") this.vind += Math.PI * (0.6 + Math.random() * 0.8);                                // vinden vender
       else this.målYaw += Math.PI * (0.5 + Math.random());
