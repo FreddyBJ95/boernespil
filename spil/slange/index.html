@@ -9,182 +9,88 @@
     html, body { margin: 0; height: 100%; overflow: hidden; }
     body {
       font-family: ui-rounded, "SF Pro Rounded", "Baloo 2", system-ui, -apple-system, "Segoe UI", sans-serif;
-      background: radial-gradient(circle at 50% 40%, #d8f3dc, #95d5b2);
+      background: #dff3ff; color: #1b4332;
       -webkit-user-select: none; user-select: none;
-      -webkit-tap-highlight-color: transparent;
-      touch-action: none;
+      -webkit-tap-highlight-color: transparent; touch-action: none;
     }
+    #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+    .skjult { display: none !important; }
+
+    /* Toppen: hjem, point og musik */
     .top {
       position: fixed; top: 0; left: 0; right: 0; z-index: 10;
-      display: flex; align-items: center; justify-content: space-between; padding: 12px 16px;
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 12px 14px; pointer-events: none;
     }
-    .tilbage {
-      font-size: 26px; text-decoration: none; background: #fff; border-radius: 50%;
-      width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 4px 0 rgba(0,0,0,0.15);
+    .top > * { pointer-events: auto; }
+    .rund {
+      font-size: 26px; text-decoration: none; background: rgba(255,255,255,.92); border-radius: 50%;
+      width: 52px; height: 52px; min-width: 52px; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 14px rgba(0,0,0,.2); border: none; padding: 0; cursor: pointer; color: inherit;
     }
-    .point { font-size: 32px; font-weight: bold; color: #1b4332; }
-    #hint {
-      position: fixed; bottom: 24px; left: 0; right: 0; text-align: center;
-      font-size: 20px; color: #1b4332; z-index: 10; opacity: 0.85;
-      transition: opacity 0.5s;
+    .rund:active { transform: scale(.92); }
+    .taeller {
+      font-size: 28px; font-weight: 900; background: rgba(255,255,255,.92); border-radius: 999px;
+      padding: 8px 20px; box-shadow: 0 4px 14px rgba(0,0,0,.18);
     }
-    canvas { position: fixed; inset: 0; display: block; }
+    .taeller.hop { animation: hop .5s cubic-bezier(.2,1.6,.4,1); }
+    @keyframes hop { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
+
+    /* Den magiske kraft, der er i gang lige nu — og hvor længe den varer */
+    .kraft {
+      position: fixed; top: 78px; left: 50%; transform: translateX(-50%); z-index: 9; pointer-events: none;
+      display: flex; align-items: center; gap: 10px; padding: 6px 14px 6px 10px;
+      background: rgba(255,255,255,.92); border-radius: 999px; box-shadow: 0 4px 14px rgba(0,0,0,.2);
+      font-size: 30px; animation: pust .6s ease-in-out infinite alternate;
+    }
+    @keyframes pust { to { transform: translateX(-50%) scale(1.07); } }
+    .kraft .bar { width: min(180px, 40vw); height: 14px; border-radius: 7px; background: #e6e6e6; overflow: hidden; }
+    .kraft .fyld { height: 100%; width: 100%; border-radius: 7px; background: linear-gradient(90deg, #ff477e, #ffd23f, #06d6a0, #3a86ff, #b15bff); }
+
+    .besked {
+      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 9;
+      width: max-content; max-width: calc(100vw - 32px); text-align: center;
+      font-size: clamp(18px, 3.4vw, 28px); font-weight: 900;
+      background: rgba(255,255,255,.92); padding: 10px 22px; border-radius: 999px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.18); pointer-events: none;
+      animation: ind .45s cubic-bezier(.2,1.5,.4,1);
+    }
+    @keyframes ind { from { transform: translate(-50%, 160%); } to { transform: translate(-50%, 0); } }
+
+    /* Hvidt glimt, når slangen rejser til en ny verden */
+    #skift { position: fixed; inset: 0; z-index: 20; pointer-events: none; opacity: 0; transition: opacity .6s ease; background: radial-gradient(circle, #fff, #fff6d0); }
+    #skift.vis { opacity: 1; transition: opacity .5s ease; }
+
+    #indlaeser {
+      position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px;
+      background: radial-gradient(circle at 50% 40%, #d8f3dc, #95d5b2); font-size: 28px; font-weight: 900; transition: opacity .5s;
+    }
+    #indlaeser .slangen { font-size: 90px; animation: vrik 1s ease-in-out infinite alternate; }
+    @keyframes vrik { from { transform: rotate(-12deg); } to { transform: rotate(12deg) scale(1.1); } }
   </style>
 </head>
 <body>
-  <div class="top">
-    <a class="tilbage" href="../../">🏠</a>
-    <div class="point">🍎 <span id="pointtal">0</span></div>
-    <div style="width:50px"></div>
-  </div>
+  <canvas id="scene"></canvas>
 
-  <canvas id="board"></canvas>
-  <div id="hint">👆 Hold fingeren på skærmen og før slangen rundt</div>
+  <div class="top">
+    <a class="rund" href="../../" aria-label="Til forsiden">🏠</a>
+    <div class="taeller" id="point">🍎 <span id="pointTal">0</span></div>
+    <button class="rund" id="musikKnap" aria-label="Musik til og fra">🎵</button>
+  </div>
+  <div class="kraft skjult" id="kraft"><span id="kraftIkon">🚀</span><div class="bar"><div class="fyld" id="kraftFyld"></div></div></div>
+  <div class="besked" id="besked">👆 Træk med fingeren — så følger slangen efter!</div>
+  <div id="skift"></div>
+  <div id="indlaeser"><div class="slangen">🐍</div><div>Fjollet Slange</div></div>
 
   <script src="../../effekter.js"></script>
-  <script>
-    // ===== Fjollet Slange — følger fingeren =====
-    const canvas = document.getElementById("board");
-    const ctx = canvas.getContext("2d");
-    const pointEl = document.getElementById("pointtal");
-    const hintEl = document.getElementById("hint");
-    const madEmojis = ["🍎","🍌","🍓","🍕","🍦","🍩","🧀","🍪","🍇","🌭","🍉","🍔"];
-
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    let W, H;
-    function tilpas() {
-      W = window.innerWidth; H = window.innerHeight;
-      canvas.width = W * dpr; canvas.height = H * dpr;
-      canvas.style.width = W + "px"; canvas.style.height = H + "px";
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    }
-    tilpas();
-    Effekter.vedStørrelse(tilpas);
-
-    // Slangens tilstand
-    const FART = 220, DREJ = 5.5, AFSTAND = 20, R = 16, SPIS = 46;
-    let hoved, vinkel, maal, sti, maalSeg, point, følger, mad;
-
-    function nyMad() {
-      mad = {
-        x: 60 + Math.random() * (W - 120),
-        y: 110 + Math.random() * (H - 200),
-        emoji: madEmojis[Math.floor(Math.random() * madEmojis.length)]
-      };
-    }
-
-    function nulstil() {
-      hoved = { x: W / 2, y: H / 2 };
-      vinkel = -Math.PI / 2;
-      maal = { x: W / 2, y: H / 2 - 100 };
-      sti = [];
-      for (let i = 0; i < 400; i++) sti.push({ x: hoved.x, y: hoved.y });
-      maalSeg = 7; point = 0; følger = false;
-      pointEl.textContent = 0;
-      nyMad();
-    }
-    nulstil();
-
-    // Fingeren styrer
-    function sætMaal(e) { maal = { x: e.clientX, y: e.clientY }; følger = true; hintEl.style.opacity = "0"; }
-    canvas.addEventListener("pointerdown", e => { Effekter.audio(); sætMaal(e); });
-    canvas.addEventListener("pointermove", sætMaal);
-    canvas.addEventListener("pointerup", () => { følger = false; });
-    canvas.addEventListener("pointerleave", () => { følger = false; });
-
-    // Find segment-punkter ved at gå baglæns langs stien i faste afstande
-    function segmenter(antal, afstand) {
-      const segs = [{ x: hoved.x, y: hoved.y }];
-      let brug = afstand, akk = 0;
-      for (let i = 1; i < sti.length && segs.length < antal; i++) {
-        const dx = sti[i].x - sti[i-1].x, dy = sti[i].y - sti[i-1].y;
-        const d = Math.hypot(dx, dy);
-        akk += d;
-        while (akk >= brug && segs.length < antal) {
-          const over = akk - brug;
-          const t = d > 0 ? (d - over) / d : 0;
-          segs.push({ x: sti[i-1].x + dx * t, y: sti[i-1].y + dy * t });
-          brug += afstand;
-        }
-      }
-      while (segs.length < antal) segs.push(segs[segs.length - 1]);
-      return segs;
-    }
-
-    let sidste = performance.now();
-    function loop(nu) {
-      const dt = Math.min((nu - sidste) / 1000, 0.05);
-      sidste = nu;
-
-      // Hvis ingen finger: bliv ved at glide ligeud
-      if (!følger) maal = { x: hoved.x + Math.cos(vinkel) * 300, y: hoved.y + Math.sin(vinkel) * 300 };
-
-      // Drej blødt mod fingeren
-      const ønsket = Math.atan2(maal.y - hoved.y, maal.x - hoved.x);
-      let forskel = ((ønsket - vinkel + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-      const maksDrej = DREJ * dt;
-      vinkel += Math.max(-maksDrej, Math.min(maksDrej, forskel));
-
-      // Flyt fremad
-      hoved.x += Math.cos(vinkel) * FART * dt;
-      hoved.y += Math.sin(vinkel) * FART * dt;
-      hoved.x = Math.max(R, Math.min(W - R, hoved.x));
-      hoved.y = Math.max(R, Math.min(H - R, hoved.y));
-
-      sti.unshift({ x: hoved.x, y: hoved.y });
-      if (sti.length > 3000) sti.length = 3000;
-
-      // Spis mad?
-      if (Math.hypot(hoved.x - mad.x, hoved.y - mad.y) < SPIS) {
-        point++; pointEl.textContent = point;
-        maalSeg += 4;
-        Effekter.konfetti(mad.x, mad.y, { antal: 30 });
-        Effekter.ding();
-        Effekter.tekstPop(mad.x, mad.y, "😋");
-        if (point % 5 === 0) {                       // STOR fest hvert 5. point
-          Effekter.fanfare();
-          Effekter.stjerner(W / 2, H / 2, { antal: 18 });
-          Effekter.flash("#ffffff");
-        }
-        nyMad();
-      }
-
-      tegn();
-      requestAnimationFrame(loop);
-    }
-
-    function tegn() {
-      ctx.clearRect(0, 0, W, H);
-
-      // Mad
-      ctx.font = "40px serif";
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(mad.emoji, mad.x, mad.y);
-
-      // Slange (tegn halen først, hovedet sidst)
-      const segs = segmenter(maalSeg, AFSTAND);
-      for (let i = segs.length - 1; i >= 0; i--) {
-        ctx.fillStyle = `hsl(${(i * 22) % 360}, 85%, 55%)`;
-        ctx.beginPath();
-        ctx.arc(segs[i].x, segs[i].y, R, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Googly-øjne på hovedet
-      const fx = Math.cos(vinkel), fy = Math.sin(vinkel);
-      const px = Math.cos(vinkel + Math.PI/2), py = Math.sin(vinkel + Math.PI/2);
-      for (const side of [-1, 1]) {
-        const ex = hoved.x + fx * R * 0.3 + px * side * R * 0.5;
-        const ey = hoved.y + fy * R * 0.3 + py * side * R * 0.5;
-        ctx.fillStyle = "#fff";
-        ctx.beginPath(); ctx.arc(ex, ey, R * 0.46, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = "#000";
-        ctx.beginPath(); ctx.arc(ex + fx * R * 0.18, ey + fy * R * 0.18, R * 0.22, 0, Math.PI*2); ctx.fill();
-      }
-    }
-
-    requestAnimationFrame(loop);
+  <script type="module">
+    // Når 3D-spillet er klar, forsvinder indlæsningsbilledet (og hvis det ikke kan hentes, siger vi det pænt)
+    import("./spil.js").then(() => {
+      const el = document.getElementById("indlaeser");
+      el.style.opacity = "0"; setTimeout(() => el.remove(), 500);
+    }).catch(() => {
+      document.getElementById("indlaeser").lastElementChild.textContent = "Slangen kunne ikke hentes — prøv igen, når der er internet 🙂";
+    });
   </script>
 </body>
 </html>

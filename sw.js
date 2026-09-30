@@ -1,6 +1,6 @@
 // ===== Service Worker — gør spillene installerbare og tilgængelige offline =====
 // Bump dette tal når der ændres filer, så de gamle bliver hentet på ny.
-const CACHE = "boernespil-v44";
+const CACHE = "boernespil-v45";
 
 const SPIL = ["balloner", "byg-burger", "vask", "slange", "tegne", "piano", "fisk", "broekraft", "rulle-rasmus", "burgerloeb"];
 
@@ -8,6 +8,7 @@ const SPIL = ["balloner", "byg-burger", "vask", "slange", "tegne", "piano", "fis
 const EKSTRA = [
   "tilslut/", "tilslut/index.html", "tilslut/tilslut.css", "tilslut/tilslut.js", "tilslut/adresse.js", "tilslut/vendor/jsQR.js",
   ...["three.js", "spil.js", "fisk.js", "staenger.js", "verden.js", "lyd.js"].map(f => `spil/fisk/${f}`),
+  ...["three.js", "spil.js", "verden.js", "slange.js", "mad.js", "lyd.js"].map(f => `spil/slange/${f}`),
   ...["three.js", "spil.js", "baner.js", "bane.js", "temaer.js", "verden.js", "ting.js", "blob.js", "partikler.js", "teksturer.js", "lyd.js"].map(f => `spil/rulle-rasmus/${f}`),
   ...["three.js", "spil.js", "figurer.js", "bane.js", "lyd.js"].map(f => `spil/burgerloeb/${f}`),
   ...["three.js", "spil.js", "blokke.js", "dyr.js", "verden.js", "verdener.js", "lyd.js", "net.js", "figurer.js", "simulering.js", "vaerktoej.js", "stemmer.js", "stemmesignal.js", "stemmeeffekt.js", "skyd.js", "kampvogn.js", "fyrvaerkeri.js", "brand.js", "atom.js", "tornado.js", "biler.js", "nytaar.js", "uendelig.js"].map(f => `spil/broekraft/${f}`),
@@ -24,7 +25,7 @@ const FILER = [
   "icon-512.png",
   // billederne fra spillene på forsiden
   ...["fyrvaerkeri", "tornado", "nuke", "brandby", "dino", "hav", "slik", "sky", "pirat", "droner", "pariserhjul",
-    "underverden", "graesoe", "skydebane", "nytaar", "fisk", "svampesky", "rasmus", "burgerloeb"].map(n => `billeder/${n}.jpg`),
+    "underverden", "graesoe", "skydebane", "nytaar", "fisk", "svampesky", "rasmus", "slange", "burgerloeb"].map(n => `billeder/${n}.jpg`),
   ...SPIL.flatMap(s => [`spil/${s}/`, `spil/${s}/index.html`]),
   ...EKSTRA
 ];
