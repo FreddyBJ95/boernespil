@@ -10,7 +10,8 @@
 
 import * as THREE from "./three.js";
 import { BLOKKE, ID, lavAtlas } from "./blokke.js";
-import { Verden, BX, BY, BZ, HAV, rng } from "./verden.js";
+import { Verden, BX, BY, BZ, HAV, rng, lavStøj } from "./verden.js";
+import { lavLand, MIDT, STØRRELSE as LANDSTØRRELSE, ÅRSTIDSDYR } from "./uendelig.js";
 import { DYR, Dyr, ægIkon } from "./dyr.js";
 import { VERDENER } from "./verdener.js";
 import * as Lyd from "./lyd.js";
@@ -44,7 +45,9 @@ if (ONLINE) {
   try { onlineInfo = (await (await fetch("/verdensliste", { cache: "no-store" })).json()).find(v => v.id === ONLINE_ID) || null; } catch (_) {}
 }
 const cfg = (ONLINE ? VERDENER.find(v => v.id === onlineInfo?.type) : VERDENER.find(v => v.id === læs("broekraft-verden", "græsø"))) || VERDENER[0];
+const UENDELIG = !!cfg.uendelig && !ONLINE;              // Uendelighedsverdenen: landet laves, mens man går
 const MÅL = ONLINE ? { BX: onlineInfo?.bredde || 128, BY: 64, BZ: onlineInfo?.dybde || 128, online: true }
+  : UENDELIG ? { BX: LANDSTØRRELSE, BY: 64, BZ: LANDSTØRRELSE, uendelig: true }
   : cfg.størrelse ? { BX: cfg.størrelse[0], BY: cfg.størrelse[1], BZ: cfg.størrelse[2] } : {};      // alene: nogle verdener er større
 const VX = MÅL.BX || BX, VZ = MÅL.BZ || BZ;
 // Hvor langt man kan se, når man spiller sammen (store verdener)
@@ -283,7 +286,36 @@ const verden = new Verden(gemt.frø, atlas, blokMat, scene, MÅL);
 verden.animMat = animMat;
 if (cfg.vand === "chokolade") { animMat.vand.map = atlas.anim.chokolade; animMat.vand.opacity = 0.93; }   // Slikland: floden er af chokolade
 verden.tyngde = TYNGDE;
-if (!ONLINE) {                                    // alene: lav øen her. Sammen: serveren sender verdenen
+// ---------- Uendelighedsverdenen: landet laves omkring barnet, søjle for søjle (uendelig.js) ----------
+const land = UENDELIG ? lavLand({ støj: lavStøj(gemt.frø), ID, BY: verden.BY, frø: gemt.frø }) : null;
+const LAND_R = 7;                                 // så mange søjler ud kan man se (tågen skjuler resten)
+let glemTid = 0;
+function lavSøjle(cx, cz) { verden.søjle(cx, cz, land.søjle(cx, cz)); }
+function landOmkring(x, z, r) {                   // lav søjlerne tæt på med det samme
+  const cx0 = Math.floor(x / 16), cz0 = Math.floor(z / 16);
+  for (let dx = -r; dx <= r; dx++) for (let dz = -r; dz <= r; dz++) if (!verden.hentet((cx0 + dx) * 16, (cz0 + dz) * 16)) lavSøjle(cx0 + dx, cz0 + dz);
+}
+function opdaterLand(dt) {
+  const cx0 = Math.floor(sp.pos.x / 16), cz0 = Math.floor(sp.pos.z / 16);
+  let n = 0;                                      // de nærmeste manglende søjler først — højst to pr. billede
+  for (let r = 0; r <= LAND_R && n < 2; r++) for (let dx = -r; dx <= r && n < 2; dx++) for (let dz = -r; dz <= r && n < 2; dz++) {
+    if (Math.max(Math.abs(dx), Math.abs(dz)) !== r || verden.hentet((cx0 + dx) * 16, (cz0 + dz) * 16)) continue;
+    lavSøjle(cx0 + dx, cz0 + dz); n++;
+  }
+  if ((glemTid -= dt) > 0) return;                // glem søjler langt væk en gang imellem (så hukommelsen ikke fyldes)
+  glemTid = 2;
+  const bredde = verden.BX >> 4;
+  for (const k of [...verden.søjler.keys()]) {
+    const cx = k % bredde, cz = Math.floor(k / bredde);
+    if (Math.max(Math.abs(cx - cx0), Math.abs(cz - cz0)) > LAND_R + 2) verden.glemSøjle(cx, cz, true);
+  }
+}
+if (UENDELIG) {
+  document.body.classList.add("uendelig");
+  verden.indlæsÆndringer(gemt.ændringer);
+  landOmkring(gemt.spiller?.[0] ?? MIDT, gemt.spiller?.[2] ?? MIDT, 2);
+  verden.opdater(150);                            // byg det nærmeste med det samme
+} else if (!ONLINE) {                             // alene: lav øen her. Sammen: serveren sender verdenen
   verden.generer(cfg.generer);
   lavHav(0, 0, VX, VZ);                           // før børnenes ændringer, så gamle kratere ikke bliver til hav
   verden.anvend(gemt.ændringer);
@@ -299,7 +331,7 @@ const sim = ONLINE ? null : new Simulering({
 if (sim) {
   verden.vedÆndring = (x, y, z) => { sim.blokÆndret(x, y, z); portalTjek(x, y, z); gemSnart(); };
   const lag = verden.BX * verden.BZ;                              // væk gemt vand, lava og ild én gang
-  for (let i = 0; i < verden.data.length; i++) {
+  if (verden.data) for (let i = 0; i < verden.data.length; i++) {
     if (verden.data[i] >= ID.Vand && verden.data[i] <= ID.Ild) sim.blokÆndret(i % verden.BX, Math.floor(i / lag), Math.floor((i % lag) / verden.BX));
   }
 }
@@ -347,26 +379,37 @@ function nytDyr(def, x, y, z) {
   while (dyr.length > 30) dyr.shift().fjern();
   return d;
 }
+// Hvilke dyr bor her? I Uendelighedsverdenen afhænger det af årstiden
+function dyrHer(x, z, i) {
+  const liste = UENDELIG ? ÅRSTIDSDYR[land.årstid(x, z)] : cfg.dyr;
+  return dyrDef(liste[i % liste.length]);
+}
+const iVandet = (x, z) => UENDELIG && !!verden.væske[verden.hent(x, verden.topY(x, z) + 1, z)];
 function lavStartDyr(cx, cz) {                  // dyrene bor lokalt på hver tablet
   const R = rng(gemt.frø + 99);
   for (let i = 0; i < cfg.antal; i++) {
     const x = Math.floor(cx + (R() - 0.5) * 26), z = Math.floor(cz + (R() - 0.5) * 26);
-    if (!verden.hentet(x, z) || !verden.inde(x, 0, z)) continue;
-    const def = dyrDef(cfg.dyr[i % cfg.dyr.length]);
+    if (!verden.hentet(x, z) || !verden.inde(x, 0, z) || iVandet(x, z)) continue;
+    const def = dyrHer(x, z, i);
     if (def.evne === "jæger") continue;                            // turbo-dinoerne kommer først senere — og langt væk
     nytDyr(def, x + 0.5, verden.topY(x, z) + 1, z + 0.5);
   }
 }
-if (!ONLINE) lavStartDyr(VX / 2, VZ / 2);
+if (!ONLINE) lavStartDyr(UENDELIG ? sp.pos.x : VX / 2, UENDELIG ? sp.pos.z : VZ / 2);
 let genfødTid = 6;
 function genfød(dt) {                                            // nye zombier og spøgelser dukker op langt væk
   if (!cfg.genfød || (genfødTid -= dt) > 0) return;
   genfødTid = 5;
+  if (UENDELIG) for (const d of [...dyr]) {                       // dyr langt væk går hjem (landet der bliver glemt)
+    if (Math.hypot(d.pos.x - sp.pos.x, d.pos.z - sp.pos.z) > 120 && !d.holdt) { d.fjern(); dyr.splice(dyr.indexOf(d), 1); }
+  }
   if (dyr.filter(d => cfg.dyr.includes(d.def.id)).length >= cfg.antal) return;
+  const nær = ONLINE || UENDELIG;                                  // store verdener: nye dyr dukker op omkring en
   for (let f = 0; f < 12; f++) {
-    const x = ONLINE ? Math.floor(sp.pos.x + (Math.random() - 0.5) * 50) : 2 + Math.floor(Math.random() * (verden.BX - 4));
-    const z = ONLINE ? Math.floor(sp.pos.z + (Math.random() - 0.5) * 50) : 2 + Math.floor(Math.random() * (verden.BZ - 4));
-    let def = dyrDef(cfg.dyr[Math.floor(Math.random() * cfg.dyr.length)]);
+    const x = nær ? Math.floor(sp.pos.x + (Math.random() - 0.5) * 50) : 2 + Math.floor(Math.random() * (verden.BX - 4));
+    const z = nær ? Math.floor(sp.pos.z + (Math.random() - 0.5) * 50) : 2 + Math.floor(Math.random() * (verden.BZ - 4));
+    if (iVandet(x, z)) continue;
+    let def = dyrHer(x, z, Math.floor(Math.random() * 100));
     if (def.evne === "jæger" && dyr.filter(d => d.def.evne === "jæger").length >= 3) def = dyrDef(cfg.dyr[0]);   // højst tre dinoer ad gangen
     if (Math.hypot(x - sp.pos.x, z - sp.pos.z) < (def.evne === "jæger" ? 30 : 10) || !verden.inde(x, 0, z) || !verden.hentet(x, z)) continue;
     nytDyr(def, x + 0.5, verden.topY(x, z) + 1, z + 0.5);
@@ -642,7 +685,7 @@ function høstet({ x, y, z }) {
   nyePoint(1);
   for (let k = 0; k < 12; k++) partikel(x + 0.5, y + 0.5, z + 0.5, GRØNNE[k % 3], (Math.random() - 0.5) * 3, 3 + Math.random() * 2, (Math.random() - 0.5) * 3, 0.8, 1, 0.9);
 }
-if (!ONLINE) for (let i = 0; i < verden.data.length; i++) if (verden.data[i] === ID.Spire) {   // spirer fra sidst gror videre
+if (!ONLINE && verden.data) for (let i = 0; i < verden.data.length; i++) if (verden.data[i] === ID.Spire) {   // spirer fra sidst gror videre
   const lag = verden.BX * verden.BZ;
   plantSpire(i % verden.BX, Math.floor(i / lag), Math.floor((i % lag) / verden.BX));
 }
@@ -1078,7 +1121,7 @@ function portalTil(v) {
 let portalKom = false;
 try { portalKom = sessionStorage.getItem("broekraft-portal") === "1"; sessionStorage.removeItem("broekraft-portal"); } catch (_) {}
 function ankomVedPortal() {
-  const r = ONLINE ? 16 : Infinity, px = Math.floor(sp.pos.x), pz = Math.floor(sp.pos.z);
+  const r = ONLINE || UENDELIG ? 16 : Infinity, px = Math.floor(sp.pos.x), pz = Math.floor(sp.pos.z);
   let bedst = null;
   for (let x = Math.max(0, px - r); x < Math.min(verden.BX, px + r + 1); x++) for (let z = Math.max(0, pz - r); z < Math.min(verden.BZ, pz + r + 1); z++) {
     for (let y = 1; y < verden.BY; y++) {
@@ -1625,7 +1668,7 @@ function opdaterHak(dt) {
 let gangFase = 0, svømmer = false;
 let venteBesked = 0;
 function opdaterSpiller(dt) {
-  if (ONLINE) {                                     // stå stille, til jorden under en er hentet
+  if (ONLINE || UENDELIG) {                         // stå stille, til jorden under en er hentet (eller lavet)
     const x = Math.floor(sp.pos.x), z = Math.floor(sp.pos.z);
     if (!verden.hentet(x, z)) { if ((venteBesked -= dt) <= 0) { besked("Henter verden… 🌍", 1500); venteBesked = 1.6; } return; }
     if (ventPåJord) { ventPåJord = false; sp.pos.y = verden.topY(x, z) + 1; sp.vel.set(0, 0, 0); }
@@ -1850,6 +1893,7 @@ $("musikKnap").addEventListener("click", () => {
   $("musikKnap").textContent = musikTekst();
 });
 $("musikKnap").textContent = musikTekst();
+$("hjemKnap").addEventListener("click", () => { $("hjemStart").click(); besked("🏡 Hjem igen!", 1600); });   // Uendelighedsverdenen: hjem til pladsen
 $("hjemStart").addEventListener("click", () => { Lyd.klik(); skyd.stigUd(); tornado.slip(); nytår.tur = null; startSted(); if (sp.flyver) skiftFlyv(); luk("menu"); gemSnart(); });
 $("udsynKnap").textContent = `👀 Udsyn: ${UDSYN[udsynNr].navn}`;
 $("udsynKnap").addEventListener("click", () => {                  // hvor langt kan man se (online)
@@ -1928,7 +1972,8 @@ function tegnFrame(nu) {
   if (!iGang || pause) tornado.stille();
   for (const d of dyr) d.opdater(dt, sp.pos);
   if (ONLINE) opdaterOnline(dt);
-  verden.opdater(ONLINE ? 6 : verden.snavset.size > 40 ? 12 : 4);
+  if (UENDELIG) opdaterLand(dt);
+  verden.opdater(ONLINE ? 6 : UENDELIG ? 6 : verden.snavset.size > 40 ? 12 : 4);
   if ((skjulT -= dt) <= 0) { skjulT = 0.25; verden.skjulFjerne(kamera.position.x, kamera.position.z, scene.fog.far + 8); }   // kun det, man kan se
   animerVæsker();
   tegnPortalSlør(dt);

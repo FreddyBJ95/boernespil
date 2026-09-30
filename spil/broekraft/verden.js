@@ -53,11 +53,15 @@ const HJØRNER = [[-1, -1], [0, -1], [-1, 0], [0, 0]];
 export class Verden {
   // mål: { BX, BY, BZ } — standard er den lille ø. online: true gemmer verdenen som søjler på 16×16,
   // som serveren sender én ad gangen (se søjle() og glemSøjle()).
+  // uendelig: true er Uendelighedsverdenen: søjlerne laves på tabletten (uendelig.js), og det, børnene
+  // bygger, huskes pr. søjle, så det kommer igen, når søjlen laves på ny.
   constructor(frø, atlas, materiale, scene, mål = {}) {
     Object.assign(this, { frø, atlas, mat: materiale, scene });
     this.BX = mål.BX || BX; this.BY = mål.BY || BY; this.BZ = mål.BZ || BZ;
-    this.online = !!mål.online;
-    this.søjler = this.online ? new Array((this.BX >> 4) * (this.BZ >> 4)) : null;
+    this.online = !!mål.online || !!mål.uendelig;
+    this.uendelig = !!mål.uendelig;
+    this.søjler = this.online ? new Map() : null;                      // søjle-nummer → blokkene i søjlen
+    this.søjleÆndringer = new Map();                                    // uendelig: søjle-nummer → (plads → blok)
     this.data = this.online ? null : new Uint8Array(this.BX * this.BY * this.BZ);
     this.klumper = new Map();
     this.snavset = new Set();
@@ -75,7 +79,8 @@ export class Verden {
 
   i(x, y, z) { return x + z * this.BX + y * this.BX * this.BZ; }
   inde(x, y, z) { return x >= 0 && x < this.BX && y >= 0 && y < this.BY && z >= 0 && z < this.BZ; }
-  søjleAf(x, z) { return this.søjler[(x >> 4) + (z >> 4) * (this.BX >> 4)]; }
+  søjleNr(cx, cz) { return cx + cz * (this.BX >> 4); }
+  søjleAf(x, z) { return this.søjler.get(this.søjleNr(x >> 4, z >> 4)); }
   hent(x, y, z) {
     if (y < 0) return ID.Bundsten;
     if (!this.inde(x, y, z)) return 0;
@@ -96,6 +101,7 @@ export class Verden {
       const s = this.søjleAf(x, z), j = (x & 15) + (z & 15) * 16 + y * 256;
       if (!s || s[j] === id) return false;
       s[j] = id;
+      if (this.uendelig) this.husk(x, y, z, id);
     } else {
       const i = this.i(x, y, z);
       if (this.data[i] === id) return false;
@@ -121,28 +127,52 @@ export class Verden {
     const højde = data.length / 256;
     const s = højde === this.BY ? data : new Uint8Array(256 * this.BY);
     if (s !== data) s.set(data.subarray(0, Math.min(data.length, s.length)));
-    this.søjler[cx + cz * (this.BX >> 4)] = s;
+    this.søjler.set(this.søjleNr(cx, cz), s);
+    if (this.uendelig) {                                // det, børnene har bygget her før
+      for (const [i, id] of this.søjleÆndringer.get(this.søjleNr(cx, cz)) || []) {
+        const { x, y, z } = this.sted(i);
+        s[(x & 15) + (z & 15) * 16 + y * 256] = id;
+      }
+    }
     // byg søjlen og kanten af naboerne om (de viste sider ud mod "ingenting" før)
     for (let cy = 0; cy < this.BY / CS; cy++) {
       this.snavs(cx, cy, cz);
       this.snavs(cx - 1, cy, cz); this.snavs(cx + 1, cy, cz); this.snavs(cx, cy, cz - 1); this.snavs(cx, cy, cz + 1);
     }
   }
-  glemSøjle(cx, cz) {
+  // stille: naboerne skal ikke bygges om (Uendelighedsverdenen glemmer land langt væk, som ingen kan se)
+  glemSøjle(cx, cz, stille = false) {
     if (cx < 0 || cz < 0 || cx >= this.BX >> 4 || cz >= this.BZ >> 4) return;
-    this.søjler[cx + cz * (this.BX >> 4)] = undefined;
+    this.søjler.delete(this.søjleNr(cx, cz));
     for (let cy = 0; cy < this.BY / CS; cy++) {
       this.fjernKlump(`${cx},${cy},${cz}`);
       this.snavset.delete(`${cx},${cy},${cz}`);
-      this.snavs(cx - 1, cy, cz); this.snavs(cx + 1, cy, cz); this.snavs(cx, cy, cz - 1); this.snavs(cx, cy, cz + 1);
+      if (!stille) { this.snavs(cx - 1, cy, cz); this.snavs(cx + 1, cy, cz); this.snavs(cx, cy, cz - 1); this.snavs(cx, cy, cz + 1); }
     }
   }
   rydAlt() {                                    // ny tilslutning: glem alt og vent på nye søjler
-    if (this.online) this.søjler.fill(undefined);
+    if (this.online) this.søjler.clear();
     for (const m of this.klumper.values()) { this.scene.remove(m); m.geometry.dispose(); }
     this.klumper.clear();
     this.gløder.clear();
     this.snavset.clear();
+  }
+  // Uendelig: husk en ændring (også pr. søjle), og læs de gemte ændringer ind
+  sted(i) { return { x: i % this.BX, z: Math.floor(i / this.BX) % this.BZ, y: Math.floor(i / (this.BX * this.BZ)) }; }
+  husk(x, y, z, id) {
+    const i = this.i(x, y, z), k = this.søjleNr(x >> 4, z >> 4);
+    this.ændringer.set(i, id);
+    let æ = this.søjleÆndringer.get(k);
+    if (!æ) this.søjleÆndringer.set(k, æ = new Map());
+    æ.set(i, id);
+  }
+  indlæsÆndringer(ændringer) {
+    for (const [i, id] of Object.entries(ændringer || {})) {
+      const n = +i;
+      if (!Number.isFinite(n) || n < 0 || BLOKKE[id] === undefined) continue;
+      const { x, y, z } = this.sted(n);
+      if (this.inde(x, y, z)) this.husk(x, y, z, id);
+    }
   }
   fjernKlump(nøgle) {
     for (const lag of LAG) this.fjernLag(lagNøgle(nøgle, lag));
@@ -206,6 +236,7 @@ export class Verden {
   }
   // Byg klumperne tæt på (x, z) med det samme — resten kommer lidt efter lidt, de nærmeste først
   bygOmkring(x, z, r = 3) {
+    if (this.online) return;                            // søjle-verdener bygges, efterhånden som søjlerne kommer
     const cx0 = Math.floor(x / CS), cz0 = Math.floor(z / CS), alle = [];
     for (let cx = 0; cx < this.BX / CS; cx++) for (let cy = 0; cy < this.BY / CS; cy++) for (let cz = 0; cz < this.BZ / CS; cz++) alle.push([cx, cy, cz, Math.hypot(cx - cx0, cz - cz0)]);
     alle.sort((a, b) => a[3] - b[3]);

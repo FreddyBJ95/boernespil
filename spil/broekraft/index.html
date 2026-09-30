@@ -181,6 +181,7 @@
     /* Spil sammen (online) */
     body:not(.online) .kun-online { display: none !important; }
     .online .kun-alene { display: none !important; }
+    body:not(.uendelig) .kun-uendelig { display: none !important; }   /* 🏡 kun i Uendelighedsverdenen */
     .top-hoejre { position: fixed; top: 10px; right: 10px; z-index: 6; display: none; gap: 8px; align-items: center; }
     .i-gang.online .top-hoejre { display: flex; }
     .status {
@@ -305,6 +306,7 @@
   <div class="top styring">
     <a class="mc lille" href="../../" aria-label="Til forsiden">🏠</a>
     <button class="mc lille" id="menuKnap" aria-label="Menu">⏸</button>
+    <button class="mc lille kun-uendelig" id="hjemKnap" aria-label="Gå hjem">🏡</button>
   </div>
   <div class="besked" id="besked"></div>
   <div class="top-hoejre">

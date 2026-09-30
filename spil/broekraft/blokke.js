@@ -198,6 +198,18 @@ export const BLOKKE = [
   { navn: "Ur", tekstur: { top: "sten", side: "ur", bund: "sten" }, ur: true, lyser: true, lyd: "sten" },
   { navn: "Kæmperaket", tekstur: { top: "kæmperaketTop", side: "kæmperaket", bund: "fyrBund" }, raketTur: true, lyd: "metal" },
   { navn: "Dronekasse", tekstur: { top: "dronekasseTop", side: "dronekasse", bund: "fyrBund" }, droner: true, lyd: "metal" },
+  // --- Uendelighedsverdenen: årstidernes træer og blomster ---
+  { navn: "Granblade", tekstur: "granblade", lyd: "græs" },
+  { navn: "Snegran", tekstur: { top: "sne", side: "snegranSide", bund: "granblade" }, lyd: "græs" },
+  { navn: "Birkestamme", tekstur: { top: "stammeTop", side: "birk", bund: "stammeTop" }, lyd: "træ" },
+  { navn: "Kirsebærblade", tekstur: "løv:#f4a6c8", lyd: "græs" },
+  { navn: "Orange blade", tekstur: "løv:#e8862a", lyd: "græs" },
+  { navn: "Røde blade", tekstur: "løv:#c8322a", lyd: "græs" },
+  { navn: "Gule blade", tekstur: "løv:#e8c42a", lyd: "græs" },
+  { navn: "Tulipan", tekstur: "blomst:#ff5fa2", kryds: true, lyd: "græs" },
+  { navn: "Blå blomst", tekstur: "blomst:#4a7cf0", kryds: true, lyd: "græs" },
+  { navn: "Hvid blomst", tekstur: "blomst:#ffffff", kryds: true, lyd: "græs" },
+  { navn: "Højt græs", tekstur: "højtGræs", kryds: true, lyd: "græs" },
 ];
 
 export const ID = {};
@@ -603,6 +615,31 @@ const MØNSTRE = {
     for (const [x, y] of [[2, 2], [12, 2], [2, 12], [12, 12]]) { set(x, y, hex("#d0d8e2")); set(x + 1, y + 1, hex("#4a525c")); }
   },
   // --- Ildtornadoerne ---
+  // Uendelighedsverdenen: grannåle, sne på granerne, birkebark og højt græs
+  granblade: (set, r) => { fyld(set, r, "#2d6b4a", 0.35); prik(set, r, ["#1f5238", "#3f8a5c", "#24593d"], 46); },
+  snegranSide: (set, r) => {
+    MØNSTRE.granblade(set, r);
+    const s = hex("#f4f8ff");
+    for (let x = 0; x < T; x++) {
+      const h = 2 + (r() < 0.5 ? 1 : 0) + (r() < 0.3 ? 2 : 0);
+      for (let y = 0; y < h; y++) set(x, y, lys(s, 1 + (r() - 0.5) * 0.08));
+    }
+    prik(set, r, ["#ffffff", "#e6eefc"], 10);
+  },
+  birk: (set, r) => {
+    fyld(set, r, "#ece8dc", 0.08);
+    for (let i = 0; i < 9; i++) {                      // sorte streger i barken
+      const y = Math.floor(r() * T), x0 = Math.floor(r() * 12), l = 2 + Math.floor(r() * 4);
+      for (let x = x0; x < x0 + l; x++) set(x, y, hex(r() < 0.7 ? "#2b2b2b" : "#5a5a5a"));
+    }
+  },
+  højtGræs: (set, r) => {
+    alle((x, y) => set(x, y, [0, 0, 0], 0));
+    for (let i = 0; i < 9; i++) {                      // strå i forskellig højde
+      const x = 1 + Math.floor(r() * 14), h = 6 + Math.floor(r() * 9), c = hex(r() < 0.5 ? "#5fb33a" : "#4a9a2c");
+      for (let y = T - 1; y >= T - h; y--) set(Math.min(15, x + (y < T - h / 2 && r() < 0.3 ? 1 : 0)), y, lys(c, 1 + (r() - 0.5) * 0.25));
+    }
+  },
   tørtGræsTop: (set, r) => { fyld(set, r, "#c8a84a", 0.22); prik(set, r, ["#a88a3a", "#dcc070", "#b89a42"], 30); },
   tørtGræsSide: (set, r) => {
     MØNSTRE.jord(set, r);
@@ -905,6 +942,11 @@ function maler(navn) {
       set(x, y, lys(c, 1 + (r() - 0.5) * 0.2)); set(x + 1, y, lys(c, 0.85));
     }
     for (const [x, y] of [[7, 5], [3, 3], [12, 2], [2, 1], [13, 1]]) { set(x, y, lys(c, 1.25)); set(x + 1, y - 1 < 0 ? 0 : y - 1, lys(c, 1.2)); }
+  };
+  if (type === "løv") return (set, r) => {           // blade i alle farver (efterår og kirsebær)
+    const c = hex(farve);
+    alle((x, y) => set(x, y, lys(c, 1 + (r() - 0.5) * 0.4)));
+    for (let i = 0; i < 44; i++) set(Math.floor(r() * T), Math.floor(r() * T), lys(c, i % 3 ? 0.72 : 1.18));
   };
   if (type === "puds") return (set, r) => {
     fyld(set, r, farve, 0.1);

@@ -27,6 +27,9 @@ barnet op til **guldslottet i himlen**.
 - **Guld** som belønning, med **både en butik og en skattekiste**, der fyldes op.
 - **Seks sten, én fra hver sin verden.** Hver sten giver en superkraft i uendelighedsverdenen.
 - **Finalen:** Guld-føniksen henter barnet op til guldslottet i himlen.
+- **Zombier om natten**, og **nogle dinoer er farlige**. De jagter og skubber én omkuld ligesom
+  turbo-dinoerne på Skydebanen. Man kommer ikke til skade.
+- **Tog og luftballoner** til at komme langt omkring.
 
 ## Årstiderne
 
@@ -104,14 +107,16 @@ altid ved siden af.
 
 ## Sådan bygges det, i bidder der hver især virker
 
-1. **Det uendelige land** med de fire årstider, bjerge, søer, hav og en 🏠-knap. Verdenen kan vælges
-   i menuen og nås gennem portaler.
-2. **Dag, nat og vejr.**
+1. ✅ **Det uendelige land** med de fire årstider, bjerge, søer (med is om vinteren), palmestrande, en
+   hjemmeplads med stier ud til årstiderne og en 🏡-knap. Verdenen hedder "Den uendelige verden" i menuen.
+2. **Dag, nat og vejr**, med zombier om natten og sne, der falder i vinterlandet.
 3. **Kortet**, der viser hvor man har været, hjemmet og steder at finde.
-4. **Ting at opdage**: landsbyer, skattekister, grotter med krystaller og kæmpetræer.
-5. **Spådamen, opgaverne, guldet, skattekisten og butikken.**
-6. **De seks sten** i de andre verdener og stenringen.
-7. **Guld-føniksen, guldslottet og guldfløjten.**
+4. **Tog og luftballoner**: en station ved hjemmet og skinner ud i årstiderne.
+5. **Ting at opdage**: landsbyer, skattekister, grotter med krystaller, kæmpetræer og en dinojungle
+   med farlige dinoer.
+6. **Spådamen, opgaverne, guldet, skattekisten og butikken.**
+7. **De seks sten** i de andre verdener og stenringen.
+8. **Guld-føniksen, guldslottet og guldfløjten.**
 
 ## Teknik (kort)
 
@@ -126,8 +131,3 @@ altid ved siden af.
 - **Først kun alene**, altså uden server. At spille sammen kræver en uendelig generator på serveren
   (Codex).
 - Nye blokke sættes altid **nederst** i `BLOKKE`, fx efterårsblade, krystal, guldblok og stensokkel.
-
-## Ikke besluttet endnu
-
-- Skal verdenen være helt fredelig, eller må der komme lidt zombier om natten?
-- Transport over lange afstande: et tog, luftballoner, eller er det nok at ride og flyve?

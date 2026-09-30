@@ -16,7 +16,10 @@
 //  vulkan:  (BX, BZ) => [x, z] — hvor vulkanen står (den ryger og går af og til i udbrud i spil.js)
 //  atomtårne: (BX, BZ) => [[x, z], …] — køletårne, der damper · atommål: (BX, BZ) => [x, z] — hvor missilerne lander
 //  tornado: tornadoer drøner rundt af sig selv (tornado.js)
+//  uendelig: verdenen har ingen kanter — landet laves omkring barnet, mens det går (uendelig.js)
 //  generer: opskriften på terrænet — får værktøjer fra verden.js (terræn, pynt, sæt, hent, R, støj …)
+
+import { lavLand, MIDT } from "./uendelig.js";
 
 // Hvor vulkanen i Dinodalen står (bruges både af opskriften og af spil.js)
 const dinoVulkan = (BX, BZ) => [Math.min(BX - 22, BX / 2 + 30), Math.max(22, BZ / 2 - 28)];
@@ -1639,6 +1642,37 @@ export const VERDENER = [
 
       a.pynt(a.antal(80), ID["Tør busk"], [ID["Tørt græs"], ID.Sand]);
       a.pynt(a.antal(20), () => (R() < 0.6 ? ID["Rød blomst"] : ID["Gul blomst"]), [ID["Tørt græs"]]);
+    },
+  },
+
+  {
+    id: "uendelig", navn: "Den uendelige verden", ikon: "♾️",
+    tekst: "En verden helt uden kanter! Gå mod nord til vinteren, mod syd til sommeren, mod øst til efteråret og mod vest til foråret — og op på de høje bjerge.",
+    himmel: ["#4a9df5", "#d6ecff"], tåge: [44, 104], hav: null, sol: "#fff6b0", skyer: "#ffffff",
+    lys: ["#ffffff", "#7a9a5a", 2.2, 1.4], stemning: "rolig", tyngde: 28,
+    uendelig: true,                                              // landet laves, mens man går (uendelig.js)
+    dyr: ["ko", "gris", "hone", "kanin", "faar", "and", "hest", "pingvin", "rensdyr"], antal: 12, genfød: true,
+    hotbar: ["Græs", "Planker", "Sten", "Glas", "Sne", "Orange blade", "Tulipan", "v:vand", "æg:?"],
+    vis: ["Sne", "Kirsebærblade", "Orange blade"],
+    hent: ["Lægger sne på bjergene…", "Farver bladene…", "Sår forårsblomster…", "Tænder sommersolen…"],
+    // Sammen over serveren bliver verdenen en stor firkant af det samme land, med hjemmet i midten
+    generer(a) {
+      const land = lavLand({ støj: a.støj, ID: a.ID, BY: a.BY, frø: Math.floor(a.R() * 2 ** 31) });
+      const fx = (MIDT - a.BX / 2) >> 4, fz = (MIDT - a.BZ / 2) >> 4;
+      let rækkeCx = -1, række = new Map();                        // kun én stribe søjler ad gangen i hukommelsen
+      const blok = (x, z, y) => {
+        if (x >> 4 !== rækkeCx) { rækkeCx = x >> 4; række = new Map(); }
+        let s = række.get(z >> 4);
+        if (!s) række.set(z >> 4, s = land.søjle(fx + (x >> 4), fz + (z >> 4)));
+        return s[(x & 15) + (z & 15) * 16 + y * 256];
+      };
+      const øverst = (x, z) => { for (let y = a.BY - 1; y > 0; y--) if (blok(x, z, y)) return y; return 0; };
+      a.terræn(øverst, (x, z, y) => blok(x, z, y));
+      // terræn() går højst op til BY − 6 — det, der rager op over (fx trætoppe), sættes bagefter
+      for (let x = 0; x < a.BX; x++) for (let z = 0; z < a.BZ; z++) for (let y = a.BY - 5; y < a.BY; y++) {
+        const id = blok(x, z, y);
+        if (id) a.sæt(x, y, z, id);
+      }
     },
   },
 ];
