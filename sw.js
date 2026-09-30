@@ -1,13 +1,14 @@
 // ===== Service Worker — gør spillene installerbare og tilgængelige offline =====
 // Bump dette tal når der ændres filer, så de gamle bliver hentet på ny.
-const CACHE = "boernespil-v41";
+const CACHE = "boernespil-v42";
 
-const SPIL = ["balloner", "vask", "slange", "tegne", "piano", "fisk", "broekraft"];
+const SPIL = ["balloner", "vask", "slange", "tegne", "piano", "fisk", "broekraft", "rulle-rasmus"];
 
 // Spil der består af flere filer end index.html
 const EKSTRA = [
   "tilslut/", "tilslut/index.html", "tilslut/tilslut.css", "tilslut/tilslut.js", "tilslut/adresse.js", "tilslut/vendor/jsQR.js",
   ...["three.js", "spil.js", "fisk.js", "staenger.js", "verden.js", "lyd.js"].map(f => `spil/fisk/${f}`),
+  ...["three.js", "spil.js", "baner.js", "bane.js", "temaer.js", "verden.js", "ting.js", "blob.js", "partikler.js", "teksturer.js", "lyd.js"].map(f => `spil/rulle-rasmus/${f}`),
   ...["three.js", "spil.js", "blokke.js", "dyr.js", "verden.js", "verdener.js", "lyd.js", "net.js", "figurer.js", "simulering.js", "vaerktoej.js", "stemmer.js", "stemmesignal.js", "stemmeeffekt.js", "skyd.js", "kampvogn.js", "fyrvaerkeri.js", "brand.js", "atom.js", "tornado.js", "biler.js", "nytaar.js"].map(f => `spil/broekraft/${f}`),
   "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",   // 3D-motoren (se spil/fisk/three.js)
 ];
@@ -22,7 +23,7 @@ const FILER = [
   "icon-512.png",
   // billederne fra spillene på forsiden
   ...["fyrvaerkeri", "tornado", "nuke", "brandby", "dino", "hav", "slik", "sky", "pirat", "droner", "pariserhjul",
-    "underverden", "graesoe", "skydebane", "nytaar", "fisk", "svampesky"].map(n => `billeder/${n}.jpg`),
+    "underverden", "graesoe", "skydebane", "nytaar", "fisk", "svampesky", "rasmus"].map(n => `billeder/${n}.jpg`),
   ...SPIL.flatMap(s => [`spil/${s}/`, `spil/${s}/index.html`]),
   ...EKSTRA
 ];

@@ -20,7 +20,7 @@ Første gang skal der være internet. Bagefter virker spillene også offline.
 ## Spil
 Forsiden har faner, så man kan vælge kategori (appen husker den sidste):
 
-- 🧊 **3D:** ⛏️ Broekraft (byggespil i Minecraft-stil med mange verdener), 🎣 Mærkelige fisk
+- 🧊 **3D:** ⛏️ Broekraft (byggespil i Minecraft-stil med mange verdener), 🎣 Mærkelige fisk, 🏁 Rulle Rasmus (styr en blob gennem fem baner ved at vippe iPad'en eller trykke)
 - 🎮 **2D:** 🎈 Pop ballonerne (stryg over ballonerne som i Fruit Ninja), 🚜 Vaskehallen, 🐍 Fjollet Slange
 - 🎨 **Tegn & musik:** 🎨 Tegn! (hold to fingre nede, så kommer der en streg imellem dem), 🎹 Dyre-piano
 
@@ -50,6 +50,23 @@ Fiskespillet ligger i `spil/fisk/` og er delt op, så det er nemt at bygge vider
 Øverst i `fisk.js` og `staenger.js` står hvad hver værdi betyder.
 Test en ny fisk ved at åbne `spil/fisk/?fisk=<id>` — så bider den fisk hver gang.
 Nye filer skal også skrives ind i `EKSTRA` i `sw.js`.
+
+## Rulle Rasmus: flere baner og farver
+Blob-spillet ligger i `spil/rulle-rasmus/`. Man vipper iPad'en eller trykker der, hvor Rasmus skal trille hen.
+Falder han af banen, dukker han op igen ved det sidste flag.
+
+| Fil | Indhold |
+|---|---|
+| `baner.js` | De fem baner (`BANER`), bygget af stykker: lige, sving, bakker, render, hop, trampoliner … |
+| `temaer.js` | Hvordan hver bane ser ud: himmel, vand/skyer, overflade, rækværk og pynt |
+| `blob.js` | Rasmus selv og hans farver (`SKINS`): ild, enhjørning, Broekraft, regnbue, galakse og guld |
+| `bane.js` | Vejen: punkterne, kollision og 3D-modellen af banen |
+| `ting.js` | Stjerner, frugt, flag, trampoliner, fartfelter, puder og målbuen |
+| `verden.js` | Himmel, lys og skygger, vand med bølger, pynt og det der flyver i luften |
+| `lyd.js` · `partikler.js` · `teksturer.js` | Lyde og musik · gnister og konfetti · overflader tegnet med kode |
+
+Øverst i `baner.js` står hvad hvert stykke kan. `spil/rulle-rasmus/?bane=is` starter på en bestemt bane,
+og `?debug` giver adgang til spillet i konsollen (`rr`).
 
 ## Broekraft: flere blokke og dyr
 Byggespillet ligger i `spil/broekraft/` og er delt op på samme måde:
