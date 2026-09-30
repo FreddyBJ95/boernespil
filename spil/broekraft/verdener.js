@@ -17,6 +17,8 @@
 //  atomtårne: (BX, BZ) => [[x, z], …] — køletårne, der damper · atommål: (BX, BZ) => [x, z] — hvor missilerne lander
 //  tornado: tornadoer drøner rundt af sig selv (tornado.js)
 //  uendelig: verdenen har ingen kanter — landet laves omkring barnet, mens det går (uendelig.js)
+//  skjult:  vises ikke i listen over verdener, før alle seks sten er sat i stenringen (sten.js)
+//  gård:    (BX, BZ) => { x, y, z } — hvor Guld-føniksen lander med barnet i Guldslottet
 //  generer: opskriften på terrænet — får værktøjer fra verden.js (terræn, pynt, sæt, hent, R, støj …)
 
 import { lavLand, MIDT } from "./uendelig.js";
@@ -1648,7 +1650,7 @@ export const VERDENER = [
   {
     id: "uendelig", navn: "Den uendelige verden", ikon: "♾️",
     tekst: "En verden helt uden kanter! Gå mod nord til vinteren, mod syd til sommeren, mod øst til efteråret og mod vest til foråret — og op på de høje bjerge.",
-    himmel: ["#4a9df5", "#d6ecff"], tåge: [44, 104], hav: null, sol: "#fff6b0", skyer: "#ffffff",
+    himmel: ["#4a9df5", "#d6ecff"], tåge: [44, 104], hav: null, sol: null, skyer: "#ffffff",   // solen og månen går over himlen (dagnat.js)
     lys: ["#ffffff", "#7a9a5a", 2.2, 1.4], stemning: "rolig", tyngde: 28,
     uendelig: true,                                              // landet laves, mens man går (uendelig.js)
     dyr: ["ko", "gris", "hone", "kanin", "faar", "and", "hest", "pingvin", "rensdyr"], antal: 12, genfød: true,
@@ -1673,6 +1675,81 @@ export const VERDENER = [
         const id = blok(x, z, y);
         if (id) a.sæt(x, y, z, id);
       }
+    },
+  },
+  {
+    id: "guldslot", navn: "Guldslottet", ikon: "🏰", skjult: true,                // hemmelig: man kommer hertil på Guld-føniksens ryg (sten.js)
+    tekst: "Et slot af guld på en sky højt oppe i himlen — med tronsal, skatkammer og udsigt over alle årstiderne.",
+    himmel: ["#ff9f4a", "#ffe8b8"], tåge: [70, 150], hav: null, sol: "#fff3b0", solStr: 44, skyer: "#ffffff",
+    lys: ["#fff4d6", "#b08a5a", 2.3, 1.5], stemning: "glad", tyngde: 28,
+    størrelse: [96, 64, 96],
+    dyr: ["skyfaar", "enhjorning", "skyfaar"], antal: 4,
+    hotbar: ["Guld", "Rød uld", "Sky", "Glas", "Lampe", "Diamant", "Planker", "v:vand", "æg:?"],
+    vis: ["Guld", "Sky", "Rød uld"],
+    hent: ["Pudser guldet…", "Puster skyerne op…", "Ruller den røde løber ud…"],
+    gård: (BX, BZ) => ({ x: BX >> 1, y: Math.min(33, 64 - 31), z: (BZ >> 1) + 10 }),  // slotsgården (føniksen lander her)
+    generer(a) {
+      const { R, støj, ID, BX, BY, BZ } = a, cx = BX >> 1, cz = BZ >> 1;
+      // langt nede: de fire årstider, set fra balkonen
+      a.terræn((x, z) => Math.round(4 + støj(x / 14, z / 14) * 3), (x, z, y, h) => {
+        if (y === 0) return ID.Bundsten;
+        if (y < h) return ID.Jord;
+        const nord = z < cz - Math.abs(x - cx) * 0.6, syd = z > cz + Math.abs(x - cx) * 0.6;
+        return nord ? ID.Sne : syd ? ID.Græs : x > cx ? ID["Tørt græs"] : ID.Græs;
+      });
+      for (let i = 0; i < a.antal(40); i++) {                          // små træer i hver årstid
+        const x = 2 + Math.floor(R() * (BX - 4)), z = 2 + Math.floor(R() * (BZ - 4)), h = a.top[x + z * BX];
+        const blade = z < cz - Math.abs(x - cx) * 0.6 ? ID.Snegran : z > cz + Math.abs(x - cx) * 0.6 ? ID.Blade : x > cx ? ID["Orange blade"] : ID.Kirsebærblade;
+        for (let y = h + 1; y < h + 4; y++) a.sæt(x, y, z, ID.Træstamme);
+        for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) for (let y = h + 3; y <= h + 4; y++) if (!(dx && dz && y === h + 4)) a.sæt(x + dx, y, z + dz, blade);
+      }
+      const Y = Math.min(33, BY - 31);                                  // skyøens overflade
+      for (let x = 0; x < BX; x++) for (let z = 0; z < BZ; z++) {      // skyøen
+        const d = ((x - cx) / 36) ** 2 + ((z - cz) / 34) ** 2;
+        if (d > 1) continue;
+        const tyk = Math.round(4 * (1 - d) + støj(x / 5, z / 5) * 2);
+        for (let y = Y - tyk; y <= Y; y++) a.sæt(x, y, z, ID.Sky);
+      }
+      const kasse = (x0, y0, z0, x1, y1, z1, id) => { for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) for (let z = z0; z <= z1; z++) a.sæt(x, y, z, id); };
+      const Y1 = Y + 1;
+      // selve slottet: mure af guld med vinduer og tinder
+      const [x0, z0, x1, z1] = [cx - 14, cz - 16, cx + 14, cz + 2];
+      kasse(x0, Y, z0, x1, Y, z1, ID.Fliser);
+      for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
+        const kant = x === x0 || x === x1 || z === z0 || z === z1;
+        for (let y = Y1; y <= Y1 + 10; y++) a.sæt(x, y, z, kant ? (y % 4 === 1 && (x + z) % 4 === 0 ? ID.Glas : ID.Guld) : 0);
+        a.sæt(x, Y1 + 11, z, ID.Guld);
+        if (kant && (x + z) % 2 === 0) a.sæt(x, Y1 + 12, z, ID.Guld);
+      }
+      kasse(cx - 2, Y1, z1, cx + 2, Y1 + 3, z1, 0);                     // hoveddøren ud til gården
+      for (const [tx, tz] of [[x0, z0], [x1, z0], [x0, z1], [x1, z1]]) {   // fire tårne med røde spir
+        for (let x = tx - 3; x <= tx + 3; x++) for (let z = tz - 3; z <= tz + 3; z++) {
+          const kant = Math.abs(x - tx) === 3 || Math.abs(z - tz) === 3;
+          for (let y = Y1; y <= Y1 + 16; y++) if (kant) a.sæt(x, y, z, y % 5 === 2 && (x + z) % 3 === 0 ? ID.Glas : ID.Guld);
+        }
+        for (let l = 0; l < 5; l++) kasse(tx - 3 + l, Y1 + 17 + l, tz - 3 + l, tx + 3 - l, Y1 + 17 + l, tz + 3 - l, ID["Rød uld"]);
+        a.sæt(tx, Y1 + 22, tz, ID.Guld); a.sæt(tx, Y1 + 23, tz, ID.Lampe);
+      }
+      // tronsalen: en rød løber fra døren hen til tronen
+      kasse(cx - 1, Y, z0 + 3, cx + 1, Y, z1, ID["Rød uld"]);
+      kasse(cx - 1, Y1, z0 + 1, cx + 1, Y1 + 3, z0 + 1, ID.Guld);        // tronens ryg
+      a.sæt(cx, Y1, z0 + 2, ID["Rød uld"]); a.sæt(cx - 1, Y1, z0 + 2, ID.Guld); a.sæt(cx + 1, Y1, z0 + 2, ID.Guld);
+      a.sæt(cx - 1, Y1 + 1, z0 + 2, ID.Guld); a.sæt(cx + 1, Y1 + 1, z0 + 2, ID.Guld); a.sæt(cx, Y1 + 4, z0 + 1, ID.Diamant);
+      for (const x of [x0 + 1, x1 - 1]) for (const z of [z0 + 1, z1 - 1]) a.sæt(x, Y1 + 5, z, ID.Glødesten);
+      // skatkammeret: bunker af guld, diamanter, skattekister — og guldkisten
+      kasse(x1 - 8, Y1, z0 + 4, x1 - 8, Y1 + 4, z1 - 4, ID.Guld);
+      kasse(x1 - 8, Y1, cz - 8, x1 - 8, Y1 + 2, cz - 6, 0);
+      for (const [x, z, h] of [[x1 - 3, z0 + 3, 3], [x1 - 5, z0 + 7, 2], [x1 - 3, z0 + 11, 2]]) for (let l = 0; l < h; l++) kasse(x - (h - 1 - l), Y1 + l, z - (h - 1 - l), x + (h - 1 - l), Y1 + l, z + (h - 1 - l), ID.Guld);
+      a.sæt(x1 - 2, Y1, z0 + 6, ID.Skattekiste); a.sæt(x1 - 6, Y1, z0 + 12, ID.Skattekiste); a.sæt(x1 - 2, Y1, z0 + 14, ID.Diamant);
+      a.sæt(x1 - 4, Y1, z1 - 2, ID.Guldkiste);
+      // balkonen mod vest med udsigt ned over årstiderne
+      kasse(x0, Y1, cz - 9, x0, Y1 + 2, cz - 8, 0);
+      kasse(x0 - 10, Y, cz - 12, x0 - 1, Y, cz - 5, ID.Guld);
+      for (let x = x0 - 10; x <= x0 - 1; x++) for (const z of [cz - 12, cz - 5]) a.sæt(x, Y1, z, ID.Hegn);
+      for (let z = cz - 12; z <= cz - 5; z++) a.sæt(x0 - 10, Y1, z, ID.Hegn);
+      // slotsgården med lygter
+      kasse(cx - 8, Y, z1 + 1, cx + 8, Y, z1 + 16, ID.Fliser);
+      for (const x of [cx - 8, cx + 8]) for (const z of [z1 + 4, z1 + 10, z1 + 16]) { a.sæt(x, Y1, z, ID.Hegn); a.sæt(x, Y1 + 1, z, ID.Hegn); a.sæt(x, Y1 + 2, z, ID.Lampe); }
     },
   },
 ];

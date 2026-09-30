@@ -109,14 +109,44 @@ altid ved siden af.
 
 1. ✅ **Det uendelige land** med de fire årstider, bjerge, søer (med is om vinteren), palmestrande, en
    hjemmeplads med stier ud til årstiderne og en 🏡-knap. Verdenen hedder "Den uendelige verden" i menuen.
-2. **Dag, nat og vejr**, med zombier om natten og sne, der falder i vinterlandet.
-3. **Kortet**, der viser hvor man har været, hjemmet og steder at finde.
-4. **Tog og luftballoner**: en station ved hjemmet og skinner ud i årstiderne.
-5. **Ting at opdage**: landsbyer, skattekister, grotter med krystaller, kæmpetræer og en dinojungle
-   med farlige dinoer.
-6. **Spådamen, opgaverne, guldet, skattekisten og butikken.**
-7. **De seks sten** i de andre verdener og stenringen.
-8. **Guld-føniksen, guldslottet og guldfløjten.**
+2. ✅ **Dag, nat og vejr**, med zombier om natten og sne, der falder i vinterlandet (`dagnat.js`).
+3. ✅ **Kortet**, der viser hvor man har været, hjemmet og steder at finde (`kort.js`, 🗺️-knappen).
+4. ✅ **Tog og luftballoner**: en station ved hjemmet og skinner ud i årstiderne (`tog.js`).
+5. ✅ **Ting at opdage**: landsbyer, skattekister, grotter med krystaller, kæmpetræer og en dinojungle
+   med farlige dinoer (`uendelig.js`).
+6. ✅ **Spådamen, opgaverne, guldet, skattekisten og butikken** (`eventyr.js`).
+7. ✅ **De seks sten** i de andre verdener og stenringen (`sten.js`).
+8. ✅ **Guld-føniksen, guldslottet og guldfløjten** (`sten.js` og verdenen `guldslot` i `verdener.js`).
+
+## Sådan blev det (1. oktober 2026)
+
+- **Den uendelige verden:**
+  - Der er en stor station ved hjemmet og fire baner, en ud i hver årstid, med en station for hver
+    400 blokke.
+  - Toget kører af sig selv. Man trykker på det og vælger, hvor man vil hen.
+  - Luftballonen står ved hjemmet. 🔥 får den til at stige, og ⬇ får den til at dale.
+- **Spådamen:**
+  - Hun har 13 små opgaver og læser dem højt.
+  - Efter hver anden opgave fortæller hun, hvor den næste sten ligger.
+  - Der bor også en spådame i telt i landsbyerne.
+- **Butikken:**
+  - Kæledyr, der følger efter én: hund, kat, kanin, pingvin, enhjørning og lille drage.
+  - Hatte til kæledyret.
+  - Et lille hus, der bygges, hvor man står.
+  - Et fyrværkeri-show.
+  - Guld- og regnbueblokke og en egen hest er ikke med endnu.
+- **Skattekisten** ved hjemmet viser guldet. Man finder også ekstra guld i kisterne i grotter og kæmpetræer.
+- **Stenene:**
+  - Stenene svæver med en lysstråle. Man henter dem ved at gå hen til dem.
+  - Når man har samlet en sten op, kan man trykke "♾️ Hjem".
+  - Stenringen sætter selv stenene i, når man kommer tæt på.
+  - **Skystenen giver kæmpehop (🦘)** i stedet for at flyve, for man kan allerede flyve i Broekraft.
+- **Superkræfterne** er knapper i højre side: 🦖 dino, ✨ stjerner, 💪 kæmpe, 🦘 kæmpehop og 🎶 guldfløjten.
+  Ildstenen og havstenen virker af sig selv.
+- **Guldslottet:**
+  - Det er en skjult verden. Den vises først i listen, når finalen er klaret.
+  - Man kommer derop på føniksens ryg og får en krone i gården. Så kommer der fyrværkeri.
+  - Man trykker på føniksen for at flyve hjem igen.
 
 ## Teknik (kort)
 

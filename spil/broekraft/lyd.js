@@ -463,6 +463,63 @@ export function vindLyd(styrke) {          // tornadoens susen — jo tættere p
   vind.g.gain.setTargetAtTime(Math.min(0.45, styrke * 0.4), t, styrke > 0 ? 0.2 : 0.08);
   vind.f.frequency.setTargetAtTime(260 + styrke * 650 + Math.sin(t * 2.3) * 90, t, 0.25);
 }
+// ---------- Den uendelige verden: regn, torden, guld, spådamen, toget, ballonen og føniksen ----------
+let regnKilde = null, regnT = 0;
+export function regn(styrke) {              // regnen, der trommer blødt (0 = stille)
+  if (!ac) return;
+  if (!regnKilde) {
+    if (styrke <= 0) return;
+    const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+    s.buffer = støjBuf; s.loop = true; f.type = "highpass"; f.frequency.value = 1400; g.gain.value = 0;
+    s.connect(f); f.connect(g); g.connect(ud); s.start();
+    regnKilde = { g, sidste: 0 };
+  }
+  const t = ac.currentTime;
+  if (t - regnT < 0.25 || Math.abs(styrke - regnKilde.sidste) < 0.02) return;
+  regnT = t; regnKilde.sidste = styrke;
+  regnKilde.g.gain.setTargetAtTime(Math.min(0.12, styrke * 0.12), t, 0.4);
+}
+export function torden() {                  // stille rumlen langt væk
+  if (!ac) return;
+  const t = nu() + 0.6;
+  sus(t, 2.6, 180, 60, 0.22, "lowpass", 0.7);
+  tone(48, t, 2.2, "sine", 0.12, 32);
+}
+export function mønter(n = 8) {             // klinge-klang: guldmønter
+  if (!ac) return;
+  for (let i = 0; i < n; i++) tone(1800 + Math.random() * 1800, nu() + i * 0.06, 0.18, "triangle", 0.06);
+}
+export function guld() {                    // du fik guld! en lille fanfare og mønter
+  if (!ac) return;
+  [523, 659, 784, 1047].forEach((f, i) => tone(f, nu() + i * 0.1, 0.3, "triangle", 0.14));
+  mønter(10);
+}
+export function magi() {                    // spådamens krystalkugle
+  if (!ac) return;
+  [880, 1109, 1319, 1760, 2217].forEach((f, i) => tone(f, nu() + i * 0.08, 0.6, "sine", 0.07));
+}
+export function togFløjt() {                // tuut-tuut
+  if (!ac) return;
+  for (const d of [0, 0.5]) { tone(440, nu() + d, 0.4, "square", 0.05); tone(554, nu() + d, 0.4, "square", 0.04); }
+}
+export function togKør(fart) {              // tjuk-tjuk, hurtigere jo hurtigere toget kører
+  if (!ac || fart < 0.5) return;
+  sus(nu(), 0.08, 900, 400, 0.06 * Math.min(1, fart / 10), "bandpass", 1.5);
+}
+export function brænder() {                 // luftballonens brænder: fwoosh
+  if (!ac) return;
+  sus(nu(), 0.7, 300, 900, 0.2, "bandpass", 0.6);
+}
+export function fønix() {                   // Guld-føniksens kald
+  if (!ac) return;
+  glid(700, 1400, nu(), 0.5, { type: "triangle", vol: 0.18, vibHz: 7, vib: 30 });
+  glid(1400, 900, nu() + 0.45, 0.7, { type: "triangle", vol: 0.16, vibHz: 6, vib: 25 });
+  [1047, 1319, 1568, 2093].forEach((f, i) => tone(f, nu() + 1 + i * 0.12, 0.8, "sine", 0.06));
+}
+export function stenFundet() {              // en magisk sten!
+  if (!ac) return;
+  [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => { tone(f, nu() + i * 0.09, 1.2, "sine", 0.08); tone(f * 2, nu() + i * 0.09, 0.6, "sine", 0.03); });
+}
 export function bask() {                    // vinger, der basker — svup
   if (!ac) return;
   sus(nu(), 0.2, 380, 1300, 0.2, "bandpass", 1.4);

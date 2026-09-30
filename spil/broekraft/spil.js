@@ -11,7 +11,12 @@
 import * as THREE from "./three.js";
 import { BLOKKE, ID, lavAtlas } from "./blokke.js";
 import { Verden, BX, BY, BZ, HAV, rng, lavStøj } from "./verden.js";
-import { lavLand, MIDT, STØRRELSE as LANDSTØRRELSE, ÅRSTIDSDYR } from "./uendelig.js";
+import { lavLand, MIDT, STØRRELSE as LANDSTØRRELSE, ÅRSTIDSDYR, HJEMSTED, BANER, BANELÆNGDE, STATION_HVER } from "./uendelig.js";
+import { DagNat } from "./dagnat.js";
+import { Kort } from "./kort.js";
+import { Tog, Ballon, vælg } from "./tog.js";
+import { Eventyr, sig } from "./eventyr.js";
+import { StenJagt, Stenring, Guldslot, STEN, læsSten } from "./sten.js";
 import { DYR, Dyr, ægIkon } from "./dyr.js";
 import { VERDENER } from "./verdener.js";
 import * as Lyd from "./lyd.js";
@@ -45,7 +50,11 @@ if (ONLINE) {
   try { onlineInfo = (await (await fetch("/verdensliste", { cache: "no-store" })).json()).find(v => v.id === ONLINE_ID) || null; } catch (_) {}
 }
 const cfg = (ONLINE ? VERDENER.find(v => v.id === onlineInfo?.type) : VERDENER.find(v => v.id === læs("broekraft-verden", "græsø"))) || VERDENER[0];
-const UENDELIG = !!cfg.uendelig && !ONLINE;              // Uendelighedsverdenen: landet laves, mens man går
+const UENDELIG = !!cfg.uendelig && !ONLINE;              // Den uendelige verden: landet laves, mens man går
+const GULDSLOT = cfg.id === "guldslot" && !ONLINE;        // guldslottet i himlen (man kommer dertil på Guld-føniksen)
+const EVENTYR = UENDELIG || GULDSLOT;                     // spådamen, guldet og de magiske sten
+let føniksKommer = false;                                 // vi kommer flyvende på Guld-føniksens ryg
+try { føniksKommer = sessionStorage.getItem("broekraft-føniks") === "1"; sessionStorage.removeItem("broekraft-føniks"); } catch (_) {}
 const MÅL = ONLINE ? { BX: onlineInfo?.bredde || 128, BY: 64, BZ: onlineInfo?.dybde || 128, online: true }
   : UENDELIG ? { BX: LANDSTØRRELSE, BY: 64, BZ: LANDSTØRRELSE, uendelig: true }
   : cfg.størrelse ? { BX: cfg.størrelse[0], BY: cfg.størrelse[1], BZ: cfg.størrelse[2] } : {};      // alene: nogle verdener er større
@@ -90,7 +99,8 @@ if (ONLINE) [scene.fog.near, scene.fog.far] = UDSYN[udsynNr].tåge;
 const kamera = new THREE.PerspectiveCamera(70, 1, 0.05, 500);
 kamera.rotation.order = "YXZ";
 scene.add(kamera);
-scene.add(new THREE.HemisphereLight(cfg.lys[0], cfg.lys[1], cfg.lys[2]));
+const halvlys = new THREE.HemisphereLight(cfg.lys[0], cfg.lys[1], cfg.lys[2]);
+scene.add(halvlys);
 const sollys = new THREE.DirectionalLight("#ffffff", cfg.lys[3]);
 sollys.position.set(0.5, 1, 0.3);
 scene.add(sollys);
@@ -268,7 +278,7 @@ if (cfg.skyer) {
   const skyR = rng(gemt.frø + 7), skyMat = new THREE.MeshBasicMaterial({ color: cfg.skyer, transparent: true, opacity: 0.85, fog: false });
   for (let i = 0; i < 16; i++) {
     const s = new THREE.Mesh(new THREE.BoxGeometry(6 + skyR() * 14, 1.5, 4 + skyR() * 10), skyMat);
-    s.position.set(VX / 2 - 92 + skyR() * 184, 44 + skyR() * 4, VZ / 2 - 92 + skyR() * 184);
+    s.position.set(VX / 2 - 92 + skyR() * 184, (cfg.uendelig ? 62 : 44) + skyR() * 4, VZ / 2 - 92 + skyR() * 184);   // over bjergene i Den uendelige verden
     scene.add(s); skyer.push(s);
   }
 }
@@ -281,6 +291,7 @@ const animMat = {                                               // vand er genne
   lava: new THREE.MeshBasicMaterial({ map: atlas.anim.lava, vertexColors: true }),
   ild: new THREE.MeshBasicMaterial({ map: atlas.anim.ild, alphaTest: 0.4, side: THREE.DoubleSide }),
   portal: new THREE.MeshBasicMaterial({ map: atlas.anim.portal, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide }),
+  lys: new THREE.MeshBasicMaterial({ map: atlas.tekstur, vertexColors: true, alphaTest: 0.5 }),   // lamper og krystaller (bliver ikke mørke om natten)
 };
 const verden = new Verden(gemt.frø, atlas, blokMat, scene, MÅL);
 verden.animMat = animMat;
@@ -290,7 +301,24 @@ verden.tyngde = TYNGDE;
 const land = UENDELIG ? lavLand({ støj: lavStøj(gemt.frø), ID, BY: verden.BY, frø: gemt.frø }) : null;
 const LAND_R = 7;                                 // så mange søjler ud kan man se (tågen skjuler resten)
 let glemTid = 0;
-function lavSøjle(cx, cz) { verden.søjle(cx, cz, land.søjle(cx, cz)); }
+const kort = UENDELIG ? new Kort({
+  nøgle: "broekraft-kort-uendelig", frø: gemt.frø, BY: verden.BY, BLOKKE, hjem: { x: MIDT, z: MIDT },
+  farve: id => atlas.farve(id)?.getHex(THREE.SRGBColorSpace) ?? 0,
+  spiller: () => ({ x: sp.pos.x, z: sp.pos.z, yaw: sp.yaw }), mærker: kortMærker,
+}) : null;
+function lavSøjle(cx, cz) { const data = land.søjle(cx, cz); verden.søjle(cx, cz, data); kort?.husk(cx, cz, data); }
+// Det, kortet viser: hjemmet, spådamerne, butikken, stationerne, landsbyerne og ballonen
+function kortMærker(x0, z0, x1, z1) {
+  const m = [{ x: MIDT, z: MIDT, ikon: "🏡", altid: true }, { x: HJEMSTED.spådame.x, z: HJEMSTED.spådame.z, ikon: "🔮", altid: true },
+    { x: HJEMSTED.butik.x, z: HJEMSTED.butik.z, ikon: "🛒", altid: true }];
+  for (const b of BANER) for (let r = STATION_HVER; r <= BANELÆNGDE; r += STATION_HVER) m.push({ x: MIDT + b.dx * r, z: MIDT + b.dz * r, ikon: "🚉" });
+  for (const l of land.landsbyer(x0, z0, x1, z1)) {
+    m.push({ x: l.x, z: l.z, ikon: "🏘️" });
+    const t = l.huse.find(h => h.telt); if (t) m.push({ x: t.x, z: t.z, ikon: "🔮" });
+  }
+  if (ballon) m.push({ x: ballon.pos.x, z: ballon.pos.z, ikon: "🎈", altid: true });
+  return m;
+}
 function landOmkring(x, z, r) {                   // lav søjlerne tæt på med det samme
   const cx0 = Math.floor(x / 16), cz0 = Math.floor(z / 16);
   for (let dx = -r; dx <= r; dx++) for (let dz = -r; dz <= r; dz++) if (!verden.hentet((cx0 + dx) * 16, (cz0 + dz) * 16)) lavSøjle(cx0 + dx, cz0 + dz);
@@ -321,6 +349,12 @@ if (UENDELIG) {
   verden.anvend(gemt.ændringer);
   verden.bygOmkring(gemt.spiller?.[0] ?? VX / 2, gemt.spiller?.[2] ?? VZ / 2);   // tæt på først, resten lidt efter lidt
 }
+
+// ---------- Dag, nat og vejr (kun Den uendelige verden — dagnat.js) ----------
+const dagNat = UENDELIG ? new DagNat({
+  scene, kamera, himmel, horisont: HORISONT, dæmpMat: [blokMat, animMat.vand], lys: [halvlys, sollys], skyMat: skyer[0]?.material,
+  årstid: () => land.årstid(Math.floor(sp.pos.x), Math.floor(sp.pos.z)), lyd: { regn: Lyd.regn, torden: Lyd.torden }, tid: gemt.dagTid,
+}) : null;
 
 // ---------- Vand og lava flyder, ild breder sig (alene: her på tabletten — sammen: på serveren) ----------
 const sim = ONLINE ? null : new Simulering({
@@ -359,6 +393,9 @@ function gem() {
       return;
     }
     gemt.ændringer = Object.fromEntries(verden.ændringer);
+    if (dagNat) gemt.dagTid = dagNat.tid;
+    if (tog) gemt.tog = tog.tilstand;
+    if (ballon) gemt.ballon = ballon.tilstand;
     gemt.spiller = [sp.pos.x, sp.pos.y, sp.pos.z, sp.yaw, sp.pitch, sp.flyver ? 1 : 0];
     localStorage.setItem(GEM, JSON.stringify(gemt));
   } catch (_) {}
@@ -401,9 +438,18 @@ function genfød(dt) {                                            // nye zombier
   if (!cfg.genfød || (genfødTid -= dt) > 0) return;
   genfødTid = 5;
   if (UENDELIG) for (const d of [...dyr]) {                       // dyr langt væk går hjem (landet der bliver glemt)
-    if (Math.hypot(d.pos.x - sp.pos.x, d.pos.z - sp.pos.z) > 120 && !d.holdt) { d.fjern(); dyr.splice(dyr.indexOf(d), 1); }
+    if (Math.hypot(d.pos.x - sp.pos.x, d.pos.z - sp.pos.z) > 120 && !d.holdt && !d.kæledyr) { d.fjern(); dyr.splice(dyr.indexOf(d), 1); }
   }
-  if (dyr.filter(d => cfg.dyr.includes(d.def.id)).length >= cfg.antal) return;
+  if (dagNat) {                                                    // om natten kommer zombierne — ved solopgang bliver de til konfetti
+    const zombier = dyr.filter(d => d.def.id === "zombie");
+    if (dagNat.dag) zombier.slice(0, 2).forEach(z => puf(z));
+    else if (dagNat.nat && zombier.length < 5) {
+      const a = Math.random() * Math.PI * 2, r = 18 + Math.random() * 16;
+      const x = Math.floor(sp.pos.x + Math.cos(a) * r), z = Math.floor(sp.pos.z + Math.sin(a) * r);
+      if (verden.hentet(x, z) && !iVandet(x, z)) nytDyr(dyrDef("zombie"), x + 0.5, verden.topY(x, z) + 1, z + 0.5);
+    }
+  }
+  if (dyr.filter(d => cfg.dyr.includes(d.def.id) && !d.kæledyr).length >= cfg.antal) return;
   const nær = ONLINE || UENDELIG;                                  // store verdener: nye dyr dukker op omkring en
   for (let f = 0; f < 12; f++) {
     const x = nær ? Math.floor(sp.pos.x + (Math.random() - 0.5) * 50) : 2 + Math.floor(Math.random() * (verden.BX - 4));
@@ -519,6 +565,16 @@ const overlap = (x, y, z, p, b, h) => x + 1 > p.x - b && x < p.x + b && y + 1 > 
 function tryk(x, y, somHammer = false) {
   const valgt = somHammer ? { hammer: true } : valgtTing(), værk = valgt.v && VÆRKTØJ[valgt.v];
   const hit = stråleFra(x, y, !!valgt.hammer);
+  if (tog?.kører) { tog.tryk(); return; }                                    // i toget: hvor skal det hen?
+  if (ballon?.flyver) { ballon.brænd(); return; }                            // i ballonen: fyr op
+  if (stenring?.føniks.rytter || guldslot?.føniks.rytter) return;            // på føniksens ryg: bare nyd turen
+  if (!skyd.kører && EVENTYR) {
+    if (eventyr?.tryk(ray) || stenJagt?.tryk(ray) || stenring?.tryk(ray) || guldslot?.tryk(ray)) { sving = 1; return; }
+    const td = tog?.rammer(ray);
+    if (td != null && (!hit || td < hit.t + 30)) { tog.tryk(); return; }
+    const bd = ballon?.rammer(ray);
+    if (bd != null && (!hit || bd < hit.t)) { ballon.tryk(); eventyr?.hændelse("ballon"); return; }
+  } else if (stenJagt?.tryk(ray)) { sving = 1; return; }
   if (skyd.kører) {                                                          // i kampvognen skyder kanonen …
     if (skyd.kører.vand) vandkanon();                                        // … brandbilen sprøjter vand
     else if (skyd.kører.bil) Lyd.dyt();                                      // … og de andre biler dytter
@@ -549,6 +605,7 @@ function tryk(x, y, somHammer = false) {
   }
   if (bedst && (!hit || bedst.afst < hit.t)) {
     if (bedst.d.def.klap === "puf") { if (!slag(bedst.d)) puf(bedst.d); return; }
+    eventyr?.hændelse("klap:" + bedst.d.def.id);
     if (bedst.d.def.ride) { rid(bedst.d); return; }                 // op på ryggen af ponyen, dragen eller dinoen
     bedst.d.klap();
     const p = tilSkærm(bedst.d.pos, bedst.d.h + 0.3);
@@ -556,6 +613,9 @@ function tryk(x, y, somHammer = false) {
     return;
   }
   if (!hit) return;
+  if (BLOKKE[hit.id].kiste) { eventyr?.visKiste(); sving = 1; return; }       // guldkisten: se alt dit guld
+  if (BLOKKE[hit.id].sokkel) { besked("⭕ Stenringen: spørg spådamen 🔮 om de seks magiske sten!", 3500); return; }
+  if (BLOKKE[hit.id].skat && EVENTYR && !valgt.hammer) { knus(hit, true); sving = 1; return; }   // skattekisten springer op
   if (BLOKKE[hit.id].knap) { atom.trykKnap(hit); sving = 1; return; }     // den røde knap: missilerne flyver efter en nedtælling
   if (BLOKKE[hit.id].ur) { nytår.trykUr(); sving = 1; return; }            // nytårsuret tæller ned
   if (BLOKKE[hit.id].raketTur) { nytår.raketTur(hit); sving = 1; return; } // flyv med kæmperaketten
@@ -601,6 +661,11 @@ function sætBlok(hit) {
   Lyd.sæt(b.lyd);
   if (b.tnt && !tntTip) { tntTip = true; besked("Slå på TNT med 🔨 hammeren! 💥", 3500); }
   if (s.blok === ID.Spire) plantSpire(tx, ty, tz);
+  if (eventyr) {                                                                 // spådamens opgaver: et tårn og en snemand
+    let n = 1; while (n < 5 && verden.hent(tx, ty - n, tz) === s.blok) n++;
+    if (n >= 5) eventyr.hændelse("tårn");
+    if (s.blok === ID.Græskar && verden.hent(tx, ty - 1, tz) === ID.Sne && verden.hent(tx, ty - 2, tz) === ID.Sne) { eventyr.hændelse("snemand"); besked("⛄ En snemand!", 2500); }
+  }
   sving = 1;
   gemSnart();
 }
@@ -627,6 +692,8 @@ function knus(hit, hammer = false) {
     if (over && BLOKKE[over].kryds) verden.sæt(hit.x, hit.y + 1, hit.z, 0);        // blomsten ovenpå ryger med
   }
   const b = BLOKKE[hit.id];
+  if (eventyr && b.kryds && /blomst|Tulipan/.test(b.navn)) eventyr.hændelse("blomst");
+  if (eventyr && hit.id === ID.Græskar) eventyr.hændelse("græskar");
   if (b.skat) skatFundet(hit);                                   // en skattekiste springer op!
   if (b.afgrøde) høstet(hit);                                    // hvede, gulerod eller solsikke
   if (b.dinoæg) klækÆg(hit);                                     // en dino-unge kommer ud
@@ -830,6 +897,7 @@ function skatFundet({ x, y, z }) {
   Lyd.skat(); nyePoint(3);
   const p = tilSkærm({ x: x + 0.5, y: y + 1, z: z + 0.5 }); E.konfetti(p.x, p.y, { antal: 40 });
   besked("💰 Du fandt en skat!", 3000);
+  if (eventyr) { eventyr.fåGuld(5); eventyr.hændelse("kiste"); }                  // Den uendelige verden: 5 guld i kisten
 }
 const kugleGeo = new THREE.SphereGeometry(0.22, 10, 8), kugleMat = new THREE.MeshLambertMaterial({ color: "#26262a" });
 const kugler = [];
@@ -953,6 +1021,7 @@ function opdaterGløder(dt) {
 let varmeTid = 0;
 function tjekVarme(fod, krop, dt) {
   varmeTid -= dt;
+  if (UENDELIG && stenring?.har("ild")) return;                   // Ildstenen: lava og ild er ikke varme
   const hed = id => verden.væske[id] === "lava" || !!BLOKKE[id]?.ild;
   const iLavahav = cfg.lavahav && !sp.flyver && sp.pos.y < HAV + 0.3 && erHav(sp.pos.x, sp.pos.z);          // havet i Underverdenen er lava
   if (varmeTid > 0 || !(hed(fod) || hed(krop) || iLavahav)) return;
@@ -1093,7 +1162,7 @@ async function visPortalValg() {
   $("portalTom").classList.add("skjult");
   vis("portalValg");
   if (!ONLINE) {                                               // alene: alle de andre verdener
-    for (const v of VERDENER) if (v.id !== cfg.id) grid.appendChild(verdenKort(v, v.navn, v.tekst, "🌀 Rejs", () => portalTil(v)));
+    for (const v of VERDENER) if (v.id !== cfg.id && (!v.skjult || læsSten().finale)) grid.appendChild(verdenKort(v, v.navn, v.tekst, "🌀 Rejs", () => portalTil(v)));
     return;
   }
   let liste = [];                                              // sammen: de andre verdener, der kører på computeren
@@ -1339,6 +1408,7 @@ function sætBil(slags, hit) {
 }
 // Rid på et dyr: dyret bliver til noget, man kan styre — og når man stiger af, går det sin egen vej igen
 function rid(d) {
+  eventyr?.hændelse("rid:" + d.def.id);
   const kv = skyd.nyRidedyr(d.def, d.pos.x, d.pos.y, d.pos.z, d.yaw);
   d.fjern(); dyr.splice(dyr.indexOf(d), 1);
   skyd.stigInd(kv); Lyd.dyrLyd(d.def.lyd);
@@ -1348,6 +1418,7 @@ function stegAf(kv) {
   skyd.egne.splice(skyd.egne.indexOf(kv), 1); kv.fjern();
   const d = nytDyr(kv.dyrDef, kv.pos.x, kv.pos.y + 0.05, kv.pos.z);
   d.yaw = d.målYaw = kv.yaw; d.klapTid = 0.5;
+  eventyr?.stegAf(d);                                             // var det ens kæledyr? Så følger det med igen
 }
 // Sirenerne hyler, mens de er tændt
 function opdaterSirener(dt) {
@@ -1379,7 +1450,7 @@ function nyePoint(n) {
 $("point").textContent = `⭐ ${point}`;
 document.body.classList.toggle("skydebane", !!cfg.skyd);
 document.body.classList.toggle("med-point", !!(cfg.skyd || cfg.point));
-$("udKnap").addEventListener("pointerdown", e => { e.preventDefault(); Lyd.klar(); Lyd.klik(); skyd.stigUd(); });
+$("udKnap").addEventListener("pointerdown", e => { e.preventDefault(); Lyd.klar(); Lyd.klik(); if (!tog?.stigUd() && !ballon?.stigUd()) skyd.stigUd(); });
 
 // En blød skumkugle rammer: en farveklat på skærmen, der falmer væk
 function klat(farve) {
@@ -1479,6 +1550,7 @@ window.addEventListener("keydown", e => {
   if (e.code === "KeyQ" || e.code === "Digit0") vælgSlot(-1);
   if (/^Digit[1-9]$/.test(e.code)) vælgSlot(+e.code.slice(5) - 1);
   if ((e.code === "ShiftLeft" || e.code === "ShiftRight") && skyd.kører) { Lyd.klik(); skyd.stigUd(); }   // shift = stig ud af kampvognen
+  if ((e.code === "ShiftLeft" || e.code === "ShiftRight") && (tog?.kører || ballon?.flyver)) { Lyd.klik(); if (!tog?.stigUd()) ballon?.stigUd(); }
 });
 window.addEventListener("keyup", e => { if (TASTER[e.code]) tast[TASTER[e.code]] = 0; if (e.code === "Space") tast.hop = 0; });
 // Esc (eller E igen) lukker inventaret og menuen — før tasten når spillet, så E ikke åbner inventaret igen
@@ -1691,7 +1763,8 @@ function opdaterSpiller(dt) {
   }
   const underFod = verden.hent(Math.floor(sp.pos.x), Math.floor(sp.pos.y - 0.1), Math.floor(sp.pos.z));
   const glat = sp.jord && !sp.flyver && BLOKKE[underFod]?.glat;                  // på is glider man
-  const fart = sp.flyver ? FLYV : iVand ? GÅ * (cfg.undervand ? 0.9 : 0.65) : glat ? GÅ * 1.5 : GÅ, greb = glat ? 0.9 : sp.jord || sp.flyver || iVand ? 12 : 3;
+  const kraft = (UENDELIG && iVand && stenring?.har("hav") ? 2.6 : 1) * (kæmpeTid > 0 ? 1.8 : 1);   // Havstenen og Atomstenen
+  const fart = (sp.flyver ? FLYV : iVand ? GÅ * (cfg.undervand ? 0.9 : 0.65) : glat ? GÅ * 1.5 : GÅ) * kraft, greb = glat ? 0.9 : sp.jord || sp.flyver || iVand ? 12 : 3;
   sp.vel.x += (mx * fart - sp.vel.x) * Math.min(1, dt * greb);
   sp.vel.z += (mz * fart - sp.vel.z) * Math.min(1, dt * greb);
   const pc = portalVent ? null : portalCelle();
@@ -1709,6 +1782,7 @@ function opdaterSpiller(dt) {
     if (tast.hop && sp.jord) { sp.vel.y = HOP; Lyd.hop(); }
     sp.vel.y = Math.max(-40, sp.vel.y - TYNGDE * dt);
     if (faldskærm) sp.vel.y = Math.max(sp.vel.y, -4.2);                        // i faldskærm daler man langsomt
+    if (svæveHop) sp.vel.y = Math.max(sp.vel.y, -5);                          // Skystenens kæmpehop daler blødt ned
   }
   const fald = sp.vel.y;
   const r = verden.bevæg(sp.pos, tmp.copy(sp.vel).multiplyScalar(dt), B, HØJ);
@@ -1720,6 +1794,7 @@ function opdaterSpiller(dt) {
   }
   if (r.loft) sp.vel.y = Math.min(0, sp.vel.y);
   sp.jord = r.jord;
+  if (r.jord) svæveHop = false;
   const superhop = trampolin && BLOKKE[verden.hent(Math.floor(sp.pos.x), Math.floor(sp.pos.y - 0.05), Math.floor(sp.pos.z))]?.superhop;
   if (trampolin) { sp.vel.y = superhop ? 28 : Math.min(17, Math.max(11, -fald)); sp.jord = false; Lyd.boing(); }   // boing!
   if (r.væg && sp.jord && l > 0.1) {                                            // hop selv op ad ét trin
@@ -1822,6 +1897,7 @@ function visVerdener() {
   const grid = $("verdenGrid");
   grid.innerHTML = "";
   for (const v of VERDENER) {
+    if (v.skjult && !læsSten().finale && v.id !== cfg.id) continue;              // guldslottet er hemmeligt
     const kort = verdenKort(v, v.navn, v.tekst, v.id === cfg.id ? "▶ Du er her" : hentet.includes(v.id) ? "▶ Spil" : "⬇ Hent", () => vælgVerden(v));
     if (v.id === cfg.id) kort.classList.add("her");
     grid.appendChild(kort);
@@ -1893,8 +1969,9 @@ $("musikKnap").addEventListener("click", () => {
   $("musikKnap").textContent = musikTekst();
 });
 $("musikKnap").textContent = musikTekst();
+$("kortKnap").addEventListener("click", () => { Lyd.klar(); Lyd.klik(); kort?.vis(); });   // Den uendelige verden: kortet
 $("hjemKnap").addEventListener("click", () => { $("hjemStart").click(); besked("🏡 Hjem igen!", 1600); });   // Uendelighedsverdenen: hjem til pladsen
-$("hjemStart").addEventListener("click", () => { Lyd.klik(); skyd.stigUd(); tornado.slip(); nytår.tur = null; startSted(); if (sp.flyver) skiftFlyv(); luk("menu"); gemSnart(); });
+$("hjemStart").addEventListener("click", () => { Lyd.klik(); skyd.stigUd(); if (tog) tog.kører = false; if (ballon) ballon.flyver = ballon.lander = false; tornado.slip(); nytår.tur = null; startSted(); if (sp.flyver) skiftFlyv(); luk("menu"); gemSnart(); });
 $("udsynKnap").textContent = `👀 Udsyn: ${UDSYN[udsynNr].navn}`;
 $("udsynKnap").addEventListener("click", () => {                  // hvor langt kan man se (online)
   udsynNr = (udsynNr + 1) % UDSYN.length; skriv("broekraft-udsyn", udsynNr); Lyd.klik();
@@ -1946,6 +2023,85 @@ const brand = cfg.brand && !ONLINE ? new Brandvæsen(verden, {
   },
 }) : null;
 
+// ---------- Den uendelige verden: toget, ballonen, spådamen, de magiske sten og guldslottet ----------
+let kæmpeTid = 0, svæveHop = false;                              // Atomstenen og Skystenen
+const tog = UENDELIG ? new Tog({ scene, sp, lyd: Lyd, besked, gem: gemSnart, tilstand: gemt.tog, vedAfgang: () => eventyr?.hændelse("tog") }) : null;
+const ballon = UENDELIG ? new Ballon({ scene, verden, sp, lyd: Lyd, besked, gem: gemSnart, pos: gemt.ballon }) : null;
+const fest = () => { E.fest(window.innerWidth / 2, window.innerHeight * 0.4); };
+function guldRegn() {                                            // guldmønter, der regner ned omkring barnet
+  for (let i = 0; i < 50; i++) partikel(sp.pos.x + (Math.random() - 0.5) * 4, sp.pos.y + 3 + Math.random() * 2, sp.pos.z + (Math.random() - 0.5) * 4,
+    GULDMØNT[i % 3], (Math.random() - 0.5) * 2, Math.random() * 2, (Math.random() - 0.5) * 2, 1.6, 1, 1.2);
+}
+function rejsTil(id, medFøniks) {                                // til en anden verden (med portal — eller på føniksens ryg)
+  const v = VERDENER.find(w => w.id === id);
+  if (!v) return;
+  if (!medFøniks) { portalTil(v); return; }
+  try { sessionStorage.setItem("broekraft-føniks", "1"); } catch (_) {}
+  if (!hentet.includes(v.id)) { hentet.push(v.id); skriv("broekraft-hentet", hentet); }
+  skiftTil(v);
+}
+const stenJagt = !ONLINE ? new StenJagt({ scene, verden, cfg, sp, lyd: Lyd, besked, fest, sig, vælg, rejsHjem: () => rejsTil("uendelig") }) : null;
+const stenring = UENDELIG ? new Stenring({
+  scene, sp, lyd: Lyd, besked, sig, fest, partikel, dagNat, føniksKommer,
+  flash: farve => E.flash(farve), rejsTil, kraft: brugKraft,
+}) : null;
+const eventyr = EVENTYR ? new Eventyr({
+  scene, sp, dyr, nytDyr, dyrDef, land, lyd: Lyd, besked, fest, guldRegn, hjem: UENDELIG, krone: () => læsSten().krone,
+  rider: () => skyd.kører?.dyrDef?.id, bygHus: lilleHus, fyrværkeriShow,
+  sten: {
+    mangler: () => { const x = STEN.find(y => !læsSten().fundet.includes(y.id)); return x ? { ...x, verden: x.verdenNavn } : null; },
+    fundet: () => læsSten().fundet, alle: () => STEN, rejsTil: x => rejsTil(STEN.find(y => y.id === x.id).verden),
+  },
+}) : null;
+const guldslot = GULDSLOT ? new Guldslot({
+  scene, sp, lyd: Lyd, besked, sig, fest, partikel, føniksKommer, gård: cfg.gård(VX, VZ), rejsTil,
+  flash: farve => E.flash(farve), fyrværkeri: fyrværkeriShow,
+}) : null;
+if (GULDSLOT) {                                                  // spådamen står i slotsgården
+  document.body.classList.add("guldslot");
+  const g = cfg.gård(VX, VZ);
+  eventyr.figur("spådame", g.x - 3.5, g.y + 1, g.z - 4.5, 0, true);
+}
+// Superkræfterne fra de magiske sten
+function brugKraft(navn) {
+  Lyd.klar();
+  if (navn === "dino") {                                         // 🦖 en dino, man kan ride på
+    const d = nytDyr(dyrDef("triceratops"), sp.pos.x + 2.5, sp.pos.y + 0.5, sp.pos.z + 1);
+    E.konfetti(window.innerWidth / 2, window.innerHeight / 2, { antal: 30 });
+    setTimeout(() => rid(d), 500);
+  } else if (navn === "stjerne") {                               // ✨ stjerner og fyrværkeri dér, hvor man kigger
+    const r = new THREE.Vector3(); kamera.getWorldDirection(r);
+    const p = kamera.position.clone().addScaledVector(r, 14);
+    for (let i = 0; i < 5; i++) setTimeout(() => fyr.raket(p.x + (Math.random() - 0.5) * 6, Math.max(p.y, sp.pos.y + 2), p.z + (Math.random() - 0.5) * 6), i * 180);
+    stjernedrys(40, 3);
+  } else if (navn === "atom") {                                  // 💪 kæmpestor i 20 sekunder
+    kæmpeTid = 20; rystelse = Math.max(rystelse, 0.6); Lyd.bum?.();
+    besked("💪 Du er KÆMPESTOR!", 2500);
+  } else if (navn === "sky") {                                   // 🦘 et kæmpehop, der daler blødt ned
+    if (sp.flyver) skiftFlyv();
+    sp.vel.y = 24; sp.jord = false; svæveHop = true; Lyd.boing();
+  }
+}
+// Et lille hus fra butikken: bygges foran barnet
+function lilleHus() {
+  const r = new THREE.Vector3(); kamera.getWorldDirection(r); r.y = 0; r.normalize();
+  const cx = Math.floor(sp.pos.x + r.x * 5), cz = Math.floor(sp.pos.z + r.z * 5), y0 = verden.topY(cx, cz);
+  for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) {
+    const x = cx + dx, z = cz + dz, kant = Math.abs(dx) === 2 || Math.abs(dz) === 2;
+    verden.sæt(x, y0, z, ID.Planker);
+    for (let y = y0 + 1; y <= y0 + 3; y++) verden.sæt(x, y, z, kant ? (y === y0 + 2 && (dx === 0 || dz === 0) ? ID.Glas : ID.Planker) : 0);
+  }
+  for (let l = 0; l < 3; l++) for (let dx = -3 + l; dx <= 3 - l; dx++) for (let dz = -3 + l; dz <= 3 - l; dz++) verden.sæt(cx + dx, y0 + 4 + l, cz + dz, ID.Tagsten);
+  const dx = Math.abs(r.x) > Math.abs(r.z) ? -Math.sign(r.x) : 0, dz = dx ? 0 : -Math.sign(r.z);   // døren vender mod barnet
+  verden.sæt(cx + dx * 2, y0 + 1, cz + dz * 2, 0); verden.sæt(cx + dx * 2, y0 + 2, cz + dz * 2, 0);
+  verden.sæt(cx, y0 + 3, cz, ID.Lampe);
+  gemSnart(); fest();
+}
+// Et fyrværkeri-show over barnet
+function fyrværkeriShow() {
+  for (let i = 0; i < 14; i++) setTimeout(() => fyr.raket(sp.pos.x + (Math.random() - 0.5) * 30, sp.pos.y + 1, sp.pos.z - 10 - Math.random() * 20), i * 350);
+}
+
 let tid = 0, sidst = performance.now(), fejlVist = false, skjulT = 0;
 // Fototilstand (?debug&foto): ingen knapper og ingen hånd — til billederne på forsiden
 let fotoTilstand = PARAM.has("foto") && PARAM.has("debug");
@@ -1958,7 +2114,13 @@ function tegnFrame(nu) {
   sidst = nu; tid += dt;
   if (iGang && !pause) {
     if (skyd.kører) { skyd.styr(tast, sp.yaw, dt); sp.pitch = Math.max(-1.1, Math.min(0.45, sp.pitch)); }
-    else if (!tornado.styrSpiller(dt) && !nytår.styrSpiller(dt)) opdaterSpiller(dt);   // i en tornado, en gondol eller på en raket styrer de
+    else if (!tornado.styrSpiller(dt) && !nytår.styrSpiller(dt) && !tog?.styrSpiller(dt) && !ballon?.styrSpiller(dt, tast, sp.yaw)
+      && !stenring?.styrSpiller() && !guldslot?.styrSpiller()) opdaterSpiller(dt);   // i en tornado, en gondol, et tog, en ballon eller på føniksen styrer de
+    tog?.opdater(dt, tid); ballon?.opdater(dt); eventyr?.opdater(dt, tid); stenJagt?.opdater(dt); stenring?.opdater(dt); guldslot?.opdater(dt);
+    if (kæmpeTid > 0 && (kæmpeTid -= dt) <= 0) besked("Du er lille igen 🙂", 1500);
+    const iKøretøj = !!(skyd.kører || tog?.kører || ballon?.flyver);
+    if (iKøretøj !== document.body.classList.contains("i-kampvogn")) document.body.classList.toggle("i-kampvogn", iKøretøj);
+    document.body.classList.toggle("i-ballon", !!ballon?.flyver);
     opdaterHak(dt); opdaterMusHold(dt); genfød(dt); opdaterTNT(dt); sim?.tick(dt); opdaterGløder(dt);
     skyd.opdater(dt); fyr.opdater(dt); brand?.opdater(dt, sp.pos); opdaterKugler(dt); opdaterSpirer(dt); opdaterVulkan(dt); opdaterGløddyr(dt);
     tornado.opdater(dt); nytår.opdater(dt, tid); opdaterKraterGlød(dt); opdaterDamp(dt); opdaterSirener(dt);
@@ -1994,7 +2156,7 @@ function tegnFrame(nu) {
     for (let d = 1.5; d <= maks; d += 0.5) if (verden.erFast(Math.floor(kv.pos.x - fx * d), Math.floor(kv.pos.y + op - fy * d), Math.floor(kv.pos.z - fz * d))) { afst = d - 0.6; break; }
     kamera.position.set(kv.pos.x - fx * afst, kv.pos.y + op - fy * afst, kv.pos.z - fz * afst);
     if (kv.rytter) kv.rytter.visible = afst > 2.6;                               // rytteren står ikke i vejen for kameraet
-  } else kamera.position.set(sp.pos.x, sp.pos.y + ØJE + bob, sp.pos.z);
+  } else kamera.position.set(sp.pos.x, sp.pos.y + ØJE * (kæmpeTid > 0 ? 3.2 : 1) + bob, sp.pos.z);   // kæmpestor med Atomstenen
   if (rystelse > 0) {                                                             // skærmen ryster efter et brag
     rystelse = Math.max(0, rystelse - dt * 1.6);
     kamera.position.x += (Math.random() - 0.5) * rystelse * 0.3;
@@ -2006,6 +2168,7 @@ function tegnFrame(nu) {
   const underVand = iGang && verden.væske[øje] === "vand";
   if (underVand !== document.body.classList.contains("under-vand")) document.body.classList.toggle("under-vand", underVand);
   himmel.position.copy(kamera.position);
+  dagNat?.opdater(dt, tid);
   if (stjerner) stjerner.position.copy(kamera.position);
   opdaterSne(dt, tid); opdaterNordlys(tid); opdaterLysstråler(tid);
   for (const m of følgerKamera) { m.position.copy(kamera.position).addScaledVector(m.userData.retning, m.userData.afstand); m.lookAt(kamera.position); }
@@ -2014,7 +2177,9 @@ function tegnFrame(nu) {
   const s = Math.sin(sving * Math.PI);
   hånd.position.set(0.4 + Math.cos(gangFase * Math.PI * 2) * 0.012, -0.36 + bob * 0.4 - s * 0.1, -0.9 - s * 0.1);
   hånd.rotation.x = -s * 0.8;
-  hånd.visible = iGang && !skyd.kører && !fotoTilstand;
+  const påFøniks = !!(stenring?.føniks.rytter || guldslot?.føniks.rytter);
+  document.body.classList.toggle("på-føniks", påFøniks);
+  hånd.visible = iGang && !skyd.kører && !tog?.kører && !ballon?.flyver && !påFøniks && !fotoTilstand;
   renderer.render(scene, kamera);
 }
 
@@ -2316,4 +2481,4 @@ if (ONLINE) {
 
 if (ONLINE) forberedOnline();
 window.broekraftKlar = true;
-if (location.search.includes("debug")) window.bk = { sp, kamera, verden, dyr, tast, cfg, andre, sim, get net() { return net; }, get tale() { return tale; }, get graf() { return graf; }, afspillere, skyd, fyr, tændPortal, visPortalValg, brand, tændSprængstof, atom, tornado, musBrug, nytår, steg: n => { for (let i = 0; i < n; i++) tegnFrame(sidst + 1000 / 60); sidst = performance.now(); } };
+if (location.search.includes("debug")) window.bk = { sp, kamera, verden, dagNat, land, kort, tog, ballon, eventyr, stenring, stenJagt, guldslot, brugKraft, dyr, tast, cfg, andre, sim, get net() { return net; }, get tale() { return tale; }, get graf() { return graf; }, afspillere, skyd, fyr, tændPortal, visPortalValg, brand, tændSprængstof, atom, tornado, musBrug, nytår, steg: n => { for (let i = 0; i < n; i++) tegnFrame(sidst + 1000 / 60); sidst = performance.now(); } };

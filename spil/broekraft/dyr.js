@@ -755,6 +755,19 @@ export class Dyr {
       this.målYaw = Math.atan2(tilX, tilZ);
       this.går = afst > 2.3; this.danser = !this.går; this.tid = 1;
     }
+    let følgAfst = 0;
+    if (this.følg) {                                       // et kæledyr (Den uendelige verden) følger efter barnet
+      const fx = this.følg.x - this.pos.x, fz = this.følg.z - this.pos.z;
+      følgAfst = Math.hypot(fx, fz);
+      this.målYaw = Math.atan2(fx, fz); this.går = følgAfst > 2.8; this.tid = 1; this.flyv = 0;
+      // sidder det fast (fx bag en trappe), eller er barnet langt væk, så springer det hen til barnet
+      this.følgFast = this.går && følgAfst >= (this.følgFør ?? Infinity) - 0.005 ? (this.følgFast || 0) + dt : 0;
+      this.følgFør = følgAfst;
+      if (følgAfst > 26 || this.følgFast > 1.5) {
+        this.pos.set(this.følg.x - fx / følgAfst * 2.5, this.følg.y + 0.6, this.følg.z - fz / følgAfst * 2.5); this.vel.set(0, 0, 0);
+        this.følgFast = 0; this.klapTid = 0.5;
+      }
+    }
     if (d.evne === "jæger") {                              // turbo-dinoen spurter efter dig — og løber væk efter et skub
       this.flugt = Math.max(0, this.flugt - dt);
       this.omvej = Math.max(0, (this.omvej || 0) - dt);
@@ -775,6 +788,7 @@ export class Dyr {
     this.yaw += dy * Math.min(1, dt * (d.evne === "jæger" ? 10 : 4));   // dinoen drejer skarpt
 
     let fart = this.går ? d.fart : 0;
+    if (this.følg && this.går) fart = Math.max(fart, Math.min(6, følgAfst * 0.9));   // kæledyret skynder sig efter
     if (this.turbo > 0) { this.turbo -= dt; fart = 6; this.går = true; }
     const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw);
     if (d.evne === "hopper") {                           // frøen bevæger sig kun i hop

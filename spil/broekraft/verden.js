@@ -44,8 +44,9 @@ const FLADER = [
 for (const F of FLADER) F.t = [0, 1, 2].filter(a => F.n[a] === 0);   // de to akser langs fladen
 const AO = [0.5, 0.68, 0.84, 1];                                      // mørkere i hjørner og kroge
 const lin = l => Math.pow(l, 2.2);
-// Hver klump tegnes i fem lag: faste blokke, vand (gennemsigtigt), lava (gløder), ild (blafrer) og portaler (hvirvler).
-const LAG = ["fast", "vand", "lava", "ild", "portal"];
+// Hver klump tegnes i seks lag: faste blokke, vand (gennemsigtigt), lava (gløder), ild (blafrer), portaler (hvirvler)
+// og blokke, der lyser (lamper og krystaller — de bliver ikke mørke om natten i Den uendelige verden).
+const LAG = ["fast", "vand", "lava", "ild", "portal", "lys"];
 const lagNøgle = (nøgle, lag) => (lag === "fast" ? nøgle : `${nøgle}|${lag}`);
 const nytLag = () => ({ pos: [], uv: [], farve: [], idx: [] });
 const HJØRNER = [[-1, -1], [0, -1], [-1, 0], [0, 0]];
@@ -261,8 +262,7 @@ export class Verden {
     return s1 && s2 ? 0 : 3 - s1 - s2 - hj;
   }
   bygKlump(cx, cy, cz) {
-    const lag = { fast: nytLag(), vand: nytLag(), lava: nytLag(), ild: nytLag(), portal: nytLag() }, gløder = { ild: [], lava: [], portal: [] };
-    const { pos, uv, farve, idx } = lag.fast;
+    const lag = { fast: nytLag(), vand: nytLag(), lava: nytLag(), ild: nytLag(), portal: nytLag(), lys: nytLag() }, gløder = { ild: [], lava: [], portal: [] };
     for (let y = cy * CS; y < cy * CS + CS; y++) for (let z = cz * CS; z < cz * CS + CS; z++) for (let x = cx * CS; x < cx * CS + CS; x++) {
       const id = this.hent(x, y, z);
       if (!id) continue;
@@ -275,6 +275,7 @@ export class Verden {
       }
       if (b.ild) { this.flammer(x, y, z, lag.ild); gløder.ild.push([x, y, z]); continue; }
       if (b.portal) { this.portalFlade(x, y, z, lag.portal); gløder.portal.push([x, y, z]); continue; }
+      const { pos, uv, farve, idx } = b.lyser ? lag.lys : lag.fast;
       if (b.kryds) { this.kryds(x, y, z, id, pos, uv, farve, idx); continue; }
       for (const F of FLADER) {
         const nid = this.hent(x + F.n[0], y + F.n[1], z + F.n[2]);

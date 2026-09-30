@@ -21,6 +21,8 @@
 //  ur:           nytårsuret — tryk på det, så tæller det ned til nytår med en stor finale (nytaar.js)
 //  raketTur:     kæmperaketten — tryk på den, så flyver man selv op med den og daler ned i faldskærm (nytaar.js)
 //  droner:       dronekassen — tænd den med 🔥 eller 🔨, så letter dronerne og tegner figurer på himlen
+//  kiste:        guldkisten derhjemme i Den uendelige verden — tryk på den og se alt dit guld (eventyr.js)
+//  sokkel:       en sokkel i stenringen — de seks magiske sten sættes i her (sten.js)
 //  Nye blokke skal altid tilføjes NEDERST, så gemte verdener stadig passer.
 //  lyd:          "græs" | "sten" | "træ" | "sand" | "glas" | "uld" | "metal" | "vand" | "lava" | "ild"
 // Et nyt mønster er en funktion i MØNSTRE der tegner 16×16 pixels med set(x, y, farve).
@@ -210,6 +212,11 @@ export const BLOKKE = [
   { navn: "Blå blomst", tekstur: "blomst:#4a7cf0", kryds: true, lyd: "græs" },
   { navn: "Hvid blomst", tekstur: "blomst:#ffffff", kryds: true, lyd: "græs" },
   { navn: "Højt græs", tekstur: "højtGræs", kryds: true, lyd: "græs" },
+  // --- Den uendelige verden: togbanen, guldkisten derhjemme og stenringens sokler ---
+  { navn: "Skinner", tekstur: { top: "skinnerNS", side: "planker", bund: "planker" }, lyd: "metal" },
+  { navn: "Skinner øst-vest", tekstur: { top: "skinnerØV", side: "planker", bund: "planker" }, skjult: true, lyd: "metal" },
+  { navn: "Guldkiste", tekstur: { top: "guldkisteTop", side: "guldkiste", bund: "guld" }, kiste: true, uknuselig: true, skjult: true, lyser: true, lyd: "metal" },
+  { navn: "Stensokkel", tekstur: { top: "sokkelTop", side: "borgsten", bund: "borgsten" }, sokkel: true, uknuselig: true, skjult: true, lyd: "sten" },
 ];
 
 export const ID = {};
@@ -639,6 +646,26 @@ const MØNSTRE = {
       const x = 1 + Math.floor(r() * 14), h = 6 + Math.floor(r() * 9), c = hex(r() < 0.5 ? "#5fb33a" : "#4a9a2c");
       for (let y = T - 1; y >= T - h; y--) set(Math.min(15, x + (y < T - h / 2 && r() < 0.3 ? 1 : 0)), y, lys(c, 1 + (r() - 0.5) * 0.25));
     }
+  },
+  // Den uendelige verden: skinner på træsveller (to retninger), guldkisten og stenringens sokler
+  skinnerNS: (set, r) => {
+    MØNSTRE.planker(set, r);
+    for (let y = 0; y < T; y += 4) for (let x = 0; x < T; x++) set(x, y, lys(hex("#6b4a2b"), 1 + (r() - 0.5) * 0.1));   // sveller
+    for (let y = 0; y < T; y++) for (const x of [3, 4, 11, 12]) set(x, y, lys(hex(x === 3 || x === 11 ? "#c8ccd4" : "#8a9099"), 1 + (r() - 0.5) * 0.06));
+  },
+  skinnerØV: (set, r) => {
+    MØNSTRE.planker(set, r);
+    for (let x = 0; x < T; x += 4) for (let y = 0; y < T; y++) set(x, y, lys(hex("#6b4a2b"), 1 + (r() - 0.5) * 0.1));
+    for (let x = 0; x < T; x++) for (const y of [3, 4, 11, 12]) set(x, y, lys(hex(y === 3 || y === 11 ? "#c8ccd4" : "#8a9099"), 1 + (r() - 0.5) * 0.06));
+  },
+  guldkiste: (set, r) => alle((x, y) => {
+    const bånd = x <= 1 || x >= 14 || y === 5 || y === 6 || (x >= 6 && x <= 9 && y >= 7 && y <= 10);
+    set(x, y, lys(hex(bånd ? "#ffd84d" : "#b8862a"), 1 + (r() - 0.5) * 0.15));
+  }),
+  guldkisteTop: (set, r) => alle((x, y) => set(x, y, lys(hex(x <= 1 || x >= 14 || y <= 1 || y >= 14 ? "#ffd84d" : "#c8962e"), 1 + (r() - 0.5) * 0.12))),
+  sokkelTop: (set, r) => {
+    MØNSTRE.borgsten(set, r);
+    alle((x, y) => { const d = Math.hypot(x - 7.5, y - 7.5); if (d < 5) set(x, y, lys(hex(d < 3.5 ? "#2a2440" : "#d9b24a"), 1 + (r() - 0.5) * 0.1)); });
   },
   tørtGræsTop: (set, r) => { fyld(set, r, "#c8a84a", 0.22); prik(set, r, ["#a88a3a", "#dcc070", "#b89a42"], 30); },
   tørtGræsSide: (set, r) => {
