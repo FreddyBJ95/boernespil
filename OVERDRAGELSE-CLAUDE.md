@@ -1,5 +1,26 @@
 # Overdragelse fra Codex til Claude
 
+## Nyt: Linux-installation, 30. september 2026
+
+Ejeren bad direkte om at kunne installere Broekraft Server på Linux. Det er tilføjet på
+`codex/linux-server` fra den aktuelle main. Ingen push, tag eller release er lavet.
+
+- `server/byg.js` bygger også Linux-x64 og Linux-ARM64. Man kan vælge platforme som argumenter:
+  `deno task byg Linux-x64 Linux-ARM64`.
+- Linux-pakker indeholder programmet, `installer.sh`, `arkitektur.txt` og LÆSMIG.md.
+  `sh installer.sh` installerer uden sudo i `~/.local/bin/broekraft-server`; data og certifikater
+  bevares under `~/.local/share/BroekraftServer`. Ingen automatisk systemtjeneste oprettes.
+- GitHub-workflowet pakker begge Linux-versioner som `.tar.gz` og har en ny Ubuntu-test for
+  installation, opdatering, HTTP, HTTPS med korrekt CA og SIGTERM-afslutning før udgivelse.
+- LÆSMIG.md beskriver også `--ingen-browser` og SSH-tunnel til det lokale kontrolpanel.
+- Begge Linux-programmer er krydskompileret og pakket lokalt. 62 eksisterende automatiske tests
+  består på Windows. Linux-opstart/installer kan ikke køres nativt på denne Windows-maskine;
+  den nye Ubuntu-test er skrevet, men endnu ikke kørt i GitHub Actions. ARM64 er heller ikke kørt.
+
+Til din downloadside, når ejeren vil udgive: filnavnene er `BroekraftServer-Linux-x64.tar.gz`
+og `BroekraftServer-Linux-ARM64.tar.gz`. Linux kræver glibc og 64-bit OS, ikke Alpine/musl/32-bit.
+Downloadsidens HTML og øvrige designfiler er ikke ændret.
+
 ## Nyt: tablet-opsætning efter ejerens direkte ønske
 
 Ejeren bad efter den første overdragelse Codex om tablet-siden, hvor QR-koden scannes.

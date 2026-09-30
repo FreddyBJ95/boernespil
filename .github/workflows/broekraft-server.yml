@@ -18,7 +18,7 @@ jobs:
       - name: Afprøv generator, protokol og simulering
         working-directory: server
         run: deno task test
-      - name: Byg Windows og begge Mac-programmer
+      - name: Byg Windows, Mac og Linux (x64 og ARM64)
         working-directory: server
         run: deno task byg
       - name: Pak programmer og vejledning
@@ -28,14 +28,21 @@ jobs:
           for platform in Windows Mac-Intel Mac-AppleSilicon; do
             (cd "$platform" && zip "../BroekraftServer-$platform.zip" BroekraftServer* LÆSMIG.md)
           done
+          for platform in Linux-x64 Linux-ARM64; do
+            tar -czf "BroekraftServer-$platform.tar.gz" -C "$platform" BroekraftServer installer.sh arkitektur.txt LÆSMIG.md
+          done
+      - name: Afprøv Linux-installation og serverstart
+        run: sh server/tests/linux-installation.sh
       - name: Gem pakker til manuel afprøvning
         uses: actions/upload-artifact@v4
         with:
           name: BroekraftServer
-          path: server/dist/*.zip
+          path: |
+            server/dist/*.zip
+            server/dist/*.tar.gz
       - name: Udgiv tag som GitHub Release
         if: startsWith(github.ref, 'refs/tags/server-v')
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
-        run: gh release create "$TAG" server/dist/*.zip --verify-tag --title "Broekraft Server $TAG" --notes-file server/UDGIVELSE.md
+        run: gh release create "$TAG" server/dist/*.zip server/dist/*.tar.gz --verify-tag --title "Broekraft Server $TAG" --notes-file server/UDGIVELSE.md

@@ -30,6 +30,8 @@ Broekraft Server lader 1–8 børn bygge i samme Broekraft-verden på familiens 
 - Kontrolpanelet fjerner nu selv beskeden "Verdenen bliver oprettet…", når verdenen er klar.
 
 **Hvilken fil skal jeg hente?**
+- Linux med Intel/AMD (64-bit): `BroekraftServer-Linux-x64.tar.gz`
+- Linux ARM64, fx Raspberry Pi med 64-bit Linux: `BroekraftServer-Linux-ARM64.tar.gz`
 - Windows-pc: `BroekraftServer-Windows.zip`
 - Mac med Apple-chip (M1, M2, M3, M4 …): `BroekraftServer-Mac-AppleSilicon.zip`
 - Ældre Mac med Intel-processor: `BroekraftServer-Mac-Intel.zip`
@@ -38,6 +40,9 @@ Er du i tvivl, så vælg Æble-menuen → **Om denne Mac**. Der står enten "Chi
 "Processor Intel …".
 
 **Sådan kommer I i gang**
+På Linux: pak `.tar.gz` ud, kør `sh installer.sh` uden sudo og start `~/.local/bin/broekraft-server`.
+Se Linux-afsnittet i LÆSMIG.md, også for servere uden skærm. Ingen Deno-installation kræves.
+
 1. Pak **hele** zip-filen ud, og start BroekraftServer. Kontrolpanelet åbner i browseren.
 2. Opret en verden. Du vælger navn, type, størrelse, antal spillere og om ild må brede sig.
 3. På tabletten trykker I **Spil sammen** i Børnespil-appen og scanner QR-koden på computeren.

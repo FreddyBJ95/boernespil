@@ -5,8 +5,9 @@ Der er kun dyrefigurer og seks faste emoji; ingen personnavne eller fritekst-cha
 
 ## Hent og start
 
-1. Hent en zip-fil fra https://github.com/FreddyBJ95/boernespil/releases.
+1. Hent en pakke fra https://github.com/FreddyBJ95/boernespil/releases.
    Vælg Windows, Mac-Intel eller Mac-AppleSilicon (Mac med M1/M2/M3/M4 eller nyere Apple-chip).
+   På Linux vælges Linux-x64 eller Linux-ARM64; følg afsnittet **Installer på Linux** nedenfor.
 2. Pak **hele zip-filen ud**, og start BroekraftServer. Du skal ikke installere Deno.
 3. Kontrolpanelet åbner i din browser. Lad programmets vindue stå åbent, mens børnene spiller.
 
@@ -31,6 +32,45 @@ beviser ikke, at firewallen tillader adgang. Panelet viser også, om en anden en
    → **Rediger indstillinger** → **Tillad en anden app… → Gennemse**. Vælg `BroekraftServer.exe` →
    **Tilføj**, og sæt flueben ved **Privat**.
 3. Luk og start BroekraftServer igen.
+
+## Installer på Linux
+
+Vælg **BroekraftServer-Linux-x64.tar.gz** til en almindelig 64-bit Intel/AMD-computer.
+Vælg **BroekraftServer-Linux-ARM64.tar.gz** til ARM64, fx Raspberry Pi med et 64-bit styresystem.
+`uname -m` viser `x86_64` eller `aarch64`. Pakkerne er til Linux med glibc, fx Ubuntu/Debian;
+32-bit Linux og Alpine/musl understøttes ikke af disse pakker. Deno skal ikke installeres.
+
+Åbn en terminal i mappen med den hentede pakke:
+
+```sh
+mkdir -p BroekraftServer-Linux
+tar -xzf BroekraftServer-Linux-x64.tar.gz -C BroekraftServer-Linux
+cd BroekraftServer-Linux
+sh installer.sh
+"$HOME/.local/bin/broekraft-server"
+```
+
+På ARM64 udskiftes filnavnet med `BroekraftServer-Linux-ARM64.tar.gz`. Kør installationen som din
+almindelige bruger, **uden sudo**. Programmet installeres i `~/.local/bin/broekraft-server`.
+Kontrolpanelet åbnes med `xdg-open`, hvis en skrivebordsbrowser er tilgængelig; ellers åbn adressen,
+programmet viser, normalt `http://127.0.0.1:8080/kontrol`. Stop med **Ctrl+C**.
+
+**Uden skærm:** Start med `~/.local/bin/broekraft-server --ingen-browser`. Kontrolpanelet er kun
+tilgængeligt lokalt, så forbind fra din egen computer med en SSH-tunnel:
+
+```sh
+ssh -L 18080:127.0.0.1:8080 bruger@serverens-lokale-ip
+```
+
+Udskift bruger og IP med dine egne værdier. Åbn derefter `http://127.0.0.1:18080/kontrol` på din
+computer. Hvis serveren viser en anden HTTP-port end 8080, brug den som tunnelens sidste port.
+Lad serverprocessen køre, mens børnene spiller. Installationen opretter ikke automatisk en systemtjeneste.
+På en Linux-firewall skal indgående TCP til HTTP-porten (normalt 8080) og 8443 være tilladt fra
+hjemmenettet. Walkie-talkie bruger desuden direkte lokale forbindelser mellem tabletterne.
+
+**Opdatering:** Stop serveren, pak den nye pakke ud og kør `sh installer.sh` igen som samme bruger.
+Verdener og certifikater bevares i `~/.local/share/BroekraftServer/`. For at fjerne programmet slettes
+kun `~/.local/bin/broekraft-server`; datamappen bevares som backup.
 
 ## Opret en verden
 
@@ -103,13 +143,16 @@ Data findes her:
 
 - Windows: `%APPDATA%\BroekraftServer\verdener`
 - Mac: `~/Library/Application Support/BroekraftServer/verdener`
+- Linux: `~/.local/share/BroekraftServer/verdener`
 
 Tændt TNT afsluttes, når en verden stoppes, så dets ændringer også gemmes.
 
 ## Til udviklere
 
 Installer Deno 2.9.7 eller nyere. Fra `server/`: `deno task start`, `deno task test`, `deno task byg`.
-Byg laver programmer til Windows og begge Mac-typer i `server/dist/`.
+Byg laver programmer til Windows, begge Mac-typer og Linux x64/ARM64 i `server/dist/`.
+Kun Linux: `deno task byg Linux-x64 Linux-ARM64`. Linux-pakker får `installer.sh` og arkitekturkontrol.
+Release-workflowet laver `.tar.gz` til Linux og afprøver x64-installation og HTTPS på Ubuntu.
 Et tag som `server-v0.2.0` bygger zip-filer og udgiver dem på GitHub Releases.
 Opret først tagget, når ejeren har godkendt den samlede spilversion.
 

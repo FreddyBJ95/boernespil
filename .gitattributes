@@ -1,0 +1,2 @@
+server/linux/*.sh text eol=lf
+server/tests/linux*.sh text eol=lf
