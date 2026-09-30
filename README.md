@@ -20,11 +20,11 @@ Første gang skal der være internet. Bagefter virker spillene også offline.
 ## Spil
 Forsiden har faner, så man kan vælge kategori (appen husker den sidste):
 
-- 🧊 **3D:** ⛏️ Broekraft (byggespil i Minecraft-stil med 4 verdener, hammer og TNT), 🎣 Mærkelige fisk
-- 🎮 **2D:** 🐮 Tryk på dyret, 🎈 Pop ballonerne, 🧺 Fang frugten, 🔨 Slå muldvarpen, 🚀 Undvig stenene,
-  🐍 Fjollet Slange, 🚽 Skibidi Toilet, 🚜 Vaskehallen
-- 🧠 **Lær:** 🔢 Tæl dyrene, 🧠 Find par, 🎵 Husk farverne, 🧩 Skydepuslespil
-- 🎨 **Tegn & musik:** 🎨 Tegn!, 🎹 Dyre-piano
+- 🧊 **3D:** ⛏️ Broekraft (byggespil i Minecraft-stil med mange verdener), 🎣 Mærkelige fisk
+- 🎮 **2D:** 🎈 Pop ballonerne (stryg over ballonerne som i Fruit Ninja), 🚜 Vaskehallen, 🐍 Fjollet Slange
+- 🎨 **Tegn & musik:** 🎨 Tegn! (hold to fingre nede, så kommer der en streg imellem dem), 🎹 Dyre-piano
+
+Nederst på forsiden ligger "For voksne" med 📷 Spil sammen (forbind tabletten til Broekraft Server).
 
 ## Kør lokalt
 Åbn `index.html` i en browser.

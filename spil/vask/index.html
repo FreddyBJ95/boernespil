@@ -29,25 +29,25 @@
     }
     .midte { display: flex; flex-direction: column; align-items: center; gap: 6px; }
     .faser {
-      display: flex; align-items: center; gap: 4px; background: rgba(255,255,255,.92);
+      display: flex; align-items: center; gap: 3px; background: rgba(255,255,255,.92);
       border-radius: 999px; padding: 4px 10px; box-shadow: 0 4px 14px rgba(0,0,0,.18);
     }
     .fase {
-      font-size: 26px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center;
+      font-size: 24px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
       border-radius: 50%; opacity: .35; transition: all .25s;
     }
     .fase.aktiv { opacity: 1; background: #fff3b0; transform: scale(1.15); box-shadow: 0 0 0 3px #ffd23f; }
     .fase.faerdig { opacity: .9; }
-    .pil { font-size: 22px; color: #8aa6b4; font-weight: 900; }
+    .pil { font-size: 20px; color: #8aa6b4; font-weight: 900; }
     .bar {
-      width: 170px; height: 12px; border-radius: 6px; background: rgba(255,255,255,.75); overflow: hidden;
+      width: 200px; height: 12px; border-radius: 6px; background: rgba(255,255,255,.75); overflow: hidden;
       box-shadow: inset 0 1px 3px rgba(0,0,0,.2);
     }
     .fyld { height: 100%; width: 0; border-radius: 6px; background: #ff7eb6; transition: width .15s; }
     .hoejre { display: flex; align-items: center; gap: 10px; }
     .taeller {
       font-size: 24px; font-weight: 800; color: #1a3a4a; background: rgba(255,255,255,.92);
-      border-radius: 999px; padding: 8px 14px; box-shadow: 0 4px 14px rgba(0,0,0,.18);
+      border-radius: 999px; padding: 8px 14px; box-shadow: 0 4px 14px rgba(0,0,0,.18); white-space: nowrap;
     }
 
     .besked {
@@ -72,13 +72,41 @@
     .klat.valgt { transform: scale(1.2); box-shadow: 0 0 0 3px #1f1d2b; }
     .klat.regnbue { background: conic-gradient(#ff7eb6, #ffa45c, #ffd84d, #7ee08a, #6ec6ff, #b98cff, #ff7eb6); }
 
+    /* Pynt: malingsspande og klistermærker, når maskinen er ren */
+    .pynt {
+      position: fixed; left: 50%; bottom: 12px; z-index: 9; transform: translateX(-50%);
+      display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px;
+      width: max-content; max-width: calc(100vw - 190px); padding: 8px 12px;
+      background: rgba(255,255,255,.9); border-radius: 30px; box-shadow: 0 4px 14px rgba(0,0,0,.2);
+      transition: transform .35s cubic-bezier(.2,1.3,.5,1), opacity .3s;
+    }
+    .pynt.skjult { transform: translate(-50%, 160%); opacity: 0; pointer-events: none; }
+    .spand {
+      width: 44px; height: 44px; border-radius: 50%; border: 3px solid #fff; padding: 0; cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,.25), inset 0 -7px 0 rgba(0,0,0,.18), inset 5px 5px 0 rgba(255,255,255,.35);
+      transition: transform .15s;
+    }
+    .spand:active, .maerke:active { transform: scale(.9); }
+    .maerke {
+      width: 44px; height: 44px; border-radius: 12px; border: none; background: #eef2f7; padding: 0; cursor: pointer;
+      font-size: 27px; line-height: 1; display: flex; align-items: center; justify-content: center; transition: transform .15s;
+    }
+    .maerke.valgt { background: #fff3b0; box-shadow: 0 0 0 3px #ffd23f; transform: scale(1.12); }
+    .skille { width: 2px; height: 34px; background: rgba(0,0,0,.12); border-radius: 1px; }
+    .afsted {
+      position: fixed; right: 16px; bottom: 16px; z-index: 9; width: 72px; height: 72px; min-width: 72px; font-size: 38px;
+      background: #fff; animation: pust 1.2s ease-in-out infinite;
+    }
+    .afsted.skjult { display: none; }
+    @keyframes pust { 50% { transform: scale(1.12); box-shadow: 0 0 0 10px rgba(255,210,63,.45), 0 4px 14px rgba(0,0,0,.2); } }
+
     /* Vælg maskine */
     .overlay {
       position: fixed; inset: 0; z-index: 20; display: flex; padding: 20px; overflow-y: auto; touch-action: pan-y;
       background: rgba(8,28,44,.72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
     }
     .overlay.skjult { display: none; }
-    .indhold { margin: auto; width: 100%; max-width: 900px; display: flex; flex-direction: column; align-items: center; }
+    .indhold { margin: auto; width: 100%; max-width: 980px; display: flex; flex-direction: column; align-items: center; }
     .titel {
       font-size: clamp(40px, 9vw, 66px); font-weight: 900; margin: 0 0 4px; text-align: center;
       background: linear-gradient(90deg, #ff7eb6, #ffd84d, #7ee08a, #6ec6ff, #b98cff);
@@ -98,13 +126,18 @@
     .luk { position: fixed; top: 14px; right: 14px; }
     .luk[hidden] { display: none; }
 
+    @media (max-width: 600px) {
+      .pynt { max-width: calc(100vw - 24px); }
+      .afsted { bottom: auto; top: 74px; right: 14px; width: 60px; height: 60px; min-width: 60px; font-size: 30px; }
+    }
     @media (max-width: 480px) {
       .tilbage, .rund { width: 44px; height: 44px; min-width: 44px; font-size: 22px; }
-      .fase { width: 34px; height: 34px; font-size: 22px; }
-      .pil { font-size: 16px; }
+      .fase { width: 30px; height: 30px; font-size: 19px; }
+      .pil { display: none; }
       .bar { width: 130px; }
-      .taeller { font-size: 20px; padding: 6px 10px; }
-      .klat { width: 36px; height: 36px; }
+      .taeller { font-size: 18px; padding: 6px 10px; }
+      .klat, .spand, .maerke { width: 36px; height: 36px; }
+      .maerke { font-size: 22px; }
       .palet { gap: 6px; padding: 6px; }
     }
     @media (max-height: 520px) { .besked { display: none; } }
@@ -116,11 +149,7 @@
   <div class="top">
     <a class="tilbage" href="../../">🏠</a>
     <div class="midte">
-      <div class="faser">
-        <span class="fase" id="f1">🧼</span><span class="pil">›</span>
-        <span class="fase" id="f2">💦</span><span class="pil">›</span>
-        <span class="fase" id="f3">✨</span>
-      </div>
+      <div class="faser" id="faser"></div>
       <div class="bar"><div class="fyld" id="fyld"></div></div>
     </div>
     <div class="hoejre">
@@ -130,6 +159,8 @@
   </div>
   <div class="besked" id="besked"></div>
   <div class="palet skjult" id="palet"></div>
+  <div class="pynt skjult" id="pynt"></div>
+  <button class="rund afsted skjult" id="afsted" aria-label="Kør ud">🏁</button>
 
   <div class="overlay" id="vaelg">
     <button class="rund luk" id="luk" aria-label="Luk" hidden>✖️</button>
@@ -142,15 +173,30 @@
 
   <script src="../../effekter.js"></script>
   <script>
-    // ===== Vaskehallen — vask mudrede maskiner med højtryksrenseren =====
-    // 1) Sprøjt sæbe på hele maskinen  2) Skyl mudder og sæbe af  3) Skinnende ren → næste maskine
+    // ===== Vaskehallen — vask mudrede maskiner, og pynt dem bagefter =====
+    // 1) Sprøjt sæbe på  2) Skrub med den store børste  3) Skyl mudderet af  4) Tør med blæseren
+    // 5) Pynt maskinen med ny farve og klistermærker → 🏁 så kører den ud, og den næste kommer ind.
+    // Farven og klistermærkerne huskes, så maskinen ser sådan ud næste gang, den kommer.
 
     const DW = 500, DH = 320;               // hver maskine tegnes i en kasse på 500×320 enheder
-    const SÆBE_MÅL = 0.8, REN_MÅL = 0.88;   // så meget skal dækkes, før resten klares af sig selv
     const KØR = 1.4;                        // sekunder om at køre ind/ud
     const OMRIDS = "#1f1d2b", MØRK = "#34343f", STÅL = "#a3aab7", GUMMI = "#27272f";
     const SÆBEFARVER = ["#ff7eb6", "#6ec6ff", "#7ee08a", "#ffd84d", "#b98cff", "#ffa45c"];
     const BRUNE = ["#5b3a1d", "#7a5230", "#4a2f16", "#8c6339", "#6b4424", "#3f2812", "#96703f"];
+    const MALING = ["#e63946", "#ff7eb6", "#ffd23f", "#3cae4f", "#3a86ff", "#9b5de5"];   // malingsspandene
+    const MÆRKER = ["⭐", "❤️", "🔥", "⚡", "🌈", "🦄", "🐶", "😎"];                   // klistermærkerne
+
+    // Vasketrinene i rækkefølge. mål = hvor meget der skal dækkes, før resten klares af sig selv
+    const TRIN = [
+      { id: "saebe",  ikon: "🧼", mål: 0.8,  værktøj: "skum",   trin: 12, farve: null,
+        tekst: "Sprøjt sæbe på hele maskinen! 🧼", færdig: "Flot! Nu skal den skrubbes 🧽", tale: "Flot! Nu skal den skrubbes med børsten." },
+      { id: "boerst", ikon: "🧽", mål: 0.72, værktøj: "børste", trin: 12, farve: "#ffa45c",
+        tekst: "Skrub den med den store børste! 🧽", færdig: "Flot! Nu skal den skylles 💦", tale: "Flot! Nu skal den skylles." },
+      { id: "skyl",   ikon: "💦", mål: 0.88, værktøj: "vand",   trin: 9,  farve: "#4cc9f0",
+        tekst: "Skyl den ren med højtryksrenseren! 💦", færdig: "Flot! Nu skal den tørres 💨", tale: "Flot! Nu skal den tørres med blæseren." },
+      { id: "toer",   ikon: "💨", mål: 0.8,  værktøj: "blæser", trin: 10, farve: "#7ee0c0",
+        tekst: "Tør den med blæseren! 💨" },
+    ];
 
     // ---------- Tegne-hjælpere (alle mål i maskinens 500×320 enheder) ----------
     function rrSti(c, x, y, w, h, r) {
@@ -238,14 +284,18 @@
       cirkel(c, x, y, r, "#fff5a8", 3);
       c.beginPath(); c.arc(x - r * .3, y - r * .3, r * .35, 0, Math.PI * 2); c.fillStyle = "#fff"; c.fill();
     }
-    function blink(c, x, y) {   // orange advarselslampe på taget
-      del(c, () => { c.beginPath(); c.arc(x, y, 11, Math.PI, 0); c.closePath(); }, "#ff9f1c", y - 11, y, 3);
+    function blink(c, x, y, farve = "#ff9f1c") {   // advarselslampe på taget (orange eller blå)
+      del(c, () => { c.beginPath(); c.arc(x, y, 11, Math.PI, 0); c.closePath(); }, farve, y - 11, y, 3);
       boks(c, x - 13, y - 1, 26, 7, 3, MØRK, 3);
     }
+    function mørkere(hex, gange) {                 // samme farve, bare mørkere (til skygger i maskinens farve)
+      const n = parseInt(hex.slice(1), 16), f = v => Math.round(v * gange);
+      return `rgb(${f(n >> 16 & 255)}, ${f(n >> 8 & 255)}, ${f(n & 255)})`;
+    }
 
-    // ---------- Maskinerne (de kører mod venstre) ----------
-    function tegnTraktor(c) {
-      const G = "#3cae4f", GUL = "#ffd23f";
+    // ---------- Maskinerne (de kører mod venstre). Hovedfarven kan males om ----------
+    function tegnTraktor(c, G = "#3cae4f") {
+      const GUL = "#ffd23f";
       boks(c, 80, 212, 300, 36, 8, MØRK);                 // chassis
       boks(c, 158, 56, 16, 104, 4, STÅL);                 // udstødning
       boks(c, 152, 50, 28, 12, 4, MØRK);
@@ -266,8 +316,8 @@
       skærm(c, 374, 220, 98, 114, Math.PI * 1.04, Math.PI * 1.8, G);
     }
 
-    function tegnGravko(c) {
-      const Y = "#ffc21a", Y2 = "#e5a500";
+    function tegnGravko(c, Y = "#ffc21a") {
+      const Y2 = mørkere(Y, 0.88);
       boks(c, 96, 246, 370, 64, 32, GUMMI);               // bælter
       rrSti(c, 106, 256, 350, 44, 22); c.lineWidth = 3; c.strokeStyle = "#4a4a58"; c.stroke();
       for (const x of [136, 426]) { cirkel(c, x, 278, 22, STÅL, 4); cirkel(c, x, 278, 8, MØRK, 3); }
@@ -281,7 +331,7 @@
       cirkel(c, 78, 204, 8, STÅL, 3);
       boks(c, 168, 150, 292, 90, 16, Y);                  // overvogn
       boks(c, 404, 156, 76, 80, 26, Y2);                  // kontravægt
-      c.lineWidth = 4; c.strokeStyle = "#b98600";
+      c.lineWidth = 4; c.strokeStyle = mørkere(Y, 0.72);
       for (let x = 330; x <= 380; x += 12) { c.beginPath(); c.moveTo(x, 176); c.lineTo(x, 214); c.stroke(); }
       boks(c, 384, 116, 14, 38, 4, STÅL);                 // udstødning
       boks(c, 172, 64, 98, 98, 12, Y);                    // kabine
@@ -290,8 +340,7 @@
       blink(c, 222, 50);
     }
 
-    function tegnATV(c) {
-      const R = "#e63946";
+    function tegnATV(c, R = "#e63946") {
       boks(c, 168, 196, 180, 62, 14, MØRK);               // motor
       boks(c, 200, 246, 120, 14, 6, STÅL);                // fodstøtte
       boks(c, 446, 196, 34, 12, 6, STÅL);                 // udstødning
@@ -312,8 +361,8 @@
       lygte(c, 66, 165, 9);
     }
 
-    function tegnLastbil(c) {
-      const B = "#3a86ff", LAD = "#ef476f", LAD2 = "#c9304f";
+    function tegnLastbil(c, B = "#3a86ff") {
+      const LAD = "#ef476f", LAD2 = "#c9304f";
       boks(c, 58, 222, 416, 30, 8, MØRK);                 // chassis
       boks(c, 176, 40, 12, 108, 4, STÅL);                 // udstødning
       poly(c, [[190, 92], [486, 92], [470, 226], [204, 226]], LAD);      // lad
@@ -332,8 +381,8 @@
       boks(c, 280, 204, 206, 16, 8, GUMMI);               // skærm over baghjul
     }
 
-    function tegnGummiged(c) {
-      const O = "#ff7b25", O2 = "#d95f10";
+    function tegnGummiged(c, O = "#ff7b25") {
+      const O2 = mørkere(O, 0.85);
       boks(c, 128, 196, 300, 40, 10, MØRK);               // ramme
       boks(c, 416, 96, 14, 60, 4, STÅL);                  // udstødning
       boks(c, 296, 138, 182, 92, 20, O);                  // motorhus
@@ -356,13 +405,219 @@
       skærm(c, 388, 248, 68, 80, Math.PI * 1.1, Math.PI * 1.9, O);
     }
 
+    function tegnBrandbil(c, R = "#e63946") {
+      boks(c, 40, 226, 440, 30, 8, MØRK);                 // chassis
+      boks(c, 170, 98, 310, 136, 12, R);                  // opbygning med redskaber
+      for (const x of [192, 290]) {                       // rulleskodder
+        boks(c, x, 116, 84, 86, 8, "#dfe4ec", 4);
+        c.lineWidth = 2; c.strokeStyle = "rgba(0,0,0,.18)";
+        for (let y = 128; y < 196; y += 10) { c.beginPath(); c.moveTo(x + 6, y); c.lineTo(x + 78, y); c.stroke(); }
+        boks(c, x + 33, 190, 18, 7, 3, MØRK, 2);
+      }
+      cirkel(c, 428, 160, 34, MØRK, 4);                   // slangetromle
+      c.strokeStyle = "#f1f1f1"; c.lineWidth = 5;
+      for (const r of [27, 20, 13]) { c.beginPath(); c.arc(428, 160, r, 0, Math.PI * 2); c.stroke(); }
+      cirkel(c, 428, 160, 6, STÅL, 3);
+      boks(c, 28, 78, 150, 158, 24, R);                   // førerhus
+      rude(c, [[48, 94], [160, 94], [160, 150], [40, 150]]);
+      rrSti(c, 104, 158, 62, 58, 8); c.lineWidth = 3; c.strokeStyle = "rgba(0,0,0,.35)"; c.stroke();   // dør
+      boks(c, 28, 206, 452, 12, 4, "#f4f4f4", 3);         // hvid stribe
+      for (const x of [196, 446]) boks(c, x, 84, 12, 16, 3, STÅL, 3);   // stigens holdere
+      for (let x = 128; x < 470; x += 22) streg(c, x, 70, x, 86, 3, STÅL);   // stigen
+      streg(c, 116, 70, 474, 70, 5, STÅL); streg(c, 116, 86, 474, 86, 5, STÅL);
+      blink(c, 56, 78, "#3a86ff"); blink(c, 96, 78, "#3a86ff");       // blå blink
+      boks(c, 14, 200, 58, 32, 10, STÅL);                 // kofanger
+      lygte(c, 42, 184, 9);
+      hjul(c, 100, 266, 46, "#e8ebf0");
+      hjul(c, 352, 266, 46, "#e8ebf0");
+      hjul(c, 432, 266, 46, "#e8ebf0");
+      skærm(c, 100, 266, 50, 62, Math.PI * 1.05, Math.PI * 1.95, R);
+    }
+
+    function tegnSkraldebil(c, G = "#2a9d8f") {
+      const G2 = mørkere(G, 0.8);
+      boks(c, 44, 222, 432, 30, 8, MØRK);                 // chassis
+      boks(c, 176, 62, 258, 166, 20, G);                  // containeren
+      c.lineWidth = 5; c.strokeStyle = G2;
+      for (let x = 216; x <= 400; x += 46) { c.beginPath(); c.moveTo(x, 80); c.lineTo(x, 176); c.stroke(); }
+      boks(c, 190, 186, 230, 12, 5, "#ffd23f", 3);        // gul stribe
+      poly(c, [[430, 70], [490, 104], [490, 234], [430, 234]], G2);    // bagenden
+      boks(c, 442, 176, 38, 48, 8, MØRK, 3);              // åbningen
+      boks(c, 446, 118, 36, 46, 6, "#7cc35a", 3);         // en skraldespand på vej op
+      boks(c, 442, 110, 44, 10, 4, "#4f8f3a", 3);
+      boks(c, 30, 84, 146, 152, 22, G);                   // førerhus
+      rude(c, [[50, 100], [158, 100], [158, 156], [44, 156]]);
+      blink(c, 104, 84);
+      boks(c, 16, 200, 58, 32, 10, STÅL);                 // kofanger
+      lygte(c, 42, 186, 9);
+      hjul(c, 100, 266, 46, "#e8ebf0");
+      hjul(c, 338, 266, 46, "#e8ebf0");
+      hjul(c, 420, 266, 46, "#e8ebf0");
+      skærm(c, 100, 266, 50, 62, Math.PI * 1.05, Math.PI * 1.95, G);
+    }
+
+    function tegnBetonbil(c, O = "#f77f00") {
+      boks(c, 44, 222, 432, 30, 8, MØRK);                 // chassis
+      boks(c, 212, 176, 24, 50, 6, MØRK);                 // stativ til tromlen
+      boks(c, 424, 150, 24, 76, 6, MØRK);
+      // tromlen: skrå, hvid med orange striber
+      c.save(); c.translate(334, 134); c.rotate(-0.2);
+      rrSti(c, -140, -62, 280, 124, 58); c.fillStyle = "#eef0f3"; c.fill();
+      c.save(); rrSti(c, -140, -62, 280, 124, 58); c.clip();
+      c.fillStyle = O;
+      for (let x = -190; x < 200; x += 72) { c.beginPath(); c.moveTo(x, -80); c.lineTo(x + 34, -80); c.lineTo(x - 6, 80); c.lineTo(x - 40, 80); c.closePath(); c.fill(); }
+      const glans = c.createLinearGradient(0, -62, 0, 62);
+      glans.addColorStop(0, "rgba(255,255,255,.45)"); glans.addColorStop(.45, "rgba(255,255,255,0)"); glans.addColorStop(1, "rgba(0,0,0,.25)");
+      c.fillStyle = glans; c.fillRect(-150, -80, 300, 160);
+      c.restore();
+      rrSti(c, -140, -62, 280, 124, 58); c.lineWidth = 5; c.strokeStyle = OMRIDS; c.stroke();
+      c.restore();
+      poly(c, [[446, 60], [494, 44], [488, 88], [462, 94]], STÅL);      // tragt
+      poly(c, [[462, 190], [498, 216], [490, 226], [454, 202]], STÅL);  // rende
+      boks(c, 30, 82, 146, 154, 24, O);                   // førerhus
+      rude(c, [[50, 98], [158, 98], [158, 152], [44, 152]]);
+      blink(c, 104, 82);
+      boks(c, 16, 200, 58, 32, 10, STÅL);                 // kofanger
+      lygte(c, 42, 184, 9);
+      hjul(c, 100, 266, 46, "#e8ebf0");
+      hjul(c, 338, 266, 46, "#e8ebf0");
+      hjul(c, 420, 266, 46, "#e8ebf0");
+      skærm(c, 100, 266, 50, 62, Math.PI * 1.05, Math.PI * 1.95, O);
+    }
+
+    function tegnBulldozer(c, Y = "#ffb703") {
+      const Y2 = mørkere(Y, 0.85);
+      boks(c, 116, 244, 348, 66, 32, GUMMI);              // bælter
+      rrSti(c, 126, 254, 328, 46, 22); c.lineWidth = 3; c.strokeStyle = "#4a4a58"; c.stroke();
+      for (const x of [154, 426]) { cirkel(c, x, 277, 22, STÅL, 4); cirkel(c, x, 277, 8, MØRK, 3); }
+      for (let x = 204; x <= 380; x += 44) cirkel(c, x, 286, 12, STÅL, 3);
+      boks(c, 196, 100, 14, 56, 4, STÅL);                 // udstødning
+      boks(c, 191, 94, 24, 10, 3, MØRK, 3);
+      boks(c, 150, 150, 310, 96, 14, Y);                  // krop
+      c.lineWidth = 4; c.strokeStyle = mørkere(Y, 0.7);
+      for (let y = 166; y <= 222; y += 14) { c.beginPath(); c.moveTo(172, y); c.lineTo(250, y); c.stroke(); }   // motorriste
+      boks(c, 300, 56, 124, 100, 12, Y);                  // kabine
+      rude(c, [[312, 68], [412, 68], [412, 142], [312, 142]]);
+      boks(c, 292, 46, 140, 14, 7, Y2);
+      blink(c, 362, 44);
+      poly(c, [[60, 188], [232, 196], [232, 222], [60, 238]], Y2);     // skubbearm
+      cirkel(c, 222, 210, 9, STÅL, 3);
+      del(c, () => {                                      // skovlen: en buet plade set fra siden
+        c.beginPath(); c.moveTo(56, 128); c.quadraticCurveTo(4, 214, 34, 300);
+        c.lineTo(78, 300); c.quadraticCurveTo(46, 214, 90, 132); c.closePath();
+      }, Y2, 128, 300);
+      boks(c, 24, 292, 62, 14, 5, STÅL);                  // skær
+      poly(c, [[452, 196], [484, 204], [494, 286], [478, 296], [468, 226], [452, 226]], Y2);       // riveren
+    }
+
+    function tegnMonstertruck(c, P = "#9b5de5") {
+      for (const x of [118, 382]) {                       // store fjedre
+        c.beginPath(); c.moveTo(x, 158);
+        for (let i = 1; i <= 6; i++) c.lineTo(x + (i % 2 ? 16 : -16), 158 + i * 12);
+        c.lineTo(x, 238); c.lineJoin = "round";
+        c.lineWidth = 9; c.strokeStyle = OMRIDS; c.stroke();
+        c.lineWidth = 5; c.strokeStyle = "#ffd23f"; c.stroke();
+      }
+      boks(c, 30, 104, 440, 66, 22, P);                   // krop
+      poly(c, [[150, 106], [196, 40], [322, 40], [344, 106]], P);   // førerhus
+      rude(c, [[168, 102], [206, 52], [252, 52], [252, 102]]);
+      rude(c, [[264, 52], [314, 52], [330, 102], [264, 102]]);
+      boks(c, 206, 26, 104, 14, 6, MØRK, 3);              // lygtebom
+      for (let i = 0; i < 4; i++) lygte(c, 220 + i * 25, 24, 7);
+      boks(c, 16, 150, 56, 22, 9, STÅL);                  // kofanger
+      lygte(c, 44, 130, 9);
+      hjul(c, 118, 232, 80, "#c9ced8");
+      hjul(c, 382, 232, 80, "#c9ced8");
+    }
+
+    function tegnMejetærsker(c, G = "#8ac926") {
+      const G2 = mørkere(G, 0.8);
+      boks(c, 440, 18, 12, 50, 4, STÅL);                  // udstødning
+      boks(c, 300, 28, 150, 44, 10, G2);                  // korntank
+      streg(c, 330, 50, 486, 22, 12, G2);                 // tømmerør
+      boks(c, 178, 62, 290, 196, 22, G);                  // krop
+      c.lineWidth = 4; c.strokeStyle = G2;
+      for (const y of [120, 170]) { c.beginPath(); c.moveTo(290, y); c.lineTo(456, y); c.stroke(); }
+      boks(c, 150, 38, 118, 108, 14, G);                  // kabine
+      rude(c, [[160, 50], [258, 50], [258, 132], [160, 132]]);
+      boks(c, 142, 28, 134, 14, 7, G2);
+      blink(c, 210, 28);
+      boks(c, 8, 206, 196, 56, 10, G2);                   // skærebord
+      for (let x = 14; x < 196; x += 13) poly(c, [[x, 262], [x + 9, 262], [x + 4.5, 276]], STÅL, 2);   // knive
+      streg(c, 96, 176, 196, 150, 8, G2);                 // haspelens arm
+      for (let i = 0; i < 6; i++) {                       // haspelen
+        const a = i * Math.PI / 3;
+        streg(c, 96, 176, 96 + Math.cos(a) * 56, 176 + Math.sin(a) * 56, 4, STÅL);
+      }
+      for (let i = 0; i < 6; i++) {
+        const a = i * Math.PI / 3;
+        cirkel(c, 96 + Math.cos(a) * 56, 176 + Math.sin(a) * 56, 8, "#ff9f1c", 3);
+      }
+      cirkel(c, 96, 176, 12, MØRK, 3);
+      hjul(c, 250, 250, 62, "#ffd23f");
+      skærm(c, 250, 250, 66, 78, Math.PI * 1.1, Math.PI * 1.9, G);
+      hjul(c, 424, 272, 40, "#ffd23f");
+    }
+
+    function tegnBus(c, Y = "#ffc300") {
+      boks(c, 14, 48, 476, 210, 28, Y);                   // karosseriet
+      boks(c, 14, 182, 476, 12, 0, MØRK, 0);              // sort stribe
+      rude(c, [[26, 64], [82, 64], [82, 162], [22, 162]]);   // forrude
+      const PASSAGERER = ["🐶", "🐱", "🐰", "🐸", "🐻"];
+      c.font = "42px system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif";
+      c.textAlign = "center"; c.textBaseline = "middle";
+      for (let i = 0; i < 5; i++) {                       // vinduer med dyr, der kigger ud
+        const x = 102 + i * 76;
+        rude(c, [[x, 64], [x + 64, 64], [x + 64, 134], [x, 134]]);
+        c.fillText(PASSAGERER[i], x + 32, 108);
+      }
+      lygte(c, 30, 214, 10);
+      boks(c, 6, 228, 54, 22, 8, STÅL);                   // kofanger
+      hjul(c, 108, 266, 46, "#e8ebf0");
+      hjul(c, 396, 266, 46, "#e8ebf0");
+      skærm(c, 108, 266, 50, 62, Math.PI * 1.05, Math.PI * 1.95, Y);
+      skærm(c, 396, 266, 50, 62, Math.PI * 1.05, Math.PI * 1.95, Y);
+    }
+
+    // hoved = maskinens egen farve · ud = hvor røgen kommer ud · lys = blinklys [x, y, farve] · sirene = ba-bu i stedet for dyt
     const MASKINER = [
-      { navn: "Traktor",  ental: "traktor",  bestemt: "traktoren",  tegn: tegnTraktor,  ud: [166, 46],  motor: 46, horn: 330, farve: "#c8f5cf" },
-      { navn: "Gravko",   ental: "gravko",   bestemt: "gravkoen",   tegn: tegnGravko,   ud: [391, 112], motor: 40, horn: 290, farve: "#fff0b3" },
-      { navn: "ATV",      ental: "ATV",      bestemt: "ATV'en",     tegn: tegnATV,      ud: [480, 202], motor: 85, horn: 620, farve: "#ffd0d4" },
-      { navn: "Lastbil",  ental: "lastbil",  bestemt: "lastbilen",  tegn: tegnLastbil,  ud: [182, 36],  motor: 52, horn: 250, farve: "#d2e4ff" },
-      { navn: "Gummiged", ental: "gummiged", bestemt: "gummigeden", tegn: tegnGummiged, ud: [423, 92],  motor: 44, horn: 370, farve: "#ffe0c8" },
+      { navn: "Traktor",      ental: "traktor",      bestemt: "traktoren",      tegn: tegnTraktor,      hoved: "#3cae4f", ud: [166, 46],  motor: 46, horn: 330, farve: "#c8f5cf", lys: [[400, 15, "#ff9f1c"]] },
+      { navn: "Gravko",       ental: "gravko",       bestemt: "gravkoen",       tegn: tegnGravko,       hoved: "#ffc21a", ud: [391, 112], motor: 40, horn: 290, farve: "#fff0b3", lys: [[222, 45, "#ff9f1c"]] },
+      { navn: "ATV",          ental: "ATV",          bestemt: "ATV'en",         tegn: tegnATV,          hoved: "#e63946", ud: [480, 202], motor: 85, horn: 620, farve: "#ffd0d4" },
+      { navn: "Lastbil",      ental: "lastbil",      bestemt: "lastbilen",      tegn: tegnLastbil,      hoved: "#3a86ff", ud: [182, 36],  motor: 52, horn: 250, farve: "#d2e4ff" },
+      { navn: "Gummiged",     ental: "gummiged",     bestemt: "gummigeden",     tegn: tegnGummiged,     hoved: "#ff7b25", ud: [423, 92],  motor: 44, horn: 370, farve: "#ffe0c8", lys: [[290, 21, "#ff9f1c"]] },
+      { navn: "Brandbil",     ental: "brandbil",     bestemt: "brandbilen",     tegn: tegnBrandbil,     hoved: "#e63946", ud: [484, 240], motor: 50, horn: 280, farve: "#ffd6d9", sirene: true,
+        lys: [[56, 73, "#3a86ff"], [96, 73, "#3a86ff"]] },
+      { navn: "Skraldebil",   ental: "skraldebil",   bestemt: "skraldebilen",   tegn: tegnSkraldebil,   hoved: "#2a9d8f", ud: [488, 240], motor: 44, horn: 240, farve: "#cdeeea", lys: [[104, 79, "#ff9f1c"]] },
+      { navn: "Betonbil",     ental: "betonbil",     bestemt: "betonbilen",     tegn: tegnBetonbil,     hoved: "#f77f00", ud: [484, 240], motor: 42, horn: 260, farve: "#ffe2c4", lys: [[104, 77, "#ff9f1c"]] },
+      { navn: "Bulldozer",    ental: "bulldozer",    bestemt: "bulldozeren",    tegn: tegnBulldozer,    hoved: "#ffb703", ud: [203, 94],  motor: 38, horn: 300, farve: "#fff0c2", lys: [[362, 39, "#ff9f1c"]] },
+      { navn: "Monstertruck", ental: "monstertruck", bestemt: "monstertrucken", tegn: tegnMonstertruck, hoved: "#9b5de5", ud: [470, 118], motor: 34, horn: 200, farve: "#e8dcff" },
+      { navn: "Mejetærsker",  ental: "mejetærsker",  bestemt: "mejetærskeren",  tegn: tegnMejetærsker,  hoved: "#8ac926", ud: [446, 18],  motor: 40, horn: 280, farve: "#e6f6c8", lys: [[210, 23, "#ff9f1c"]] },
+      { navn: "Bus",          ental: "bus",          bestemt: "bussen",         tegn: tegnBus,          hoved: "#ffc300", ud: [490, 248], motor: 48, horn: 350, farve: "#fff3c4" },
     ];
+
+    // ---------- Pynt: farve og klistermærker huskes for hver maskine ----------
+    let pyntData = {};
+    try { pyntData = JSON.parse(localStorage.getItem("vask-pynt") || "{}") || {}; } catch (_) {}
+    const pyntFor = m => pyntData[m.navn] || (pyntData[m.navn] = { farve: null, mærker: [] });
+    function gemPynt() { try { localStorage.setItem("vask-pynt", JSON.stringify(pyntData)); } catch (_) {} }
+    // Tegn maskinen med sin farve og sine klistermærker (mærkerne sidder kun på selve maskinen)
+    function tegnMaskine(c, m) {
+      const p = pyntData[m.navn];
+      m.tegn(c, (p && p.farve) || m.hoved);
+      if (!p || !p.mærker.length) return;
+      c.save();
+      c.globalCompositeOperation = "source-atop";
+      c.textAlign = "center"; c.textBaseline = "middle";
+      c.shadowColor = "rgba(0,0,0,.35)"; c.shadowBlur = 3; c.shadowOffsetY = 2;
+      for (const mk of p.mærker) {
+        c.save(); c.translate(mk.x, mk.y); c.rotate(mk.r);
+        c.font = `${mk.s}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+        c.fillText(mk.e, 0, 0);
+        c.restore();
+      }
+      c.restore();
+    }
 
     // ---------- Mudder ----------
     function mudderKlatter(c, fuld) {
@@ -410,8 +665,30 @@
       c.globalCompositeOperation = "source-over";
     }
 
+    // ---------- Vanddråber efter skylningen (dem blæser man væk) ----------
+    function dråbe(c, x, y, r) {
+      const g = c.createRadialGradient(x - r * .35, y - r * .35, r * .1, x, y, r);
+      g.addColorStop(0, "rgba(255,255,255,.95)"); g.addColorStop(.4, "rgba(200,235,255,.6)"); g.addColorStop(1, "rgba(60,140,210,.6)");
+      c.fillStyle = g; c.beginPath(); c.ellipse(x, y, r, r * 1.12, 0, 0, Math.PI * 2); c.fill();
+    }
+    function lavVand() {
+      const kk = k * dpr, c = lag.vand.getContext("2d"), R = Math.random;
+      ryd(lag.vand);
+      c.setTransform(kk, 0, 0, kk, 0, 0);
+      c.fillStyle = "rgba(120,190,255,.2)"; c.fillRect(0, 0, DW, DH);    // våd glans over det hele
+      for (let i = 0; i < 40; i++) {                                     // små løbestriber
+        const x = R() * DW, y = R() * DH * 0.8, l = 10 + R() * 30, w = 2 + R() * 2.5;
+        c.fillStyle = "rgba(170,220,255,.6)"; rrSti(c, x, y, w, l, w / 2); c.fill();
+        dråbe(c, x + w / 2, y + l, w * 1.3);
+      }
+      for (let i = 0; i < 280; i++) dråbe(c, R() * DW, R() * DH, 2 + R() * R() * 9);
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      c.globalCompositeOperation = "destination-in"; c.drawImage(lag.bil, 0, 0);
+      c.globalCompositeOperation = "source-over";
+    }
+
     // ---------- Lyd ----------
-    let lyd = null, lydTil = false, lydFase = "";
+    let lyd = null, lydNøgle = "";
     function lydKlar() {
       if (lyd) return lyd;
       const ac = Effekter.audio();
@@ -427,19 +704,29 @@
       const lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 260;
       const pg = ac.createGain(); pg.gain.value = 0;
       pumpe.connect(lp); lp.connect(pg); pg.connect(ac.destination);
-      // Gurglen når der er sæbe på
+      // Gurglen (sæbe) og skrubben (børste): filteret vugger op og ned
       const lfo = ac.createOscillator(); lfo.frequency.value = 8;
       const lfoG = ac.createGain(); lfoG.gain.value = 0;
       lfo.connect(lfoG); lfoG.connect(bp.frequency);
       støj.start(); pumpe.start(); lfo.start();
-      return (lyd = { ac, bp, hs, pg, lfoG });
+      return (lyd = { ac, bp, hs, pg, lfo, lfoG, pumpe });
     }
-    function sprøjteLyd(til) {
-      const l = lydKlar(), n = l.ac.currentTime, sæbe = fase === "saebe";
-      l.hs.gain.setTargetAtTime(til ? (sæbe ? 0.2 : 0.3) : 0, n, 0.04);
-      l.pg.gain.setTargetAtTime(til ? 0.12 : 0, n, 0.06);
-      l.bp.frequency.setTargetAtTime(sæbe ? 900 : 2600, n, 0.05);
-      l.lfoG.gain.setTargetAtTime(sæbe ? 350 : 80, n, 0.05);
+    // Hvordan hvert værktøj lyder: styrke, filter, vuggen og pumpens tone
+    const VÆRKTØJSLYD = {
+      skum:   { hs: 0.2,  bp: 900,  lfo: 350, hz: 8,  pg: 0.12, pumpe: 48 },
+      børste: { hs: 0.22, bp: 1500, lfo: 900, hz: 7,  pg: 0.05, pumpe: 40 },
+      vand:   { hs: 0.3,  bp: 2600, lfo: 80,  hz: 8,  pg: 0.12, pumpe: 48 },
+      blæser: { hs: 0.3,  bp: 600,  lfo: 60,  hz: 3,  pg: 0.16, pumpe: 95 },
+    };
+    function sprøjteLyd(v) {
+      const l = lydKlar(), n = l.ac.currentTime, s = VÆRKTØJSLYD[v] || VÆRKTØJSLYD.vand;
+      l.hs.gain.setTargetAtTime(v ? s.hs : 0, n, 0.04);
+      l.pg.gain.setTargetAtTime(v ? s.pg : 0, n, 0.06);
+      if (!v) return;
+      l.bp.frequency.setTargetAtTime(s.bp, n, 0.05);
+      l.lfoG.gain.setTargetAtTime(s.lfo, n, 0.05);
+      l.lfo.frequency.setTargetAtTime(s.hz, n, 0.05);
+      l.pumpe.frequency.setTargetAtTime(s.pumpe, n, 0.1);
     }
     function tone(freq, start, dur, type, vol, slut) {
       const ac = lyd.ac, o = ac.createOscillator(), g = ac.createGain();
@@ -456,7 +743,9 @@
     function blop() { const f = 320 + Math.random() * 700; tone(f, nu(), 0.12, "sine", 0.2, f * 1.9); }       // sæbeboble
     function knirk() { const f = 1300 + Math.random() * 600; tone(f, nu(), 0.09, "sine", 0.07, f * 1.5); }    // knirke-rent
     function klask() { tone(170, nu(), 0.16, "triangle", 0.25, 55); }                                        // mudderklump
+    function plop() { if (lyd) { tone(420, nu(), 0.14, "sine", 0.3, 900); tone(1200, nu() + 0.05, 0.1, "triangle", 0.08); } }   // klistermærke
     function node(i) {            // xylofon-tone til farveknapperne
+      if (!lyd) return;
       const f = [523, 587, 659, 784, 880, 1047, 1175][i % 7];
       tone(f, nu(), 0.4, "triangle", 0.28); tone(f * 2, nu(), 0.2, "sine", 0.08);
     }
@@ -464,9 +753,31 @@
       const base = [523, 659, 784][trin - 1] || 523;
       [1, 1.26, 1.5, 2].forEach((m, i) => tone(base * m, nu() + i * 0.07, 0.2, "triangle", 0.2));
     }
-    function dyt(f) {             // dyt dyt!
+    function dyt(f) {             // hornet
       if (!lyd) return;
       [0, 0.24].forEach(t0 => [f, f * 1.26].forEach(fr => tone(fr, nu() + t0, 0.18, "square", 0.07)));
+    }
+    function sirene(sek) {        // ba-bu ba-bu
+      if (!lyd) return;
+      const ac = lyd.ac, n = ac.currentTime, o = ac.createOscillator(), g = ac.createGain(), lp = ac.createBiquadFilter();
+      o.type = "square"; lp.type = "lowpass"; lp.frequency.value = 1600;
+      for (let i = 0; i < sek * 2; i++) o.frequency.setValueAtTime(i % 2 ? 587 : 440, n + i * 0.5);
+      g.gain.setValueAtTime(0.0001, n); g.gain.exponentialRampToValueAtTime(0.06, n + 0.05);
+      g.gain.setValueAtTime(0.06, n + sek - 0.15); g.gain.exponentialRampToValueAtTime(0.0001, n + sek);
+      o.connect(lp); lp.connect(g); g.connect(ac.destination);
+      o.start(n); o.stop(n + sek + 0.05);
+    }
+    const hornFor = m => m.sirene ? sirene(2) : dyt(m.horn);
+    function psst() {             // malerpistolen
+      if (!lyd) return;
+      const ac = lyd.ac, n = ac.currentTime, s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+      const buf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      s.buffer = buf; f.type = "bandpass"; f.frequency.value = 3800; f.Q.value = 0.8;
+      g.gain.setValueAtTime(0.0001, n); g.gain.exponentialRampToValueAtTime(0.22, n + 0.05);
+      g.gain.setValueAtTime(0.22, n + 0.7); g.gain.exponentialRampToValueAtTime(0.0001, n + 0.95);
+      s.connect(f); f.connect(g); g.connect(ac.destination);
+      s.start(n); s.stop(n + 1);
     }
     function motor(varighed, grund) {
       if (!lyd) return;
@@ -512,22 +823,34 @@
     const cv = document.getElementById("scene"), ctx = cv.getContext("2d");
     const bg = document.createElement("canvas");
     const nytLærred = () => document.createElement("canvas");
-    const lag = { bil: nytLærred(), mudder: nytLærred(), skum: nytLærred(), glans: nytLærred() };
+    const lag = { bil: nytLærred(), mudder: nytLærred(), skum: nytLærred(), vand: nytLærred(), glans: nytLærred() };
     const fyldEl = document.getElementById("fyld"), beskedEl = document.getElementById("besked");
     const talEl = document.getElementById("tal"), paletEl = document.getElementById("palet");
+    const pyntEl = document.getElementById("pynt"), afstedEl = document.getElementById("afsted");
     const vaelgEl = document.getElementById("vaelg"), lukEl = document.getElementById("luk");
 
     let W, H, dpr, k, bilX, bilY, gulvY;
     let maskine = null, idx = 0;
-    let fase = "pause", faseTid = 0, tid = 0, fade = 1, tæller = 0, milepæl = 1;
-    let celler = [], antalSæbe = 0, antalRen = 0, kø = [], partikler = [];
+    // fase: pause · ind (kører ind) · arbejd (et vasketrin) · auto (resten klares af sig selv) · skift (ros, næste trin)
+    //       · ren (skinner) · pynt (farve og klistermærker) · ud (kører ud)
+    let fase = "pause", trinNr = 0, faseTid = 0, tid = 0, fade = 1, tæller = 0, milepæl = 1;
+    let celler = [], antal = {}, kø = [], partikler = [];
     let aktivPointer = null, sprøjter = false, mål = { x: 0, y: 0 }, sidsteStempel = null, ventendeNye = 0, stille = 0, inaktiv = 0;
-    let pivotX = 0, glimtTid = 0, røgTid = 0, blopTid = 0, knirkTid = 0, klaskTid = 0;
+    let pivotX = 0, glimtTid = 0, røgTid = 0, blopTid = 0, knirkTid = 0, klaskTid = 0, børsteVinkel = 0, blæserVinkel = 0;
     let sæbeValg = -1;   // -1 = regnbue
+    let valgtMærke = MÆRKER[0], maling = null;
 
+    const trin = () => TRIN[trinNr];
     const sæbeFarve = () => sæbeValg < 0 ? SÆBEFARVER[Math.floor(Math.random() * SÆBEFARVER.length)] : SÆBEFARVER[sæbeValg];
     const strålefarve = () => sæbeValg < 0 ? `hsl(${Math.round(tid * 240) % 360}, 95%, 72%)` : SÆBEFARVER[sæbeValg];
     const midt = () => ({ x: bilX + DW * k / 2, y: bilY + DH * k * 0.45 });
+    // Hvilket værktøj man holder lige nu (ingen, når maskinen er ren)
+    function værktøj() {
+      if (fase === "pause" || fase === "ind") return "skum";
+      if (fase === "arbejd" || fase === "auto") return trin().værktøj;
+      if (fase === "skift") return TRIN[Math.min(trinNr + 1, TRIN.length - 1)].værktøj;
+      return null;
+    }
 
     // ---------- Opsætning af skærm og lag ----------
     function layout() {
@@ -541,7 +864,7 @@
       bilY = top + (H - top - bund - DH * k) * 0.75;
       gulvY = bilY + 312 * k;
       tegnBaggrund();
-      if (maskine) byggLag(true);
+      if (maskine) { if (maling) afslutMaling(); byggLag(true); }
       if (!pivotX) pivotX = W / 2;
       if (aktivPointer === null) mål = midt();
     }
@@ -554,31 +877,37 @@
     }
     function byggLag(behold) {
       const kk = k * dpr, w = Math.ceil(DW * kk), h = Math.ceil(DH * kk);
-      const gemt = behold ? [kopi(lag.mudder), kopi(lag.skum)] : null;
+      const gemt = behold ? [kopi(lag.mudder), kopi(lag.skum), kopi(lag.vand)] : null;
       for (const c of Object.values(lag)) { c.width = w; c.height = h; }
-      const bc = lag.bil.getContext("2d");
-      bc.setTransform(kk, 0, 0, kk, 0, 0); bc.lineJoin = "round"; bc.lineCap = "round";
-      maskine.tegn(bc);
+      tegnBilLag();
       if (gemt) {
-        lag.mudder.getContext("2d").drawImage(gemt[0], 0, 0, w, h);
-        lag.skum.getContext("2d").drawImage(gemt[1], 0, 0, w, h);
+        [lag.mudder, lag.skum, lag.vand].forEach((c, i) => c.getContext("2d").drawImage(gemt[i], 0, 0, w, h));
         gemt.forEach(c => { c.width = c.height = 0; });
       } else {
         tilsøl(lag.mudder, lag.bil, kk, true);
       }
     }
+    function tegnBilLag() {
+      const kk = k * dpr, bc = lag.bil.getContext("2d");
+      bc.setTransform(1, 0, 0, 1, 0, 0); bc.clearRect(0, 0, lag.bil.width, lag.bil.height);
+      bc.setTransform(kk, 0, 0, kk, 0, 0); bc.lineJoin = "round"; bc.lineCap = "round";
+      tegnMaskine(bc, maskine);
+    }
     function ryd(c) { const x = c.getContext("2d"); x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, c.width, c.height); }
 
-    // Et gitter af punkter på maskinen, så vi kan måle hvor meget der er sæbet/skyllet
+    // Et gitter af punkter på maskinen, så vi kan måle hvor meget der er sæbet, skrubbet, skyllet og tørret
     function lavGitter() {
       const kk = k * dpr, w = lag.bil.width, h = lag.bil.height;
       const data = lag.bil.getContext("2d").getImageData(0, 0, w, h).data;
       celler = [];
       for (let y = 5; y < DH; y += 10) for (let x = 5; x < DW; x += 10) {
         const px = Math.min(w - 1, Math.floor(x * kk)), py = Math.min(h - 1, Math.floor(y * kk));
-        if (data[(py * w + px) * 4 + 3] > 100) celler.push({ x, y, sæbe: false, ren: false, mudder: 1 });
+        if (data[(py * w + px) * 4 + 3] > 100) celler.push({ x, y, sæbe: false, børstet: false, ren: false, tør: false, mudder: 1, vand: 1 });
       }
-      antalSæbe = antalRen = 0;
+      antal = { saebe: 0, boerst: 0, skyl: 0, toer: 0 };
+    }
+    function dækket(c) {
+      return { saebe: c.sæbe, boerst: c.børstet, skyl: c.ren, toer: c.tør }[trin().id];
     }
 
     // ---------- Baggrund: farverig vaskehal ----------
@@ -648,11 +977,19 @@
       }
     }
 
-    // ---------- Sprøjte-stempler ----------
+    // ---------- Stempler: sæbe, børste, vand og luft ----------
     function boble(c, x, y, r, farve) {
       const g = c.createRadialGradient(x - r * .35, y - r * .4, r * .1, x, y, r);
       g.addColorStop(0, "#ffffff"); g.addColorStop(.35, "#ffffff"); g.addColorStop(1, farve);
       c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+    }
+    // Skummet skal kun sidde på maskinen: skær det væk rundt om stemplet
+    function kunPåMaskinen(c, lx, ly, R) {
+      const kk = k * dpr, m = (R + 16) * kk;
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      c.save(); c.beginPath(); c.rect(lx * kk - m, ly * kk - m, 2 * m, 2 * m); c.clip();
+      c.globalCompositeOperation = "destination-in"; c.drawImage(lag.bil, 0, 0);
+      c.restore();
     }
     function sæbeStempel(lx, ly) {
       const R = 40, kk = k * dpr, c = lag.skum.getContext("2d");
@@ -664,20 +1001,37 @@
         const a = Math.random() * Math.PI * 2, d = Math.sqrt(Math.random()) * R * 0.75;
         boble(c, lx + Math.cos(a) * d, ly + Math.sin(a) * d, 6 + Math.random() * 9, sæbeFarve());
       }
-      // Skummet skal kun sidde på maskinen
-      c.setTransform(1, 0, 0, 1, 0, 0);
-      const m = (R + 16) * kk;
-      c.save(); c.beginPath(); c.rect(lx * kk - m, ly * kk - m, 2 * m, 2 * m); c.clip();
-      c.globalCompositeOperation = "destination-in"; c.drawImage(lag.bil, 0, 0);
-      c.restore();
+      kunPåMaskinen(c, lx, ly, R);
       let nye = 0;
       for (const cl of celler) if (!cl.sæbe && (cl.x - lx) ** 2 + (cl.y - ly) ** 2 < (R * 0.85) ** 2) { cl.sæbe = true; nye++; }
-      antalSæbe += nye;
+      antal.saebe += nye;
       return nye;
     }
-    function skylStempel(lx, ly) {
-      const R = 36, kk = k * dpr;
-      for (const lærred of [lag.mudder, lag.skum]) {
+    // Børsten pisker sæben op til tykt, hvidt skum og løsner mudderet lidt
+    function børsteStempel(lx, ly) {
+      const R = 46, kk = k * dpr, c = lag.skum.getContext("2d");
+      c.setTransform(kk, 0, 0, kk, 0, 0);
+      for (let i = 0; i < 6; i++) {
+        const a = Math.random() * Math.PI * 2, d = Math.sqrt(Math.random()) * R * 0.75;
+        boble(c, lx + Math.cos(a) * d, ly + Math.sin(a) * d, 8 + Math.random() * 12, i % 3 ? "#dfe8f4" : sæbeFarve());
+      }
+      kunPåMaskinen(c, lx, ly, R);
+      const m = lag.mudder.getContext("2d");
+      m.setTransform(kk, 0, 0, kk, 0, 0);
+      m.globalCompositeOperation = "destination-out";
+      const g = m.createRadialGradient(lx, ly, 0, lx, ly, R);
+      g.addColorStop(0, "rgba(0,0,0,.14)"); g.addColorStop(1, "rgba(0,0,0,0)");
+      m.fillStyle = g; m.beginPath(); m.arc(lx, ly, R, 0, Math.PI * 2); m.fill();
+      m.globalCompositeOperation = "source-over";
+      let nye = 0;
+      for (const cl of celler) if (!cl.børstet && (cl.x - lx) ** 2 + (cl.y - ly) ** 2 < (R * 0.85) ** 2) { cl.børstet = true; cl.mudder *= 0.6; nye++; }
+      antal.boerst += nye;
+      return nye;
+    }
+    // Vand og luft visker et lag ud. Hvert punkt husker hvor meget der er tilbage — præcis som på skærmen
+    function viskUd(lærreder, lx, ly, R, felt, færdig) {
+      const kk = k * dpr;
+      for (const lærred of lærreder) {
         const c = lærred.getContext("2d");
         c.setTransform(kk, 0, 0, kk, 0, 0);
         c.globalCompositeOperation = "destination-out";
@@ -686,50 +1040,64 @@
         c.fillStyle = g; c.beginPath(); c.arc(lx, ly, R, 0, Math.PI * 2); c.fill();
         c.globalCompositeOperation = "source-over";
       }
-      // Hvert punkt husker hvor meget mudder der er tilbage — præcis som det der er visket ud på skærmen
       let nye = 0;
       for (const cl of celler) {
-        if (cl.ren) continue;
+        if (cl[færdig]) continue;
         const d = Math.hypot(cl.x - lx, cl.y - ly);
         if (d >= R) continue;
-        cl.mudder *= d <= R * 0.5 ? 0 : (d - R * 0.5) / (R * 0.5);
-        if (cl.mudder < 0.25) { cl.ren = true; nye++; }
+        cl[felt] *= d <= R * 0.5 ? 0 : (d - R * 0.5) / (R * 0.5);
+        if (cl[felt] < 0.25) { cl[færdig] = true; nye++; }
       }
-      antalRen += nye;
       return nye;
     }
-    const stempel = (x, y, sæbe) => sæbe ? sæbeStempel(x, y) : skylStempel(x, y);
+    function skylStempel(lx, ly) { const n = viskUd([lag.mudder, lag.skum], lx, ly, 36, "mudder", "ren"); antal.skyl += n; return n; }
+    function tørStempel(lx, ly) { const n = viskUd([lag.vand], lx, ly, 44, "vand", "tør"); antal.toer += n; return n; }
+    function stempel(lx, ly) {
+      switch (trin().id) {
+        case "saebe": return sæbeStempel(lx, ly);
+        case "boerst": return børsteStempel(lx, ly);
+        case "skyl": return skylStempel(lx, ly);
+        default: return tørStempel(lx, ly);
+      }
+    }
 
     // Stempl hele vejen fra sidste punkt hen til fingeren (kaldes ved hver fingerbevægelse,
     // så selv et hurtigt strøg bliver dækket). Giver false hvis fingeren næsten ikke har flyttet sig.
     function stempelTil(sx, sy) {
-      const lx = (sx - bilX) / k, ly = (sy - bilY) / k;
-      const sæbe = fase === "saebe", trin = sæbe ? 12 : 9;
-      if (!sidsteStempel) { sidsteStempel = { x: lx, y: ly }; ventendeNye += stempel(lx, ly, sæbe); return true; }
+      const lx = (sx - bilX) / k, ly = (sy - bilY) / k, afstand = trin().trin;
+      if (!sidsteStempel) { sidsteStempel = { x: lx, y: ly }; ventendeNye += stempel(lx, ly); return true; }
       const dx = lx - sidsteStempel.x, dy = ly - sidsteStempel.y, d = Math.hypot(dx, dy);
-      if (d < trin) return false;
-      const antal = Math.min(60, Math.ceil(d / trin));
-      for (let i = 1; i <= antal; i++) ventendeNye += stempel(sidsteStempel.x + dx * i / antal, sidsteStempel.y + dy * i / antal, sæbe);
+      if (d < afstand) return false;
+      const n = Math.min(60, Math.ceil(d / afstand));
+      for (let i = 1; i <= n; i++) ventendeNye += stempel(sidsteStempel.x + dx * i / n, sidsteStempel.y + dy * i / n);
       sidsteStempel = { x: lx, y: ly };
       return true;
     }
 
-    function sprøjt() {   // hver frame mens der sprøjtes: stempl, lav stænk og lyd
-      const sæbe = fase === "saebe";
-      if (!stempelTil(mål.x, mål.y) && (!sæbe || ++stille % 6 === 0))
-        ventendeNye += stempel((mål.x - bilX) / k, (mål.y - bilY) / k, sæbe);
+    function sprøjt() {   // hver frame mens der arbejdes: stempl, lav stænk og lyd
+      const id = trin().id, blød = id === "saebe" || id === "boerst";
+      if (!stempelTil(mål.x, mål.y) && (!blød || ++stille % 6 === 0))
+        ventendeNye += stempel((mål.x - bilX) / k, (mål.y - bilY) / k);
       const nye = ventendeNye;
       ventendeNye = 0;
-      if (sæbe) {
+      if (id === "saebe") {
         bobler(mål.x, mål.y, 2);
         if (blopTid <= 0) { blop(); blopTid = 0.08 + Math.random() * 0.12; }
-      } else {
+      } else if (id === "boerst") {
+        bobler(mål.x, mål.y, 3);
+        if (nye) stænk(mål.x, mål.y, Math.min(4, nye), BRUNE, 3);
+        if (blopTid <= 0) { blop(); blopTid = 0.15 + Math.random() * 0.2; }
+      } else if (id === "skyl") {
         stænk(mål.x, mål.y, 3, ["rgba(190,230,255,.95)", "rgba(255,255,255,.95)"], 3);
         if (nye) {
           stænk(mål.x, mål.y, Math.min(8, nye * 2), BRUNE, 4.5);
           if (knirkTid <= 0) { knirk(); knirkTid = 0.07; }
           if (nye >= 2 && klaskTid <= 0) { klask(); klaskTid = 0.25 + Math.random() * 0.3; }
         }
+      } else {
+        const { N } = værktøjsGeo(), dx = mål.x - N.x, dy = mål.y - N.y, l = Math.hypot(dx, dy) || 1;
+        blæsDråber(mål.x, mål.y, dx / l, dy / l, nye ? Math.min(10, 3 + nye * 2) : 1);
+        if (nye && knirkTid <= 0) { knirk(); knirkTid = 0.09; }
       }
     }
 
@@ -740,6 +1108,14 @@
         const a = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.5, v = fart * (0.35 + Math.random() * 0.8);
         partikler.push({ type: "dråbe", x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 1500,
           r: str * (0.5 + Math.random()), farve: farver[i % farver.length], liv: 0.5 + Math.random() * 0.5, max: 1 });
+      }
+    }
+    function blæsDråber(x, y, ux, uy, n) {   // blæseren skubber dråberne væk i luftens retning
+      for (let i = 0; i < n; i++) {
+        const a = Math.atan2(uy, ux) + (Math.random() - 0.5) * 1.3, v = 280 + Math.random() * 420;
+        partikler.push({ type: "dråbe", x: x + (Math.random() - .5) * 50 * k, y: y + (Math.random() - .5) * 50 * k,
+          vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 500, r: 2 + Math.random() * 3.5,
+          farve: i % 2 ? "rgba(170,220,255,.95)" : "rgba(255,255,255,.95)", liv: 0.55, max: 1 });
       }
     }
     function bobler(x, y, n) {
@@ -770,42 +1146,55 @@
     }
 
     // ---------- Faser ----------
-    const TRIN = { pause: 0, ind: 0, saebe: 1, saebeAuto: 1, skift: 2, skyl: 2, skylAuto: 3, ren: 3, ud: 3 };
-    function sætFase(f) { fase = f; faseTid = 0; sidsteStempel = null; milepæl = 1; opdaterUI(); }
+    function sætFase(f) {
+      fase = f; faseTid = 0; sidsteStempel = null; milepæl = 1; inaktiv = 0;
+      if (f === "pynt") lavPyntBakke();
+      opdaterUI();
+    }
 
+    // Faserne øverst: de fire vasketrin og pynt
+    const faseEls = [...TRIN.map(t => t.ikon), "🎨"].map((ikon, i, alle) => {
+      const e = document.createElement("span"); e.className = "fase"; e.textContent = ikon;
+      document.getElementById("faser").appendChild(e);
+      if (i < alle.length - 1) { const p = document.createElement("span"); p.className = "pil"; p.textContent = "›"; document.getElementById("faser").appendChild(p); }
+      return e;
+    });
+    function aktivtTrin() {
+      if (fase === "arbejd" || fase === "auto") return trinNr;
+      if (fase === "skift") return trinNr + 1;
+      if (fase === "ren" || fase === "pynt" || fase === "ud") return TRIN.length;
+      return -1;
+    }
     function opdaterUI() {
-      const t = TRIN[fase];
-      ["f1", "f2", "f3"].forEach((id, i) => {
-        const e = document.getElementById(id);
-        e.classList.toggle("aktiv", i + 1 === t);
-        e.classList.toggle("faerdig", i + 1 < t);
-      });
+      const a = aktivtTrin();
+      faseEls.forEach((e, i) => { e.classList.toggle("aktiv", i === a); e.classList.toggle("faerdig", i < a); });
       const tekst = {
         pause: "",
         ind: maskine ? `Her kommer en mudret ${maskine.ental}! 🚧` : "",
-        saebe: "Sprøjt sæbe på hele maskinen! 🧼",
-        saebeAuto: "Sprøjt sæbe på hele maskinen! 🧼",
-        skift: "Flot! Nu skal den skylles 💦",
-        skyl: "Skyl den ren med højtryksrenseren! 💦",
-        skylAuto: "Skinnende ren! ✨", ren: "Skinnende ren! ✨",
-        ud: "Dyt dyt! Farvel 👋",
+        arbejd: trin().tekst, auto: trin().tekst,
+        skift: trin().færdig || "",
+        ren: "Skinnende ren! ✨",
+        pynt: "Pynt den med farver og klistermærker 🎨",
+        ud: "Farvel 👋",
       }[fase];
       beskedEl.textContent = tekst;
       beskedEl.style.opacity = tekst ? 1 : 0;
-      paletEl.classList.toggle("skjult", !(fase === "ind" || fase === "saebe" || fase === "saebeAuto"));
+      paletEl.classList.toggle("skjult", !(fase === "ind" || ((fase === "arbejd" || fase === "auto") && trinNr === 0)));
+      pyntEl.classList.toggle("skjult", fase !== "pynt");
+      afstedEl.classList.toggle("skjult", fase !== "pynt");
     }
 
     let sidsteBar = -1, sidsteFarve = "";
+    const REGNBUE = "linear-gradient(90deg, #ff7eb6, #ffa45c, #ffd84d, #7ee08a, #6ec6ff, #b98cff)";
+    function trinFarve(t) { return t.farve || (sæbeValg < 0 ? REGNBUE : SÆBEFARVER[sæbeValg]); }
     function opdaterBar() {
       const n = celler.length || 1;
-      let v = 0, farve = sæbeValg < 0
-        ? "linear-gradient(90deg, #ff7eb6, #ffa45c, #ffd84d, #7ee08a, #6ec6ff, #b98cff)"
-        : SÆBEFARVER[sæbeValg];
-      if (fase === "saebe") v = antalSæbe / (n * SÆBE_MÅL);
-      else if (fase === "saebeAuto") v = 1;
-      else if (fase === "skift") farve = "#4cc9f0";
-      else if (fase === "skyl") { v = antalRen / (n * REN_MÅL); farve = "#4cc9f0"; }
-      else if (fase === "skylAuto" || fase === "ren" || fase === "ud") { v = 1; farve = "#ffd23f"; }
+      let v = 0, farve = "#ffd23f";
+      if (fase === "arbejd") { v = antal[trin().id] / (n * trin().mål); farve = trinFarve(trin()); }
+      else if (fase === "auto") { v = 1; farve = trinFarve(trin()); }
+      else if (fase === "skift") farve = trinFarve(TRIN[Math.min(trinNr + 1, TRIN.length - 1)]);
+      else if (fase === "ind" || fase === "pause") farve = trinFarve(TRIN[0]);
+      else v = 1;
       v = Math.min(1, v);
       if (Math.abs(v - sidsteBar) > 0.004) { fyldEl.style.width = (v * 100).toFixed(1) + "%"; sidsteBar = v; }
       if (farve !== sidsteFarve) { fyldEl.style.background = farve; sidsteFarve = farve; }
@@ -822,12 +1211,39 @@
     }
 
     function nyMaskine(i) {
-      idx = i; maskine = MASKINER[i];
+      idx = i; maskine = MASKINER[i]; trinNr = 0;
+      if (maling) afslutMaling();
       byggLag(false); lavGitter();
+      ryd(lag.skum); ryd(lag.vand);
       fade = 1; kø = []; partikler = partikler.filter(p => p.type !== "røg");
       if (aktivPointer === null) mål = midt();
       sætFase("ind");
       motor(KØR, maskine.motor);
+      if (maskine.sirene) sirene(2);
+    }
+    // Et vasketrin er klaret: ros og videre til det næste — eller skinnende ren efter det sidste
+    function trinFærdigt() {
+      const m = midt();
+      if (trinNr < TRIN.length - 1) {
+        Effekter.ding();
+        Effekter.stjerner(m.x, m.y, { antal: 14 });
+        Effekter.konfetti(m.x, m.y, { antal: 40 });
+        if (TRIN[trinNr + 1].id === "toer") lavVand();
+        sætFase("skift");
+        sig(trin().tale);
+      } else {
+        tæller++; talEl.textContent = tæller;
+        sætFase("ren");
+        Effekter.fest(m.x, m.y);
+        Effekter.stjerner(m.x - DW * k * 0.3, m.y, { antal: 10 });
+        Effekter.stjerner(m.x + DW * k * 0.3, m.y, { antal: 10 });
+        sig("Skinnende ren! Godt klaret!");
+      }
+    }
+    function kørUd() {
+      if (fase !== "pynt" && fase !== "ren") return;
+      if (maling) afslutMaling();
+      sætFase("ud"); hornFor(maskine); motor(KØR, maskine.motor);
     }
 
     function bilOffset() {
@@ -845,12 +1261,14 @@
     }
 
     function opdater(dt) {
-      const kan = fase === "saebe" || fase === "skyl", skal = sprøjter && kan;
+      const v = sprøjter && fase === "arbejd" ? værktøj() : "";
       blopTid -= dt; knirkTid -= dt; klaskTid -= dt;
-      if (lyd && (skal !== lydTil || (skal && fase !== lydFase))) { sprøjteLyd(skal); lydTil = skal; lydFase = fase; }
-      if (skal) { sprøjt(); inaktiv = 0; } else inaktiv += dt;
+      if (lyd && v !== lydNøgle) { sprøjteLyd(v); lydNøgle = v; }
+      if (v) { sprøjt(); inaktiv = 0; } else inaktiv += dt;
+      if (v === "børste") børsteVinkel += dt * 12;
+      blæserVinkel += dt * (v === "blæser" ? 40 : 4);
 
-      // pistolen følger med fingeren hen langs maskinen (men holder sig fri af farvepaletten)
+      // værktøjet følger med fingeren hen langs maskinen (men holder sig fri af farvepaletten)
       let minX = 60;
       if (!paletEl.classList.contains("skjult")) minX = Math.min(W - 60, paletEl.getBoundingClientRect().right + 40);
       const målX = Math.max(minX, Math.min(W - 60, W / 2 + (mål.x - W / 2) * 0.6));
@@ -866,56 +1284,44 @@
             farve: "rgba(80,80,92,.45)", liv: 1, max: 1 });
         }
       }
+      opdaterMaling(dt);
 
       const n = celler.length || 1;
       switch (fase) {
         case "ind":
           if (faseTid >= KØR) {
-            sætFase("saebe");
-            dyt(maskine.horn);
+            trinNr = 0; sætFase("arbejd");
+            if (!maskine.sirene) dyt(maskine.horn);
             sig(`${stort(maskine.bestemt)} er helt mudret! Sprøjt sæbe på.`);
           }
           break;
-        case "saebe":
-          if (antalSæbe >= n * SÆBE_MÅL) {
-            // resten af sæben breder sig ud fra fingeren af sig selv
+        case "arbejd":
+          if (antal[trin().id] >= n * trin().mål) {
+            // resten breder sig ud fra fingeren af sig selv
             const lx = (mål.x - bilX) / k, ly = (mål.y - bilY) / k;
             const afst = c => (c.x - lx) ** 2 + (c.y - ly) ** 2;
-            kø = celler.filter(c => !c.sæbe).sort((a, b) => afst(a) - afst(b));
-            sætFase("saebeAuto");
+            kø = celler.filter(c => !dækket(c)).sort((a, b) => afst(a) - afst(b));
+            sætFase("auto");
           }
           break;
-        case "saebeAuto":
-          for (let i = 0; i < 12 && kø.length; i++) { const c = kø.shift(); if (!c.sæbe) sæbeStempel(c.x, c.y); }
-          if (faseTid > 0.05 && blopTid <= 0) { blop(); blopTid = 0.05; }
-          if (!kø.length) {
-            sætFase("skift");
-            Effekter.ding();
-            const m = midt();
-            Effekter.stjerner(m.x, m.y, { antal: 14 });
-            Effekter.konfetti(m.x, m.y, { antal: 40 });
-            sig("Flot! Nu skal den skylles.");
+        case "auto":
+          if (trin().id === "saebe" || trin().id === "boerst") {
+            for (let i = 0; i < 12 && kø.length; i++) { const c = kø.shift(); if (!dækket(c)) stempel(c.x, c.y); }
+            if (faseTid > 0.05 && blopTid <= 0) { blop(); blopTid = 0.05; }
+            if (!kø.length) trinFærdigt();
+          } else {
+            // vand og luft: det sidste mudder eller de sidste dråber forsvinder blødt
+            fade = Math.max(0, 1 - faseTid / 0.7);
+            if (faseTid >= 0.7) {
+              if (trin().id === "skyl") { ryd(lag.mudder); ryd(lag.skum); celler.forEach(c => { c.ren = true; c.mudder = 0; }); }
+              else { ryd(lag.vand); celler.forEach(c => { c.tør = true; c.vand = 0; }); }
+              fade = 1; antal[trin().id] = n;
+              trinFærdigt();
+            }
           }
           break;
         case "skift":
-          if (faseTid >= 1.3) sætFase("skyl");
-          break;
-        case "skyl":
-          if (antalRen >= n * REN_MÅL) sætFase("skylAuto");
-          break;
-        case "skylAuto":
-          fade = Math.max(0, 1 - faseTid / 0.7);
-          if (faseTid >= 0.7) {
-            ryd(lag.mudder); ryd(lag.skum); fade = 1;
-            celler.forEach(c => { c.ren = true; }); antalRen = n;
-            tæller++; talEl.textContent = tæller;
-            sætFase("ren");
-            const m = midt();
-            Effekter.fest(m.x, m.y);
-            Effekter.stjerner(m.x - DW * k * 0.3, m.y, { antal: 10 });
-            Effekter.stjerner(m.x + DW * k * 0.3, m.y, { antal: 10 });
-            sig("Skinnende ren! Godt klaret!");
-          }
+          if (faseTid >= 1.3) { trinNr++; sætFase("arbejd"); }
           break;
         case "ren":
           glimtTid -= dt;
@@ -924,21 +1330,114 @@
             const c = celler[Math.floor(Math.random() * celler.length)];
             Effekter.tekstPop(bilX + c.x * k, bilY + c.y * k, ["✨", "⭐", "🌟"][Math.floor(Math.random() * 3)], { s: 42 });
           }
-          if (faseTid >= 3.2) { sætFase("ud"); dyt(maskine.horn); motor(KØR, maskine.motor); }
+          if (faseTid >= 2.6) { sætFase("pynt"); sig("Pynt den med farver og klistermærker!"); }
+          break;
+        case "pynt":
+          if (inaktiv > 25 && vaelgEl.classList.contains("skjult")) kørUd();   // kører selv ud, hvis ingen har rørt den længe
           break;
         case "ud":
           if (faseTid >= KØR) nyMaskine((idx + 1) % MASKINER.length);
           break;
       }
       opdaterPartikler(dt);
-      const v = opdaterBar();
-      if (fase === "saebe" || fase === "skyl") tjekMilepæl(v);
+      const bar = opdaterBar();
+      if (fase === "arbejd") tjekMilepæl(bar);
     }
+
+    // ---------- Pynt: mal maskinen om og sæt klistermærker på ----------
+    function lavPyntBakke() {
+      pyntEl.innerHTML = "";
+      const farver = [maskine.hoved, ...MALING.filter(f => f !== maskine.hoved)];
+      farver.forEach((f, i) => {
+        const b = document.createElement("button");
+        b.className = "spand"; b.style.background = f; b.setAttribute("aria-label", "Maling");
+        b.addEventListener("pointerdown", e => {
+          e.preventDefault(); node(i); mal(f);
+          const r = b.getBoundingClientRect();
+          Effekter.konfetti(r.left + r.width / 2, r.top, { antal: 14, farver: [f, "#ffffff"] });
+        });
+        pyntEl.appendChild(b);
+      });
+      pyntEl.appendChild(Object.assign(document.createElement("span"), { className: "skille" }));
+      MÆRKER.forEach((m, i) => {
+        const b = document.createElement("button");
+        b.className = "maerke" + (m === valgtMærke ? " valgt" : ""); b.textContent = m; b.setAttribute("aria-label", "Klistermærke");
+        b.addEventListener("pointerdown", e => {
+          e.preventDefault(); inaktiv = 0; valgtMærke = m; node(i);
+          pyntEl.querySelectorAll(".maerke").forEach(x => x.classList.toggle("valgt", x === b));
+        });
+        pyntEl.appendChild(b);
+      });
+      pyntEl.appendChild(Object.assign(document.createElement("span"), { className: "skille" }));
+      const svamp = document.createElement("button");
+      svamp.className = "maerke"; svamp.textContent = "🧽"; svamp.setAttribute("aria-label", "Fjern klistermærker");
+      svamp.addEventListener("pointerdown", e => { e.preventDefault(); fjernMærker(); });
+      pyntEl.appendChild(svamp);
+    }
+    function mal(farve) {
+      if (!maskine || fase !== "pynt") return;
+      inaktiv = 0;
+      if (maling) afslutMaling();
+      const p = pyntFor(maskine);
+      p.farve = farve === maskine.hoved ? null : farve;
+      gemPynt();
+      const ny = document.createElement("canvas"), kk = k * dpr;
+      ny.width = lag.bil.width; ny.height = lag.bil.height;
+      const c = ny.getContext("2d");
+      c.setTransform(kk, 0, 0, kk, 0, 0); c.lineJoin = "round"; c.lineCap = "round";
+      tegnMaskine(c, maskine);
+      maling = { ny, gammel: kopi(lag.bil), p: 0, farve };
+      psst();
+    }
+    // Den nye farve glider hen over maskinen fra venstre mod højre, med malingsstænk langs kanten
+    function opdaterMaling(dt) {
+      if (!maling) return;
+      maling.p = Math.min(1, maling.p + dt / 0.9);
+      const c = lag.bil.getContext("2d"), w = lag.bil.width, h = lag.bil.height, x = Math.round(maling.p * w);
+      c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, w, h);
+      c.save(); c.beginPath(); c.rect(x, 0, w - x, h); c.clip(); c.drawImage(maling.gammel, 0, 0); c.restore();
+      c.save(); c.beginPath(); c.rect(0, 0, x, h); c.clip(); c.drawImage(maling.ny, 0, 0); c.restore();
+      for (let i = 0; i < 3; i++) partikler.push({ type: "dråbe", x: bilX + maling.p * DW * k, y: bilY + Math.random() * DH * k * 0.9,
+        vx: (Math.random() - 0.3) * 120, vy: -60 + Math.random() * 80, g: 900, r: 2 + Math.random() * 4, farve: maling.farve, liv: 0.7, max: 1 });
+      if (maling.p >= 1) afslutMaling();
+    }
+    function afslutMaling() {
+      maling.gammel.width = maling.ny.width = 0;
+      maling = null;
+      tegnBilLag();
+    }
+    function sætMærke(sx, sy) {
+      const lx = (sx - bilX) / k, ly = (sy - bilY) / k;
+      if (lx < 0 || ly < 0 || lx > DW || ly > DH) return false;
+      if (maling) afslutMaling();
+      const kk = k * dpr, px = Math.floor(lx * kk), py = Math.floor(ly * kk);
+      if (lag.bil.getContext("2d").getImageData(px, py, 1, 1).data[3] < 100) return false;   // kun på selve maskinen
+      inaktiv = 0;
+      const p = pyntFor(maskine);
+      p.mærker.push({ e: valgtMærke, x: Math.round(lx), y: Math.round(ly), r: +((Math.random() - 0.5) * 0.7).toFixed(2), s: Math.round(52 + Math.random() * 18) });
+      if (p.mærker.length > 40) p.mærker.shift();
+      gemPynt(); tegnBilLag(); plop();
+      Effekter.konfetti(sx, sy, { antal: 12 });
+      return true;
+    }
+    function fjernMærker() {
+      if (!maskine || fase !== "pynt") return;
+      inaktiv = 0;
+      const p = pyntFor(maskine);
+      if (!p.mærker.length) return;
+      p.mærker = []; gemPynt();
+      if (maling) afslutMaling();
+      tegnBilLag();
+      const m = midt();
+      for (let i = 0; i < 5; i++) bobler(m.x + (Math.random() - 0.5) * DW * k * 0.8, m.y + (Math.random() - 0.5) * DH * k * 0.5, 8);
+      blop(); setTimeout(blop, 90); setTimeout(blop, 180);
+    }
+    afstedEl.addEventListener("click", kørUd);
 
     // ---------- Tegning ----------
     function tegnPyt() {
       const n = celler.length || 1;
-      const ren = (fase === "ren" || fase === "ud") ? 1 : antalRen / n;
+      const ren = trinNr > 2 || fase === "ren" || fase === "pynt" || fase === "ud" ? 1 : trinNr === 2 ? antal.skyl / n : 0;
       const a = fase === "ind" ? Math.min(1, faseTid / KØR) : 1;
       const cx = bilX + DW * k / 2, cy = gulvY + 4 * k, rx = DW * k * 0.52, ry = 20 * k;
       ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
@@ -960,6 +1459,21 @@
       c.globalCompositeOperation = "destination-in"; c.drawImage(lag.bil, 0, 0);
       c.globalCompositeOperation = "source-over";
       ctx.drawImage(lag.glans, bx, by, bw, bh);
+    }
+
+    // Blinklys og udrykningslys lyser, når maskinen kører og når den er ren
+    function tegnLys(bx, by) {
+      if (!maskine.lys || !(fase === "ind" || fase === "ren" || fase === "pynt" || fase === "ud")) return;
+      ctx.save(); ctx.globalCompositeOperation = "lighter";
+      maskine.lys.forEach(([x, y, farve], i) => {
+        if (Math.floor(tid * 5 + i) % 2) return;          // skiftevis tændt og slukket
+        const X = bx + x * k, Y = by + y * k, r = 40 * k;
+        const g = ctx.createRadialGradient(X, Y, 0, X, Y, r);
+        g.addColorStop(0, "#ffffff"); g.addColorStop(0.18, farve); g.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.globalAlpha = 0.9; ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(X, Y, r, 0, Math.PI * 2); ctx.fill();
+      });
+      ctx.restore();
     }
 
     function plet(T, r, farve) {
@@ -1005,8 +1519,27 @@
         ctx.globalAlpha = 1;
       }
     }
+    // Luften fra blæseren: en blød kegle og striber, der suser hen mod fingeren
+    function tegnLuft(N, T, g) {
+      const dx = T.x - N.x, dy = T.y - N.y, l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l, nx = -uy, ny = ux;
+      const bred = 44 * k;
+      ctx.globalAlpha = 0.28; ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.moveTo(N.x + nx * 8 * g, N.y + ny * 8 * g); ctx.lineTo(T.x + nx * bred, T.y + ny * bred);
+      ctx.lineTo(T.x - nx * bred, T.y - ny * bred); ctx.lineTo(N.x - nx * 8 * g, N.y - ny * 8 * g);
+      ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 0.9; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3 * g; ctx.lineCap = "round";
+      for (let i = 0; i < 9; i++) {
+        const f = (tid * 3 + i / 9) % 1, side = ((i * 37) % 11 / 11 - 0.5) * 2, b = 8 * g + (bred - 8 * g) * f;
+        const x = N.x + dx * f + nx * side * b, y = N.y + dy * f + ny * side * b;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + ux * 26 * g, y + uy * 26 * g); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      plet(T, bred, "rgba(235,248,255,.6)");
+    }
 
-    function tegnPistol() {
+    // Hvor værktøjet står: nede ved gulvet, og det peger op mod fingeren
+    function værktøjsGeo() {
       const g = Math.max(0.7, Math.min(1.3, Math.min(W, H) / 700));
       const P = { x: pivotX, y: H - 34 * g };
       const dx = mål.x - P.x, dy = Math.min(-30, mål.y - P.y);
@@ -1014,19 +1547,29 @@
       const lanse = Math.max(30, Math.min(150, afst / g - 100));
       const spids = 60 + lanse;
       const N = { x: P.x + Math.cos(a) * spids * g, y: P.y + Math.sin(a) * spids * g };
-      const kan = fase === "saebe" || fase === "skyl";
-      const medSæbe = fase === "pause" || fase === "ind" || fase === "saebe" || fase === "saebeAuto";
-      // slange
+      return { g, P, a, lanse, N };
+    }
+    function tegnSlange(P, g) {
       ctx.lineCap = "round";
       ctx.beginPath(); ctx.moveTo(P.x, P.y); ctx.quadraticCurveTo(P.x + 10 * g, H + 20, P.x + 160 * g, H + 40);
       ctx.lineWidth = 12 * g; ctx.strokeStyle = "#1c1c22"; ctx.stroke();
-      if (sprøjter && kan) tegnStråle(N, mål, g, fase === "saebe");
-      // selve pistolen
+    }
+    function tegnVærktøj() {
+      const v = værktøj();
+      if (!v) return;
+      const geo = værktøjsGeo(), aktiv = sprøjter && fase === "arbejd";
+      if (v === "børste") tegnBørste(geo, aktiv);
+      else if (v === "blæser") tegnBlæser(geo, aktiv);
+      else tegnPistol(geo, aktiv, v === "skum");
+    }
+    function tegnPistol({ g, P, a, lanse, N }, aktiv, medSæbe) {
+      tegnSlange(P, g);
+      if (aktiv) tegnStråle(N, mål, g, medSæbe);
       ctx.save();
       ctx.translate(P.x, P.y); ctx.rotate(a); ctx.scale(g, Math.cos(a) < 0 ? -g : g);
       ctx.lineJoin = "round";
       poly(ctx, [[-8, 4], [14, 4], [6, 50], [-18, 46]], "#2b2b35", 4);                 // håndtag
-      boks(ctx, 16, 8, 8, 20, 4, sprøjter && kan ? "#e63946" : "#2b2b35", 3);          // aftrækker
+      boks(ctx, 16, 8, 8, 20, 4, aktiv ? "#e63946" : "#2b2b35", 3);                   // aftrækker
       boks(ctx, -30, -16, 80, 28, 12, "#ffd23f", 4);                                  // krop
       boks(ctx, 48, -5, lanse + 4, 10, 5, STÅL, 4);                                   // lanse
       if (medSæbe) {                                                                  // skumflaske
@@ -1037,11 +1580,53 @@
       boks(ctx, 48 + lanse, -9, 12, 18, 5, "#2b2b35", 4);                              // dyse
       ctx.restore();
     }
+    // Den store, runde vaskebørste: et langt skaft og farvede hår, der snurrer rundt
+    function tegnBørste({ g, P }, aktiv) {
+      const T = mål, Rb = 50 * k;
+      ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(P.x, H + 10); ctx.lineTo(T.x, T.y);
+      ctx.lineWidth = 17 * g; ctx.strokeStyle = OMRIDS; ctx.stroke();
+      ctx.lineWidth = 11 * g; ctx.strokeStyle = "#ffd23f"; ctx.stroke();
+      if (aktiv) plet(T, Rb * 1.25, "rgba(255,255,255,.55)");
+      ctx.save(); ctx.translate(T.x, T.y); ctx.rotate(børsteVinkel);
+      const tyk = Math.max(3, 5 * k);
+      for (let lagNr = 0; lagNr < 2; lagNr++) {
+        for (let i = 0; i < 36; i++) {
+          const v = i / 36 * Math.PI * 2 + (i % 2) * 0.05, l = Rb * (i % 2 ? 0.94 : 1);
+          ctx.beginPath(); ctx.moveTo(Math.cos(v) * Rb * 0.3, Math.sin(v) * Rb * 0.3); ctx.lineTo(Math.cos(v) * l, Math.sin(v) * l);
+          ctx.lineWidth = lagNr ? tyk : tyk + 3; ctx.strokeStyle = lagNr ? SÆBEFARVER[i % SÆBEFARVER.length] : "rgba(31,29,43,.55)";
+          ctx.stroke();
+        }
+      }
+      cirkel(ctx, 0, 0, Rb * 0.34, "#2b2b35", 4);
+      cirkel(ctx, 0, 0, Rb * 0.16, "#ffd23f", 3);
+      ctx.restore();
+    }
+    // Blæseren: et gult blæserhus med en propel, og et blåt rør der peger på maskinen
+    function tegnBlæser({ g, P, a, lanse, N }, aktiv) {
+      tegnSlange(P, g);
+      if (aktiv) tegnLuft(N, mål, g);
+      ctx.save();
+      ctx.translate(P.x, P.y); ctx.rotate(a); ctx.scale(g, Math.cos(a) < 0 ? -g : g);
+      ctx.lineJoin = "round";
+      poly(ctx, [[-8, 4], [14, 4], [6, 50], [-18, 46]], "#2b2b35", 4);                 // håndtag
+      poly(ctx, [[20, -15], [48 + lanse, -9], [48 + lanse, 9], [20, 15]], "#3a86ff", 4);   // rør
+      boks(ctx, 44 + lanse, -12, 14, 24, 5, "#2b2b35", 4);                            // mundstykke
+      cirkel(ctx, 0, -4, 31, "#ffd23f", 4);                                           // blæserhus
+      cirkel(ctx, 0, -4, 23, "#2b2b35", 3);
+      ctx.save(); ctx.translate(0, -4); ctx.rotate(blæserVinkel);
+      ctx.fillStyle = "#e8ebf0";
+      for (let i = 0; i < 3; i++) { ctx.rotate(Math.PI * 2 / 3); ctx.beginPath(); ctx.ellipse(10, 0, 10, 5, 0, 0, Math.PI * 2); ctx.fill(); }
+      ctx.restore();
+      cirkel(ctx, 0, -4, 5, STÅL, 2);
+      ctx.restore();
+    }
 
     function tegnHint() {   // en lille finger viser hvad man skal, hvis der ikke sker noget
-      if (!(fase === "saebe" || fase === "skyl") || sprøjter || inaktiv < 2.5) return;
+      const vent = fase === "pynt" ? 5 : 2.5;
+      if (!(fase === "arbejd" || fase === "pynt") || sprøjter || inaktiv < vent) return;
       const x = bilX + (DW / 2 + Math.sin(tid * 2.2) * 150) * k, y = bilY + 175 * k;
-      ctx.globalAlpha = Math.min(1, (inaktiv - 2.5) * 2);
+      ctx.globalAlpha = Math.min(1, (inaktiv - vent) * 2);
       ctx.font = Math.round(44 + 12 * k) + "px system-ui, sans-serif";
       ctx.textAlign = "center"; ctx.textBaseline = "top";
       ctx.fillText("👆", x, y);
@@ -1052,25 +1637,35 @@
       ctx.drawImage(bg, 0, 0, W, H);
       if (maskine) {
         const o = bilOffset(), bx = bilX + o.x, by = bilY + o.y, bw = DW * k, bh = DH * k;
+        const fader = fase === "auto" ? fade : 1;
         tegnPyt();
         ctx.fillStyle = "rgba(0,0,0,.22)";
         ctx.beginPath(); ctx.ellipse(bx + bw / 2, gulvY, bw * 0.44, 11 * k, 0, 0, Math.PI * 2); ctx.fill();
         ctx.drawImage(lag.bil, bx, by, bw, bh);
-        ctx.globalAlpha = fade;
+        ctx.globalAlpha = trin().id === "skyl" ? fader : 1;
         ctx.drawImage(lag.mudder, bx, by, bw, bh);
         ctx.drawImage(lag.skum, bx, by, bw, bh);
+        ctx.globalAlpha = trin().id === "toer" ? fader : 1;
+        ctx.drawImage(lag.vand, bx, by, bw, bh);
         ctx.globalAlpha = 1;
         if (fase === "ren" && faseTid < 1.4) tegnGlans(bx, by, bw, bh, faseTid / 1.4);
+        if (maling) {                                    // malersprøjtens tåge ved kanten af den nye farve
+          const x = bx + maling.p * bw;
+          const g = ctx.createLinearGradient(x - 30 * k, 0, x + 30 * k, 0);
+          g.addColorStop(0, "rgba(255,255,255,0)"); g.addColorStop(0.5, maling.farve); g.addColorStop(1, "rgba(255,255,255,0)");
+          ctx.globalAlpha = 0.45; ctx.fillStyle = g; ctx.fillRect(x - 30 * k, by, 60 * k, bh); ctx.globalAlpha = 1;
+        }
+        tegnLys(bx, by);
       }
       tegnPartikler();
       tegnHint();
-      tegnPistol();
+      tegnVærktøj();
     }
 
     let sidst = performance.now();
-    function loop(nu) {
-      const dt = Math.min(0.05, (nu - sidst) / 1000);
-      sidst = nu; tid += dt; faseTid += dt;
+    function loop(t) {
+      const dt = Math.min(0.05, Math.max(0, (t - sidst) / 1000));
+      sidst = t; tid += dt; faseTid += dt;
       opdater(dt);
       tegnScene();
       requestAnimationFrame(loop);
@@ -1078,18 +1673,22 @@
 
     // ---------- Styring ----------
     cv.addEventListener("pointerdown", e => {
+      Effekter.audio(); lydKlar();
+      if (fase === "pynt") {                          // pynt: tryk på maskinen = sæt et klistermærke
+        if (!sætMærke(e.clientX, e.clientY)) inaktiv = 0;
+        return;
+      }
       if (aktivPointer !== null) return;
       aktivPointer = e.pointerId;
       try { cv.setPointerCapture(e.pointerId); } catch (_) {}
       mål = { x: e.clientX, y: e.clientY };
       sprøjter = true; sidsteStempel = null; ventendeNye = 0;
       if (kanSprøjte()) stempelTil(mål.x, mål.y);
-      Effekter.audio(); lydKlar();
       // tryk på den rene maskine = dyt dyt!
       if (fase === "ren" && maskine && e.clientX > bilX && e.clientX < bilX + DW * k && e.clientY > bilY && e.clientY < gulvY)
-        dyt(maskine.horn);
+        hornFor(maskine);
     });
-    const kanSprøjte = () => fase === "saebe" || fase === "skyl";
+    const kanSprøjte = () => fase === "arbejd";
     cv.addEventListener("pointermove", e => {
       if (e.pointerId === aktivPointer || (aktivPointer === null && e.pointerType === "mouse"))
         mål = { x: e.clientX, y: e.clientY };
@@ -1124,24 +1723,27 @@
       paletEl.appendChild(b); klatter.push(b);
     });
 
-    // Vælg maskine — små forhåndsvisninger med lidt mudder på
+    // Vælg maskine — små forhåndsvisninger med lidt mudder på (og den farve og de mærker, den har fået)
     const pd = Math.min(window.devicePixelRatio || 1, 2), valgEl = document.getElementById("valg");
-    MASKINER.forEach((m, i) => {
-      const b = document.createElement("button");
-      b.className = "mknap"; b.style.background = m.farve;
-      const c = document.createElement("canvas");
-      c.width = Math.round(150 * pd); c.height = Math.round(96 * pd);
-      const s = (150 / DW) * pd, cc = c.getContext("2d");
-      cc.setTransform(s, 0, 0, s, 0, 0); cc.lineJoin = "round"; cc.lineCap = "round";
-      m.tegn(cc);
-      const tmp = document.createElement("canvas"); tmp.width = c.width; tmp.height = c.height;
-      tilsøl(tmp, c, s, false);
-      cc.setTransform(1, 0, 0, 1, 0, 0); cc.drawImage(tmp, 0, 0);
-      const t = document.createElement("span"); t.textContent = m.navn;
-      b.append(c, t);
-      b.addEventListener("click", () => vælg(i));
-      valgEl.appendChild(b);
-    });
+    function lavValg() {
+      valgEl.innerHTML = "";
+      MASKINER.forEach((m, i) => {
+        const b = document.createElement("button");
+        b.className = "mknap"; b.style.background = m.farve;
+        const c = document.createElement("canvas");
+        c.width = Math.round(150 * pd); c.height = Math.round(96 * pd);
+        const s = (150 / DW) * pd, cc = c.getContext("2d");
+        cc.setTransform(s, 0, 0, s, 0, 0); cc.lineJoin = "round"; cc.lineCap = "round";
+        tegnMaskine(cc, m);
+        const tmp = document.createElement("canvas"); tmp.width = c.width; tmp.height = c.height;
+        tilsøl(tmp, c, s, false);
+        cc.setTransform(1, 0, 0, 1, 0, 0); cc.drawImage(tmp, 0, 0);
+        const t = document.createElement("span"); t.textContent = m.navn;
+        b.append(c, t);
+        b.addEventListener("click", () => vælg(i));
+        valgEl.appendChild(b);
+      });
+    }
 
     function vælg(i) {
       Effekter.audio(); lydKlar(); låsTaleOp();
@@ -1151,10 +1753,12 @@
     document.getElementById("skiftKnap").addEventListener("click", () => {
       aktivPointer = null; sprøjter = false;
       lukEl.hidden = !maskine;
+      lavValg();
       vaelgEl.classList.remove("skjult");
     });
     lukEl.addEventListener("click", () => vaelgEl.classList.add("skjult"));
 
+    lavValg();
     Effekter.vedStørrelse(layout);
     layout();
     opdaterUI();

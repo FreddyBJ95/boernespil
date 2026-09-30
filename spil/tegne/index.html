@@ -21,6 +21,7 @@
       display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
       padding: 8px 12px; background: #fff;
       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      position: relative; z-index: 2;
     }
     .tilbage {
       font-size: 24px; text-decoration: none; background: #eee; border-radius: 50%;
@@ -38,7 +39,11 @@
     }
     .knap.valgt { background: #ffd166; }
 
-    canvas { flex: 1; background: #fff; touch-action: none; display: block; }
+    /* Tegnefladen: selve tegningen og et gennemsigtigt lag ovenpå til glimmer mellem fingrene */
+    .flade { flex: 1; position: relative; }
+    .flade canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+    #lærred { background: #fff; }
+    #glimt { pointer-events: none; }
   </style>
 </head>
 <body>
@@ -52,23 +57,30 @@
     <button class="knap" id="ryd" title="Ryd alt">🗑️</button>
   </div>
 
-  <canvas id="lærred"></canvas>
+  <div class="flade">
+    <canvas id="lærred"></canvas>
+    <canvas id="glimt"></canvas>
+  </div>
 
   <script>
     // ===== Simpelt tegneprogram til små fingre =====
+    // Én finger tegner. To fingre laver en streg imellem sig (tre fingre en trekant osv.),
+    // og når fingrene bevæger sig, bliver stregerne til en blød vifte — med en lille harpetone.
     const farver = ["#000000","#e63946","#f77f00","#ffd000","#2a9d8f",
                     "#0077b6","#7209b7","#ff70a6","#964b00","#ffffff"];
     const vt = document.getElementById("vt");
     const canvas = document.getElementById("lærred");
     const ctx = canvas.getContext("2d");
+    const glimt = document.getElementById("glimt");
+    const gctx = glimt.getContext("2d");
 
     let valgtFarve = "#000000";
-    let regnbue = false;
+    let tilstand = "farve";   // "farve", "regnbue" eller "visk"
     let regnbueVinkel = 0;
-    let størrelse = 18;   // tyk som standard
-    let tegner = false;
+    let størrelse = 18;       // tyk som standard
+    let dpr = 1, W = 0, H = 0, klar = false;
 
-    // Lav farveknapperne og indsæt dem efter hjem-knappen
+    // ----- Farveknapperne sættes ind efter hjem-knappen -----
     const hjem = vt.firstElementChild;
     farver.forEach((f, i) => {
       const b = document.createElement("button");
@@ -76,70 +88,207 @@
       b.style.background = f;
       if (f === "#ffffff") b.style.boxShadow = "inset 0 0 0 1px #ccc";
       b.addEventListener("pointerdown", () => {
-        regnbue = false;
-        document.getElementById("regnbue").classList.remove("valgt");
-        document.getElementById("visk").classList.remove("valgt");
-        valgtFarve = f;
-        document.querySelectorAll(".farve").forEach(x => x.classList.remove("valgt"));
-        b.classList.add("valgt");
+        tilstand = "farve"; valgtFarve = f;
+        markér(b);
       });
       hjem.after(b);
     });
-
-    // Tilpas lærredet til vinduet (uden at slette tegningen ved første opstart)
-    function tilpas() {
-      const data = canvas.width ? ctx.getImageData(0,0,canvas.width,canvas.height) : null;
-      canvas.width = canvas.clientWidth;
-      canvas.height = canvas.clientHeight;
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(0,0,canvas.width,canvas.height);
-      ctx.lineCap = "round"; ctx.lineJoin = "round";
-      if (data) ctx.putImageData(data, 0, 0);
+    function markér(knap) {
+      document.querySelectorAll(".farve, #regnbue, #visk").forEach(x => x.classList.toggle("valgt", x === knap));
     }
 
-    let sidsteX, sidsteY;
+    // ----- Lærredet følger vinduets størrelse (tegningen bliver liggende) -----
+    function tilpas() {
+      const gammel = klar ? ctx.getImageData(0, 0, canvas.width, canvas.height) : null;
+      klar = true;
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = canvas.clientWidth; H = canvas.clientHeight;
+      for (const c of [canvas, glimt]) { c.width = Math.round(W * dpr); c.height = Math.round(H * dpr); }
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      if (gammel) ctx.putImageData(gammel, 0, 0);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      gctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.lineCap = "round"; ctx.lineJoin = "round";
+    }
+
+    // ----- Fingrene der rører skærmen lige nu: id → { x, y, nr } -----
+    const fingre = new Map();
+    let fingerNr = 0, broTæller = 0;
+
     function pos(e) {
       const r = canvas.getBoundingClientRect();
       return { x: e.clientX - r.left, y: e.clientY - r.top };
     }
+    function stregFarve() {
+      if (tilstand === "visk") return "#ffffff";
+      if (tilstand === "regnbue") return `hsl(${regnbueVinkel = (regnbueVinkel + 8) % 360}, 90%, 55%)`;
+      return valgtFarve;
+    }
+    function streg(x0, y0, x1, y1, farve) {
+      ctx.strokeStyle = farve;
+      ctx.lineWidth = størrelse;
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    }
+
     function startStreg(e) {
-      tegner = true;
-      const p = pos(e); sidsteX = p.x; sidsteY = p.y;
-      tegnTil(e); // en prik hvis man bare tapper
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      lydKlar();
+      try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+      const p = pos(e);
+      fingre.set(e.pointerId, { x: p.x, y: p.y, nr: fingerNr++ });
+      streg(p.x, p.y, p.x, p.y, stregFarve());   // en prik hvis man bare tapper
+      if (fingre.size >= 2) { tegnBro(); sidsteTone = -1; broLyd(true); }
+      startGlimt();
     }
     function tegnTil(e) {
-      if (!tegner) return;
+      const f = fingre.get(e.pointerId);
+      if (!f) return;
       const p = pos(e);
-      ctx.strokeStyle = regnbue
-        ? `hsl(${regnbueVinkel = (regnbueVinkel + 8) % 360}, 90%, 55%)`
-        : valgtFarve;
-      ctx.lineWidth = størrelse;
-      ctx.beginPath();
-      ctx.moveTo(sidsteX, sidsteY);
-      ctx.lineTo(p.x, p.y);
-      ctx.stroke();
-      sidsteX = p.x; sidsteY = p.y;
+      streg(f.x, f.y, p.x, p.y, stregFarve());
+      f.x = p.x; f.y = p.y;
+      if (fingre.size >= 2) { tegnBro(); broLyd(false); }
     }
-    function stopStreg() { tegner = false; }
+    function stopStreg(e) {
+      lydKlar();
+      fingre.delete(e.pointerId);
+      if (!fingre.size) fingerNr = 0;
+    }
+
+    // ----- Broen: en streg mellem fingrene (3 fingre = trekant, 4 = firkant …) -----
+    // Den tegnes hver gang en finger flytter sig, så stregerne lægger sig side om side som en vifte.
+    function fingerListe() { return [...fingre.values()].sort((a, b) => a.nr - b.nr); }
+    function tegnBro() {
+      const liste = fingerListe(), n = liste.length, kanter = n === 2 ? 1 : n;
+      broTæller++;
+      ctx.lineWidth = størrelse;
+      for (let i = 0; i < kanter; i++) {
+        const a = liste[i], b = liste[(i + 1) % n];
+        ctx.strokeStyle = broFarve(a, b, i);
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      }
+    }
+    function broFarve(a, b, i) {
+      if (tilstand === "visk") return "#ffffff";
+      if (tilstand === "regnbue") {   // regnbue hele vejen fra den ene finger til den anden
+        regnbueVinkel = (regnbueVinkel + 3) % 360;
+        const h = regnbueVinkel + i * 90, g = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
+        for (let s = 0; s <= 4; s++) g.addColorStop(s / 4, `hsl(${(h + s * 45) % 360}, 95%, 56%)`);
+        return g;
+      }
+      // Silkebånd: farven bliver en anelse lysere og mørkere for hver streg, så viften får striber som stof
+      const [h, s, l] = tilHsl(valgtFarve);
+      const lys = Math.max(0, Math.min(100, l + Math.sin(broTæller * 0.35) * (l > 85 ? 7 : 11)));
+      return `hsl(${h}, ${s}%, ${lys}%)`;
+    }
+    const hslGemt = {};
+    function tilHsl(hex) {           // "#e63946" → [h, s, l]
+      if (hslGemt[hex]) return hslGemt[hex];
+      const r = parseInt(hex.slice(1, 3), 16) / 255, g = parseInt(hex.slice(3, 5), 16) / 255, b = parseInt(hex.slice(5, 7), 16) / 255;
+      const maks = Math.max(r, g, b), min = Math.min(r, g, b), l = (maks + min) / 2, d = maks - min;
+      let h = 0, s = 0;
+      if (d) {
+        s = d / (1 - Math.abs(2 * l - 1));
+        h = maks === r ? ((g - b) / d) % 6 : maks === g ? (b - r) / d + 2 : (r - g) / d + 4;
+        h = Math.round(h * 60 + 360) % 360;
+      }
+      return (hslGemt[hex] = [h, Math.round(s * 100), Math.round(l * 100)]);
+    }
+
+    // ----- Harpetoner: jo længere streg mellem fingrene, jo dybere tone -----
+    const TONER = [1047, 880, 784, 659, 587, 523, 440, 392, 330, 294, 262, 220, 196];   // glad femtoneskala
+    let lyd = null, sidsteTone = -1, sidsteToneTid = 0;
+    function lydKlar() {
+      try {
+        if (!lyd) lyd = new (window.AudioContext || window.webkitAudioContext)();
+        if (lyd.state === "suspended") lyd.resume();
+      } catch (_) {}
+    }
+    function pluk(f) {
+      if (!lyd) return;
+      const n = lyd.currentTime, g = lyd.createGain();
+      g.connect(lyd.destination);
+      g.gain.setValueAtTime(0.0001, n);
+      g.gain.exponentialRampToValueAtTime(0.13, n + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001, n + 0.7);
+      for (const [type, gange, vol] of [["triangle", 1, 1], ["sine", 2, 0.35]]) {
+        const o = lyd.createOscillator(), og = lyd.createGain();
+        o.type = type; o.frequency.value = f * gange; og.gain.value = vol;
+        o.connect(og); og.connect(g);
+        o.start(n); o.stop(n + 0.75);
+      }
+    }
+    function broLyd(altid) {
+      const liste = fingerListe(), n = liste.length;
+      let længde = 0;
+      for (let i = 0; i < (n === 2 ? 1 : n); i++) {
+        const a = liste[i], b = liste[(i + 1) % n];
+        længde += Math.hypot(a.x - b.x, a.y - b.y);
+      }
+      const fuld = Math.hypot(W, H) * (n === 2 ? 0.9 : 1.8);
+      const i = Math.min(TONER.length - 1, Math.floor(længde / fuld * TONER.length));
+      const nu = performance.now();
+      if ((altid || i !== sidsteTone) && nu - sidsteToneTid > 70) {
+        pluk(TONER[i]); sidsteTone = i; sidsteToneTid = nu;
+      }
+    }
+
+    // ----- Glimmer: små stjerner løber hen ad stregen mellem fingrene -----
+    let glimtKører = false, glimtSlut = 0;
+    function startGlimt() {
+      if (!glimtKører) { glimtKører = true; requestAnimationFrame(glimtLoop); }
+    }
+    function stjerne(x, y, r) {
+      gctx.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const a = i * Math.PI / 4, rr = i % 2 ? r * 0.3 : r;
+        gctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+      }
+      gctx.closePath(); gctx.fill();
+    }
+    function glimtFarve(i) {
+      if (tilstand === "regnbue") return `hsl(${(regnbueVinkel + i * 70) % 360}, 95%, 60%)`;
+      if (tilstand === "visk" || valgtFarve === "#ffffff") return "#9bd6ff";
+      return valgtFarve;
+    }
+    function glimtLoop(nu) {
+      gctx.clearRect(0, 0, W, H);
+      const t = nu / 1000, liste = fingerListe(), n = liste.length;
+      if (n >= 2) glimtSlut = t + 0.25;
+      // en blød ring om hver finger, når der er mere end én
+      if (n >= 2) for (const f of liste) {
+        const r = størrelse / 2 + 14 + Math.sin(t * 8 + f.nr) * 4;
+        gctx.lineWidth = 4; gctx.strokeStyle = "rgba(255,255,255,.9)";
+        gctx.beginPath(); gctx.arc(f.x, f.y, r, 0, Math.PI * 2); gctx.stroke();
+        gctx.lineWidth = 2; gctx.strokeStyle = glimtFarve(f.nr);
+        gctx.beginPath(); gctx.arc(f.x, f.y, r + 3, 0, Math.PI * 2); gctx.stroke();
+      }
+      // stjerner der løber fra finger til finger
+      for (let i = 0; n >= 2 && i < (n === 2 ? 1 : n); i++) {
+        const a = liste[i], b = liste[(i + 1) % n], antal = 5;
+        for (let j = 0; j < antal; j++) {
+          const f = (t * 0.7 + j / antal) % 1, x = a.x + (b.x - a.x) * f, y = a.y + (b.y - a.y) * f;
+          const r = 5 + 4 * Math.abs(Math.sin(t * 6 + j * 1.7));
+          gctx.globalAlpha = 0.55; gctx.fillStyle = glimtFarve(i + j);
+          gctx.beginPath(); gctx.arc(x, y, r * 1.1, 0, Math.PI * 2); gctx.fill();
+          gctx.globalAlpha = 1; gctx.fillStyle = "#fff"; stjerne(x, y, r * 1.5);
+        }
+      }
+      if (t < glimtSlut || n >= 2) requestAnimationFrame(glimtLoop);
+      else { gctx.clearRect(0, 0, W, H); glimtKører = false; }
+    }
 
     canvas.addEventListener("pointerdown", startStreg);
     canvas.addEventListener("pointermove", tegnTil);
     canvas.addEventListener("pointerup", stopStreg);
-    canvas.addEventListener("pointerleave", stopStreg);
+    canvas.addEventListener("pointercancel", stopStreg);
+    canvas.addEventListener("pointerleave", e => { if (e.pointerType === "mouse") stopStreg(e); });
+    document.addEventListener("visibilitychange", () => { if (document.hidden) fingre.clear(); });
 
-    // Knapper
-    document.getElementById("regnbue").addEventListener("pointerdown", () => {
-      regnbue = true;
-      document.getElementById("regnbue").classList.add("valgt");
-      document.getElementById("visk").classList.remove("valgt");
-      document.querySelectorAll(".farve").forEach(x => x.classList.remove("valgt"));
-    });
-    document.getElementById("visk").addEventListener("pointerdown", () => {
-      regnbue = false; valgtFarve = "#ffffff";
-      document.getElementById("visk").classList.add("valgt");
-      document.getElementById("regnbue").classList.remove("valgt");
-      document.querySelectorAll(".farve").forEach(x => x.classList.remove("valgt"));
-    });
+    // ----- Knapper -----
+    document.getElementById("regnbue").addEventListener("pointerdown", e => { tilstand = "regnbue"; markér(e.currentTarget); });
+    document.getElementById("visk").addEventListener("pointerdown", e => { tilstand = "visk"; markér(e.currentTarget); });
     function vælgStr(navn, px) {
       størrelse = px;
       document.getElementById("lille").classList.toggle("valgt", navn === "lille");
@@ -148,7 +297,7 @@
     document.getElementById("lille").addEventListener("pointerdown", () => vælgStr("lille", 8));
     document.getElementById("stor").addEventListener("pointerdown", () => vælgStr("stor", 18));
     document.getElementById("ryd").addEventListener("pointerdown", () => {
-      ctx.fillStyle = "#fff"; ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H);
     });
 
     window.addEventListener("resize", tilpas);

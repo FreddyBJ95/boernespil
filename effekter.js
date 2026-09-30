@@ -1,7 +1,7 @@
 // ===== effekter.js — moderne fest-effekter til alle spil =====
 // <script src="../../effekter.js"></script>
 // Effekter.konfetti(x,y) · .stjerner(x,y) · .tekstPop(x,y,tekst) · .boelge(x,y)
-// .flash() · .ding() · .pop() · .fanfare() · .fejl() · .fest(x,y) · .skibidi()
+// .flash() · .ding() · .pop() · .fanfare() · .fejl() · .fest(x,y)
 // Effekter.vedStørrelse(fn) — kalder fn når skærmen ændrer størrelse, også når en telefon vendes
 
 (function () {
@@ -250,21 +250,5 @@
     g.gain.exponentialRampToValueAtTime(0.0001, n + 0.32);
     o.start(n); o.stop(n + 0.34);
   }
-  // Dyb wobble-bas til Skibidi-temaet
-  function skibidi() {
-    const a = audio(), n = a.currentTime;
-    const o = a.createOscillator(), g = a.createGain(), lfo = a.createOscillator(), lg = a.createGain();
-    o.type = "sawtooth"; o.frequency.value = 70;
-    lfo.type = "sine"; lfo.frequency.value = 7; lg.gain.value = 28;
-    lfo.connect(lg); lg.connect(o.frequency);
-    const lp = a.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 600;
-    o.connect(lp); lp.connect(g); g.connect(node());
-    g.gain.setValueAtTime(0.0001, n);
-    g.gain.exponentialRampToValueAtTime(0.35, n + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, n + 0.4);
-    o.start(n); lfo.start(n); o.stop(n + 0.42); lfo.stop(n + 0.42);
-    blip(180, n, 0.18, "square", 0.12);
-  }
-
-  window.Effekter = { konfetti, stjerner, tekstPop, boelge, flash, fest, ding, pop, fanfare, fejl, skibidi, audio, vedStørrelse };
+  window.Effekter = { konfetti, stjerner, tekstPop, boelge, flash, fest, ding, pop, fanfare, fejl, audio, vedStørrelse };
 })();

@@ -6,141 +6,844 @@
   <title>Pop ballonerne 🎈</title>
   <style>
     * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
     html, body { margin: 0; height: 100%; overflow: hidden; }
     body {
       font-family: ui-rounded, "SF Pro Rounded", "Baloo 2", system-ui, -apple-system, "Segoe UI", sans-serif;
-      background: linear-gradient(180deg, #bde0fe, #a2d2ff);
+      background: #8fd3ff;
       -webkit-user-select: none; user-select: none;
       -webkit-tap-highlight-color: transparent;
       touch-action: none;
     }
+    #spil { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+    /* Øverst: hjem · uret · point og rekord */
     .top {
       position: fixed; top: 0; left: 0; right: 0; z-index: 10;
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 16px;
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+      padding: 12px 14px; pointer-events: none;
     }
+    .top > * { pointer-events: auto; }
     .tilbage {
-      font-size: 26px; text-decoration: none; background: #fff; border-radius: 50%;
-      width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 4px 0 rgba(0,0,0,0.15);
+      font-size: 26px; text-decoration: none; background: rgba(255,255,255,.92); border-radius: 50%;
+      width: 50px; height: 50px; min-width: 50px; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 14px rgba(0,0,0,.2);
     }
-    .point { font-size: 32px; font-weight: bold; color: #03045e; }
+    .ur {
+      flex: 1; max-width: 420px; margin-top: 10px; display: flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,.85); border-radius: 999px; padding: 6px 12px 6px 8px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.18); font-size: 22px; pointer-events: none;
+    }
+    .ur-bar { flex: 1; height: 14px; border-radius: 7px; background: rgba(0,0,0,.1); overflow: hidden; }
+    .ur-fyld {
+      height: 100%; width: 100%; border-radius: 7px;
+      background: linear-gradient(90deg, #ff7eb6, #ffa45c, #ffd84d, #7ee08a, #6ec6ff, #b98cff);
+    }
+    .ur.snart .ur-fyld { animation: blink .5s ease-in-out infinite alternate; }
+    @keyframes blink { to { opacity: .45; } }
+    .tal { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; pointer-events: none; }
+    .point, .rekord {
+      font-weight: 900; color: #10325e; background: rgba(255,255,255,.92); border-radius: 999px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.18); white-space: nowrap;
+    }
+    .point { font-size: 28px; padding: 6px 16px; }
+    .point.hop { animation: hop .25s ease-out; }
+    @keyframes hop { 50% { transform: scale(1.18); } }
+    .rekord { font-size: 17px; padding: 3px 12px; opacity: .9; }
 
-    #himmel { position: fixed; inset: 0; overflow: hidden; }
+    /* Titel på startskærmen */
+    .titel {
+      position: fixed; left: 0; right: 0; top: max(13%, 78px); z-index: 5; text-align: center; pointer-events: none;
+      transition: opacity .4s, transform .4s;
+    }
+    .titel.væk { opacity: 0; transform: translateY(-30px); }
+    .titel h1 {
+      display: inline-block; margin: 0; font-size: clamp(44px, 9vw, 92px); font-weight: 900; letter-spacing: -1px;
+      background: linear-gradient(92deg, #ff4d8d, #ff9f1c, #ffd23f, #34c77b, #2ec4f1, #9b5de5);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      filter: drop-shadow(0 4px 0 #fff) drop-shadow(0 8px 18px rgba(0,40,90,.35));
+      animation: svæv 3s ease-in-out infinite;
+    }
+    .titel p {
+      margin: 10px 0 0; font-size: clamp(18px, 3vw, 26px); font-weight: 800; color: #fff;
+      text-shadow: 0 2px 10px rgba(0,50,110,.5);
+    }
+    @keyframes svæv { 50% { transform: translateY(-8px) rotate(-1deg); } }
 
-    .ballon {
-      position: absolute;
-      width: 76px; height: 92px;
-      border-radius: 50% 50% 48% 48% / 55% 55% 45% 45%;
-      background: radial-gradient(circle at 32% 26%,
-                  hsl(var(--h),95%,82%), hsl(var(--h),85%,55%));
-      box-shadow: inset -8px -10px 0 rgba(0,0,0,0.10);
-      transition: transform 0.12s ease, opacity 0.12s ease;
+    /* Resultatet efter en runde */
+    .resultat {
+      position: fixed; left: 50%; top: max(14%, 80px); z-index: 6; transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none;
+      padding: 18px 36px 20px; border-radius: 32px;
+      background: rgba(255,255,255,.9); box-shadow: 0 18px 50px rgba(0,40,90,.35);
+      animation: ind .5s cubic-bezier(.2,1.5,.4,1);
     }
-    /* Lille knude under ballonen */
-    .ballon::after {
-      content: ""; position: absolute; bottom: -6px; left: 50%;
-      width: 10px; height: 10px; transform: translateX(-50%) rotate(45deg);
-      background: hsl(var(--h),85%,55%);
+    @keyframes ind { from { transform: translateX(-50%) scale(.4); opacity: 0; } }
+    .res-point { font-size: clamp(54px, 10vw, 86px); font-weight: 900; color: #10325e; line-height: 1; }
+    .res-stjerner { display: flex; gap: 6px; font-size: clamp(44px, 8vw, 64px); line-height: 1.1; }
+    .res-stjerner span { animation: stjerneInd .45s cubic-bezier(.2,1.8,.4,1) both; }
+    .res-stjerner span:nth-child(2) { animation-delay: .25s; }
+    .res-stjerner span:nth-child(3) { animation-delay: .5s; }
+    .res-stjerner span.slukket { filter: grayscale(1); opacity: .25; }
+    @keyframes stjerneInd { from { transform: scale(0) rotate(-90deg); } }
+    .res-rekord {
+      font-size: 22px; font-weight: 900; color: #fff; background: linear-gradient(90deg, #ff9f1c, #ff4d8d);
+      padding: 4px 16px; border-radius: 999px; animation: pust 1s ease-in-out infinite;
     }
-    .ballon.pop { transform: scale(1.6); opacity: 0; }
+    @keyframes pust { 50% { transform: scale(1.08); } }
+
+    @media (max-width: 520px) {
+      .tilbage { width: 44px; height: 44px; min-width: 44px; font-size: 22px; }
+      .point { font-size: 22px; padding: 5px 12px; }
+      .rekord { font-size: 14px; }
+      .ur { font-size: 18px; margin-top: 6px; }
+    }
   </style>
 </head>
 <body>
+  <canvas id="spil"></canvas>
+
   <div class="top">
     <a class="tilbage" href="../../">🏠</a>
-    <div class="point">🎈 <span id="pointtal">0</span></div>
-    <div style="width:50px"></div>
+    <div class="ur" id="ur" hidden><span>⏱️</span><div class="ur-bar"><div class="ur-fyld" id="urFyld"></div></div></div>
+    <div class="tal">
+      <div class="point" id="pointBoks">🎈 <span id="point">0</span></div>
+      <div class="rekord">🏆 <span id="rekord">0</span></div>
+    </div>
   </div>
 
-  <div id="himmel"></div>
+  <div class="titel" id="titel">
+    <h1>Pop ballonerne</h1>
+    <p>Stryg hen over ballonerne 👆</p>
+  </div>
+
+  <div class="resultat" id="resultat" hidden>
+    <div class="res-point">🎈 <span id="resPoint">0</span></div>
+    <div class="res-stjerner" id="resStjerner"><span>⭐</span><span>⭐</span><span>⭐</span></div>
+    <div class="res-rekord" id="resRekord" hidden>🏆 Ny rekord</div>
+  </div>
 
   <script src="../../effekter.js"></script>
   <script>
-    // ===== Pop ballonerne =====
-    const himmel = document.getElementById("himmel");
-    const pointEl = document.getElementById("pointtal");
-    let point = 0;
-    let balloner = [];
-    let spawnTimer = 0, spawnInterval = 0.9;  // sekunder mellem balloner
-    let sidste = performance.now();
+    // ===== Pop ballonerne — stryg over ballonerne ligesom i Fruit Ninja =====
+    // Ballonerne kastes op nedefra i store buer. Stryg over dem med fingeren (eller tryk på dem).
+    // En runde varer et minut. Stryg over den grønne ▶-ballon for at starte.
+    //   ⭐ guldballon = 5 point · ❄️ isballon = alt går langsomt · 🌈 regnbueballon = balloner fra alle sider
+    //   🎁 kæmpeballon = stryg mange gange, så springer den i små balloner
 
-    // Pop-lyd uden lydfiler
-    let lyd;
-    function popLyd() {
-      if (!lyd) lyd = new (window.AudioContext || window.webkitAudioContext)();
-      const o = lyd.createOscillator(), g = lyd.createGain();
-      o.connect(g); g.connect(lyd.destination);
-      o.type = "triangle";
-      o.frequency.setValueAtTime(900 + Math.random()*300, lyd.currentTime);
-      o.frequency.exponentialRampToValueAtTime(200, lyd.currentTime + 0.15);
-      g.gain.setValueAtTime(0.3, lyd.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, lyd.currentTime + 0.18);
-      o.start(); o.stop(lyd.currentTime + 0.18);
+    const RUNDE = 60;                                      // sekunder i en runde
+    const STJERNER = [1, 25, 50];                          // så mange balloner giver 1, 2 og 3 stjerner
+    const FARVER = [0, 22, 48, 130, 185, 212, 268, 318];   // farvetonerne på de almindelige balloner
+    const KÆMPE_HIT = 8;                                   // så mange strøg før kæmpeballonen springer
+
+    const cv = document.getElementById("spil"), ctx = cv.getContext("2d");
+    const $ = id => document.getElementById(id);
+    const tilfældig = (a, b) => a + Math.random() * (b - a);
+    const klem = (v, a, b) => Math.max(a, Math.min(b, v));
+
+    let W = 0, H = 0, dpr = 1, R = 50, G = 400;
+    let tilstand = "start";            // "start", "spil" eller "slut"
+    let balloner = [], stykker = [], partikler = [], kastKø = [], skyer = [];
+    let point = 0, rekord = hentRekord(), spilTid = 0, realTid = 0, bølgeTid = 0, legeTid = 0;
+    let langsomTil = 0, vildTil = 0, vildKastTid = 0, kæmpeTid = 99, sidsteTik = 0, resultatTid = 0;
+    const bg = document.createElement("canvas");
+
+    // ---------- Skærmen ----------
+    function layout() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = cv.clientWidth || window.innerWidth; H = cv.clientHeight || window.innerHeight;
+      cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+      R = klem(Math.min(W, H) * 0.075, 34, 62);            // ballonernes størrelse
+      G = H * 0.5;                                         // tyngdekraften: lav, så ballonerne svæver længe
+      sprites.clear();
+      tegnBaggrund();
+      if (!skyer.length) for (let i = 0; i < 6; i++) skyer.push({ x: Math.random(), y: tilfældig(0.08, 0.5), s: tilfældig(0.6, 1.3), v: tilfældig(0.006, 0.018) });
     }
 
-    function spawn() {
-      const el = document.createElement("div");
-      el.className = "ballon";
-      const hue = Math.floor(Math.random() * 360);
-      el.style.setProperty("--h", hue);
-      const b = {
-        el, hue,
-        x: 20 + Math.random() * (window.innerWidth - 120),
-        y: window.innerHeight + 40,
-        fart: 90 + Math.random() * 120,          // px pr. sekund opad
-        drift: (Math.random() - 0.5) * 40,       // lidt sidelæns
-        død: false
+    // Himmel, sol og grønne bakker (tegnes én gang, når skærmen ændrer størrelse)
+    function tegnBaggrund() {
+      bg.width = Math.round(W * dpr); bg.height = Math.round(H * dpr);
+      const b = bg.getContext("2d");
+      b.setTransform(dpr, 0, 0, dpr, 0, 0);
+      let g = b.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, "#4fb3ff"); g.addColorStop(0.6, "#a9e2ff"); g.addColorStop(1, "#e6f8ff");
+      b.fillStyle = g; b.fillRect(0, 0, W, H);
+      // bakker bagerst og forrest
+      const bakke = (y0, højde, farve1, farve2, fase) => {
+        b.beginPath(); b.moveTo(0, H);
+        for (let x = 0; x <= W + 20; x += 20) b.lineTo(x, y0 - Math.sin(x / W * 5 + fase) * højde - Math.sin(x / W * 11 + fase * 2) * højde * 0.3);
+        b.lineTo(W, H); b.closePath();
+        const gg = b.createLinearGradient(0, y0 - højde, 0, H);
+        gg.addColorStop(0, farve1); gg.addColorStop(1, farve2);
+        b.fillStyle = gg; b.fill();
       };
-      el.style.left = b.x + "px";
-      el.style.top = b.y + "px";
-      el.addEventListener("pointerdown", e => { e.preventDefault(); pop(b); });
-      himmel.appendChild(el);
+      bakke(H * 0.84, H * 0.05, "#8fdc7a", "#5cb85c", 1.3);
+      bakke(H * 0.92, H * 0.04, "#6fcf5f", "#3f9f46", 4.1);
+      // små blomster på den forreste bakke
+      for (let i = 0; i < W / 40; i++) {
+        const x = (i * 97.3) % W, y = H * 0.95 + ((i * 37) % 30) * H / 900;
+        b.fillStyle = ["#ffd23f", "#ff7eb6", "#ffffff", "#b98cff"][i % 4];
+        for (let k = 0; k < 5; k++) { b.beginPath(); b.arc(x + Math.cos(k * 1.26) * 4, y + Math.sin(k * 1.26) * 4, 3, 0, Math.PI * 2); b.fill(); }
+        b.fillStyle = "#ff9f1c"; b.beginPath(); b.arc(x, y, 2.4, 0, Math.PI * 2); b.fill();
+      }
+    }
+
+    function tegnSolOgSkyer(dt) {
+      // solen med stråler, der drejer langsomt
+      const sx = W * 0.86, sy = H * 0.36, sr = Math.min(W, H) * 0.07;
+      ctx.save(); ctx.translate(sx, sy); ctx.rotate(realTid * 0.15);
+      ctx.fillStyle = "rgba(255,236,140,.45)";
+      for (let i = 0; i < 12; i++) {
+        ctx.rotate(Math.PI / 6);
+        ctx.beginPath(); ctx.moveTo(sr * 1.15, -sr * 0.16); ctx.lineTo(sr * 2, 0); ctx.lineTo(sr * 1.15, sr * 0.16); ctx.fill();
+      }
+      ctx.restore();
+      const sg = ctx.createRadialGradient(sx - sr * 0.3, sy - sr * 0.3, sr * 0.1, sx, sy, sr);
+      sg.addColorStop(0, "#fff8c8"); sg.addColorStop(1, "#ffd23f");
+      ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2); ctx.fill();
+      // skyer der driver forbi
+      for (const s of skyer) {
+        s.x -= s.v * dt;
+        if (s.x < -0.3) { s.x = 1.3; s.y = tilfældig(0.08, 0.5); }
+        sky(s.x * W, s.y * H, R * 1.3 * s.s);
+      }
+    }
+    function sky(x, y, r) {   // tre runde puder og en flad bund
+      ctx.fillStyle = "rgba(255,255,255,.85)";
+      ctx.beginPath();
+      for (const [dx, dy, rr] of [[0, 0, 0.55], [0.55, -0.25, 0.65], [1.2, 0, 0.5]]) {
+        ctx.moveTo(x + (dx + rr) * r, y + dy * r); ctx.arc(x + dx * r, y + dy * r, rr * r, 0, Math.PI * 2);
+      }
+      ctx.rect(x, y - r * 0.1, r * 1.2, r * 0.6);
+      ctx.fill();
+    }
+
+    // ---------- Ballonerne tegnes én gang pr. slags og farve og gemmes som små billeder ----------
+    const sprites = new Map();
+    function sprite(b) {
+      const nøgle = `${b.slags}|${b.hue}|${b.mønster}|${Math.round(b.r)}`;
+      let s = sprites.get(nøgle);
+      if (s) return s;
+      const r = b.r, ry = r * 1.15, w = r * 2.5, h = ry * 2 + r * 0.55, cy = r * 0.12 + ry;
+      const c = document.createElement("canvas");
+      c.width = Math.ceil(w * dpr); c.height = Math.ceil(h * dpr);
+      const g = c.getContext("2d");
+      g.setTransform(dpr, 0, 0, dpr, w / 2 * dpr, cy * dpr);
+      tegnBallon(g, b, r, ry);
+      s = { c, w, h, cx: w / 2, cy };
+      sprites.set(nøgle, s);
+      return s;
+    }
+    function ballonSti(g, rx, ry) {   // som et æg: bred foroven og lidt smallere forneden ved knuden
+      g.beginPath();
+      g.moveTo(0, -ry);
+      g.bezierCurveTo(rx * 0.56, -ry, rx, -ry * 0.62, rx, -ry * 0.1);
+      g.bezierCurveTo(rx, ry * 0.42, rx * 0.46, ry * 0.86, 0, ry);
+      g.bezierCurveTo(-rx * 0.46, ry * 0.86, -rx, ry * 0.42, -rx, -ry * 0.1);
+      g.bezierCurveTo(-rx, -ry * 0.62, -rx * 0.56, -ry, 0, -ry);
+      g.closePath();
+    }
+    function farvesæt(b) {             // [lys, mellem, mørk]
+      if (b.slags === "guld") return ["#fff6c2", "#ffc93c", "#a86b00"];
+      if (b.slags === "is") return ["#effcff", "#86dcf7", "#2a7fb8"];
+      const h = b.slags === "kæmpe" ? 328 : b.slags === "start" ? 140 : b.hue;
+      return [`hsl(${h},100%,84%)`, `hsl(${h},88%,58%)`, `hsl(${h},80%,33%)`];
+    }
+    function tegnBallon(g, b, rx, ry) {
+      const [lys, midt, mørk] = farvesæt(b), r = rx;
+      // knuden
+      g.fillStyle = mørk;
+      g.beginPath(); g.moveTo(0, ry - r * 0.05); g.lineTo(r * 0.14, ry + r * 0.18);
+      g.quadraticCurveTo(0, ry + r * 0.12, -r * 0.14, ry + r * 0.18); g.closePath(); g.fill();
+      // selve ballonen med lys foroven til venstre
+      ballonSti(g, rx, ry);
+      const grad = g.createRadialGradient(-rx * 0.35, -ry * 0.45, rx * 0.08, 0, 0, rx * 1.4);
+      grad.addColorStop(0, lys); grad.addColorStop(0.45, midt); grad.addColorStop(1, mørk);
+      g.fillStyle = grad; g.fill();
+      // mønster, klippet til ballonen
+      g.save(); ballonSti(g, rx, ry); g.clip();
+      if (b.slags === "regnbue") {
+        const bånd = ["#ff4d6d", "#ff9f1c", "#ffd23f", "#4cd964", "#2ec4f1", "#5b6cff", "#b15bff"];
+        bånd.forEach((f, i) => { g.fillStyle = f; g.fillRect(-rx * 1.5, -ry + i * ry * 2 / 7, rx * 3, ry * 2 / 7 + 1); });
+      }
+      g.fillStyle = "rgba(255,255,255,.7)";
+      const almindelig = b.slags === "normal" || b.slags === "lille";
+      if (b.slags === "guld" || (almindelig && b.mønster === 2)) { stjernePath(g, 0, -ry * 0.05, r * 0.42, 5); g.fill(); }
+      if (b.slags === "is") snefnug(g, 0, -ry * 0.05, r * 0.5);
+      if (b.slags === "start") { g.fillStyle = "#fff"; g.beginPath(); g.moveTo(-r * 0.22, -r * 0.4); g.lineTo(r * 0.42, 0); g.lineTo(-r * 0.22, r * 0.4); g.closePath(); g.fill(); }
+      if (b.slags === "kæmpe") {                          // gavebånd på kryds
+        g.fillStyle = "#ffd23f";
+        g.fillRect(-r * 0.12, -ry, r * 0.24, ry * 2); g.fillRect(-rx * 1.5, -ry * 0.12, rx * 3, r * 0.24);
+        g.fillStyle = "rgba(0,0,0,.12)"; g.fillRect(r * 0.06, -ry, r * 0.06, ry * 2);
+      }
+      if (almindelig) {
+        if (b.mønster === 1) for (let y = -ry; y < ry; y += r * 0.5) for (let x = -rx; x < rx; x += r * 0.5) {
+          g.beginPath(); g.arc(x + ((y / r * 2) % 2 ? r * 0.25 : 0), y, r * 0.09, 0, Math.PI * 2); g.fill();
+        }
+        if (b.mønster === 3) ansigt(g, r, ry);
+        if (b.mønster === 4) hjerte(g, 0, 0, r * 0.5);
+      }
+      // skygge langs kanten, så mønstrene også ser runde ud
+      const kant = g.createRadialGradient(-rx * 0.3, -ry * 0.4, rx * 0.4, 0, 0, rx * 1.3);
+      kant.addColorStop(0, "rgba(0,0,0,0)"); kant.addColorStop(1, "rgba(0,0,0,.3)");
+      g.fillStyle = kant; g.fillRect(-rx * 1.5, -ry * 1.1, rx * 3, ry * 2.2);
+      g.restore();
+      // blanke glimt
+      g.save(); g.translate(-rx * 0.42, -ry * 0.42); g.rotate(-0.6);
+      g.fillStyle = "rgba(255,255,255,.78)"; g.beginPath(); g.ellipse(0, 0, rx * 0.13, ry * 0.27, 0, 0, Math.PI * 2); g.fill();
+      g.restore();
+      g.fillStyle = "rgba(255,255,255,.65)"; g.beginPath(); g.arc(-rx * 0.12, -ry * 0.78, rx * 0.06, 0, Math.PI * 2); g.fill();
+    }
+    function stjernePath(g, x, y, r, takker) {
+      g.beginPath();
+      for (let i = 0; i < takker * 2; i++) {
+        const rr = i % 2 ? r * 0.45 : r, a = Math.PI / takker * i - Math.PI / 2;
+        g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+      }
+      g.closePath();
+    }
+    function snefnug(g, x, y, r) {
+      g.strokeStyle = "rgba(255,255,255,.9)"; g.lineWidth = r * 0.12; g.lineCap = "round";
+      for (let i = 0; i < 6; i++) {
+        const a = i * Math.PI / 3, cx = Math.cos(a), sy = Math.sin(a);
+        g.beginPath(); g.moveTo(x, y); g.lineTo(x + cx * r, y + sy * r);
+        for (const d of [0.5, 0.75]) {
+          const px = x + cx * r * d, py = y + sy * r * d;
+          for (const s of [-1, 1]) { g.moveTo(px, py); g.lineTo(px + Math.cos(a + s * 0.8) * r * 0.25, py + Math.sin(a + s * 0.8) * r * 0.25); }
+        }
+        g.stroke();
+      }
+    }
+    function ansigt(g, r, ry) {
+      for (const s of [-1, 1]) {
+        g.fillStyle = "#fff"; g.beginPath(); g.ellipse(s * r * 0.3, -ry * 0.18, r * 0.16, r * 0.21, 0, 0, Math.PI * 2); g.fill();
+        g.fillStyle = "#1d1b2e"; g.beginPath(); g.ellipse(s * r * 0.3, -ry * 0.12, r * 0.1, r * 0.13, 0, 0, Math.PI * 2); g.fill();
+        g.fillStyle = "#fff"; g.beginPath(); g.arc(s * r * 0.3 - r * 0.035, -ry * 0.17, r * 0.035, 0, Math.PI * 2); g.fill();
+        g.fillStyle = "rgba(255,120,160,.45)"; g.beginPath(); g.ellipse(s * r * 0.55, ry * 0.12, r * 0.13, r * 0.08, 0, 0, Math.PI * 2); g.fill();
+      }
+      g.strokeStyle = "#1d1b2e"; g.lineWidth = r * 0.07; g.lineCap = "round";
+      g.beginPath(); g.arc(0, ry * 0.05, r * 0.28, 0.2 * Math.PI, 0.8 * Math.PI); g.stroke();
+      g.fillStyle = "rgba(255,255,255,.7)";
+    }
+    function hjerte(g, x, y, s) {
+      g.beginPath();
+      g.moveTo(x, y + s * 0.45);
+      g.bezierCurveTo(x - s * 1.1, y - s * 0.3, x - s * 0.45, y - s * 1.05, x, y - s * 0.45);
+      g.bezierCurveTo(x + s * 0.45, y - s * 1.05, x + s * 1.1, y - s * 0.3, x, y + s * 0.45);
+      g.fill();
+    }
+
+    // ---------- Kast balloner ----------
+    function vælgMønster() {
+      const x = Math.random();
+      return x < 0.4 ? 0 : x < 0.55 ? 1 : x < 0.7 ? 2 : x < 0.9 ? 3 : 4;
+    }
+    function nyBallon(slags, r) {
+      return { slags, r, hue: FARVER[Math.floor(Math.random() * FARVER.length)], mønster: vælgMønster(),
+        fase: Math.random() * 6, rot: 0, x: 0, y: 0, vx: 0, vy: 0, hits: 0, sidsteHit: -1, skala: 1, væk: false, immun: 0 };
+    }
+    // Kast en ballon op nedefra (side = 0) eller ind fra venstre (-1) / højre (1)
+    function kast(slags, side = 0) {
+      const kæmpe = slags === "kæmpe";
+      const b = nyBallon(slags, R * (kæmpe ? 2.1 : 1));
+      if (side) {
+        b.x = side < 0 ? -b.r : W + b.r; b.y = H * tilfældig(0.45, 0.8);
+        b.vy = -Math.sqrt(2 * G * Math.max(40, b.y - H * tilfældig(0.1, 0.35)));
+        b.vx = -side * W * tilfældig(0.3, 0.5);
+      } else {
+        b.x = W * tilfældig(0.12, 0.88); b.y = H + b.r * 1.4;
+        const top = kæmpe ? H * 0.4 : H * tilfældig(0.12, 0.48);
+        b.vy = -Math.sqrt(2 * G * (b.y - top));
+        const flyvetid = 2 * -b.vy / G, målX = W * tilfældig(0.2, 0.8);
+        b.vx = (målX - b.x) / flyvetid * (kæmpe ? 2 : 1);   // kæmpeballonen standser midt på skærmen
+      }
+      balloner.push(b);
+      return b;
+    }
+    function vælgSlags() {
+      const x = Math.random(), findes = s => balloner.some(b => b.slags === s);
+      if (x < 0.07 && !findes("guld")) return "guld";
+      if (x < 0.11 && spilTid > 8 && realTid > langsomTil && !findes("is")) return "is";
+      if (x < 0.15 && spilTid > 12 && realTid > vildTil && !findes("regnbue")) return "regnbue";
+      return "normal";
+    }
+    // Bølger: få balloner i starten, flere og flere hen mod slutningen af runden
+    function kastLogik(sdt, dt) {
+      bølgeTid -= sdt;
+      if (bølgeTid <= 0) {
+        const f = spilTid / RUNDE, antal = 1 + Math.floor(Math.random() * (1.6 + f * 4.4));
+        let t = 0;
+        for (let i = 0; i < antal; i++) { kastKø.push({ t, slags: vælgSlags() }); if (Math.random() < 0.5) t += tilfældig(0.1, 0.35); }
+        bølgeTid = 1.7 - f * 0.6 + antal * 0.12;
+      }
+      if (spilTid >= kæmpeTid) { kæmpeTid = 999; kastKø.push({ t: 0.4, slags: "kæmpe" }); bølgeTid += 3; }
+      if (realTid < vildTil) {                               // regnbue-tid: balloner fra begge sider
+        vildKastTid -= dt;
+        if (vildKastTid <= 0) { vildKastTid = 0.17; kast("normal", Math.random() < 0.5 ? -1 : 1); }
+      }
+    }
+
+    // ---------- Runderne ----------
+    function startRunde() {
+      tilstand = "spil"; point = 0; spilTid = 0; bølgeTid = 0.9; sidsteTik = 0;
+      kastKø = []; langsomTil = vildTil = 0; kæmpeTid = tilfældig(24, 36);
+      balloner = balloner.filter(b => b.slags !== "start");
+      $("point").textContent = 0;
+      $("titel").classList.add("væk"); $("resultat").hidden = true; $("ur").hidden = false;
+      $("ur").classList.remove("snart");
+      starteLyd();
+    }
+    function slutRunde() {
+      tilstand = "slut"; resultatTid = realTid + 1.2; kastKø = [];
+      $("ur").hidden = true;
+    }
+    function visResultat() {
+      resultatTid = 0;
+      const nyRekord = point > rekord;
+      if (nyRekord) { rekord = point; gemRekord(point); $("rekord").textContent = rekord; }
+      const antal = STJERNER.filter(s => point >= s).length;
+      $("resStjerner").querySelectorAll("span").forEach((s, i) => s.classList.toggle("slukket", i >= antal));
+      $("resRekord").hidden = !nyRekord;
+      $("resultat").hidden = false;
+      tælOp(point);
+      Effekter.fanfare();
+      if (antal >= 2 || nyRekord) Effekter.konfetti(W / 2, H * 0.25, { antal: 90 });
+      // den grønne ▶-ballon kommer op igen, så man kan spille en gang til
+      setTimeout(() => { if (tilstand === "slut") { tilstand = "start"; startBallon(); } }, 1600);
+    }
+    function tælOp(mål) {
+      const start = performance.now(), el = $("resPoint");
+      const trin = nu => {
+        const p = Math.min(1, (nu - start) / 900);
+        el.textContent = Math.round(mål * (1 - Math.pow(1 - p, 3)));
+        if (p < 1) requestAnimationFrame(trin);
+      };
+      requestAnimationFrame(trin);
+    }
+    function startBallon() {
+      const b = nyBallon("start", R * 1.7);
+      b.x = W / 2; b.y = H + b.r * 2;
       balloner.push(b);
     }
+    function hentRekord() { try { return parseInt(localStorage.getItem("balloner-rekord"), 10) || 0; } catch (_) { return 0; } }
+    function gemRekord(v) { try { localStorage.setItem("balloner-rekord", String(v)); } catch (_) {} }
 
-    function pop(b) {
-      if (b.død) return;
-      b.død = true;
-      point++; pointEl.textContent = point;
-      popLyd();
-      // Konfetti-eksplosion i ballonens farve
-      Effekter.konfetti(b.x + 38, b.y + 46, {
-        antal: 24,
-        farver: [`hsl(${b.hue},85%,60%)`, `hsl(${b.hue},90%,75%)`, "#ffffff"]
-      });
-      if (point % 10 === 0) {                   // stor fest hvert 10. pop
-        Effekter.fanfare();
-        Effekter.stjerner(window.innerWidth / 2, window.innerHeight / 2, { antal: 18 });
-        Effekter.flash("#ffffff");
+    // ---------- Klingen: sporet efter fingeren, der skærer ballonerne ----------
+    const klinger = new Map();   // pointerId → { punkter (sporet), sidst (hvor fingeren er), pops, sidstePop, popX, popY, slut }
+    let klingeFarve = 0, sidsteSus = 0;
+
+    function afstandTilStreg(px, py, ax, ay, bx, by) {
+      const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+      const t = l2 ? klem(((px - ax) * dx + (py - ay) * dy) / l2, 0, 1) : 0;
+      return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+    }
+    function snit(a, b, k) {
+      for (const bal of balloner) {
+        if (bal.væk || realTid < bal.immun) continue;
+        if (afstandTilStreg(bal.x, bal.y, a.x, a.y, b.x, b.y) < bal.r * 1.1 * bal.skala) ramt(bal, Math.atan2(b.y - a.y, b.x - a.x), k);
       }
-      b.el.classList.add("pop");
-      setTimeout(() => b.el.remove(), 150);
     }
 
-    function loop(nu) {
-      const dt = Math.min((nu - sidste) / 1000, 0.05);
-      sidste = nu;
-
-      spawnTimer += dt;
-      if (spawnTimer >= spawnInterval) {
-        spawnTimer = 0;
-        spawn();
-        spawnInterval = Math.max(0.45, spawnInterval * 0.985); // bliver lidt sværere
+    cv.addEventListener("pointerdown", e => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      lydKlar();
+      try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+      const p = { x: e.clientX, y: e.clientY, t: realTid };
+      const k = { punkter: [p], sidst: p, pops: 0, sidstePop: 0, popX: 0, popY: 0, slut: false };
+      klinger.set(e.pointerId, k);
+      // et tryk direkte på en ballon popper den også (for de mindste)
+      for (const b of balloner) if (!b.væk && realTid >= b.immun && Math.hypot(b.x - p.x, b.y - p.y) < b.r * 1.1 * b.skala) ramt(b, tilfældig(-0.4, 0.4) + Math.PI / 2, k);
+    });
+    cv.addEventListener("pointermove", e => {
+      const k = klinger.get(e.pointerId);
+      if (!k || k.slut) return;
+      const liste = (e.getCoalescedEvents && e.getCoalescedEvents().length) ? e.getCoalescedEvents() : [e];
+      for (const ce of liste) {
+        const a = k.sidst, p = { x: ce.clientX, y: ce.clientY, t: realTid };
+        if (Math.hypot(p.x - a.x, p.y - a.y) < 2) continue;
+        snit(a, p, k);
+        k.punkter.push(p); k.sidst = p;
       }
-
-      for (const b of balloner) {
-        if (b.død) continue;
-        b.y -= b.fart * dt;
-        b.x += b.drift * dt;
-        b.el.style.top = b.y + "px";
-        b.el.style.left = b.x + "px";
-        if (b.y < -120) { b.død = true; b.el.remove(); }   // fløj væk
+      // sus-lyd når fingeren farer hurtigt hen over skærmen
+      const n = k.punkter.length;
+      if (n > 3) {
+        const a = k.punkter[Math.max(0, n - 4)], b = k.punkter[n - 1], dt = Math.max(0.016, b.t - a.t);
+        if (Math.hypot(b.x - a.x, b.y - a.y) / dt > 1400 && realTid - sidsteSus > 0.28) { sus(); sidsteSus = realTid; }
       }
-      balloner = balloner.filter(b => !b.død);
+    });
+    function slip(e) {
+      const k = klinger.get(e.pointerId);
+      if (!k) return;
+      k.slut = true;
+      if (k.pops >= 3) combo(k);
+    }
+    cv.addEventListener("pointerup", slip);
+    cv.addEventListener("pointercancel", slip);
 
+    function tegnKlinger() {
+      klingeFarve = (klingeFarve + 4) % 360;
+      for (const [id, k] of klinger) {
+        k.punkter = k.punkter.filter(p => realTid - p.t < 0.13);
+        if (k.slut && !k.punkter.length) { klinger.delete(id); continue; }
+        const pts = k.punkter, n = pts.length;
+        if (n < 2) continue;
+        ctx.lineCap = "round"; ctx.lineJoin = "round";
+        for (let lagNr = 0; lagNr < 2; lagNr++) {           // først en farvet glød, så en hvid kerne
+          for (let i = 1; i < n; i++) {
+            const f = i / (n - 1), w = (lagNr ? 5 : 16) * (0.25 + 0.75 * f) * Math.max(0.8, R / 50);
+            ctx.strokeStyle = lagNr ? "#ffffff" : `hsla(${(klingeFarve + i * 12) % 360}, 100%, 65%, .55)`;
+            ctx.lineWidth = w;
+            ctx.beginPath(); ctx.moveTo(pts[i - 1].x, pts[i - 1].y); ctx.lineTo(pts[i].x, pts[i].y); ctx.stroke();
+          }
+        }
+      }
+    }
+
+    // ---------- Når en ballon bliver ramt ----------
+    function ramt(b, vinkel, k) {
+      if (b.slags === "kæmpe") return kæmpeHit(b, k);
+      if (b.slags === "start") { pop(b, vinkel, null); startRunde(); return; }
+      pop(b, vinkel, k);
+      const tæller = tilstand === "spil";
+      let tillæg = tæller ? 1 : 0;
+      if (b.slags === "guld") {
+        tillæg = tæller ? 5 : 0; guldLyd();
+        stjerneRegn(b.x, b.y);
+        if (tæller) tekst(b.x, b.y - b.r, "+5", "#ffd23f", R * 1.1);
+      } else if (b.slags === "is") {
+        langsomTil = realTid + 5; isLyd();
+        for (let i = 0; i < 40; i++) partikler.push({ type: "fnug", x: Math.random() * W, y: -20 - Math.random() * H * 0.5, vx: tilfældig(-20, 20), vy: tilfældig(40, 90), r: tilfældig(3, 7), liv: 6, max: 6 });
+      } else if (b.slags === "regnbue") {
+        vildTil = realTid + 5; vildKastTid = 0; regnbueLyd();
+      }
+      if (tillæg) giPoint(tillæg);
+      if (k) { k.pops++; k.sidstePop = realTid; k.popX = b.x; k.popY = b.y; }
+    }
+    function giPoint(n) {
+      point += n;
+      $("point").textContent = point;
+      const el = $("pointBoks"); el.classList.remove("hop"); void el.offsetWidth; el.classList.add("hop");
+    }
+    function pop(b, vinkel, k) {
+      b.væk = true;
+      const s = sprite(b), fart = 70 + R;
+      // ballonen deles i to halvdele, der flyver hver sin vej (delt langs strøget)
+      for (const side of [-1, 1]) stykker.push({ s, x: b.x, y: b.y, rot: b.rot, snit: vinkel - b.rot, side,
+        vx: b.vx * 0.3 - Math.sin(vinkel) * side * fart, vy: Math.min(0, b.vy) * 0.2 + Math.cos(vinkel) * side * fart - 110,
+        vr: side * tilfældig(2, 4), liv: 0.9, skala: b.skala });
+      konfetti(b.x, b.y, konfettiFarver(b), b.slags === "normal" || b.slags === "lille" ? 18 : 34);
+      partikler.push({ type: "ring", x: b.x, y: b.y, r: b.r * 0.6, vr: R * 9, liv: 0.3, max: 0.3, farve: "rgba(255,255,255,.9)" });
+      popLyd(b.r);
+    }
+    function konfettiFarver(b) {
+      if (b.slags === "guld") return ["#ffd23f", "#fff2a8", "#ffb000", "#ffffff"];
+      if (b.slags === "is") return ["#bdefff", "#ffffff", "#6ec6ff"];
+      if (b.slags === "regnbue") return ["#ff4d6d", "#ff9f1c", "#ffd23f", "#4cd964", "#2ec4f1", "#b15bff"];
+      const h = b.slags === "kæmpe" ? 328 : b.slags === "start" ? 140 : b.hue;
+      return [`hsl(${h},90%,60%)`, `hsl(${h},100%,78%)`, "#ffffff"];
+    }
+    // Kæmpeballonen: den standser midt på skærmen, og man skal stryge mange gange
+    function kæmpeHit(b, k) {
+      if (realTid - b.sidsteHit < 0.12) return;
+      b.sidsteHit = realTid; b.hits++; b.puf = 1;
+      boing(b.hits);
+      konfetti(b.x + tilfældig(-b.r, b.r) * 0.5, b.y + tilfældig(-b.r, b.r) * 0.5, konfettiFarver(b), 10);
+      if (tilstand === "spil") giPoint(1);
+      if (b.hits >= KÆMPE_HIT) sprængKæmpe(b, k);
+    }
+    function sprængKæmpe(b, k) {
+      pop(b, tilfældig(0, Math.PI), k);
+      brag();
+      Effekter.fanfare();
+      Effekter.flash("#ffffff");
+      stjerneRegn(b.x, b.y);
+      if (tilstand === "spil") { giPoint(5); tekst(b.x, b.y - b.r * 1.2, "+5", "#ffd23f", R * 1.3); }
+      // ud springer en masse små balloner
+      for (let i = 0; i < 10; i++) {
+        const l = nyBallon("lille", R * 0.7), a = -Math.PI / 2 + (i / 9 - 0.5) * Math.PI * 1.3, v = tilfældig(0.5, 0.8) * Math.sqrt(G * H);
+        l.x = b.x; l.y = b.y; l.vx = Math.cos(a) * v * 0.7; l.vy = Math.sin(a) * v;
+        l.immun = realTid + 0.4;                       // de når lige at flyve ud, før man kan ramme dem
+        balloner.push(l);
+      }
+    }
+    function combo(k) {
+      const n = k.pops;
+      k.pops = 0;
+      if (tilstand === "spil") { giPoint(n); tekst(k.popX, k.popY - R * 1.4, "+" + n, "#ff4d8d", R * (0.9 + Math.min(n, 8) * 0.08)); }
+      stjerneRegn(k.popX, k.popY, 6 + n * 2);
+      comboLyd(n);
+    }
+
+    // ---------- Partikler: konfetti, stjerner, ringe og tal ----------
+    function konfetti(x, y, farver, n) {
+      for (let i = 0; i < n; i++) {
+        const a = Math.random() * Math.PI * 2, v = tilfældig(120, 420) * Math.max(0.8, R / 50);
+        partikler.push({ type: "konfetti", x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 140, rot: Math.random() * 6, vr: tilfældig(-14, 14),
+          s: tilfældig(6, 12) * Math.max(0.8, R / 50), farve: farver[i % farver.length], liv: tilfældig(0.7, 1.3), max: 1.3 });
+      }
+    }
+    function stjerneRegn(x, y, n = 14) {
+      for (let i = 0; i < n; i++) {
+        const a = -Math.PI / 2 + tilfældig(-1.3, 1.3), v = tilfældig(150, 380);
+        partikler.push({ type: "stjerne", x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, rot: 0, vr: tilfældig(-5, 5),
+          s: tilfældig(8, 16) * Math.max(0.8, R / 50), farve: ["#ffd23f", "#ffffff", "#ff9fd0", "#9fe8ff"][i % 4], liv: tilfældig(0.8, 1.4), max: 1.4 });
+      }
+    }
+    function tekst(x, y, t, farve, s) {
+      partikler.push({ type: "tekst", x, y, vx: 0, vy: -70, tekst: t, farve, s, liv: 1.1, max: 1.1 });
+    }
+    function opdaterPartikler(sdt) {
+      for (const p of partikler) {
+        p.liv -= sdt;
+        if (p.type === "ring") { p.r += p.vr * sdt; continue; }
+        if (p.type === "konfetti") { p.vy += G * 1.3 * sdt; p.vx *= 1 - 1.5 * sdt; }
+        if (p.type === "stjerne") { p.vy += G * 0.6 * sdt; }
+        if (p.type === "fnug") { p.vx += Math.sin(realTid * 2 + p.r) * 10 * sdt; }
+        p.x += p.vx * sdt; p.y += p.vy * sdt;
+        if (p.vr) p.rot += p.vr * sdt;
+      }
+      partikler = partikler.filter(p => p.liv > 0 && p.y < H + 60);
+      if (partikler.length > 700) partikler.splice(0, partikler.length - 700);
+      for (const s of stykker) {
+        s.liv -= sdt; s.vy += G * 1.6 * sdt; s.x += s.vx * sdt; s.y += s.vy * sdt; s.rot += s.vr * sdt;
+        s.skala *= 1 - 0.5 * sdt;
+      }
+      stykker = stykker.filter(s => s.liv > 0);
+    }
+    function tegnPartikler() {
+      for (const p of partikler) {
+        const a = klem(p.liv / p.max * 2, 0, 1);
+        ctx.globalAlpha = a;
+        if (p.type === "konfetti") {
+          ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+          ctx.fillStyle = p.farve; ctx.fillRect(-p.s / 2, -p.s * 0.3, p.s, p.s * 0.6);
+          ctx.restore();
+        } else if (p.type === "stjerne") {
+          ctx.fillStyle = p.farve; stjernePath(ctx, p.x, p.y, p.s, 5); ctx.fill();
+        } else if (p.type === "ring") {
+          ctx.strokeStyle = p.farve; ctx.lineWidth = 6 * a;
+          ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.stroke();
+        } else if (p.type === "fnug") {
+          ctx.globalAlpha = Math.min(1, p.liv) * 0.9;
+          ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+        } else if (p.type === "tekst") {
+          const s = p.s * (1 + (1 - klem(p.liv / p.max, 0, 1)) * 0.3);
+          ctx.font = `900 ${s}px ui-rounded, "SF Pro Rounded", system-ui, sans-serif`;
+          ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.lineWidth = s * 0.14; ctx.strokeStyle = "#1a2350"; ctx.lineJoin = "round";
+          ctx.strokeText(p.tekst, p.x, p.y); ctx.fillStyle = p.farve; ctx.fillText(p.tekst, p.x, p.y);
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // ---------- Ballonernes bevægelse ----------
+    function opdaterBallon(b, sdt, dt) {
+      b.puf = Math.max(0, (b.puf || 0) - dt * 4);
+      b.skala = 1 + (b.puf || 0) * 0.12 * Math.sin(b.puf * 14);
+      if (b.slags === "start") {                    // ▶-ballonen svæver op og bliver i midten
+        const målY = H * 0.64 + Math.sin(realTid * 1.6) * R * 0.15;
+        b.y += (målY - b.y) * Math.min(1, dt * 2.2); b.x = W / 2; b.vx = 0;
+      } else if (b.holder) {                        // kæmpeballonen hænger stille og vugger
+        b.holdTid -= dt;
+        b.y = b.hy + Math.sin(realTid * 2.4) * R * 0.15;
+        b.x = b.hx + Math.sin(realTid * 1.7) * R * 0.1;
+        if (b.holdTid <= 0) {
+          b.holder = false;
+          if (b.hits > 0) sprængKæmpe(b, null); else b.vy = 0;
+        }
+      } else {
+        b.vy += G * sdt; b.x += b.vx * sdt; b.y += b.vy * sdt;
+        if (b.slags === "kæmpe" && !b.holdt && b.vy >= 0) {
+          b.holder = b.holdt = true; b.holdTid = 4.5; b.hx = b.x; b.hy = b.y;
+        }
+      }
+      if (b.vy > 0 && b.y - b.r * 1.3 > H) b.væk = true;          // faldt ned uden for skærmen
+      if (b.x < -W * 0.4 || b.x > W * 1.4) b.væk = true;
+      b.rot = klem(b.vx / 900, -0.3, 0.3) + Math.sin(realTid * 2 + b.fase) * 0.07;
+    }
+
+    function tegnSvævende(b) {
+      const s = sprite(b);
+      // snoren svajer efter ballonen
+      const cos = Math.cos(b.rot), sin = Math.sin(b.rot), kx = b.x - sin * b.r * 1.3, ky = b.y + cos * b.r * 1.3;
+      const sving = Math.sin(realTid * 3 + b.fase) * b.r * 0.25;
+      ctx.strokeStyle = "rgba(60,60,90,.55)"; ctx.lineWidth = 2; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(kx, ky);
+      ctx.bezierCurveTo(kx + sving - b.vx * 0.03, ky + b.r * 0.5, kx - sving - b.vx * 0.06, ky + b.r, kx + sving * 0.5 - b.vx * 0.08, ky + b.r * 1.5);
+      ctx.stroke();
+      ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.rot); ctx.scale(b.skala, 1 / b.skala);
+      ctx.drawImage(s.c, -s.cx, -s.cy, s.w, s.h);
+      ctx.restore();
+      // guldballonen glimter
+      if (b.slags === "guld") for (let i = 0; i < 3; i++) {
+        const a = realTid * 2 + i * 2.1, rr = b.r * 1.25;
+        ctx.fillStyle = "#fff8c8"; ctx.globalAlpha = 0.5 + 0.5 * Math.sin(realTid * 8 + i);
+        stjernePath(ctx, b.x + Math.cos(a) * rr, b.y + Math.sin(a) * rr, R * 0.16, 4); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      // kæmpeballonen viser hvor mange strøg der mangler
+      if (b.slags === "kæmpe" && b.hits > 0) {
+        for (let i = 0; i < KÆMPE_HIT; i++) {
+          const a = -Math.PI / 2 + (i / KÆMPE_HIT) * Math.PI * 2, rr = b.r * 1.55;
+          ctx.fillStyle = i < b.hits ? "#ffd23f" : "rgba(255,255,255,.55)";
+          stjernePath(ctx, b.x + Math.cos(a) * rr, b.y + Math.sin(a) * rr * 1.1, R * 0.2, 5); ctx.fill();
+        }
+      }
+    }
+    function tegnStykke(p) {
+      ctx.save();
+      ctx.globalAlpha = klem(p.liv / 0.4, 0, 1);
+      ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.scale(p.skala, p.skala);
+      ctx.save(); ctx.rotate(p.snit);
+      const stor = p.s.w * 2;
+      ctx.beginPath(); ctx.rect(-stor, p.side > 0 ? 0 : -stor, stor * 2, stor); ctx.clip();
+      ctx.rotate(-p.snit);
+      ctx.drawImage(p.s.c, -p.s.cx, -p.s.cy, p.s.w, p.s.h);
+      ctx.restore();
+      ctx.restore();
+    }
+
+    // Håndtegn der viser, at man skal stryge hen over ▶-ballonen
+    function tegnHånd() {
+      const b = balloner.find(x => x.slags === "start");
+      if (!b || Math.abs(b.y - H * 0.64) > R * 0.6) return;
+      const t = (realTid % 2.4) / 1.4;
+      if (t > 1) return;
+      const x = b.x + (t - 0.5) * b.r * 3.4, y = b.y + b.r * 0.25 + Math.sin(t * Math.PI) * -b.r * 0.3;
+      ctx.globalAlpha = Math.sin(t * Math.PI);
+      ctx.strokeStyle = "rgba(255,255,255,.8)"; ctx.lineWidth = 8; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(b.x - b.r * 1.7, b.y + b.r * 0.25); ctx.lineTo(x, y); ctx.stroke();
+      ctx.font = `${Math.round(R * 1.1)}px system-ui, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "top";
+      ctx.fillText("👆", x, y - R * 0.1);
+      ctx.globalAlpha = 1;
+    }
+
+    // ---------- Lyd (Web Audio, ingen lydfiler) ----------
+    let ac = null, ud = null, støj = null;
+    function lydKlar() {
+      try {
+        ac = Effekter.audio();
+        if (!ud) {
+          ud = ac.createGain(); ud.gain.value = 0.9; ud.connect(ac.destination);
+          støj = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
+          const d = støj.getChannelData(0);
+          for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        }
+      } catch (_) {}
+    }
+    function tone(f, start, dur, type, vol, slut) {
+      if (!ud) return;
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type || "sine"; o.frequency.setValueAtTime(f, start);
+      if (slut) o.frequency.exponentialRampToValueAtTime(slut, start + dur);
+      o.connect(g); g.connect(ud);
+      g.gain.setValueAtTime(0.0001, start);
+      g.gain.exponentialRampToValueAtTime(vol || 0.2, start + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+      o.start(start); o.stop(start + dur + 0.03);
+    }
+    function støjStød(start, dur, type, fra, til, vol, q) {
+      if (!ud) return;
+      const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+      s.buffer = støj; f.type = type; f.Q.value = q || 1;
+      f.frequency.setValueAtTime(fra, start); f.frequency.exponentialRampToValueAtTime(til, start + dur);
+      g.gain.setValueAtTime(0.0001, start);
+      g.gain.exponentialRampToValueAtTime(vol, start + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+      s.connect(f); f.connect(g); g.connect(ud);
+      s.start(start, Math.random() * 0.5, dur + 0.05);
+    }
+    const nu = () => ac ? ac.currentTime : 0;
+    function popLyd(r) {
+      const h = R / r;
+      støjStød(nu(), 0.09, "bandpass", 2400 * h, 900 * h, 0.55, 0.7);
+      tone(tilfældig(650, 1000) * h, nu(), 0.13, "triangle", 0.16, 220);
+    }
+    function sus() { støjStød(nu(), 0.2, "bandpass", 700, 2600, 0.16, 1.4); }
+    function guldLyd() { [1568, 2093, 2637, 3136].forEach((f, i) => tone(f, nu() + i * 0.06, 0.35, "sine", 0.13)); }
+    function isLyd() {
+      [2637, 2093, 1760, 1319, 1047, 880].forEach((f, i) => tone(f, nu() + i * 0.08, 0.6, "sine", 0.1));
+      støjStød(nu(), 0.8, "lowpass", 1800, 300, 0.12);
+    }
+    function regnbueLyd() { [523, 587, 659, 784, 880, 1047, 1175, 1319].forEach((f, i) => tone(f, nu() + i * 0.05, 0.22, "triangle", 0.14)); }
+    function boing(n) { const f = 170 * (1 + n * 0.14); tone(f, nu(), 0.28, "sine", 0.3, f * 2.2); tone(f * 1.5, nu(), 0.12, "triangle", 0.08); }
+    function brag() { støjStød(nu(), 0.5, "lowpass", 1400, 120, 0.7, 0.5); tone(90, nu(), 0.4, "sine", 0.4, 40); }
+    function comboLyd(n) {
+      const skala = [523, 659, 784, 1047, 1319, 1568, 2093, 2637];
+      for (let i = 0; i < Math.min(n, 8); i++) tone(skala[i], nu() + i * 0.06, 0.25, "triangle", 0.15);
+    }
+    function tik() { tone(1400, nu(), 0.06, "square", 0.05); }
+    function starteLyd() { [392, 523, 659, 784].forEach((f, i) => tone(f, nu() + i * 0.08, 0.25, "triangle", 0.16)); }
+
+    // ---------- Løkken ----------
+    function opdater(dt) {
+      const langsom = realTid < langsomTil, sdt = dt * (langsom ? 0.35 : 1);
+      if (tilstand === "spil") {
+        spilTid += sdt;
+        kastLogik(sdt, dt);
+        const tilbage = RUNDE - spilTid;
+        $("urFyld").style.width = klem(tilbage / RUNDE * 100, 0, 100).toFixed(1) + "%";
+        const sek = Math.ceil(tilbage);
+        if (sek <= 5 && sek > 0 && sek !== sidsteTik) { sidsteTik = sek; tik(); $("ur").classList.add("snart"); }
+        if (tilbage <= 0) slutRunde();
+      } else if (tilstand === "start") {
+        legeTid -= dt;                                  // på startskærmen flyver der også balloner, man kan poppe
+        if (legeTid <= 0) { legeTid = tilfældig(1.1, 2); kast("normal"); }
+        if (!balloner.some(b => b.slags === "start")) startBallon();
+      } else if (tilstand === "slut" && resultatTid && realTid >= resultatTid) {
+        visResultat();
+      }
+      for (const k of kastKø) k.t -= sdt;
+      for (const k of kastKø.filter(k => k.t <= 0)) kast(k.slags);
+      kastKø = kastKø.filter(k => k.t > 0);
+      for (const b of balloner) opdaterBallon(b, sdt, dt);
+      balloner = balloner.filter(b => !b.væk);
+      opdaterPartikler(sdt);
+      // en combo tæller, når fingeren har ramt 3 eller flere balloner lige efter hinanden
+      for (const k of klinger.values()) if (k.pops && realTid - k.sidstePop > 0.3) { if (k.pops >= 3) combo(k); else k.pops = 0; }
+    }
+
+    function tegn(dt) {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.drawImage(bg, 0, 0, W, H);
+      tegnSolOgSkyer(dt);
+      // regnbue-tid: farvede kanter i siderne
+      if (realTid < vildTil) {
+        const a = Math.min(1, (vildTil - realTid) * 2) * (0.5 + 0.2 * Math.sin(realTid * 10));
+        for (const side of [0, 1]) {
+          const g = ctx.createLinearGradient(side ? W : 0, 0, side ? W - W * 0.12 : W * 0.12, 0);
+          g.addColorStop(0, `hsla(${(realTid * 300) % 360}, 100%, 60%, ${a})`); g.addColorStop(1, "hsla(0,0%,100%,0)");
+          ctx.fillStyle = g; ctx.fillRect(side ? W * 0.88 : 0, 0, W * 0.12, H);
+        }
+      }
+      for (const s of stykker) tegnStykke(s);
+      for (const b of balloner) tegnSvævende(b);
+      tegnPartikler();
+      tegnHånd();
+      tegnKlinger();
+      // is-tid: alt bliver blåt og frostet
+      if (realTid < langsomTil) {
+        const a = Math.min(1, (langsomTil - realTid) * 1.5);
+        ctx.fillStyle = `rgba(150,215,255,${0.16 * a})`; ctx.fillRect(0, 0, W, H);
+        const v = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
+        v.addColorStop(0, "rgba(255,255,255,0)"); v.addColorStop(1, `rgba(225,248,255,${0.75 * a})`);
+        ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+      }
+    }
+
+    let sidst = performance.now();
+    function loop(t) {
+      const dt = klem((t - sidst) / 1000, 0, 0.05);
+      sidst = t; realTid += dt;
+      opdater(dt);
+      tegn(dt);
       requestAnimationFrame(loop);
     }
+
+    $("rekord").textContent = rekord;
+    Effekter.vedStørrelse(layout);
+    layout();
     requestAnimationFrame(loop);
   </script>
 </body>
