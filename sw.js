@@ -2,7 +2,10 @@
 // Bump dette tal når der ændres filer, så de gamle bliver hentet på ny.
 const CACHE = "boernespil-v41";
 
-const SPIL = ["balloner", "vask", "slange", "tegne", "piano", "fisk", "broekraft"];
+const SPIL = [
+  "tryk-paa-dyret", "slange", "tegne", "balloner", "find-par", "fang",
+  "muldvarp", "tael", "simon", "piano", "undvig", "puslespil", "skibidi", "vask", "fisk", "broekraft"
+];
 
 // Spil der består af flere filer end index.html
 const EKSTRA = [
