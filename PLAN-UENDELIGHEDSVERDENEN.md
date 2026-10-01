@@ -163,7 +163,8 @@ altid ved siden af.
     - snemænd
     - nordlys om natten
   - ⛰️ Vandfald, der falder lodret ned i en klippekløft på bjergsiderne.
-- **Spil sammen over serveren** er opgave D til Codex (`OVERDRAGELSE-CODEX-UENDELIG.md`).
+- **Spil sammen over serveren:** Codex har lavet serverdelen på `codex/uendelig`, og Claudes tabletdel ligger på
+  `main`. Det virker, når ejeren har flettet grenen og udgivet server-v0.5.0 (se `OVERDRAGELSE-CODEX-UENDELIG.md`).
 - **Guldslottet:**
   - Det er en skjult verden. Den vises først i listen, når finalen er klaret.
   - Man kommer derop på føniksens ryg og får en krone i gården. Så kommer der fyrværkeri.

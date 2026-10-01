@@ -156,6 +156,7 @@ const STIL = `
 .eventyr-panel .sten span { width: 50px; height: 50px; border-radius: 50%; display: grid; place-items: center; background: #0001; }
 #guldTæller { position: fixed; top: 10px; right: 10px; z-index: 6; display: none; gap: 8px; align-items: center; }
 .i-gang.uendelig #guldTæller, .i-gang.guldslot #guldTæller { display: flex; }
+.online #guldTæller { top: 62px; }                 /* sammen: under spillerne og forbindelsen */
 #guldTæller .pille { background: #0008; color: #fff; font: 800 20px system-ui, sans-serif; padding: 8px 14px; border-radius: 18px; border: 2px solid #ffd84d; }
 #guldTæller .pille.opgave { border-color: #c77dff; cursor: pointer; }
 #guldTæller .pille.hop { animation: guldHop 0.6s ease-out; }
