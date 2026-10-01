@@ -82,6 +82,27 @@
     .skin:active { transform: scale(.9); }
 
     .baner { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+    /* sværhedsgrad: tre knapper ved siden af hinanden */
+    .svaerhed {
+      margin-left: auto; display: flex; gap: 4px; padding: 4px; border-radius: 999px;
+      background: rgba(30,40,90,.1); box-shadow: inset 0 2px 4px rgba(0,0,0,.08);
+    }
+    .sv {
+      border: none; cursor: pointer; border-radius: 999px; padding: 6px 12px; font-size: 16px; font-weight: 900;
+      background: transparent; color: #1b2440; opacity: .75; display: flex; align-items: center; gap: 5px; transition: background .2s, transform .15s;
+    }
+    .sv span { font-size: 20px; }
+    .sv:active { transform: scale(.92); }
+    .sv.valgt { opacity: 1; color: #fff; box-shadow: 0 4px 10px rgba(0,0,0,.2), inset 0 -3px 0 rgba(0,0,0,.15); }
+    .sv.valgt[data-sv="nem"] { background: linear-gradient(180deg, #5fe07a, #22b04a); }
+    .sv.valgt[data-sv="mellem"] { background: linear-gradient(180deg, #ffc15a, #ff8a1f); }
+    .sv.valgt[data-sv="svær"] { background: linear-gradient(180deg, #ff6b8a, #e8283c); }
+    .sv-maerke {
+      font-size: 24px; width: 46px; height: 46px; min-width: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,.2), inset 0 -3px 0 rgba(0,0,0,.15); pointer-events: none; background: #22b04a;
+    }
+    .sv-maerke[data-sv="mellem"] { background: #ff8a1f; }
+    .sv-maerke[data-sv="svær"] { background: #e8283c; }
     .bane-kort {
       cursor: pointer; border: none; border-radius: 22px; padding: 10px 6px 8px; display: flex; flex-direction: column; align-items: center; gap: 2px;
       background: linear-gradient(180deg, #ffffff, #eef3ff); box-shadow: 0 8px 18px rgba(30,40,90,.22), inset 0 -4px 0 rgba(60,70,140,.12);
@@ -99,6 +120,9 @@
     .bane-kort[data-bane="regnbue"] { background: linear-gradient(180deg, #ffffff, #efe0ff); }
     @media (max-width: 620px) {
       .baner { grid-template-columns: repeat(3, 1fr); }
+      .raekke-titel { flex-wrap: wrap; }
+      .svaerhed { margin: 6px auto 0; }
+      .sv { padding: 6px 10px; font-size: 15px; }
       .skin { width: 44px; height: 44px; }
       .bane-ikon { font-size: 36px; }
     }
@@ -173,6 +197,11 @@
     @media (max-width: 480px) {
       .rund { width: 46px; height: 46px; min-width: 46px; font-size: 22px; }
       .stjerner { font-size: 20px; padding: 6px 12px; }
+      .sv-maerke { display: none; }
+      .hud { gap: 6px; padding-left: 8px; padding-right: 8px; flex-wrap: wrap; }
+      .hud .gruppe { gap: 6px; }
+      .hud .stjerner { margin-left: auto; }
+      .frem { order: 5; flex-basis: 100%; margin-top: 4px; }       /* på telefonen: Rasmus' vej på sin egen linje */
       .frem-bar { margin: 0 6px; }
     }
   </style>
@@ -192,7 +221,7 @@
       <div class="panel">
         <div class="raekke-titel">Vælg Rasmus <em id="skinNavn"></em></div>
         <div class="skins" id="skins"></div>
-        <div class="raekke-titel">Vælg bane</div>
+        <div class="raekke-titel">Vælg bane <div class="svaerhed" id="svaerhed"></div></div>
         <div class="baner" id="baner"></div>
       </div>
     </div>
@@ -204,6 +233,7 @@
       <a class="rund" href="../../" aria-label="Til forsiden">🏠</a>
       <button class="rund" id="kortKnap" aria-label="Vælg bane og farve">🗺️</button>
     </div>
+    <div class="sv-maerke" id="hudSv" aria-label="Sværhedsgrad">🐢</div>
     <div class="frem">
       <div class="frem-bar" id="fremBar"><div class="frem-fyld" id="fremFyld"></div><div class="frem-rasmus" id="fremRasmus"></div></div>
       <span class="frem-maal">🏁</span>

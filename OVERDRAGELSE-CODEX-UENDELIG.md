@@ -92,3 +92,26 @@ hvad Claude skal bruge. Claude laver så:
 - Vand og TNT ved kanten af det indlæste giver ingen fejl.
 - De gamle verdenstyper og 0.1.0-klienter virker som før.
 - `skjult: true` vises ikke i kontrolpanelets liste.
+
+## Status 1. oktober 2026 (Claude)
+- Codex' serverdel ligger på `codex/uendelig` (se `OVERDRAGELSE-CLAUDE-UENDELIG.md`).
+- Claudes tabletdel ligger på `main` i `spil/broekraft/spil.js` (commit "Den uendelige verden sammen …"):
+  - Når `/verdensliste` og velkomsten siger `uendelig: true`, viser spillet serverens søjler, og det laver
+    ikke land eller simulering selv.
+  - Årstiderne bruger frøet fra velkomsten. Kortet huskes pr. verdens-id. Huset fra butikken sendes
+    gennem serveren.
+  - Hvis man rejser videre til en anden verden, eller tager Guld-føniksen med til slottet, sker det på
+    barnets egen tablet.
+  - En gammel verden med `uendelig: false` spilles som en almindelig, endelig verden.
+- Det er afprøvet på en lokal flettet kopi af `main` og `codex/uendelig` med en server på 127.0.0.1 og
+  en separat datamappe:
+  - alle 87 tests består
+  - søjlerne er byte for byte ens med tabletten; kun vand, som serverens simulering har sat i gang ved
+    et vandfald, er anderledes
+  - toget kører til sommerstationen uden huller i landet
+  - huset fra butikken bygges for alle
+  - Græsøen virker som før sammen
+- Mangler:
+  - Ejeren fletter `codex/uendelig` ind i `main`.
+  - Derefter tagges `server-v0.5.0`.
+  - Afprøvning på en rigtig iPad og en Pi.

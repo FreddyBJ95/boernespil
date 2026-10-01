@@ -676,6 +676,44 @@ export const DYR = [
       ...øjne(1.3, 14, 7.6, 1.4),
     ] },
   ] },
+  // Den uendelige verden: et rødt egern med en stor, busket hale — det hopper rundt i efterårsskoven
+  { id: "egern", navn: "Egern", lyd: "pip", fart: 2.6, evne: "hopper", skala: 0.8, æg: ["#c8642a", "#f0d0a0"], dele: [
+    { s: [4, 5, 6], p: [0, 4.5, 0], f: "#c8642a" },
+    { s: [3, 3.5, 1], p: [0, 4.5, 3.1], f: "#f0d0a0" },
+    { s: [1.5, 2, 2], p: [-1.4, 1, 1.8], f: "#a84a1a", rolle: "ben", fase: 0 }, { s: [1.5, 2, 2], p: [1.4, 1, 1.8], f: "#a84a1a", rolle: "ben", fase: Math.PI },
+    { s: [1.5, 2, 2.5], p: [-1.4, 1, -1.8], f: "#a84a1a", rolle: "ben", fase: Math.PI }, { s: [1.5, 2, 2.5], p: [1.4, 1, -1.8], f: "#a84a1a", rolle: "ben", fase: 0 },
+    { s: [3.5, 4, 3], p: [0, 6, -4.5], f: "#d8743a", rolle: "hale", børn: [
+      { s: [4, 6, 3], p: [0, 10, -5.5], f: "#d8743a" }, { s: [3.5, 3, 3], p: [0, 13.5, -4.5], f: "#e8843a" },
+    ] },
+    { s: [4, 4, 4], p: [0, 8.5, 3], f: "#c8642a", rolle: "hoved", børn: [
+      { s: [1.2, 2, 1], p: [-1.3, 11.4, 2.5], f: "#c8642a" }, { s: [1.2, 2, 1], p: [1.3, 11.4, 2.5], f: "#c8642a" },
+      { s: [0.6, 1, 0.6], p: [-1.3, 12.8, 2.5], f: "#7a3a10" }, { s: [0.6, 1, 0.6], p: [1.3, 12.8, 2.5], f: "#7a3a10" },
+      { s: [2, 1.5, 1], p: [0, 7.6, 5.2], f: "#f0d0a0" }, { s: [0.8, 0.6, 0.4], p: [0, 8.2, 5.8], f: "#2a1a10" },
+      ...øjne(1.1, 9.3, 5.1, 1.2),
+    ] },
+  ] },
+  // Den uendelige verden: et lille pindsvin med pigge på ryggen — det tripper langsomt rundt i efterårsskoven
+  { id: "pindsvin", navn: "Pindsvin", lyd: "pip", fart: 0.9, skala: 0.85, æg: ["#6a4a2a", "#d8b890"], dele: [
+    { s: [6, 4, 8], p: [0, 3.5, 0], f: "#d8b890" },
+    { s: [7, 3, 8.5], p: [0, 6, -0.5], f: "#5a3a1a" },
+    ...[-1, 0, 1].flatMap(i => [-1, 0, 1, 2].map(j => ({ s: [1.3, 1.8, 1.3], p: [i * 2.3, 8, j * 2.2 - 2], f: (i + j) & 1 ? "#3a2410" : "#7a5a3a" }))),
+    ...fireBen([1.5, 2, 1.5], 2, 1, 2.6, "#4a3020"),
+    { s: [3.5, 3, 3], p: [0, 4, 4.5], f: "#d8b890", rolle: "hoved", børn: [
+      { s: [1.6, 1.4, 2], p: [0, 3.4, 6.8], f: "#d8b890" }, { s: [1, 1, 0.6], p: [0, 3.6, 7.9], f: "#1a1a1a" },
+      ...øjne(0.9, 4.8, 6.1, 1),
+    ] },
+  ] },
+  // Den uendelige verden: en gul kylling, der går rundt i forårslandet
+  { id: "kylling", navn: "Kylling", lyd: "pip", fart: 1.4, skala: 0.7, æg: ["#ffe45a", "#f5a623"], dele: [
+    { s: [5, 5, 5], p: [0, 4.5, 0], f: "#ffe45a" },
+    { s: [0.8, 2.5, 0.8], p: [-1, 1.2, 0], f: "#f5a623", rolle: "ben", fase: 0 }, { s: [0.8, 2.5, 0.8], p: [1, 1.2, 0], f: "#f5a623", rolle: "ben", fase: Math.PI },
+    { s: [0.8, 2.5, 3.5], p: [-2.8, 5, 0], f: "#ffd83a", rolle: "vinge" }, { s: [0.8, 2.5, 3.5], p: [2.8, 5, 0], f: "#ffd83a", rolle: "vinge" },
+    { s: [4, 4, 4], p: [0, 8.5, 1.5], f: "#ffe45a", rolle: "hoved", børn: [
+      { s: [1.6, 1, 1.4], p: [0, 8.2, 4.1], f: "#f5a623" },
+      { s: [1, 1.5, 1], p: [0, 11, 1.5], f: "#ffd83a" },
+      ...øjne(1, 9.2, 3.6, 1.1),
+    ] },
+  ] },
 ];
 // Dyr, man kan ride på: tryk på dem, så sidder man på ryggen (biler.js og spil.js)
 for (const id of ["ko", "gris", "svampeko", "rensdyr", "dalmatiner", "enhjorning", "drage", "hest", "langhals", "triceratops", "tohovedko", "foniks"]) {

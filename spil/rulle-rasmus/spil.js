@@ -9,7 +9,7 @@
 
 import * as THREE from "./three.js";
 import { Bane, lavModel } from "./bane.js";
-import { BANER } from "./baner.js";
+import { BANER, SVÆRHED, lavBaneDef } from "./baner.js";
 import { lavTema } from "./temaer.js";
 import { byggVerden } from "./verden.js";
 import { byggTing } from "./ting.js";
@@ -24,8 +24,12 @@ const URL_P = new URLSearchParams(location.search);
 
 // ---------- Gemt fremskridt (kun på denne enhed) ----------
 const GEM = "rulle-rasmus-v1";
-const gemt = { skin: "blaa", vip: true, musik: true, bane: "engen", bedst: {}, klaret: {} };
+const gemt = { skin: "blaa", vip: true, musik: true, bane: "engen", sværhed: "nem", bedst: {}, klaret: {} };
 try { Object.assign(gemt, JSON.parse(localStorage.getItem(GEM)) || {}); } catch (_) {}
+if (URL_P.has("sv")) gemt.sværhed = URL_P.get("sv");
+if (!SVÆRHED[gemt.sværhed]) gemt.sværhed = "nem";
+// Rekorder gemmes for hver bane og sværhedsgrad (Nem bruger bare banens navn)
+const nøgle = (id, sv = gemt.sværhed) => sv === "nem" ? id : `${id}-${sv}`;
 const gem = () => { try { localStorage.setItem(GEM, JSON.stringify(gemt)); } catch (_) {} };
 
 // ---------- Oplæsning på dansk (kun hvis enheden har en dansk stemme) ----------
@@ -108,7 +112,7 @@ const sp = {
 function indlæs(id) {
   if (verden) verden.fjern();
   for (const p of Object.values(fx)) p.ryd();
-  baneDef = BANER.find(b => b.id === id) || BANER[0];
+  baneDef = lavBaneDef(BANER.find(b => b.id === id) || BANER[0], gemt.sværhed);
   gemt.bane = baneDef.id; gem();
   tema = lavTema(baneDef.tema);
   bane = new Bane(baneDef);
@@ -189,11 +193,16 @@ function styring() {
   kamera.getWorldDirection(kamFrem); kamFrem.y = 0; kamFrem.normalize();
   kamHøjre.set(-kamFrem.z, 0, kamFrem.x);
   let ix = 0, iy = 0;
-  if (styr.auto) {                                       // afprøvning (?debug): kør selv mod midten af banen længere fremme
-    const j = Math.min(bane.P.length - 1, sp.i + 16), pu = bane.puder.find(pu => pu.i > sp.i - 4 && pu.i < sp.i + 30);
-    const p = bane.punktPå(j, pu ? (bane.flade(pu.x, pu.z, pu.i).u > 0 ? -1.9 : 1.9) : 0, 0);
-    const dx = p.x - sp.pos.x, dz = p.z - sp.pos.z, d = Math.hypot(dx, dz) || 1;
-    return { x: dx / d * styr.auto, z: dz / d * styr.auto, ix: 0, iy: 1 };
+  if (styr.auto) {                                       // afprøvning (?debug): kører selv og bremser før sving, som et forsigtigt barn
+    const P = bane.P, i = sp.i, j = Math.min(P.length - 1, i + 10), q = P[j], f = bane.flade(sp.pos.x, sp.pos.z, i);
+    const k = Math.min(P.length - 1, i + 40), drej = Math.abs(Math.atan2(P[i].fx * P[k].fz - P[i].fz * P[k].fx, P[i].fx * P[k].fx + P[i].fz * P[k].fz));
+    const pu = bane.puder.find(pu => pu.i > i - 6 && pu.i < i + 44), puU = pu ? bane.flade(pu.x, pu.z, pu.i).u : 0;
+    const målU = pu ? (puU > 0 ? puU - pu.r - 0.75 : puU + pu.r + 0.75) : 0;
+    const vt = MAKS * (baneDef.fart ?? 1) * styr.auto * Math.max(0.45, 1 - drej / 1.6) * (q.is ? 0.8 : 1);
+    const vl = sp.v.x * P[i].rx + sp.v.z * P[i].rz;
+    const ønskX = q.fx * vt + P[i].rx * ((målU - f.u) * 1.6 - vl * 0.6), ønskZ = q.fz * vt + P[i].rz * ((målU - f.u) * 1.6 - vl * 0.6);
+    const dx = ønskX - sp.v.x, dz = ønskZ - sp.v.z, d = Math.hypot(dx, dz) || 1, m = Math.min(1, d / 2);
+    return { x: dx / d * m, z: dz / d * m, ix: 0, iy: 1 };
   }
   // fingeren: Rasmus triller hen mod det sted på banen, man trykker
   if (styr.finger) {
@@ -232,7 +241,7 @@ function trin(dt, inp) {
 
   // styring og hældning (tyngdekraften trækker ned ad bakke og ind mod midten af renden)
   let ax = 0, az = 0;
-  if (spiller) {
+  if (spiller && (sp.påJorden || pt.fast)) {             // over et hul flyver han selv (hjælpen længere nede styrer ham sikkert over)
     const greb = sp.påJorden ? (pt.is ? 0.5 : 1) : 0.5;
     ax = inp.x * ACC * greb; az = inp.z * ACC * greb;
   }
@@ -260,7 +269,7 @@ function trin(dt, inp) {
   // op og ned: følg banen, flyv af den, eller land på den
   const f = bane.flade(p.x, p.z, sp.i);
   let støtte = f.fast && Math.abs(f.u) <= f.halv + 0.12 ? f.h : null;
-  if (støtte != null && p.y - R < støtte - 0.35) {       // ind i siden af banen: prel af
+  if (støtte != null && p.y - R < støtte - 0.65) {       // ind i siden af banen: prel af
     p.x = fx0; p.z = fz0; v.x *= -0.2; v.z *= -0.2; støtte = null;
   }
   if (støtte != null && Math.abs(f.u) > f.halv) {         // helt ude på kanten: han tipper ud over
@@ -275,9 +284,9 @@ function trin(dt, inp) {
     }
   }
   if (!sp.påJorden) {
-    v.y -= G * dt;
+    v.y -= G * dt * (spiller && !pt.fast ? 0.55 : 1);    // over et hul svæver han lidt, så hoppet lykkes
     p.y += v.y * dt;
-    if (støtte != null && p.y - R <= støtte && gammelY - R >= støtte - 0.4 && sp.tilstand !== "falder") {
+    if (støtte != null && p.y - R <= støtte && gammelY - R >= støtte - 0.65 && sp.tilstand !== "falder") {   // kommer han lidt for lavt, kravler han op
       const stød = -v.y;
       p.y = støtte + R; v.y = 0; sp.påJorden = true;
       if (stød > 2.2) { rasmus.land(stød); Lyd.land(stød, rasmus.skin.mønster || 0); }
@@ -291,9 +300,12 @@ function trin(dt, inp) {
       const nx = dx / d, nz = dz / d, vn = v.x * nx + v.z * nz;
       p.x = pu.x + nx * min; p.z = pu.z + nz * min;
       if (vn < 0.5) {
-        const ud = Math.max(4.5, -vn * 1.1);
+        const ud = Math.max(2.5, -vn * 0.7);
         v.x += nx * (ud - vn); v.z += nz * (ud - vn);
-        if (sp.påJorden) { sp.påJorden = false; v.y = 3.5; }
+        // han skal ikke skubbes ud over kanten: højst lidt fart til siden
+        const q = bane.P[pu.i], vl = v.x * q.rx + v.z * q.rz, maksL = 2.8;
+        if (Math.abs(vl) > maksL) { const d = vl - Math.sign(vl) * maksL; v.x -= q.rx * d; v.z -= q.rz * d; }
+        if (sp.påJorden) { sp.påJorden = false; v.y = 2.5; }
         rasmus.stød(1); ting.stød(n); Lyd.boing();
       }
     }
@@ -322,7 +334,9 @@ function trin(dt, inp) {
     const vl = v.x * q.rx + v.z * q.rz, målL = -fl.u * 1.2;
     v.x += q.rx * (målL - vl) * a; v.z += q.rz * (målL - vl) * a;
     const vf = v.x * q.fx + v.z * q.fz;
-    if (vf < 7.2) { v.x += q.fx * (7.2 - vf) * a; v.z += q.fz * (7.2 - vf) * a; }
+    if (vf < 8) { v.x += q.fx * (8 - vf) * a; v.z += q.fz * (8 - vf) * a; }
+    // synker han under linjen mellem de to kanter, løfter en blød opdrift ham, så han altid når over
+    if (p.y < fl.midtY + R + 0.3) { v.y = Math.max(v.y + G * 1.8 * dt, -1.5); }
   }
 }
 
@@ -379,7 +393,7 @@ function efterTrin(dt) {
     if (sp.i >= bane.målI) { iMål(); return; }
     // falder han af?
     const f = bane.flade(p.x, p.z, sp.i);
-    if (!sp.påJorden && p.y < f.midtY - 1.3 && (Math.abs(f.u) > f.halv || !f.fast)) {
+    if (!sp.påJorden && (p.y < f.midtY - 1.5 || p.y < verden.bund + 1)) {       // under banen: han er faldet af
       sp.tilstand = "falder"; sp.faldT = 0; Lyd.fald();
     }
     // står han stille, kigger han på os
@@ -435,8 +449,9 @@ function iMål() {
   rasmus.glad(8);
   målYaw = kamYaw;
   const id = baneDef.id;
-  gemt.klaret[id] = true;
-  gemt.bedst[id] = Math.max(gemt.bedst[id] || 0, sp.stjerner);
+  const n = nøgle(id);
+  gemt.klaret[n] = true;
+  gemt.bedst[n] = Math.max(gemt.bedst[n] || 0, sp.stjerner);
   gem();
   opdaterFremskridt(1);
   setTimeout(() => sig("Godt klaret! Rasmus kom i mål."), 700);
@@ -560,18 +575,46 @@ function lavBaner() {
     const k = document.createElement("button");
     k.className = "bane-kort";
     k.dataset.bane = b.id;
-    const bedst = gemt.bedst[b.id];
+    const n = nøgle(b.id), bedst = gemt.bedst[n];
     k.innerHTML = `<span class="bane-ikon">${b.ikon}</span><b>${b.navn}</b>` +
-      `<small>${gemt.klaret[b.id] ? `🏆 ⭐ ${bedst || 0}` : "&nbsp;"}</small>`;
+      `<small>${gemt.klaret[n] ? `🏆 ⭐ ${bedst || 0}` : "&nbsp;"}</small>`;
     k.addEventListener("click", () => startBane(b.id));
     liste.appendChild(k);
   }
 }
 
+// Sværhedsgrad: Nem, Mellem eller Svær. Banen bygges om med det samme, så man kan se forskellen bag menuen.
+function lavSværhed() {
+  const boks = $("svaerhed");
+  boks.innerHTML = "";
+  for (const [id, s] of Object.entries(SVÆRHED)) {
+    const b = document.createElement("button");
+    b.className = "sv"; b.dataset.sv = id;
+    b.innerHTML = `<span>${s.ikon}</span>${s.navn}`;
+    b.addEventListener("click", () => vælgSværhed(id));
+    boks.appendChild(b);
+  }
+  markérSværhed();
+}
+function markérSværhed() {
+  document.querySelectorAll(".sv").forEach(b => b.classList.toggle("valgt", b.dataset.sv === gemt.sværhed));
+  $("hudSv").textContent = SVÆRHED[gemt.sværhed].ikon;
+  $("hudSv").dataset.sv = gemt.sværhed;
+}
+function vælgSværhed(id) {
+  Lyd.klar();
+  if (id === gemt.sværhed) return;
+  gemt.sværhed = id; gem();
+  markérSværhed(); lavBaner();
+  indlæs(baneDef.id);
+  sp.hopOm = 0.6;
+  Lyd.flag();
+}
+
 async function startBane(id) {
   Lyd.klar();
   const vip = gemt.vip ? bedOmVip() : Promise.resolve(false);   // spørg om lov straks (iPad vil have det i selve trykket)
-  if (!baneDef || id !== baneDef.id || sp.tilstand !== "menu") indlæs(id);
+  if (!baneDef || id !== baneDef.id || baneDef.sv !== gemt.sværhed || sp.tilstand !== "menu") indlæs(id);
   rasmus.vis = rasmus.visMål = 1;
   if (gemt.vip && !(await vip)) { gemt.vip = false; gem(); }
   opdaterStyreKnap();
@@ -600,7 +643,8 @@ function visMålKort() {
   const n = ting.antalStjerner, andel = n ? sp.stjerner / n : 1;
   const store = 1 + (andel >= 0.5 ? 1 : 0) + (andel >= 0.85 ? 1 : 0);
   $("maalStjerner").innerHTML = [0, 1, 2].map(i => `<span class="${i < store ? "fuld" : ""}" style="animation-delay:${0.2 + i * 0.25}s">⭐</span>`).join("");
-  $("maalTal").textContent = `${sp.stjerner} af ${n} stjerner`;
+  const sv = SVÆRHED[gemt.sværhed];
+  $("maalTal").textContent = `${sp.stjerner} af ${n} stjerner · ${sv.ikon} ${sv.navn}`;
   const i = BANER.findIndex(b => b.id === baneDef.id);
   $("naeste").classList.toggle("skjult", i >= BANER.length - 1);
   $("maalKort").classList.remove("skjult");
@@ -659,6 +703,7 @@ opdaterMusikKnap();
 opdaterStyreKnap();
 lavSkins();
 lavBaner();
+lavSværhed();
 indlæs(URL_P.get("bane") || gemt.bane);
 størrelse();
 requestAnimationFrame(t => { sidst = t; løkke(t); });

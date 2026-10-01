@@ -15,7 +15,8 @@ import { lavLand, MIDT, STØRRELSE as LANDSTØRRELSE, ÅRSTIDSDYR, HJEMSTED, BAN
 import { DagNat } from "./dagnat.js";
 import { Kort } from "./kort.js";
 import { Tog, Ballon, vælg } from "./tog.js";
-import { Eventyr, sig } from "./eventyr.js";
+import { Eventyr, sig, VARER } from "./eventyr.js";
+import { Smådyr } from "./smaadyr.js";
 import { StenJagt, Stenring, Guldslot, STEN, læsSten } from "./sten.js";
 import { DYR, Dyr, ægIkon } from "./dyr.js";
 import { VERDENER } from "./verdener.js";
@@ -50,7 +51,11 @@ if (ONLINE) {
   try { onlineInfo = (await (await fetch("/verdensliste", { cache: "no-store" })).json()).find(v => v.id === ONLINE_ID) || null; } catch (_) {}
 }
 const cfg = (ONLINE ? VERDENER.find(v => v.id === onlineInfo?.type) : VERDENER.find(v => v.id === læs("broekraft-verden", "græsø"))) || VERDENER[0];
-const UENDELIG = !!cfg.uendelig && !ONLINE;              // Den uendelige verden: landet laves, mens man går
+// Den uendelige verden: alene laves landet her, mens man går. Sammen (server 0.5.0) kommer landet fra
+// computeren, men årstiderne, kortet, toget, spådamen og dyrene kører stadig her på tabletten.
+// En gammel, endelig verden af typen uendelig (uendelig: false) spilles som en almindelig verden.
+const SERVERLAND = ONLINE && !!cfg.uendelig && onlineInfo?.uendelig === true;
+const UENDELIG = !!cfg.uendelig && (!ONLINE || SERVERLAND);
 const GULDSLOT = cfg.id === "guldslot" && !ONLINE;        // guldslottet i himlen (man kommer dertil på Guld-føniksen)
 const EVENTYR = UENDELIG || GULDSLOT;                     // spådamen, guldet og de magiske sten
 let føniksKommer = false;                                 // vi kommer flyvende på Guld-føniksens ryg
@@ -74,7 +79,7 @@ const tilTing = n => (n.startsWith("æg:") ? { æg: n.slice(3) } : n.startsWith(
 const STANDARD = cfg.hotbar.map(tilTing);
 let gemt = læs(GEM, null);
 if (!gemt || !Number.isFinite(gemt.frø)) gemt = { frø: (Math.random() * 2 ** 31) | 0, ændringer: {}, musik: læs("broekraft-musik", true), tnt: true, væske: true };
-const gyldig = s => s && (s.v ? !!VÆRKTØJ[s.v] : s.æg ? s.æg === "?" || DYR.some(d => d.id === s.æg) : BLOKKE[s.blok] && !BLOKKE[s.blok].skjult);
+const gyldig = s => s && (s.v ? !!VÆRKTØJ[s.v] : s.æg ? s.æg === "?" || DYR.some(d => d.id === s.æg) : BLOKKE[s.blok] && (!BLOKKE[s.blok].skjult || BLOKKE[s.blok].butik));
 if (!Array.isArray(gemt.hotbar) || gemt.hotbar.length !== 9 || !gemt.hotbar.every(gyldig)) gemt.hotbar = STANDARD.map(s => ({ ...s }));
 if (!(gemt.valgt >= -1 && gemt.valgt < 9)) gemt.valgt = 0;
 if (gemt.musik === undefined) gemt.musik = true;
@@ -172,8 +177,10 @@ function opdaterSne(dt, t) {
   sne.geometry.attributes.position.needsUpdate = true;
 }
 // Nordlys: grønne og lilla bånd, der bølger langsomt på himlen (verdener med nordlys: true)
+// I Den uendelige verden kommer nordlyset frem om natten, når man er i vinterlandet
 const nordlys = [];
-if (cfg.nordlys) {
+let nordlysStyrke = UENDELIG ? 0 : 1, nordlysTid = 0, nordlysTjek = 0, nordlysMål = 0;
+if (cfg.nordlys || UENDELIG) {
   const c = document.createElement("canvas"); c.width = 4; c.height = 64;
   const k = c.getContext("2d"), grad = k.createLinearGradient(0, 64, 0, 0);
   grad.addColorStop(0, "rgba(90,255,170,0)"); grad.addColorStop(0.15, "rgba(90,255,170,0.9)"); grad.addColorStop(0.5, "rgba(60,220,160,0.45)"); grad.addColorStop(1, "rgba(160,90,255,0)");
@@ -188,12 +195,19 @@ if (cfg.nordlys) {
   }
 }
 function opdaterNordlys(t) {
+  if (UENDELIG && nordlys.length) {
+    const dt = Math.min(0.1, Math.max(0, t - nordlysTid)); nordlysTid = t;
+    if ((nordlysTjek -= dt) <= 0) { nordlysTjek = 0.5; nordlysMål = dagNat?.nat && land.årstid(sp.pos.x, sp.pos.z) === "vinter" ? 1 : 0; }
+    nordlysStyrke += (nordlysMål - nordlysStyrke) * Math.min(1, dt * 0.4);
+    for (const m of nordlys) m.visible = nordlysStyrke > 0.01;
+    if (nordlysStyrke <= 0.01) return;
+  }
   for (const m of nordlys) {
     const { dx, y, dz, fase, grund } = m.userData, p = m.geometry.attributes.position.array;
     for (let i = 0; i < p.length; i += 3) p[i + 2] = grund[i + 2] + Math.sin(grund[i] * 0.03 + t * 0.35 + fase) * 22 + Math.sin(grund[i] * 0.011 + t * 0.2) * 12;
     m.geometry.attributes.position.needsUpdate = true;
     m.position.set(kamera.position.x + dx, kamera.position.y + y, kamera.position.z + dz);
-    m.material.opacity = 0.45 + Math.sin(t * 0.5 + fase) * 0.15;
+    m.material.opacity = (0.45 + Math.sin(t * 0.5 + fase) * 0.15) * nordlysStyrke;
   }
 }
 // Havbunden: vandoverfladen langt oppe og lysstråler, der svajer ned gennem vandet
@@ -298,11 +312,19 @@ verden.animMat = animMat;
 if (cfg.vand === "chokolade") { animMat.vand.map = atlas.anim.chokolade; animMat.vand.opacity = 0.93; }   // Slikland: floden er af chokolade
 verden.tyngde = TYNGDE;
 // ---------- Uendelighedsverdenen: landet laves omkring barnet, søjle for søjle (uendelig.js) ----------
-const land = UENDELIG ? lavLand({ støj: lavStøj(gemt.frø), ID, BY: verden.BY, frø: gemt.frø }) : null;
+let landFrø = gemt.frø, indreLand = UENDELIG ? lavLand({ støj: lavStøj(landFrø), ID, BY: verden.BY, frø: landFrø }) : null;
+const land = UENDELIG ? {                         // sammen skiftes frøet ud, når serveren siger velkommen
+  søjle: (cx, cz) => indreLand.søjle(cx, cz), årstid: (x, z) => indreLand.årstid(x, z), område: (x, z) => indreLand.område(x, z),
+  højde: (x, z) => indreLand.højde(x, z), landsbyer: (x0, z0, x1, z1) => indreLand.landsbyer(x0, z0, x1, z1),
+} : null;
+function brugLandFrø(frø) {
+  if (!UENDELIG || !Number.isFinite(frø) || frø === landFrø) return;
+  landFrø = frø; indreLand = lavLand({ støj: lavStøj(frø), ID, BY: verden.BY, frø });
+}
 const LAND_R = 7;                                 // så mange søjler ud kan man se (tågen skjuler resten)
 let glemTid = 0;
 const kort = UENDELIG ? new Kort({
-  nøgle: "broekraft-kort-uendelig", frø: gemt.frø, BY: verden.BY, BLOKKE, hjem: { x: MIDT, z: MIDT },
+  nøgle: SERVERLAND ? `broekraft-kort-${ONLINE_ID}` : "broekraft-kort-uendelig", frø: SERVERLAND ? ONLINE_ID : gemt.frø, BY: verden.BY, BLOKKE, hjem: { x: MIDT, z: MIDT },
   farve: id => atlas.farve(id)?.getHex(THREE.SRGBColorSpace) ?? 0,
   spiller: () => ({ x: sp.pos.x, z: sp.pos.z, yaw: sp.yaw }), mærker: kortMærker,
 }) : null;
@@ -338,8 +360,8 @@ function opdaterLand(dt) {
     if (Math.max(Math.abs(cx - cx0), Math.abs(cz - cz0)) > LAND_R + 2) verden.glemSøjle(cx, cz, true);
   }
 }
-if (UENDELIG) {
-  document.body.classList.add("uendelig");
+if (UENDELIG) document.body.classList.add("uendelig");
+if (UENDELIG && !ONLINE) {
   verden.indlæsÆndringer(gemt.ændringer);
   landOmkring(gemt.spiller?.[0] ?? MIDT, gemt.spiller?.[2] ?? MIDT, 2);
   verden.opdater(150);                            // byg det nærmeste med det samme
@@ -694,6 +716,8 @@ function knus(hit, hammer = false) {
   const b = BLOKKE[hit.id];
   if (eventyr && b.kryds && /blomst|Tulipan/.test(b.navn)) eventyr.hændelse("blomst");
   if (eventyr && hit.id === ID.Græskar) eventyr.hændelse("græskar");
+  if (eventyr && hit.id === ID.Jordbær) eventyr.hændelse("jordbær");
+  if (eventyr && hit.id === ID["Is i vaffel"]) { eventyr.hændelse("is"); Lyd.magi(); }   // mmm — en is fra isboden
   if (b.skat) skatFundet(hit);                                   // en skattekiste springer op!
   if (b.afgrøde) høstet(hit);                                    // hvede, gulerod eller solsikke
   if (b.dinoæg) klækÆg(hit);                                     // en dino-unge kommer ud
@@ -761,8 +785,9 @@ if (!ONLINE && verden.data) for (let i = 0; i < verden.data.length; i++) if (ver
 // Et kæmpe glimt, en trykbølge og en svampesky. Himlen gløder orange et stykke tid, og krateret får aske,
 // lysende slim og små flammer i bunden. Ingen kommer til skade: zombierne bliver til konfetti,
 // og alle andre bliver bare blæst lidt væk. slags: "mini" (atomkasteren), "atom" eller "kæmpe".
-function atomEksplosion(cx, cy, cz, kunVis, slags = "atom") {
+function atomEksplosion(cx, cy, cz, kunVis, slags = "atom", fremmed = false) {
   const S = STØRRELSE[slags] || STØRRELSE.atom, afst = Math.hypot(cx - sp.pos.x, cz - sp.pos.z);
+  if (!fremmed) delEffekt("svampesky", { x: cx, y: cy, z: cz, str: slags });   // sammen: de andre ser også svampeskyen
   if (!kunVis) eksploder(cx, cy, cz, S.R); else bragEffekt(cx, cy, cz, S.R);
   if (!kunVis && !ONLINE) atomKrater(cx, cy, cz, S.R);
   atom.svampesky(cx, cy - 0.5, cz, S.sky);
@@ -773,7 +798,7 @@ function atomEksplosion(cx, cy, cz, kunVis, slags = "atom") {
 }
 // Atomkasteren: en lille atomsprængning (sammen: serveren sprænger, og svampeskyen vises her)
 function miniAtom(x, y, z) {
-  if (ONLINE) { net?.brag(x, y, z); atomEksplosion(x, y, z, true, "mini"); } else atomEksplosion(x, y, z, false, "mini");
+  if (ONLINE) { net?.brag(x, y, z, "mini"); atomEksplosion(x, y, z, true, "mini"); } else atomEksplosion(x, y, z, false, "mini");
 }
 // Krateret: aske i bunden, lysende slim i midten og små flammer — og grønt lys, der stiger op et stykke tid
 const kraterGlød = [];
@@ -1253,8 +1278,10 @@ function tændSprængstof({ x, y, z, id }) {
   if (!ONLINE) { tændTNT(x, y, z, lunte, false, id, true); return; }
   if (id === ID.TNT) net?.tænd(x, y, z); else net?.sæt(x, y, z, 0);
   tændTNT(x, y, z, lunte, true, id, true);
+  delEffekt("lunte", { x, y, z, id, lunte });
 }
-function tændTNT(x, y, z, lunte = 2.2, kunVis = false, blok = ID.TNT, tæl = false) {
+// fremmed: en bombe, en anden spiller har tændt — den er kun til at se på (braget kommer fra serveren)
+function tændTNT(x, y, z, lunte = 2.2, kunVis = false, blok = ID.TNT, tæl = false, fremmed = false) {
   if (!kunVis) verden.sæt(x, y, z, 0);
   if (tændte.length >= 40) return;
   const g = new THREE.Group();
@@ -1264,7 +1291,7 @@ function tændTNT(x, y, z, lunte = 2.2, kunVis = false, blok = ID.TNT, tæl = fa
   scene.add(g);
   tændte.push({ g, hvid, pos: new THREE.Vector3(x + 0.5, y, z + 0.5), vel: new THREE.Vector3(0, lunte < 1 ? 3 : 2, 0), tid: 0, lunte, røgT: 0, kunVis,
     atom: BLOKKE[blok]?.atom ? (BLOKKE[blok].atom === "kæmpe" ? "kæmpe" : "atom") : null, tæl: tæl && !!BLOKKE[blok]?.atom, tal: 0,
-    brag: kunVis && ONLINE && blok !== ID.TNT });
+    brag: kunVis && ONLINE && blok !== ID.TNT && !fremmed, fremmed });
   Lyd.tænd();
   if (!kunVis) gemSnart();
 }
@@ -1294,9 +1321,10 @@ function opdaterTNT(dt) {
       tændte.splice(i, 1);
       scene.remove(t.g);
       t.g.traverse(c => { if (c.isMesh) { c.geometry.dispose(); c.material.dispose(); } });
+      if (t.fremmed) continue;                                    // svampeskyen og braget kommer fra den anden
       if (t.atom) atomEksplosion(t.pos.x, t.pos.y + 0.5, t.pos.z, t.kunVis, t.atom);
       else if (!t.kunVis) eksploder(t.pos.x, t.pos.y + 0.5, t.pos.z);
-      if (t.brag) net?.brag(t.pos.x, t.pos.y + 0.5, t.pos.z);
+      if (t.brag) net?.brag(t.pos.x, t.pos.y + 0.5, t.pos.z, t.atom || undefined);
     }
   }
 }
@@ -1362,7 +1390,7 @@ function bragEffekt(cx, cy, cz, R = 3.3) {
 const skyd = new Skydning({
   scene, verden, kamera, sp, dyr, partikel, eksploder, bragEffekt, puf, lyd: Lyd, stegAf: kv => stegAf(kv), net: () => net, online: ONLINE,
   sæt: (x, y, z, id) => { verden.sæt(x, y, z, id); gemSnart(); }, point: n => nyePoint(n), klat: f => klat(f),
-  tyngde: TYNGDE, bane: !!cfg.skyd, start: [VX / 2, VZ / 2], atom: (x, y, z) => miniAtom(x, y, z),
+  tyngde: TYNGDE, bane: !!cfg.skyd, start: [VX / 2, VZ / 2], atom: (x, y, z) => miniAtom(x, y, z), del: delEffekt,
 });
 const fyr = new Fyrværkeri(scene, kamera, { lyd: { fløjt: Lyd.fløjt, brag: Lyd.fyrBrag, knitre: Lyd.fyrKnitre, droner: Lyd.droner, figur: Lyd.figur }, blink: himmelBlink });
 // Nytårsaften (nytaar.js): pariserhjulet, nedtællingen ved uret og kæmperaketten med faldskærm
@@ -1376,13 +1404,15 @@ const nytår = new Nytår({
 // Dronekassen: dronerne letter og tegner figurer på himlen (højst ét show ad gangen)
 function startDroner({ x, y, z }) {
   if (!fyr.droneshow(x + 0.5, y, z + 0.5)) { besked("🛸 Dronerne er allerede i luften — vent lidt", 2500); return; }
+  delEffekt("droner", { x: x + 0.5, y, z: z + 0.5 });
   sætHer(x, y, z, 0); Lyd.tænd(); sving = 1; gemSnart();
 }
 // Atombomber, missiler og den røde knap (atom.js) — sammen fjernes blokkene lidt ad gangen, og serveren sprænger
 const atom = new Atom({
   scene, verden, sp, partikel, lyd: Lyd, online: ONLINE, besked, tal: visTal, sæt: sætHer,
   mål: cfg.atommål ? cfg.atommål(VX, VZ) : null, ryst: n => { rystelse = Math.min(2.4, rystelse + n); },
-  sprængning: (x, y, z, slags) => { if (ONLINE) { net?.brag(x, y, z); atomEksplosion(x, y, z, true, slags); } else atomEksplosion(x, y, z, false, slags); },
+  sprængning: (x, y, z, slags) => { if (ONLINE) { net?.brag(x, y, z, slags); atomEksplosion(x, y, z, true, slags); } else atomEksplosion(x, y, z, false, slags); },
+  del: delEffekt,
 });
 // Biler (biler.js): i Brandmandsbyen holder brandbilerne, ambulancen og politibilen klar (cfg.biler).
 // Med 🚒-værktøjerne kan man selv sætte biler, i alle verdener (højst fire ad gangen).
@@ -1501,6 +1531,7 @@ function tændFyrkasse({ x, y, z }) {
     if (slags === "fontæne") fyr.fontæne(x, y, z); else fyr.tændKasse(x, y, z, 12, slags === "show");
   }
   Lyd.tænd(); sving = 1;
+  eventyr?.hændelse("fyrværkeri");
   gemSnart();
 }
 // Konfettikanonen sprøjter en sky af konfetti frem foran barnet
@@ -1867,12 +1898,33 @@ function luk(id) {
 }
 document.querySelectorAll("[data-luk]").forEach(b => b.addEventListener("click", () => { Lyd.klik(); luk(b.dataset.luk); }));
 
+// Blokke, barnet har købt i butikken i Den uendelige verden (de kan bruges i alle verdener)
+function købt(navn) {
+  try { const ejer = JSON.parse(localStorage.getItem("broekraft-eventyr") || "{}").ejer || []; return VARER.some(v => v.blok === navn && ejer.includes(v.id)); }
+  catch (_) { return false; }
+}
+// Læg en blok i hotbaren (en gave fra spådamen eller noget fra butikken) og vælg den
+function givBlok(navn) {
+  const id = ID[navn];
+  if (id == null) return;
+  let plads = gemt.hotbar.findIndex(s => s.blok === id);
+  if (plads < 0) {
+    const ledig = s => s.blok != null && !BLOKKE[s.blok].butik && !BLOKKE[s.blok].fyrværkeri;   // en almindelig blok må gerne vige
+    plads = gemt.valgt >= 0 && ledig(gemt.hotbar[gemt.valgt]) ? gemt.valgt : gemt.hotbar.findIndex(ledig);
+    if (plads < 0) plads = 0;
+    gemt.hotbar[plads] = { blok: id };
+  }
+  gemt.valgt = plads;
+  tegnHotbar(); opdaterHånd(); Lyd.vælg(); gemSnart();
+  besked(`🎒 ${navn} ligger nu i din hotbar`, 2500);
+}
+
 function visInventar() {
   const grid = $("invGrid");
   grid.innerHTML = "";
   const ting = [
     ...Object.keys(VÆRKTØJ).map(v => ({ v })),
-    ...BLOKKE.map((b, id) => (b && !b.skjult ? { blok: id } : null)).filter(Boolean),
+    ...BLOKKE.map((b, id) => (b && (!b.skjult || (b.butik && købt(b.navn))) ? { blok: id } : null)).filter(Boolean),
     { æg: "?" }, ...DYR.map(d => ({ æg: d.id })),
   ];
   for (const s of ting) {
@@ -1945,6 +1997,7 @@ function skiftTil(v) {
   gem();
   skriv("broekraft-verden", v.id);
   try { sessionStorage.setItem("broekraft-start", "1"); } catch (_) {}
+  if (ONLINE) { stopTale(); net?.luk(); location.href = location.pathname; return; }   // sammen: videre på sin egen tablet
   location.reload();
 }
 
@@ -2025,6 +2078,7 @@ const brand = cfg.brand && !ONLINE ? new Brandvæsen(verden, {
 
 // ---------- Den uendelige verden: toget, ballonen, spådamen, de magiske sten og guldslottet ----------
 let kæmpeTid = 0, svæveHop = false;                              // Atomstenen og Skystenen
+const smådyr = UENDELIG ? new Smådyr({ scene, sp, land, verden }) : null;   // sommerfugle, bier og drager i luften
 const tog = UENDELIG ? new Tog({ scene, sp, lyd: Lyd, besked, gem: gemSnart, tilstand: gemt.tog, vedAfgang: () => eventyr?.hændelse("tog") }) : null;
 const ballon = UENDELIG ? new Ballon({ scene, verden, sp, lyd: Lyd, besked, gem: gemSnart, pos: gemt.ballon }) : null;
 const fest = () => { E.fest(window.innerWidth / 2, window.innerHeight * 0.4); };
@@ -2035,8 +2089,8 @@ function guldRegn() {                                            // guldmønter,
 function rejsTil(id, medFøniks) {                                // til en anden verden (med portal — eller på føniksens ryg)
   const v = VERDENER.find(w => w.id === id);
   if (!v) return;
-  if (!medFøniks) { portalTil(v); return; }
-  try { sessionStorage.setItem("broekraft-føniks", "1"); } catch (_) {}
+  if (!medFøniks && !ONLINE) { portalTil(v); return; }
+  if (medFøniks) try { sessionStorage.setItem("broekraft-føniks", "1"); } catch (_) {}
   if (!hentet.includes(v.id)) { hentet.push(v.id); skriv("broekraft-hentet", hentet); }
   skiftTil(v);
 }
@@ -2047,7 +2101,7 @@ const stenring = UENDELIG ? new Stenring({
 }) : null;
 const eventyr = EVENTYR ? new Eventyr({
   scene, sp, dyr, nytDyr, dyrDef, land, lyd: Lyd, besked, fest, guldRegn, hjem: UENDELIG, krone: () => læsSten().krone,
-  rider: () => skyd.kører?.dyrDef?.id, bygHus: lilleHus, fyrværkeriShow,
+  rider: () => skyd.kører?.dyrDef?.id, bygHus: lilleHus, fyrværkeriShow, givBlok,
   sten: {
     mangler: () => { const x = STEN.find(y => !læsSten().fundet.includes(y.id)); return x ? { ...x, verden: x.verdenNavn } : null; },
     fundet: () => læsSten().fundet, alle: () => STEN, rejsTil: x => rejsTil(STEN.find(y => y.id === x.id).verden),
@@ -2072,7 +2126,7 @@ function brugKraft(navn) {
   } else if (navn === "stjerne") {                               // ✨ stjerner og fyrværkeri dér, hvor man kigger
     const r = new THREE.Vector3(); kamera.getWorldDirection(r);
     const p = kamera.position.clone().addScaledVector(r, 14);
-    for (let i = 0; i < 5; i++) setTimeout(() => fyr.raket(p.x + (Math.random() - 0.5) * 6, Math.max(p.y, sp.pos.y + 2), p.z + (Math.random() - 0.5) * 6), i * 180);
+    for (let i = 0; i < 5; i++) setTimeout(() => fællesRaket(p.x + (Math.random() - 0.5) * 6, Math.max(p.y, sp.pos.y + 2), p.z + (Math.random() - 0.5) * 6), i * (ONLINE ? 550 : 180));
     stjernedrys(40, 3);
   } else if (navn === "atom") {                                  // 💪 kæmpestor i 20 sekunder
     kæmpeTid = 20; rystelse = Math.max(rystelse, 0.6); Lyd.bum?.();
@@ -2088,18 +2142,41 @@ function lilleHus() {
   const cx = Math.floor(sp.pos.x + r.x * 5), cz = Math.floor(sp.pos.z + r.z * 5), y0 = verden.topY(cx, cz);
   for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) {
     const x = cx + dx, z = cz + dz, kant = Math.abs(dx) === 2 || Math.abs(dz) === 2;
-    verden.sæt(x, y0, z, ID.Planker);
-    for (let y = y0 + 1; y <= y0 + 3; y++) verden.sæt(x, y, z, kant ? (y === y0 + 2 && (dx === 0 || dz === 0) ? ID.Glas : ID.Planker) : 0);
+    sætHer(x, y0, z, ID.Planker);
+    for (let y = y0 + 1; y <= y0 + 3; y++) sætHer(x, y, z, kant ? (y === y0 + 2 && (dx === 0 || dz === 0) ? ID.Glas : ID.Planker) : 0);
   }
-  for (let l = 0; l < 3; l++) for (let dx = -3 + l; dx <= 3 - l; dx++) for (let dz = -3 + l; dz <= 3 - l; dz++) verden.sæt(cx + dx, y0 + 4 + l, cz + dz, ID.Tagsten);
+  for (let l = 0; l < 3; l++) for (let dx = -3 + l; dx <= 3 - l; dx++) for (let dz = -3 + l; dz <= 3 - l; dz++) sætHer(cx + dx, y0 + 4 + l, cz + dz, ID.Tagsten);
   const dx = Math.abs(r.x) > Math.abs(r.z) ? -Math.sign(r.x) : 0, dz = dx ? 0 : -Math.sign(r.z);   // døren vender mod barnet
-  verden.sæt(cx + dx * 2, y0 + 1, cz + dz * 2, 0); verden.sæt(cx + dx * 2, y0 + 2, cz + dz * 2, 0);
-  verden.sæt(cx, y0 + 3, cz, ID.Lampe);
+  sætHer(cx + dx * 2, y0 + 1, cz + dz * 2, 0); sætHer(cx + dx * 2, y0 + 2, cz + dz * 2, 0);
+  sætHer(cx, y0 + 3, cz, ID.Lampe);
   gemSnart(); fest();
 }
 // Et fyrværkeri-show over barnet
 function fyrværkeriShow() {
-  for (let i = 0; i < 14; i++) setTimeout(() => fyr.raket(sp.pos.x + (Math.random() - 0.5) * 30, sp.pos.y + 1, sp.pos.z - 10 - Math.random() * 20), i * 350);
+  for (let i = 0; i < 14; i++) setTimeout(() => fællesRaket(sp.pos.x + (Math.random() - 0.5) * 24, sp.pos.y + 1, sp.pos.z - 8 - Math.random() * 16), i * (ONLINE ? 550 : 350));
+}
+// En raket, som alle kan se: sammen sender serveren den til alle (også tilbage hertil)
+function fællesRaket(x, y, z) { if (ONLINE) net?.fyrværkeri(x, y, z); else fyr.raket(x, y, z); }
+
+// ---------- Sammen: det, der kun er til at se på, vises også på de andre tablets ----------
+// Skud, der flyver, missiler, svampeskyer, tændte bomber og droner. Serveren sender det videre til de
+// andre i samme verden (kræver server med "effekt" — se OVERDRAGELSE-CODEX-EFFEKTER.md); ældre servere
+// ignorerer det. Blokkene og selve braget styrer serveren stadig selv.
+let effektKvote = 8;
+function delEffekt(slags, data) {
+  if (!ONLINE || !net?.effekt || effektKvote < 1) return;
+  effektKvote--; net.effekt(slags, data);
+}
+setInterval(() => { effektKvote = Math.min(8, effektKvote + 4); }, 500);   // højst otte i sekundet
+function fremmedEffekt({ fra, slags, ...d }) {
+  if (fra === minId || !iGang) return;
+  const tal = (...n) => n.every(Number.isFinite);
+  if (tal(d.x, d.z) && Math.hypot(d.x - sp.pos.x, d.z - sp.pos.z) > 160) return;   // for langt væk til at se
+  if (slags === "skud") skyd.fremmedSkud(d);
+  else if (slags === "missil") atom.fremmedMissil(d);
+  else if (slags === "svampesky" && tal(d.x, d.y, d.z) && STØRRELSE[d.str]) atomEksplosion(d.x, d.y, d.z, true, d.str, true);
+  else if (slags === "lunte" && tal(d.x, d.y, d.z, d.lunte) && (BLOKKE[d.id]?.tnt || BLOKKE[d.id]?.atom)) tændTNT(Math.floor(d.x), Math.floor(d.y), Math.floor(d.z), Math.max(0.2, Math.min(6, d.lunte)), true, d.id, false, true);
+  else if (slags === "droner" && tal(d.x, d.y, d.z)) fyr.droneshow(d.x, d.y, d.z);
 }
 
 let tid = 0, sidst = performance.now(), fejlVist = false, skjulT = 0;
@@ -2116,7 +2193,7 @@ function tegnFrame(nu) {
     if (skyd.kører) { skyd.styr(tast, sp.yaw, dt); sp.pitch = Math.max(-1.1, Math.min(0.45, sp.pitch)); }
     else if (!tornado.styrSpiller(dt) && !nytår.styrSpiller(dt) && !tog?.styrSpiller(dt) && !ballon?.styrSpiller(dt, tast, sp.yaw)
       && !stenring?.styrSpiller() && !guldslot?.styrSpiller()) opdaterSpiller(dt);   // i en tornado, en gondol, et tog, en ballon eller på føniksen styrer de
-    tog?.opdater(dt, tid); ballon?.opdater(dt); eventyr?.opdater(dt, tid); stenJagt?.opdater(dt); stenring?.opdater(dt); guldslot?.opdater(dt);
+    tog?.opdater(dt, tid); ballon?.opdater(dt); eventyr?.opdater(dt, tid); smådyr?.opdater(dt, tid, !dagNat.nat); stenJagt?.opdater(dt); stenring?.opdater(dt); guldslot?.opdater(dt);
     if (kæmpeTid > 0 && (kæmpeTid -= dt) <= 0) besked("Du er lille igen 🙂", 1500);
     const iKøretøj = !!(skyd.kører || tog?.kører || ballon?.flyver);
     if (iKøretøj !== document.body.classList.contains("i-kampvogn")) document.body.classList.toggle("i-kampvogn", iKøretøj);
@@ -2134,7 +2211,7 @@ function tegnFrame(nu) {
   if (!iGang || pause) tornado.stille();
   for (const d of dyr) d.opdater(dt, sp.pos);
   if (ONLINE) opdaterOnline(dt);
-  if (UENDELIG) opdaterLand(dt);
+  if (UENDELIG && !ONLINE) opdaterLand(dt);
   verden.opdater(ONLINE ? 6 : UENDELIG ? 6 : verden.snavset.size > 40 ? 12 : 4);
   if ((skjulT -= dt) <= 0) { skjulT = 0.25; verden.skjulFjerne(kamera.position.x, kamera.position.z, scene.fog.far + 8); }   // kun det, man kan se
   animerVæsker();
@@ -2272,6 +2349,7 @@ async function forbindOnline() {
   net.addEventListener("klump", e => {
     const { cx, cz } = e.detail;
     verden.søjle(cx, cz, e.detail.data);
+    if (SERVERLAND) { kort?.husk(cx, cz, e.detail.data); return; }   // den uendelige verden har ikke noget hav udenfor
     if (!havSøjler.has(cx + "," + cz)) { havSøjler.add(cx + "," + cz); lavHav(cx * 16, cz * 16, cx * 16 + 16, cz * 16 + 16); }
   });
   net.addEventListener("glem", e => verden.glemSøjle(e.detail.cx, e.detail.cz));
@@ -2290,6 +2368,7 @@ async function forbindOnline() {
   net.addEventListener("bum", e => { sidsteBum = { ...e.detail, tid: performance.now() }; bragEffekt(e.detail.x, e.detail.y, e.detail.z); });
   net.addEventListener("emoji", e => visEmoji(e.detail.id, e.detail.e));
   net.addEventListener("fyrværkeri", e => fyr.raket(e.detail.x, e.detail.y, e.detail.z, e.detail));
+  net.addEventListener("effekt", e => fremmedEffekt(e.detail));
   net.addEventListener("lukket", e => status(e.detail.genforbinder ? "🟡 Forbinder igen…" : "🔴 Afbrudt"));
   net.addEventListener("fejl", e => besked(`⚠️ ${e.detail.besked}`, 3000));
   net.udsyn(UDSYN[udsynNr].r);
@@ -2308,6 +2387,7 @@ async function forbindOnline() {
 // Serveren siger velkommen — også når forbindelsen kommer igen efter et hul
 function velkommen(v) {
   minId = v.dig;
+  if (SERVERLAND) brugLandFrø(v.verden?.frø);
   verden.rydAlt();
   for (const f of andre.values()) f.fjern();
   andre.clear();
@@ -2481,4 +2561,4 @@ if (ONLINE) {
 
 if (ONLINE) forberedOnline();
 window.broekraftKlar = true;
-if (location.search.includes("debug")) window.bk = { sp, kamera, verden, dagNat, land, kort, tog, ballon, eventyr, stenring, stenJagt, guldslot, brugKraft, dyr, tast, cfg, andre, sim, get net() { return net; }, get tale() { return tale; }, get graf() { return graf; }, afspillere, skyd, fyr, tændPortal, visPortalValg, brand, tændSprængstof, atom, tornado, musBrug, nytår, steg: n => { for (let i = 0; i < n; i++) tegnFrame(sidst + 1000 / 60); sidst = performance.now(); } };
+if (location.search.includes("debug")) window.bk = { sp, kamera, verden, dagNat, land, kort, tog, ballon, smådyr, givBlok, eventyr, stenring, stenJagt, guldslot, brugKraft, dyr, tast, cfg, andre, sim, get net() { return net; }, get tale() { return tale; }, get graf() { return graf; }, afspillere, skyd, fyr, tændPortal, visPortalValg, brand, tændSprængstof, atom, tornado, musBrug, nytår, steg: n => { for (let i = 0; i < n; i++) tegnFrame(sidst + 1000 / 60); sidst = performance.now(); } };

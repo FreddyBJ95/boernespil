@@ -178,98 +178,112 @@ export function lærredTekstur(b, h, tegn) {
   return t;
 }
 
-// ---------- Kæmpen for enden af banen ----------
-// Et stort, venligt hoved med overskæg, en stribet mave, og kniv og gaffel i hænderne.
-export function lavKæmpe() {
+// ---------- Stjerner, trampoliner og power-ups på banen ----------
+export function lavStjerne() {
+  const geo = engang("stjerne", () => {
+    const form = new THREE.Shape();
+    for (let i = 0; i < 10; i++) {
+      const r = i % 2 ? 0.19 : 0.45, a = Math.PI / 2 + i * Math.PI / 5;
+      i ? form.lineTo(Math.cos(a) * r, Math.sin(a) * r) : form.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    const g = new THREE.ExtrudeGeometry(form, { depth: 0.12, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.05, bevelSegments: 2 });
+    g.center();
+    return g;
+  });
+  return new THREE.Mesh(geo, engang("mat-stjerne", () => mat("#ffd23f", { emissive: "#b37400", emissiveIntensity: 0.45, metalness: 0.3, roughness: 0.3 })));
+}
+// En trampolin: en blå ring med rød dug. Løb hen over den, så flyver burgeren højt op.
+export function lavTrampolin() {
   const g = new THREE.Group();
-  const hud = mat("#f5c19c"), brun = mat("#6b3f1d", { roughness: 0.9 }), hvid = mat("#ffffff"), sort = mat("#1d140c", { roughness: 0.3 });
-  const skjorte = mat("#ffffff", { map: lærredTekstur(128, 128, (c, b, h) => {
-    c.fillStyle = "#3d8bd9"; c.fillRect(0, 0, b, h);
-    c.fillStyle = "#8cc0f0"; for (let x = 0; x < b; x += 32) c.fillRect(x, 0, 12, h);
-  }) });
-  // maven (bliver større, når han har spist meget)
-  const mave = mesh(new THREE.SphereGeometry(5.4, 40, 30), skjorte, 0, 0.6, -2.4);
-  g.add(mave);
-  // serviet med tern under hagen
-  const serviet = mesh(new THREE.PlaneGeometry(4.4, 3.2), mat("#ffffff", { side: THREE.DoubleSide, map: lærredTekstur(128, 96, (c, b, h) => {
-    c.fillStyle = "#fff"; c.fillRect(0, 0, b, h);
-    c.fillStyle = "#e8463a"; for (let y = 0; y < h; y += 16) for (let x = (y / 16) % 2 * 16; x < b; x += 32) c.fillRect(x, y, 16, 16);
-  }) }), 0, 1.0, 2.95);
-  serviet.rotation.x = -0.35;
-  g.add(serviet);
-  // hovedet
-  const hoved = new THREE.Group();
-  hoved.position.set(0, 4.6, 0);
-  g.add(hoved);
-  hoved.add(mesh(new THREE.SphereGeometry(4, 48, 36), hud));
-  for (const s of [-1, 1]) {
-    const øre = mesh(new THREE.SphereGeometry(0.9, 16, 12), hud, s * 3.95, 0.1, -0.2); øre.scale.set(0.55, 1, 0.9); hoved.add(øre);
+  const ring = mesh(engang("tramp-ring", () => new THREE.TorusGeometry(0.95, 0.13, 10, 32)), engang("mat-tramp", () => mat("#3a86ff")), 0, 0.3, 0);
+  ring.rotation.x = Math.PI / 2; g.add(ring);
+  const dug = mesh(engang("tramp-dug", () => new THREE.CylinderGeometry(0.9, 0.9, 0.05, 32)), engang("mat-dug", () => mat("#ffffff", { map: lærredTekstur(128, 128, (c, b) => {
+    for (let i = 0; i < 8; i++) { c.fillStyle = i % 2 ? "#ffd23f" : "#ff4d6d"; c.beginPath(); c.moveTo(b / 2, b / 2); c.arc(b / 2, b / 2, b / 2, i * Math.PI / 4, (i + 1) * Math.PI / 4); c.fill(); }
+  }) })), 0, 0.3, 0);
+  g.add(dug);
+  for (let i = 0; i < 4; i++) {
+    const a = i * Math.PI / 2 + Math.PI / 4;
+    g.add(mesh(engang("tramp-ben", () => new THREE.CylinderGeometry(0.06, 0.06, 0.3, 8)), engang("mat-tramp", () => mat("#3a86ff")), Math.cos(a) * 0.85, 0.15, Math.sin(a) * 0.85));
   }
-  for (let i = 0; i < 11; i++) {                              // krøller
-    const a = Math.PI * (0.12 + i * 0.076);
-    hoved.add(mesh(engang("krølle", () => new THREE.SphereGeometry(1.05, 14, 10)), brun, Math.cos(a) * 3.55, Math.sin(a) * 3.55 + 0.2, -0.6 + Math.sin(i * 1.7) * 0.5));
-  }
-  const kinder = [];
-  for (const s of [-1, 1]) {
-    const k = mesh(new THREE.SphereGeometry(0.95, 16, 12), mat("#ff9e9e"), s * 2.35, -0.8, 2.85); kinder.push(k); hoved.add(k);
-  }
-  // øjne der følger den lille burger
-  const øjne = [];
-  for (const s of [-1, 1]) {
-    const øje = new THREE.Group(); øje.position.set(s * 1.45, 0.9, 3.35);
-    const hvide = mesh(new THREE.SphereGeometry(0.85, 24, 18), hvid); øje.add(hvide);
-    const pupil = mesh(new THREE.SphereGeometry(0.42, 18, 14), sort); øje.add(pupil);
-    const glimt = mesh(new THREE.SphereGeometry(0.12, 10, 8), hvid); pupil.add(glimt); glimt.position.set(-0.15, 0.18, 0.36);
-    const bryn = mesh(new THREE.CapsuleGeometry(0.17, 1.1, 6, 10), brun, 0, 1.1, -0.1); bryn.rotation.z = Math.PI / 2 - s * 0.18; øje.add(bryn);
-    hoved.add(øje);
-    øjne.push({ øje, hvide, pupil, bryn, s });
-  }
-  hoved.add(mesh(new THREE.SphereGeometry(0.85, 20, 16), mat("#ee9d7e"), 0, -0.3, 4.0));   // næse
-  for (const s of [-1, 1]) {                                  // overskæg
-    const skæg = mesh(new THREE.SphereGeometry(1, 20, 14), brun, s * 0.95, -1.15, 3.75);
-    skæg.scale.set(1.35, 0.48, 0.6); skæg.rotation.z = s * 0.28; hoved.add(skæg);
-  }
-  // munden: en mørk åbning med tænder og tunge, der kan åbne sig
-  const mund = new THREE.Group(); mund.position.set(0, -2.05, 3.5); hoved.add(mund);
-  const hul = mesh(new THREE.SphereGeometry(1, 28, 20), mat("#4a0d14", { roughness: 0.9 })); mund.add(hul);
-  const tænder = mesh(new THREE.BoxGeometry(1.9, 0.3, 0.5), hvid); mund.add(tænder);
-  const tunge = mesh(new THREE.SphereGeometry(1, 20, 14), mat("#ff7d8e")); mund.add(tunge);
-  const smil = mesh(new THREE.TorusGeometry(1.05, 0.13, 10, 28, Math.PI), mat("#7a1c22"), 0, 0.5, 0.35);
-  smil.rotation.z = Math.PI; mund.add(smil);
-  // hænder med gaffel og kniv
-  const hænder = [];
-  const metal = mat("#c9d1dc", { metalness: 0.6, roughness: 0.3 });
-  for (const s of [-1, 1]) {
-    const hånd = new THREE.Group(); hånd.position.set(s * 6.2, 1.6, 1.5);
-    hånd.add(mesh(new THREE.SphereGeometry(1.1, 18, 14), hud));
-    hånd.add(mesh(new THREE.CylinderGeometry(0.18, 0.18, 5, 12), metal, 0, 2.6, 0));
-    if (s < 0) for (let i = -1.5; i <= 1.5; i++) hånd.add(mesh(new THREE.BoxGeometry(0.12, 1.5, 0.12), metal, i * 0.22, 5.6, 0));   // gaffel
-    else { const blad = mesh(new THREE.BoxGeometry(0.75, 2.8, 0.1), metal, 0.2, 5.8, 0); hånd.add(blad); }                         // kniv
-    g.add(hånd); hænder.push(hånd);
-  }
+  g.userData.dug = dug;
+  return g;
+}
+// Et emoji tegnet på et lærred, til skilte og ikoner over burgeren
+export function emojiSprite(emoji, str = 0.8) {
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: lærredTekstur(128, 128, (c, b) => {
+    c.textAlign = "center"; c.textBaseline = "middle";
+    c.font = "100px system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif"; c.fillText(emoji, b / 2, b / 2 + 6);
+  }), transparent: true, depthWrite: false }));
+  s.scale.set(str, str, 1);
+  return s;
+}
+// En power-up: en sæbeboble med et ikon indeni (🧲 magnet eller 🛡️ skjold)
+export function lavPowerup(emoji) {
+  const g = new THREE.Group();
+  g.add(emojiSprite(emoji, 0.85));
+  g.add(new THREE.Mesh(engang("boble", () => new THREE.SphereGeometry(0.62, 24, 18)),
+    engang("mat-boble", () => new THREE.MeshStandardMaterial({ color: "#bff0ff", transparent: true, opacity: 0.32, roughness: 0.05, depthWrite: false }))));
+  return g;
+}
+// Skjoldet: en gennemsigtig boble rundt om burgeren
+export function lavSkjold() {
+  return new THREE.Mesh(engang("skjold", () => new THREE.SphereGeometry(1, 32, 24)),
+    engang("mat-skjold", () => new THREE.MeshStandardMaterial({ color: "#9fe8ff", transparent: true, opacity: 0.25, roughness: 0.05, side: THREE.DoubleSide, depthWrite: false })));
+}
 
-  const tilstand = { åben: 0, tyg: 0, glad: 0, hop: 0 };
-  // Opdatér ansigtet: munden åbner sig, øjnene kigger på målet, kinderne puster sig op
-  function opdater(t, kig) {
-    const å = tilstand.tyg > 0 ? 0.15 + Math.abs(Math.sin(t * 9)) * 0.35 : tilstand.åben;
-    hul.scale.set(1.45 + å * 0.25, 0.06 + å * 1.25, 0.55);
-    tænder.position.set(0, hul.scale.y * 0.78, 0.25); tænder.visible = å > 0.12;
-    tunge.scale.set(0.95, 0.3, 0.45); tunge.position.set(0, -hul.scale.y * 0.62, 0.18); tunge.visible = å > 0.2;
-    hul.visible = å > 0.04; smil.visible = !hul.visible;
-    const puf = tilstand.tyg > 0 ? 1.3 + Math.sin(t * 9) * 0.08 : 1;
-    kinder.forEach(k => k.scale.setScalar(puf));
-    hoved.position.y = 4.6 + Math.abs(Math.sin(t * 8)) * 0.35 * tilstand.hop;
-    hænder.forEach((h, i) => { h.position.y = 1.6 + Math.abs(Math.sin(t * 8 + i)) * 0.8 * Math.max(tilstand.hop, tilstand.glad * 0.5); });
-    for (const ø of øjne) {
-      const p = ø.øje.getWorldPosition(new THREE.Vector3()), d = kig.clone().sub(p).normalize();
-      ø.pupil.position.set(d.x * 0.55, d.y * 0.55, 0.5 + Math.max(0, d.z) * 0.1);
-      const blink = (t % 4.2) < 0.12 ? 0.12 : 1;
-      ø.hvide.scale.set(1, blink, 1); ø.pupil.visible = blink > 0.5;
-      ø.bryn.position.y = 1.1 + å * 0.35;
+// ---------- Hatte til burgeren. De låses op med stjerner ----------
+export const HATTE = [
+  { id: "ingen",    emoji: "🍔", stjerner: 0 },
+  { id: "kokkehue", emoji: "🧑‍🍳", stjerner: 0 },
+  { id: "fest",     emoji: "🎉", stjerner: 15 },
+  { id: "krone",    emoji: "👑", stjerner: 35 },
+  { id: "cowboy",   emoji: "🤠", stjerner: 60 },
+  { id: "propel",   emoji: "🚁", stjerner: 90 },
+  { id: "viking",   emoji: "🪖", stjerner: 130 },
+];
+export function lavHat(id) {
+  const g = new THREE.Group();
+  if (id === "kokkehue") {
+    g.add(mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.45, 24), mat("#ffffff"), 0, 0.22, 0));
+    const puf = new THREE.SphereGeometry(0.32, 16, 12);
+    for (let i = 0; i < 5; i++) g.add(mesh(puf, mat("#ffffff"), Math.cos(i * 1.26) * 0.24, 0.6, Math.sin(i * 1.26) * 0.24));
+    g.add(mesh(new THREE.SphereGeometry(0.36, 16, 12), mat("#ffffff"), 0, 0.75, 0));
+  } else if (id === "fest") {
+    const kegle = mesh(new THREE.ConeGeometry(0.38, 1.0, 24), mat("#ffffff", { map: lærredTekstur(64, 64, (c, b, h) => {
+      ["#ff4d8d", "#ffd23f", "#2ec4f1", "#7ee08a"].forEach((f, i) => { c.fillStyle = f; c.fillRect(i * 16, 0, 16, h); });
+    }) }), 0, 0.5, 0);
+    g.add(kegle, mesh(new THREE.SphereGeometry(0.13, 12, 10), mat("#ffd23f"), 0, 1.02, 0));
+    g.rotation.z = 0.15;
+  } else if (id === "krone") {
+    const guld = mat("#ffc928", { metalness: 0.7, roughness: 0.25, side: THREE.DoubleSide });
+    g.add(mesh(new THREE.CylinderGeometry(0.44, 0.44, 0.3, 28, 1, true), guld, 0, 0.15, 0));
+    for (let i = 0; i < 6; i++) {
+      const a = i * Math.PI / 3;
+      g.add(mesh(new THREE.ConeGeometry(0.09, 0.3, 8), guld, Math.cos(a) * 0.44, 0.44, Math.sin(a) * 0.44));
+      g.add(mesh(new THREE.SphereGeometry(0.06, 8, 6), mat(i % 2 ? "#e8463a" : "#3a86ff"), Math.cos(a + 0.5) * 0.45, 0.15, Math.sin(a + 0.5) * 0.45));
+    }
+  } else if (id === "cowboy") {
+    const brun = mat("#9c6232");
+    g.add(mesh(new THREE.CylinderGeometry(0.88, 0.88, 0.05, 32), brun, 0, 0.03, 0));
+    g.add(mesh(new THREE.CylinderGeometry(0.36, 0.44, 0.48, 24), brun, 0, 0.28, 0));
+    g.add(mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.1, 24), mat("#3a2414"), 0, 0.1, 0));
+  } else if (id === "propel") {
+    ["#e8463a", "#ffd23f", "#34c77b", "#3a86ff"].forEach((f, i) =>
+      g.add(mesh(new THREE.SphereGeometry(0.46, 16, 10, i * Math.PI / 2, Math.PI / 2, 0, Math.PI / 2), mat(f))));
+    g.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.25, 8), mat("#555555"), 0, 0.55, 0));
+    const propel = new THREE.Group(); propel.position.y = 0.68;
+    propel.add(mesh(new THREE.BoxGeometry(1.0, 0.03, 0.14), mat("#ff4d8d")), mesh(new THREE.BoxGeometry(0.14, 0.03, 1.0), mat("#2ec4f1")));
+    g.add(propel); g.userData.propel = propel;
+  } else if (id === "viking") {
+    const metal = mat("#b8c0cc", { metalness: 0.6, roughness: 0.35 });
+    g.add(mesh(new THREE.SphereGeometry(0.47, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), metal));
+    g.add(mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.1, 24), mat("#8a5a2b"), 0, 0.04, 0));
+    for (const s of [-1, 1]) {
+      const horn = mesh(new THREE.ConeGeometry(0.11, 0.65, 12), mat("#fff2c8"), s * 0.52, 0.42, 0);
+      horn.rotation.z = -s * 0.7; g.add(horn);
     }
   }
-  const mundPos = () => mund.getWorldPosition(new THREE.Vector3());
-  return { gruppe: g, tilstand, opdater, mundPos, mave };
+  return g;
 }
 
 // ---------- Et skilt til portene: et stort billede og tallet, fx 🧀 +3 ----------

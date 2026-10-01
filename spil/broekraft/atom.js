@@ -31,7 +31,7 @@ function kurveRetning(P, u, ud) {
 
 export class Atom {
   // spil: { scene, verden, sp, partikel(x,y,z,farve,vx,vy,vz,liv,g,str), lyd, sprængning(x,y,z,slags), sæt(x,y,z,id),
-  //         online, tal(n), besked(tekst,ms), mål: [x, z] eller null, ryst(styrke) }
+  //         online, tal(n), besked(tekst,ms), mål: [x, z] eller null, ryst(styrke), del(slags, data) → sammen: vis det for de andre }
   constructor(spil) {
     this.s = spil;
     this.skyer = []; this.missiler = []; this.genlad = [];
@@ -149,15 +149,26 @@ export class Atom {
     this.sendAf({ x, z, bund, top }, mål, 0.9, false);
     this.s.lyd.nedtælling(2);
   }
-  // Blokkene bliver til et rigtigt missil, der letter
-  sendAf(m, mål, forsinkelse, genlad) {
-    for (let y = m.bund; y <= m.top; y++) this.s.sæt(m.x, y, m.z, 0);
+  // Blokkene bliver til et rigtigt missil, der letter (fremmed: en anden spillers missil — blokkene og braget
+  // kommer fra serveren, så her flyver det bare)
+  sendAf(m, mål, forsinkelse, genlad, fremmed = false) {
+    if (!fremmed) {
+      for (let y = m.bund; y <= m.top; y++) this.s.sæt(m.x, y, m.z, 0);
+      this.s.del?.("missil", { x: m.x, z: m.z, bund: m.bund, top: m.top, mx: mål[0], mz: mål[1], forsinkelse });
+    }
     const længde = m.top - m.bund + 1, model = this.missilModel(længde - 1);
     model.g.position.set(m.x + 0.5, m.bund, m.z + 0.5);
     this.s.scene.add(model.g);
     const slags = længde <= 3 ? "mini" : længde <= 8 ? "atom" : "kæmpe";
-    this.missiler.push({ ...model, fra: model.g.position.clone(), mål, t: -forsinkelse, slags, røgT: 0, fløjt: false, startet: false });
+    this.missiler.push({ ...model, fra: model.g.position.clone(), mål, t: -forsinkelse, slags, røgT: 0, fløjt: false, startet: false, fremmed });
     if (genlad && !this.s.online) this.genlad.push({ ...m, t: 30 });
+  }
+  // Sammen: et missil, som en anden spiller har sendt af sted
+  fremmedMissil({ x, z, bund, top, mx, mz, forsinkelse }) {
+    const { verden } = this.s;
+    if (![x, z, bund, top, mx, mz, forsinkelse].every(Number.isFinite) || this.missiler.length > 16) return;
+    if (top < bund || top - bund > 24 || bund < 0 || top >= verden.BY || !verden.inde(mx, 0, mz)) return;
+    this.sendAf({ x, z, bund, top }, [mx, mz], Math.max(0, Math.min(5, forsinkelse)), false, true);
   }
   // Et missil af klodser: hvid krop med røde bånd, rød spids, fire finner og en flamme bagi
   missilModel(krop) {
@@ -217,6 +228,7 @@ export class Atom {
     this.s.scene.remove(m.g);
     for (const x of m.mats) x.dispose();
     this.missiler.splice(this.missiler.indexOf(m), 1);
+    if (m.fremmed) return;                                      // svampeskyen kommer fra den, der sendte missilet
     const [tx, tz] = m.mål, ty = this.s.verden.topY(Math.floor(tx), Math.floor(tz)) + 1;   // krateret kan være blevet dybere
     this.s.sprængning(tx, ty + 0.5, tz, m.slags);
   }

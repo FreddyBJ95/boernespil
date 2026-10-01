@@ -60,7 +60,7 @@ function ballonModel(farve) {
 
 export class Skydning {
   // spil: { scene, verden, kamera, sp, dyr, partikel, eksploder, bragEffekt, puf, lyd, net(), online, sæt(x,y,z,id), atom(x,y,z),
-  //         point(n), klat(farve), tyngde, bane (true på Skydebanen), start: [x, z] }
+  //         point(n), klat(farve), tyngde, bane (true på Skydebanen), start: [x, z], del(slags, data) → sammen: vis det for de andre }
   constructor(spil) {
     this.s = spil;
     this.skud = []; this.balloner = []; this.fjender = []; this.egne = []; this.genopstil = []; this.igen = [];
@@ -84,6 +84,16 @@ export class Skydning {
     return p;
   }
   retning(p) { tmp.copy(p.pos).add(p.vel); p.model.lookAt(tmp); }
+  // Sammen: de andre tablets skal også se skuddet flyve (braget og malingen kommer fra serveren)
+  delSkud(p) {
+    const r = p.vel.clone().normalize();
+    this.s.del?.("skud", { type: p.type, x: p.pos.x, y: p.pos.y, z: p.pos.z, vx: r.x, vy: r.y, vz: r.z });
+  }
+  // Et skud fra en anden spiller: det flyver og forsvinder bare, når det rammer noget
+  fremmedSkud({ type, x, y, z, vx, vy, vz }) {
+    if (!VÅBEN[type] || type === "skum" || ![x, y, z, vx, vy, vz].every(Number.isFinite)) return;
+    this.affyr(type, new THREE.Vector3(x, y, z), new THREE.Vector3(vx, vy, vz), { afsender: "andre" });
+  }
 
   // Barnet trykker med et våben: kuglen flyver fra hånden mod det sted, fingeren peger på
   skydMod(type, kameraPos, stråle, afstand = 40) {
@@ -95,7 +105,7 @@ export class Skydning {
     const retning = mål.sub(fra).normalize();
     if (type === "maling") retning.y += 0.02;
     if (type === "atom") retning.y += 0.14;                        // atombomben flyver i en bue
-    this.affyr(type, fra, retning);
+    this.delSkud(this.affyr(type, fra, retning));
     if (type === "gevær") this.s.lyd.skud(); else if (type === "bazooka") { this.s.lyd.bazookaSkud(); this.cooldown = 0.8; }
     else if (type === "atom") { this.s.lyd.atomkasterSkud(); this.cooldown = 1.3; } else this.s.lyd.klask(0.4);
     if (type === "gevær") for (let i = 0; i < 3; i++) this.s.partikel(fra.x, fra.y, fra.z, KONFETTI[1], retning.x * 3 + (Math.random() - 0.5), retning.y * 3 + Math.random(), retning.z * 3 + (Math.random() - 0.5), 0.12, -0.1, 0.6);
@@ -278,7 +288,7 @@ export class Skydning {
     this.kanonPause = 0.9;
     kv.sigt(Math.atan2(stråleRetning.x, stråleRetning.z), 1, 100);
     const { pos } = kv.munding(), r = stråleRetning.clone(); r.y = Math.max(-0.3, r.y + 0.04);
-    this.affyr("kanon", pos, r);
+    this.delSkud(this.affyr("kanon", pos, r));
     kv.skudt(); this.s.lyd.kanonSkud();
     for (let i = 0; i < 10; i++) this.s.partikel(pos.x, pos.y, pos.z, new THREE.Color("#9a9a9a"), (Math.random() - 0.5) * 2, Math.random() * 2, (Math.random() - 0.5) * 2, 0.8, -0.1, 2.2);
   }
@@ -374,7 +384,7 @@ export class Skydning {
       }
       if (p.type === "bazooka" && Math.random() < 0.8) this.s.partikel(p.pos.x, p.pos.y, p.pos.z, new THREE.Color("#b0b0b0"), (Math.random() - 0.5) * 0.4, 0.4, (Math.random() - 0.5) * 0.4, 0.7, -0.08, 1.6);
       if (p.type === "atom" && Math.random() < 0.7) this.s.partikel(p.pos.x, p.pos.y, p.pos.z, ATOMGNIST[Math.floor(Math.random() * 3)], (Math.random() - 0.5) * 0.6, 0.5, (Math.random() - 0.5) * 0.6, 0.6, -0.05, 0.9);
-      if (!ramt && p.liv <= 0 && v.brag) { this.brag(p.pos.clone(), p.type === "atom"); ramt = true; }
+      if (!ramt && p.liv <= 0 && v.brag && p.afsender !== "andre") { this.brag(p.pos.clone(), p.type === "atom"); ramt = true; }
       if (ramt || p.liv <= 0) { this.fjern(p); this.skud.splice(i, 1); continue; }
       p.model.position.copy(p.pos); this.retning(p);
     }
@@ -387,14 +397,18 @@ export class Skydning {
         this.s.klat(p.farve); this.s.lyd.klask(1); sp.vel.x += p.vel.x * 0.15; sp.vel.z += p.vel.z * 0.15;
         return true;
       }
-    } else {
+    } else if (p.afsender !== "andre") {                          // de andres skud rammer kun blokkene (og kun til at se på)
       for (const b of this.balloner) if (tmp.set(b.pos.x, b.pos.y + 1, b.pos.z).distanceTo(p.pos) < 0.65) { this.ballonPop(b); return true; }
       for (const d of dyr) if (Math.hypot(p.pos.x - d.pos.x, p.pos.z - d.pos.z) < d.b + 0.25 && p.pos.y > d.pos.y && p.pos.y < d.pos.y + d.h + 0.2) { this.ramtDyr(p, d); return true; }
       for (const kv of this.fjender) if (kv.rammer(p.pos)) { this.ramtKampvogn(p, kv); return true; }
       for (const kv of this.egne) if (kv !== this.kører && kv.rammer(p.pos)) { this.ramtKampvogn(p, kv); return true; }
     }
     const x = Math.floor(p.pos.x), y = Math.floor(p.pos.y), z = Math.floor(p.pos.z), id = verden.hent(x, y, z);
-    if (id && BLOKKE[id] && !BLOKKE[id].kryds && !BLOKKE[id].væske) { this.ramtBlok(p, x, y, z, id); return true; }
+    if (id && BLOKKE[id] && !BLOKKE[id].kryds && !BLOKKE[id].væske) {
+      if (p.afsender === "andre") { if (!VÅBEN[p.type].brag) this.stænk(p.pos, p.type === "maling" ? p.farve : "#fff3a0", 5, 0.6); }
+      else this.ramtBlok(p, x, y, z, id);
+      return true;
+    }
     return !verden.inde(x, Math.max(0, y), z) || y < -2;
   }
 

@@ -67,8 +67,12 @@ Falder han af banen, dukker han op igen ved det sidste flag.
 | `verden.js` | Himmel, lys og skygger, vand med bølger, pynt og det der flyver i luften |
 | `lyd.js` · `partikler.js` · `teksturer.js` | Lyde og musik · gnister og konfetti · overflader tegnet med kode |
 
-Øverst i `baner.js` står hvad hvert stykke kan. `spil/rulle-rasmus/?bane=is` starter på en bestemt bane,
-og `?debug` giver adgang til spillet i konsollen (`rr`).
+Der er tre sværhedsgrader: 🐢 Nem (banen som den står), 🐇 Mellem (længere, smallere og hurtigere, hegn kun
+i de skarpe sving) og 🚀 Svær (endnu længere og helt uden kanter, kun ved start og mål). De ekstra stykker står
+i `mellem` og `svær` på hver bane i `baner.js`, og reglerne i `SVÆRHED` nederst i samme fil.
+
+Øverst i `baner.js` står hvad hvert stykke kan. `spil/rulle-rasmus/?bane=is&sv=svær` starter på en bestemt bane
+og sværhedsgrad, og `?debug` giver adgang til spillet i konsollen (`rr`).
 
 ## Broekraft: flere blokke og dyr
 Byggespillet ligger i `spil/broekraft/` og er delt op på samme måde:
@@ -89,11 +93,14 @@ spilleren i konsollen (`bk.sp`), hvis man vil fejlsøge.
 
 ## Burgerløbet
 3D-løbespillet ligger i `spil/burgerloeb/`. Man trækker fingeren til siden for at styre den lille burger.
+Stjerner på banen låser hatte op, trampoliner sender burgeren op efter stjerner i luften,
+🧲 trækker ting til sig, og 🛡️ er en boble, der tager stødet fra en kagerulle.
 
 | Fil | Indhold |
 |---|---|
-| `figurer.js` | Burgerens lag (`LAG`), den lille burger med ben og kæmpen for enden |
-| `bane.js` | Banen: bordet med dugen, tingene, kagerullerne, portene og pynten i siderne (`TEMAER` = farverne) |
+| `figurer.js` | Burgerens lag (`LAG`), den lille burger med ben, stjerner, trampoliner, bobler og hattene (`HATTE`) |
+| `kaemper.js` | Kæmperne for enden: manden, dinoen og monsteret (de skifter fra bane til bane) |
+| `bane.js` | Banen: bordet med dugen, tingene, kagerullerne, portene, trampolinerne og pynten i siderne (`TEMAER` = farverne) |
 | `spil.js` | Selve spillet: løb, saml, målet og kameraet |
 | `lyd.js` | Lydene (Web Audio, ingen lydfiler) |
 

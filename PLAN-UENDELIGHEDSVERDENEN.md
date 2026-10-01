@@ -126,7 +126,8 @@ altid ved siden af.
   - Toget kører af sig selv. Man trykker på det og vælger, hvor man vil hen.
   - Luftballonen står ved hjemmet. 🔥 får den til at stige, og ⬇ får den til at dale.
 - **Spådamen:**
-  - Hun har 13 små opgaver og læser dem højt.
+  - Hun har 18 små opgaver og læser dem højt. Til fyrværkeri-opgaven giver hun selv barnet en
+    fyrværkeri-kasse.
   - Efter hver anden opgave fortæller hun, hvor den næste sten ligger.
   - Der bor også en spådame i telt i landsbyerne.
 - **Butikken:**
@@ -134,7 +135,9 @@ altid ved siden af.
   - Hatte til kæledyret.
   - Et lille hus, der bygges, hvor man står.
   - Et fyrværkeri-show.
-  - Guld- og regnbueblokke og en egen hest er ikke med endnu.
+  - En egen pony med sadel, som man kan ride på.
+  - Særlige blokke, man kun kan købe: ✨ glimmerguld, 🌈 regnbuelys og 💖 hjerteblokke. Når de er
+    købt, ligger de i ⋯ i alle verdener.
 - **Skattekisten** ved hjemmet viser guldet. Man finder også ekstra guld i kisterne i grotter og kæmpetræer.
 - **Stenene:**
   - Stenene svæver med en lysstråle. Man henter dem ved at gå hen til dem.
@@ -143,6 +146,25 @@ altid ved siden af.
   - **Skystenen giver kæmpehop (🦘)** i stedet for at flyve, for man kan allerede flyve i Broekraft.
 - **Superkræfterne** er knapper i højre side: 🦖 dino, ✨ stjerner, 💪 kæmpe, 🦘 kæmpehop og 🎶 guldfløjten.
   Ildstenen og havstenen virker af sig selv.
+- **Årstidernes små ting:**
+  - 🌸 Forår:
+    - kyllinger
+    - sommerfugle, der flagrer om dagen
+    - glødende svampe i skovene, der lyser om natten
+  - ☀️ Sommer:
+    - jordbærmarker
+    - bier, der summer om blomsterne
+    - isboder ved strandene, hvor man kan hente en is
+  - 🍂 Efterår:
+    - egern og pindsvin
+    - drager, der blafrer højt oppe i vinden
+  - ❄️ Vinter:
+    - juletræer med lyskæder, en guldstjerne og gaver
+    - snemænd
+    - nordlys om natten
+  - ⛰️ Vandfald, der falder lodret ned i en klippekløft på bjergsiderne.
+- **Spil sammen over serveren:** Codex har lavet serverdelen på `codex/uendelig`, og Claudes tabletdel ligger på
+  `main`. Det virker, når ejeren har flettet grenen og udgivet server-v0.5.0 (se `OVERDRAGELSE-CODEX-UENDELIG.md`).
 - **Guldslottet:**
   - Det er en skjult verden. Den vises først i listen, når finalen er klaret.
   - Man kommer derop på føniksens ryg og får en krone i gården. Så kommer der fyrværkeri.
