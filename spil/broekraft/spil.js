@@ -785,8 +785,9 @@ if (!ONLINE && verden.data) for (let i = 0; i < verden.data.length; i++) if (ver
 // Et kæmpe glimt, en trykbølge og en svampesky. Himlen gløder orange et stykke tid, og krateret får aske,
 // lysende slim og små flammer i bunden. Ingen kommer til skade: zombierne bliver til konfetti,
 // og alle andre bliver bare blæst lidt væk. slags: "mini" (atomkasteren), "atom" eller "kæmpe".
-function atomEksplosion(cx, cy, cz, kunVis, slags = "atom") {
+function atomEksplosion(cx, cy, cz, kunVis, slags = "atom", fremmed = false) {
   const S = STØRRELSE[slags] || STØRRELSE.atom, afst = Math.hypot(cx - sp.pos.x, cz - sp.pos.z);
+  if (!fremmed) delEffekt("svampesky", { x: cx, y: cy, z: cz, str: slags });   // sammen: de andre ser også svampeskyen
   if (!kunVis) eksploder(cx, cy, cz, S.R); else bragEffekt(cx, cy, cz, S.R);
   if (!kunVis && !ONLINE) atomKrater(cx, cy, cz, S.R);
   atom.svampesky(cx, cy - 0.5, cz, S.sky);
@@ -797,7 +798,7 @@ function atomEksplosion(cx, cy, cz, kunVis, slags = "atom") {
 }
 // Atomkasteren: en lille atomsprængning (sammen: serveren sprænger, og svampeskyen vises her)
 function miniAtom(x, y, z) {
-  if (ONLINE) { net?.brag(x, y, z); atomEksplosion(x, y, z, true, "mini"); } else atomEksplosion(x, y, z, false, "mini");
+  if (ONLINE) { net?.brag(x, y, z, "mini"); atomEksplosion(x, y, z, true, "mini"); } else atomEksplosion(x, y, z, false, "mini");
 }
 // Krateret: aske i bunden, lysende slim i midten og små flammer — og grønt lys, der stiger op et stykke tid
 const kraterGlød = [];
@@ -1277,8 +1278,10 @@ function tændSprængstof({ x, y, z, id }) {
   if (!ONLINE) { tændTNT(x, y, z, lunte, false, id, true); return; }
   if (id === ID.TNT) net?.tænd(x, y, z); else net?.sæt(x, y, z, 0);
   tændTNT(x, y, z, lunte, true, id, true);
+  delEffekt("lunte", { x, y, z, id, lunte });
 }
-function tændTNT(x, y, z, lunte = 2.2, kunVis = false, blok = ID.TNT, tæl = false) {
+// fremmed: en bombe, en anden spiller har tændt — den er kun til at se på (braget kommer fra serveren)
+function tændTNT(x, y, z, lunte = 2.2, kunVis = false, blok = ID.TNT, tæl = false, fremmed = false) {
   if (!kunVis) verden.sæt(x, y, z, 0);
   if (tændte.length >= 40) return;
   const g = new THREE.Group();
@@ -1288,7 +1291,7 @@ function tændTNT(x, y, z, lunte = 2.2, kunVis = false, blok = ID.TNT, tæl = fa
   scene.add(g);
   tændte.push({ g, hvid, pos: new THREE.Vector3(x + 0.5, y, z + 0.5), vel: new THREE.Vector3(0, lunte < 1 ? 3 : 2, 0), tid: 0, lunte, røgT: 0, kunVis,
     atom: BLOKKE[blok]?.atom ? (BLOKKE[blok].atom === "kæmpe" ? "kæmpe" : "atom") : null, tæl: tæl && !!BLOKKE[blok]?.atom, tal: 0,
-    brag: kunVis && ONLINE && blok !== ID.TNT });
+    brag: kunVis && ONLINE && blok !== ID.TNT && !fremmed, fremmed });
   Lyd.tænd();
   if (!kunVis) gemSnart();
 }
@@ -1318,9 +1321,10 @@ function opdaterTNT(dt) {
       tændte.splice(i, 1);
       scene.remove(t.g);
       t.g.traverse(c => { if (c.isMesh) { c.geometry.dispose(); c.material.dispose(); } });
+      if (t.fremmed) continue;                                    // svampeskyen og braget kommer fra den anden
       if (t.atom) atomEksplosion(t.pos.x, t.pos.y + 0.5, t.pos.z, t.kunVis, t.atom);
       else if (!t.kunVis) eksploder(t.pos.x, t.pos.y + 0.5, t.pos.z);
-      if (t.brag) net?.brag(t.pos.x, t.pos.y + 0.5, t.pos.z);
+      if (t.brag) net?.brag(t.pos.x, t.pos.y + 0.5, t.pos.z, t.atom || undefined);
     }
   }
 }
@@ -1386,7 +1390,7 @@ function bragEffekt(cx, cy, cz, R = 3.3) {
 const skyd = new Skydning({
   scene, verden, kamera, sp, dyr, partikel, eksploder, bragEffekt, puf, lyd: Lyd, stegAf: kv => stegAf(kv), net: () => net, online: ONLINE,
   sæt: (x, y, z, id) => { verden.sæt(x, y, z, id); gemSnart(); }, point: n => nyePoint(n), klat: f => klat(f),
-  tyngde: TYNGDE, bane: !!cfg.skyd, start: [VX / 2, VZ / 2], atom: (x, y, z) => miniAtom(x, y, z),
+  tyngde: TYNGDE, bane: !!cfg.skyd, start: [VX / 2, VZ / 2], atom: (x, y, z) => miniAtom(x, y, z), del: delEffekt,
 });
 const fyr = new Fyrværkeri(scene, kamera, { lyd: { fløjt: Lyd.fløjt, brag: Lyd.fyrBrag, knitre: Lyd.fyrKnitre, droner: Lyd.droner, figur: Lyd.figur }, blink: himmelBlink });
 // Nytårsaften (nytaar.js): pariserhjulet, nedtællingen ved uret og kæmperaketten med faldskærm
@@ -1400,13 +1404,15 @@ const nytår = new Nytår({
 // Dronekassen: dronerne letter og tegner figurer på himlen (højst ét show ad gangen)
 function startDroner({ x, y, z }) {
   if (!fyr.droneshow(x + 0.5, y, z + 0.5)) { besked("🛸 Dronerne er allerede i luften — vent lidt", 2500); return; }
+  delEffekt("droner", { x: x + 0.5, y, z: z + 0.5 });
   sætHer(x, y, z, 0); Lyd.tænd(); sving = 1; gemSnart();
 }
 // Atombomber, missiler og den røde knap (atom.js) — sammen fjernes blokkene lidt ad gangen, og serveren sprænger
 const atom = new Atom({
   scene, verden, sp, partikel, lyd: Lyd, online: ONLINE, besked, tal: visTal, sæt: sætHer,
   mål: cfg.atommål ? cfg.atommål(VX, VZ) : null, ryst: n => { rystelse = Math.min(2.4, rystelse + n); },
-  sprængning: (x, y, z, slags) => { if (ONLINE) { net?.brag(x, y, z); atomEksplosion(x, y, z, true, slags); } else atomEksplosion(x, y, z, false, slags); },
+  sprængning: (x, y, z, slags) => { if (ONLINE) { net?.brag(x, y, z, slags); atomEksplosion(x, y, z, true, slags); } else atomEksplosion(x, y, z, false, slags); },
+  del: delEffekt,
 });
 // Biler (biler.js): i Brandmandsbyen holder brandbilerne, ambulancen og politibilen klar (cfg.biler).
 // Med 🚒-værktøjerne kan man selv sætte biler, i alle verdener (højst fire ad gangen).
@@ -2120,7 +2126,7 @@ function brugKraft(navn) {
   } else if (navn === "stjerne") {                               // ✨ stjerner og fyrværkeri dér, hvor man kigger
     const r = new THREE.Vector3(); kamera.getWorldDirection(r);
     const p = kamera.position.clone().addScaledVector(r, 14);
-    for (let i = 0; i < 5; i++) setTimeout(() => fyr.raket(p.x + (Math.random() - 0.5) * 6, Math.max(p.y, sp.pos.y + 2), p.z + (Math.random() - 0.5) * 6), i * 180);
+    for (let i = 0; i < 5; i++) setTimeout(() => fællesRaket(p.x + (Math.random() - 0.5) * 6, Math.max(p.y, sp.pos.y + 2), p.z + (Math.random() - 0.5) * 6), i * (ONLINE ? 550 : 180));
     stjernedrys(40, 3);
   } else if (navn === "atom") {                                  // 💪 kæmpestor i 20 sekunder
     kæmpeTid = 20; rystelse = Math.max(rystelse, 0.6); Lyd.bum?.();
@@ -2147,7 +2153,30 @@ function lilleHus() {
 }
 // Et fyrværkeri-show over barnet
 function fyrværkeriShow() {
-  for (let i = 0; i < 14; i++) setTimeout(() => fyr.raket(sp.pos.x + (Math.random() - 0.5) * 30, sp.pos.y + 1, sp.pos.z - 10 - Math.random() * 20), i * 350);
+  for (let i = 0; i < 14; i++) setTimeout(() => fællesRaket(sp.pos.x + (Math.random() - 0.5) * 24, sp.pos.y + 1, sp.pos.z - 8 - Math.random() * 16), i * (ONLINE ? 550 : 350));
+}
+// En raket, som alle kan se: sammen sender serveren den til alle (også tilbage hertil)
+function fællesRaket(x, y, z) { if (ONLINE) net?.fyrværkeri(x, y, z); else fyr.raket(x, y, z); }
+
+// ---------- Sammen: det, der kun er til at se på, vises også på de andre tablets ----------
+// Skud, der flyver, missiler, svampeskyer, tændte bomber og droner. Serveren sender det videre til de
+// andre i samme verden (kræver server med "effekt" — se OVERDRAGELSE-CODEX-EFFEKTER.md); ældre servere
+// ignorerer det. Blokkene og selve braget styrer serveren stadig selv.
+let effektKvote = 8;
+function delEffekt(slags, data) {
+  if (!ONLINE || !net?.effekt || effektKvote < 1) return;
+  effektKvote--; net.effekt(slags, data);
+}
+setInterval(() => { effektKvote = Math.min(8, effektKvote + 4); }, 500);   // højst otte i sekundet
+function fremmedEffekt({ fra, slags, ...d }) {
+  if (fra === minId || !iGang) return;
+  const tal = (...n) => n.every(Number.isFinite);
+  if (tal(d.x, d.z) && Math.hypot(d.x - sp.pos.x, d.z - sp.pos.z) > 160) return;   // for langt væk til at se
+  if (slags === "skud") skyd.fremmedSkud(d);
+  else if (slags === "missil") atom.fremmedMissil(d);
+  else if (slags === "svampesky" && tal(d.x, d.y, d.z) && STØRRELSE[d.str]) atomEksplosion(d.x, d.y, d.z, true, d.str, true);
+  else if (slags === "lunte" && tal(d.x, d.y, d.z, d.lunte) && (BLOKKE[d.id]?.tnt || BLOKKE[d.id]?.atom)) tændTNT(Math.floor(d.x), Math.floor(d.y), Math.floor(d.z), Math.max(0.2, Math.min(6, d.lunte)), true, d.id, false, true);
+  else if (slags === "droner" && tal(d.x, d.y, d.z)) fyr.droneshow(d.x, d.y, d.z);
 }
 
 let tid = 0, sidst = performance.now(), fejlVist = false, skjulT = 0;
@@ -2339,6 +2368,7 @@ async function forbindOnline() {
   net.addEventListener("bum", e => { sidsteBum = { ...e.detail, tid: performance.now() }; bragEffekt(e.detail.x, e.detail.y, e.detail.z); });
   net.addEventListener("emoji", e => visEmoji(e.detail.id, e.detail.e));
   net.addEventListener("fyrværkeri", e => fyr.raket(e.detail.x, e.detail.y, e.detail.z, e.detail));
+  net.addEventListener("effekt", e => fremmedEffekt(e.detail));
   net.addEventListener("lukket", e => status(e.detail.genforbinder ? "🟡 Forbinder igen…" : "🔴 Afbrudt"));
   net.addEventListener("fejl", e => besked(`⚠️ ${e.detail.besked}`, 3000));
   net.udsyn(UDSYN[udsynNr].r);
