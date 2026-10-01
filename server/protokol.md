@@ -1,7 +1,11 @@
 # Broekraft-protokol 0.2.0
 
 WebSocket: `/ws`, samme host/origin som spillet (wss på HTTPS). JSON-tekst har feltet `t` og er højst 4096 UTF-8-bytes,
-bortset fra `rtc`, som må fylde 32768 bytes. Version 0.1.0 accepteres stadig uden stemmer.
+bortset fra `rtc`, som må fylde 32768 bytes, og `effekt`, som højst må fylde 1024 bytes.
+Version 0.1.0 accepteres stadig uden stemmer i endelige verdener.
+Nye uendelige verdener udelades fra 0.1.0-klientens liste; et direkte valg afvises med en besked om
+at genindlæse spillet. Den gamle tilslutning bevares. Ældre gemte, endelige `uendelig`-verdener har
+stadig format 0.1.0 og `uendelig:false`; de ændres ikke automatisk til en stor verden.
 Ukendte typer ignoreres. Binære klientbeskeder afvises. Serveren har en samlet grænse på 100 beskeder/s
 pr. forbindelse ud over grænserne nedenfor. En brudt forbindelse fjernes automatisk (WebSocket ping/pong).
 
@@ -25,22 +29,22 @@ Bundsten kan hverken sættes eller fjernes. Blokke kan ikke placeres i en spille
 
 | t | Felter |
 |---|---|
-| verdener | liste: [{id,navn,type,bredde,dybde,spillere,maks}] |
-| velkommen | dig, verden: {id,navn,type,bredde,dybde,højde,frø,ildBreder}, spillere: [{id,figur,x,y,z,yaw,pitch}] |
+| verdener | liste: [{id,navn,type,bredde,dybde,uendelig,spillere,maks}] |
+| velkommen | dig, verden: {id,navn,type,bredde,dybde,højde,frø,ildBreder,stemmer,uendelig}, spillere: [{id,figur,x,y,z,yaw,pitch}] |
 | fuld | – |
 | ind | id,figur |
 | ud | id |
 | pos | liste: [{id,figur,x,y,z,yaw,pitch}], op til 10/s |
 | blok | x,y,z,id, kun til spillere med den berørte klump |
 | glem | cx,cz |
-| bum | x,y,z (eksplosionens centrum) |
+| bum | x,y,z (eksplosionens centrum), slags? (`mini`, `atom` eller `kæmpe`) |
 | emoji | id,e |
 | fejl | besked |
 
 Maksimum gælder pr. verden. Afvist verdensskift bevarer den gamle tilslutning.
 Der er ingen navne eller chat i protokollen. Dyrene simuleres lokalt på hver tablet.
 
-## Fælles brag og fyrværkeri (tilføjelse på codex/netvaerk-effekter)
+## Fælles brag, fyrværkeri og flyvende effekter
 
 De nye metoder på `net` sender kun, mens `net.klar` er sand. De lægges aldrig i kø efter afbrydelse.
 Spillets visuelle integration udføres af Claude. Den eksisterende version 0.2.0 er bevaret; udvidelsen
@@ -48,14 +52,49 @@ Spillets visuelle integration udføres af Claude. Den eksisterende version 0.2.0
 
 | Klientmetode | Besked | Serverens handling |
 |---|---|---|
-| `brag(x,y,z)` | `{t:"brag",x,y,z}` | Samme faste radius 3,3 og TNT-kæde som TNT; udsender `blok` og `bum` |
+| `brag(x,y,z,slags?)` | `{t:"brag",x,y,z,slags?}` | Radius 3,3 uden slags, `mini`: 5, `atom`: 9, `kæmpe`: 13. Udsender `blok` og `bum`; atom/kæmpe laver også et fælles krater |
+| `effekt(slags,data)` | `{t:"effekt",slags,...felter}` | Validerer og sender en kosmetisk effekt til de andre 0.2.0-spillere i samme verden, med serverens `fra` |
 | `fyrværkeri(x,y,z,mønster?)` | `{t:"fyrværkeri",x,y,z,mønster?}` | Vælger fælles farver/flyveparametre og sender én raket til alle i rummet |
 | `tændFyrkasse(x,y,z)` | `{t:"fyrkasse",x,y,z}` | Kræver Fyrværkeri-, Show-kasse- eller Fontæne-blok og fjerner den én gang. Fyrværkeri: 12 raketter. Show-kasse: 36 raketter, hvor de sidste 8 er en hurtig finale. Fontæne: én `fyrværkeri`-besked med mønster `fontæne` på blokkens plads |
 
 Alle koordinater skal være endelige tal inden for verdens x/z-grænser og y=0…højde+64.
 Brag må være højst 96 blokke fra seneste spillerposition; klienten angiver træfpunktet, mens serveren
 bestemmer selve eksplosionen. Den simulerer ikke projektilbanen. Højst to brag/sekund pr. spiller og 16
-pr. rum. Klientens foreslåede radius eller øvrige felter ignoreres. Bundsten bevares.
+pr. rum. Klientens foreslåede radius eller øvrige felter ignoreres. Ukendt `slags` afvises stille.
+Bundsten og øvrige uknuselige blokke bevares; atomsprængninger springer også væsker over.
+`atom` og `kæmpe` deler en ekstra grænse på ét brag pr. to sekunder pr. spiller, og højst to
+store sprængninger kan indlæse eller ændre land samtidig i samme rum.
+
+Efter `atom`/`kæmpe` ser serveren på den øverste resterende faste blok inden for 0,95 × radius,
+kun op til sprængningens højde. Som tabletternes `topY` søger den gennem planter, væsker og portaler;
+uknuselige blokke bevares. Samme tilfældige tal
+bruges som i spillets `atomKrater`: under 0,35 × radius bliver de første 30 % til Atomslim;
+ellers giver tal under 0,55 Aske, og tal over 0,97 giver Ild ovenpå, hvis pladsen er tom.
+Alle får serverens blokændringer. Uendeligt land indlæses og holdes fast under hele sprængningen.
+
+### Kosmetiske effekter (server 0.5.0, opgave E)
+
+Disse effekter laver ingen blokændringer og udløser ikke et ekstra brag. Afsenderen har allerede
+vist dem lokalt og får dem derfor ikke tilbage. Spillere i andre verdener og 0.1.0-klienter får dem
+heller ikke. Alle tal skal være endelige. x/z og eventuelle mål skal være inden for verdenen;
+flyvende effekter tillader y=0…højde+64 ligesom spillerpositioner, mens blokke ligger under højde.
+
+| `slags` | Tilladte felter | Kontrol |
+|---|---|---|
+| `skud` | `type,x,y,z,vx,vy,vz` | Type gevær/bazooka/maling/kanon/atom; højst 8 blokke fra spilleren; retningens længde højst 1,5 |
+| `missil` | `x,z,bund,top,mx,mz,forsinkelse` | Startens x/z/bund/top er heltal; 0 ≤ bund ≤ top < højde; top−bund ≤ 24; højst 96 blokke væk; mål mx/mz er inden for verdenen; forsinkelse 0–5 |
+| `svampesky` | `x,y,z,str` | str mini/atom/kæmpe; højst 128 blokke væk |
+| `lunte` | `x,y,z,id,lunte` | Heltalskoordinater højst 12 blokke væk; kendt tnt/atom-blok-id; lunte 0,2–6 |
+| `droner` | `x,y,z` | Højst 12 blokke væk |
+
+Højst otte effekter pr. rullende sekund pr. spiller og 40 pr. rum. Ugyldige, ukendte, for store
+og overskydende effekter ignoreres stille. Bytegrænsen 1024 gælder den oprindelige UTF-8-tekst,
+inklusive mellemrum og ekstra felter. Serveren bygger et nyt objekt med tabellens felter og
+sit eget `fra`, så fx klientens `fra`, `til`, farver eller andre ekstra værdier aldrig videresendes.
+
+```js
+{ t: "effekt", slags: "skud", fra: spillerId, type: "bazooka", x, y, z, vx, vy, vz }
+```
 
 En enkelt raket må starte højst 32 blokke fra spilleren. En kasse kræver heltalskoordinater inde i
 verdenen og en afstand på højst otte blokke. Raketter og kassetændinger deler grænsen to/sekund pr.
@@ -92,12 +131,39 @@ Kilde til Windows-profiltjek: [Microsofts Get-NetConnectionProfile](https://lear
 Header på 11 bytes: type uint8=1, cx int32, cz int32, højde uint16. **Little endian**.
 Resten er RLE-par: antal uint8 (1–255), blok-id uint8. Rækker længere end 255 deles op.
 Udpakket data har præcis `16*16*højde` bytes med indeks `x + z*16 + y*256`.
-cx/cz er klumpkoordinater, ikke blokkoordinater. Verdensindeks er `x + z*bredde + y*bredde*dybde`.
+cx/cz er klumpkoordinater, ikke blokkoordinater: `0 <= cx < bredde/16` og `0 <= cz < dybde/16`,
+med bredde/dybde fra seneste `velkommen.verden`. Højden skal svare til velkomstens `højde`.
+For den uendelige verden er cx/cz 0…4095. De endelige verdener har stadig deres tidligere mål.
+Verdensindeks i de endelige verdener er `x + z*bredde + y*bredde*dybde`.
 
 Serveren sender nærmeste manglende klumper først, højst fire pr. spiller pr. 100 ms,
 inden for en cirkel med radius r. En hel klump kommer før dens senere blokændringer.
 Ved glem frigives klumpen; en ny tilslutning kræver, at klienten rydder alle gamle klumper.
 Langsomme klienter får begrænset strømmen og forbindes igen ved for stor sendekø.
+
+## Den uendelige verden (server 0.5.0)
+
+For `type: "uendelig"` sender serveren `velkommen.verden.uendelig: true`, `bredde: 65536`,
+`dybde: 65536` og `højde: 64`. Frøet er direkte `meta.frø`, så grundlandet passer byte for byte
+med `lavLand({støj: lavStøj(frø), ID, BY: 64, frø}).søjle(cx, cz)` på tabletten. Startpositionen
+er ved hjemmet, x/z = 32768,5; y ligger én blok over toppen. Koordinater for positioner,
+blokændringer, TNT, brag og fyrværkeri kontrolleres stadig mod verdens medsendte mål.
+
+**Claude integrerer visningen:** Når `velkommen.verden.uendelig` er sand, skal spillet bruge
+serverens `klump`, `blok` og `glem` som grundlag for de viste søjler. Det må ikke generere
+terrænet lokalt oven i serverens klumper. Ryd tidligere søjler ved hver `velkommen`, også ved
+verdensskift og genforbindelse. Der skal ikke oprettes én tæt blokmatrix på 65536²; behold de
+modtagne søjler enkeltvis. Kortet og årstiderne bruger fortsat verdens frø og indstillinger.
+
+Tog, luftballon, spådamen, guld, sten og dyr kører lokalt på hver tablet, som når barnet spiller
+alene. Andre spilleres figurer og blokændringer deles; toget er ikke fælles. Vand, lava, ild
+og TNT styres af serveren. Simulering ved en endnu ikke indlæst søjle venter, til søjlen er klar.
+
+Kontrolpanelet viser "uden kanter" og spørger ikke om størrelse for denne type. Kun typen
+`uendelig` bruger metadataformat 0.2.0 og regioner med ændringer; endelige verdener beholder
+format 0.1.0. Protokollen er fortsat 0.2.0, og 0.1.0-klienter kan stadig bruge endelige verdener.
+Ældre udgaver af spillets netmodul kan ikke læse klumpkoordinater over 63 og skal opdateres,
+før de går ind i den uendelige verden.
 
 ## Klientbibliotek til Claude
 
@@ -105,6 +171,8 @@ Langsomme klienter får begrænset strømmen og forbindes igen ved for stor send
 `verdener()`, `vælg(id)`, `udsyn(r)`, `pos(x,y,z,yaw,pitch)`, `sæt(x,y,z,id)`, `tænd(x,y,z)`, `emoji(e)` og `luk()`.
 `vælg` returnerer indholdet af velkommen uden t, eller kaster `Error("fuld")`.
 Kun ét udestående kald af hver forespørgselstype er tilladt. Svar udløber efter 15 sekunder.
+`udpakKlump(buffer,maksId=255,mål={bredde:1024,dybde:1024})` bevarer ældre direkte kald;
+forbindelsen bruger altid målene fra sin seneste velkomst og afviser klumper før velkomsten.
 
 Alle serverbeskeder bliver hændelser med `e.detail` uden t. Desuden:
 

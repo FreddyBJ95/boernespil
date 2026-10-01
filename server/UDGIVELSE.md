@@ -1,5 +1,17 @@
 Broekraft Server lader 1–8 børn bygge i samme Broekraft-verden på familiens eget wifi.
 
+**Nyt i 0.5.0**
+- 🌍 Flere verdener: Underverdenen, Brandmandsbyen, Piratøen, Havbunden, Slikland, Skyøerne,
+  Bondegården, Dinodalen, NUKE-banen og Ildtornadoerne. Portaler og de nye blokke er med i pakkerne.
+- ♾️ Serveren understøtter nu **Den uendelige verden**: landet indlæses omkring spillerne,
+  og børnenes ændringer gemmes, så de er der efter en genstart. Verdenen vises som **uden kanter**.
+- 💥 Alle i samme verden kan nu se hinandens skud, raketter, missiler, tændte bomber,
+  svampeskyer og droner. Atombomber og missiler laver større fælles brag og kratere med aske,
+  atomslim og små flammer. Serveren bestemmer blokændringerne, så alle ser det samme.
+- 🔒 Skjulte verdener som Guldslottet kan ikke oprettes fra kontrolpanelet.
+- 🐧 Linux-pakker til 64-bit Intel/AMD og ARM64, herunder Raspberry Pi med 64-bit Raspberry Pi OS.
+  Installer uden sudo; serveren kan køres uden skærm, og kontrolpanelet åbnes gennem en SSH-tunnel.
+
 **Nyt i 0.4.0**
 - 🎆 **Fyrværkeri-verdenen er meget større**: torv med et kæmpe juletræ, lyskæder og gaver, en scene med
   show-kasser og fontæner, en frossen sø med glat is, en kælkebakke, snemænd, pingviner og rensdyr med
@@ -30,6 +42,8 @@ Broekraft Server lader 1–8 børn bygge i samme Broekraft-verden på familiens 
 - Kontrolpanelet fjerner nu selv beskeden "Verdenen bliver oprettet…", når verdenen er klar.
 
 **Hvilken fil skal jeg hente?**
+- Linux med Intel/AMD (64-bit): `BroekraftServer-Linux-x64.tar.gz`
+- Linux ARM64, fx Raspberry Pi med 64-bit Linux: `BroekraftServer-Linux-ARM64.tar.gz`
 - Windows-pc: `BroekraftServer-Windows.zip`
 - Mac med Apple-chip (M1, M2, M3, M4 …): `BroekraftServer-Mac-AppleSilicon.zip`
 - Ældre Mac med Intel-processor: `BroekraftServer-Mac-Intel.zip`
@@ -38,6 +52,9 @@ Er du i tvivl, så vælg Æble-menuen → **Om denne Mac**. Der står enten "Chi
 "Processor Intel …".
 
 **Sådan kommer I i gang**
+På Linux: pak `.tar.gz` ud, kør `sh installer.sh` uden sudo og start `~/.local/bin/broekraft-server`.
+Se Linux-afsnittet i LÆSMIG.md, også for servere uden skærm. Ingen Deno-installation kræves.
+
 1. Pak **hele** zip-filen ud, og start BroekraftServer. Kontrolpanelet åbner i browseren.
 2. Opret en verden. Du vælger navn, type, størrelse, antal spillere og om ild må brede sig.
 3. På tabletten trykker I **Spil sammen** i Børnespil-appen og scanner QR-koden på computeren.

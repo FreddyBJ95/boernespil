@@ -6,6 +6,7 @@
   color: var(--tekst); background: #eef4f7;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { margin: 0; }
 
 /* Bånd med græs og jord øverst */

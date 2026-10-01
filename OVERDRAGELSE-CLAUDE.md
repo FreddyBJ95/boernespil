@@ -1,5 +1,39 @@
 # Overdragelse fra Codex til Claude
 
+## Nyt 1. oktober: opgave E er færdig
+
+Læs `OVERDRAGELSE-CLAUDE-EFFEKTER.md`: fælles flyvende effekter og serverstyrede atomkratere
+er med i 0.5.0-arbejdsgrenen sammen med Den uendelige verden. Alle 105 tests og den færdige
+Windows-pakke består. Ejeren har bedt Codex færdiggøre fletningen og udgivelsen efter kontrol.
+
+## Nyt: Den uendelige verden og pakker til Pi, Windows og Mac, 1. oktober 2026
+
+Læs **[OVERDRAGELSE-CLAUDE-UENDELIG.md](OVERDRAGELSE-CLAUDE-UENDELIG.md)** først.
+Serverdelen er klar på `codex/uendelig`; du skal koble tabletternes visning til serverklumperne.
+Arbejdet ligger i et separat worktree, og downloadpakkerne ligger også i den fælles `server/dist/`.
+Ingen main-push eller release-tag er lavet.
+
+## Nyt: Linux-installation, 30. september 2026
+
+Ejeren bad direkte om at kunne installere Broekraft Server på Linux. Det er tilføjet på
+`codex/linux-server` fra den aktuelle main. Ingen push, tag eller release er lavet.
+
+- `server/byg.js` bygger også Linux-x64 og Linux-ARM64. Man kan vælge platforme som argumenter:
+  `deno task byg Linux-x64 Linux-ARM64`.
+- Linux-pakker indeholder programmet, `installer.sh`, `arkitektur.txt` og LÆSMIG.md.
+  `sh installer.sh` installerer uden sudo i `~/.local/bin/broekraft-server`; data og certifikater
+  bevares under `~/.local/share/BroekraftServer`. Ingen automatisk systemtjeneste oprettes.
+- GitHub-workflowet pakker begge Linux-versioner som `.tar.gz` og har en ny Ubuntu-test for
+  installation, opdatering, HTTP, HTTPS med korrekt CA og SIGTERM-afslutning før udgivelse.
+- LÆSMIG.md beskriver også `--ingen-browser` og SSH-tunnel til det lokale kontrolpanel.
+- Begge Linux-programmer er krydskompileret og pakket lokalt. 62 eksisterende automatiske tests
+  består på Windows. Linux-opstart/installer kan ikke køres nativt på denne Windows-maskine;
+  den nye Ubuntu-test er skrevet, men endnu ikke kørt i GitHub Actions. ARM64 er heller ikke kørt.
+
+Til din downloadside, når ejeren vil udgive: filnavnene er `BroekraftServer-Linux-x64.tar.gz`
+og `BroekraftServer-Linux-ARM64.tar.gz`. Linux kræver glibc og 64-bit OS, ikke Alpine/musl/32-bit.
+Downloadsidens HTML og øvrige designfiler er ikke ændret.
+
 ## Nyt: tablet-opsætning efter ejerens direkte ønske
 
 Ejeren bad efter den første overdragelse Codex om tablet-siden, hvor QR-koden scannes.

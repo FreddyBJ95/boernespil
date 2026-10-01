@@ -1,5 +1,7 @@
 name: Broekraft Server
 on:
+  pull_request:
+    paths: ['server/**', 'spil/broekraft/**', '.github/workflows/broekraft-server.yml']
   push:
     tags: ['server-v*']
   workflow_dispatch:
@@ -8,8 +10,6 @@ permissions:
 jobs:
   byg:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2
@@ -18,7 +18,7 @@ jobs:
       - name: Afprøv generator, protokol og simulering
         working-directory: server
         run: deno task test
-      - name: Byg Windows og begge Mac-programmer
+      - name: Byg Windows, Mac og Linux (x64 og ARM64)
         working-directory: server
         run: deno task byg
       - name: Pak programmer og vejledning
@@ -28,14 +28,54 @@ jobs:
           for platform in Windows Mac-Intel Mac-AppleSilicon; do
             (cd "$platform" && zip "../BroekraftServer-$platform.zip" BroekraftServer* LÆSMIG.md)
           done
+          for platform in Linux-x64 Linux-ARM64; do
+            tar -czf "BroekraftServer-$platform.tar.gz" -C "$platform" BroekraftServer installer.sh arkitektur.txt LÆSMIG.md
+          done
+          sha256sum BroekraftServer-*.zip BroekraftServer-*.tar.gz > SHA256SUMS.txt
       - name: Gem pakker til manuel afprøvning
         uses: actions/upload-artifact@v4
         with:
           name: BroekraftServer
-          path: server/dist/*.zip
+          path: |
+            server/dist/*.zip
+            server/dist/*.tar.gz
+            server/dist/SHA256SUMS.txt
+  linux-test:
+    needs: byg
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: Linux-x64
+            runner: ubuntu-24.04
+          - platform: Linux-ARM64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: BroekraftServer
+          path: server/dist
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.7
+      - name: Afprøv installation og HTTPS på ${{ matrix.platform }}
+        run: sh server/tests/linux-installation.sh
+  udgiv:
+    needs: [byg, linux-test]
+    if: startsWith(github.ref, 'refs/tags/server-v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: BroekraftServer
+          path: server/dist
       - name: Udgiv tag som GitHub Release
-        if: startsWith(github.ref, 'refs/tags/server-v')
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
-        run: gh release create "$TAG" server/dist/*.zip --verify-tag --title "Broekraft Server $TAG" --notes-file server/UDGIVELSE.md
+        run: gh release create "$TAG" server/dist/*.zip server/dist/*.tar.gz server/dist/SHA256SUMS.txt --verify-tag --title "Broekraft Server $TAG" --notes-file server/UDGIVELSE.md
