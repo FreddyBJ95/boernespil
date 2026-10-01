@@ -89,11 +89,14 @@ spilleren i konsollen (`bk.sp`), hvis man vil fejlsøge.
 
 ## Burgerløbet
 3D-løbespillet ligger i `spil/burgerloeb/`. Man trækker fingeren til siden for at styre den lille burger.
+Stjerner på banen låser hatte op, trampoliner sender burgeren op efter stjerner i luften,
+🧲 trækker ting til sig, og 🛡️ er en boble, der tager stødet fra en kagerulle.
 
 | Fil | Indhold |
 |---|---|
-| `figurer.js` | Burgerens lag (`LAG`), den lille burger med ben og kæmpen for enden |
-| `bane.js` | Banen: bordet med dugen, tingene, kagerullerne, portene og pynten i siderne (`TEMAER` = farverne) |
+| `figurer.js` | Burgerens lag (`LAG`), den lille burger med ben, stjerner, trampoliner, bobler og hattene (`HATTE`) |
+| `kaemper.js` | Kæmperne for enden: manden, dinoen og monsteret (de skifter fra bane til bane) |
+| `bane.js` | Banen: bordet med dugen, tingene, kagerullerne, portene, trampolinerne og pynten i siderne (`TEMAER` = farverne) |
 | `spil.js` | Selve spillet: løb, saml, målet og kameraet |
 | `lyd.js` | Lydene (Web Audio, ingen lydfiler) |
 

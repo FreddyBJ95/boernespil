@@ -53,3 +53,12 @@ export function mmm() { tone(165, nu(), 1.1, "triangle", 0.25, 208, [5, 6]); ton
 export function bøvs() { sus(nu(), 0.8, "lowpass", 380, 140, 0.6, 4); tone(70, nu(), 0.8, "sawtooth", 0.2, 52, [20, 10]); }
 export function hm() { tone(220, nu(), 0.4, "triangle", 0.2, 190); }
 export function trin() { sus(nu(), 0.03, "bandpass", 1600, 1200, 0.05, 3); }
+// Stjerner, trampolin, power-ups og skjoldet, der springer
+export function stjerne(iTræk) {
+  const f = SKALA[Math.min(iTræk + 4, SKALA.length - 1)];
+  tone(f * 2, nu(), 0.15, "sine", 0.12); tone(f * 3, nu() + 0.04, 0.2, "sine", 0.07);
+}
+export function boing() { tone(140, nu(), 0.5, "sine", 0.4, 620, [10, 30]); tone(90, nu(), 0.15, "triangle", 0.3, 60); }
+export function land() { tone(120, nu(), 0.15, "sine", 0.3, 70); sus(nu(), 0.1, "lowpass", 600, 150, 0.25); }
+export function power() { [784, 988, 1175, 1568].forEach((f, i) => tone(f, nu() + i * 0.05, 0.25, "triangle", 0.14)); sus(nu(), 0.4, "bandpass", 2000, 5000, 0.08, 2); }
+export function pop() { sus(nu(), 0.12, "bandpass", 2500, 800, 0.5, 0.8); tone(900, nu(), 0.15, "triangle", 0.2, 300); }

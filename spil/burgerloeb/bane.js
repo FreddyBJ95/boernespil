@@ -1,8 +1,11 @@
 // ===== Banen i Burgerløbet: et langt bord med ternet dug, ting at samle, kagerruller og porte =====
+// Der er også stjerner, trampoliner (med stjerner oppe i luften) og bobler med magnet eller skjold.
 import * as THREE from "./three.js";
-import { lavLag, LAG, lavSkilt, lærredTekstur, mat, lavKæmpe } from "./figurer.js";
+import { lavLag, LAG, lavSkilt, lærredTekstur, mat, lavStjerne, lavTrampolin, lavPowerup } from "./figurer.js";
+import { lavKæmpe, KÆMPER } from "./kaemper.js";
 
 export const BREDDE = 3.2;                        // vejen går fra -BREDDE til +BREDDE
+export const LUFT = { tid: 1.3, højde: 4.2 };       // et hop fra en trampolin: hvor længe og hvor højt
 const SPOR = [-2.1, 0, 2.1];                      // de tre spor, tingene ligger i
 
 // Farverne skifter fra bane til bane
@@ -73,21 +76,50 @@ export function byggBane(scene, niveau) {
   gruppe.add(lavPortal(-3, "#ffffff", "#1f1d2b"));
 
   // ---------- Ting at samle, kagerruller og porte ----------
-  const ting = [], ruller = [], porte = [];
-  const nyTing = (type, x, z) => {
+  const ting = [], ruller = [], porte = [], stjerner = [], trampoliner = [], powerups = [];
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false });
+  const nyTing = (type, x, z, y = 0.9) => {
     const m = lavLag(type);
-    m.position.set(x, 0.9, z);
+    m.position.set(x, y, z);
     m.scale.setScalar(1.15);
-    const ring = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.75, 28), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false }));
-    ring.rotation.x = -Math.PI / 2; ring.position.set(x, 0.02, z);
-    gruppe.add(m, ring);
-    ting.push({ type, x, z, m, ring, taget: false });
+    let ring = null;
+    if (y < 1.5) {                                            // en hvid ring på dugen under tingen
+      ring = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.75, 28), ringMat);
+      ring.rotation.x = -Math.PI / 2; ring.position.set(x, 0.02, z);
+      gruppe.add(ring);
+    }
+    gruppe.add(m);
+    ting.push({ type, x, z, y, m, ring, taget: false });
   };
+  const nyStjerne = (x, z, y = 0.9) => {
+    const m = lavStjerne();
+    m.position.set(x, y, z);
+    gruppe.add(m);
+    stjerner.push({ x, z, y, m, taget: false });
+  };
+  // Hvor højt burgeren er, et stykke efter en trampolin (samme bue som i spillet)
+  const luftY = d => { const p = d / (8.5 * LUFT.tid); return p > 0 && p < 1 ? LUFT.højde * 4 * p * (1 - p) : 0; };
   let z = -16, nr = 0;
   while (z > -L + 20) {
     nr++;
     const valg = r();
-    if (nr % 8 === 0) {                                       // to porte: vælg venstre eller højre
+    if (nr % 6 === 3 && z < -30) {                           // trampolin med stjerner og lækkerier oppe i luften
+      const x = SPOR[Math.floor(r() * 3)], t = lavTrampolin();
+      t.position.set(x, 0, z); gruppe.add(t);
+      trampoliner.push({ x, z, m: t, brugt: false, svaj: 0 });
+      for (let d = 2; d < 10.5; d += 1.4) {
+        const y = luftY(d) + 1.1;
+        if (Math.abs(d - 5.5) < 0.8) nyTing(vælgType(r), x, z - d, y); else nyStjerne(x, z - d, y);
+      }
+      for (const s of SPOR) if (s !== x) nyStjerne(s, z - 3);   // og et par stjerner på jorden til dem, der ikke hopper
+      z -= 16;
+    } else if (nr % 10 === 5) {                               // en boble med magnet eller skjold
+      const type = r() < 0.5 ? "magnet" : "skjold", x = SPOR[Math.floor(r() * 3)], m = lavPowerup(type === "magnet" ? "🧲" : "🛡️");
+      m.position.set(x, 1.1, z); gruppe.add(m);
+      powerups.push({ type, x, z, y: 1.1, m, taget: false });
+      for (const s of SPOR) if (s !== x) nyTing(vælgType(r), s, z - 2);
+      z -= 8;
+    } else if (nr % 8 === 0) {                                       // to porte: vælg venstre eller højre
       const a = vælgType(r); let b = vælgType(r); if (b === a) b = a === "ost" ? "boef" : "ost";
       for (const [s, type] of [[-1, a], [1, b]]) {
         const antal = 2 + Math.floor(r() * 3), port = lavPort(type, antal, s);
@@ -104,24 +136,32 @@ export function byggBane(scene, niveau) {
       const bevæger = niveau >= 3 && !to && r() < 0.5;
       ruller.push({ m: rulle, x, z, bredde, bevæger, fase: r() * 6, fart: 0.8 + r() * 0.6 });
       z -= 10;
-    } else if (valg < 0.72) {                                 // en række af samme slags i ét spor — måske på skrå
+    } else if (valg < 0.5) {                                  // en slalom af stjerner
+      const start = Math.floor(r() * 3);
+      const zigzag = [0, 1, 2, 1];
+      for (let i = 0; i < 6; i++) nyStjerne(SPOR[zigzag[(start + i) % 4]], z - i * 1.8);
+      z -= 6 * 1.8 + 4;
+    } else if (valg < 0.78) {                                 // en række af samme slags i ét spor — måske på skrå
       const type = vælgType(r), n = 3 + Math.floor(r() * 3), start = Math.floor(r() * 3), skrå = r() < 0.4 ? (start === 0 ? 1 : -1) : 0;
       for (let i = 0; i < n; i++) nyTing(type, SPOR[Math.max(0, Math.min(2, start + (skrå ? Math.round(i * skrå * 0.5) : 0)))], z - i * 2.2);
       z -= n * 2.2 + 5;
     } else {                                                  // to eller tre ting side om side
       const huller = r() < 0.5 ? [0, 1, 2] : [Math.floor(r() * 3), Math.floor(r() * 3)];
-      for (const i of new Set(huller)) nyTing(vælgType(r), SPOR[i], z);
+      const brugt = new Set(huller);
+      for (const i of brugt) nyTing(vælgType(r), SPOR[i], z);
+      for (let i = 0; i < 3; i++) if (!brugt.has(i)) nyStjerne(SPOR[i], z);   // stjerner i de tomme spor
       z -= 7;
     }
   }
 
-  // ---------- Kæmpen for enden, og en lille rampe op mod munden ----------
-  const kæmpe = lavKæmpe();
+  // ---------- Kæmpen for enden: manden, dinoen eller monsteret ----------
+  const slags = KÆMPER[(niveau - 1) % KÆMPER.length];
+  const kæmpe = lavKæmpe(slags);
   kæmpe.gruppe.position.set(0, -0.2, -L - 7.2);
   kæmpe.gruppe.scale.setScalar(0.8);
   gruppe.add(kæmpe.gruppe);
 
-  return { L, tema, gruppe, ting, ruller, porte, kæmpe };
+  return { L, tema, gruppe, ting, ruller, porte, stjerner, trampoliner, powerups, kæmpe, slags };
 }
 
 // ---------- Byggeklodserne ----------

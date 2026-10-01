@@ -40,6 +40,8 @@
       padding: 8px 18px; box-shadow: 0 4px 14px rgba(0,0,0,.18); white-space: nowrap;
     }
     .taeller.hop { animation: hop .35s cubic-bezier(.2,1.6,.4,1); }
+    .tal-boks { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    .taeller.lille { font-size: 19px; padding: 4px 14px; }
     @keyframes hop { 40% { transform: scale(1.3); } }
 
     /* En finger, der viser at man trækker til siden */
@@ -76,6 +78,25 @@
     .knap:active { transform: translateY(4px); box-shadow: 0 2px 0 #1b7a33; }
     .knap.lille { width: 84px; background: linear-gradient(180deg, #ffc94a, #f29d1f); box-shadow: 0 6px 0 #b86d08, 0 10px 24px rgba(0,0,0,.25); }
     .knapper { display: flex; gap: 16px; justify-content: center; margin-top: 14px; }
+    .knap.hjem { background: linear-gradient(180deg, #b98cff, #8a5cf0); box-shadow: 0 6px 0 #5f36b8, 0 10px 24px rgba(0,0,0,.25); }
+
+    /* Hattene på startkortet: de låste viser, hvor mange stjerner der skal til */
+    .hatte-titel { font-weight: 800; color: #6b3a12; font-size: 15px; margin: 2px 0 6px; }
+    .hatte { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-bottom: 14px; }
+    .hat {
+      width: 52px; height: 52px; border-radius: 16px; border: none; background: #fff3dc; cursor: pointer;
+      font-size: 28px; line-height: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      box-shadow: 0 3px 0 #ecd2a8; transition: transform .12s;
+    }
+    .hat.valgt { background: #ffe066; box-shadow: 0 0 0 3px #ff9f1c; transform: scale(1.1); }
+    .hat { position: relative; padding: 0; overflow: hidden; }
+    .hat img { width: 100%; height: 100%; pointer-events: none; }
+    .hat.låst img { filter: grayscale(1) brightness(.85); opacity: .45; }
+    .hat small { position: absolute; left: 0; right: 0; bottom: 2px; font-size: 10px; font-weight: 900; color: #a8590a; }
+    .res-stj { font-size: 26px; font-weight: 900; color: #a8590a; margin-top: 4px; }
+    .ny-hat { display: inline-block; margin-top: 8px; padding: 4px 16px; border-radius: 999px; font-size: 22px; font-weight: 900;
+      color: #fff; background: linear-gradient(90deg, #ff9f1c, #ff4d8d); animation: pust 1s ease-in-out infinite; }
+    @keyframes pust { 50% { transform: scale(1.08); } }
     .res-tal { font-size: clamp(56px, 11vw, 84px); font-weight: 900; line-height: 1; }
     .res-stjerner { display: flex; gap: 6px; justify-content: center; font-size: 54px; margin-top: 6px; }
     .res-stjerner span { animation: stjerne .45s cubic-bezier(.2,1.8,.4,1) both; }
@@ -87,6 +108,8 @@
     @media (max-width: 520px) {
       .rund { width: 44px; height: 44px; min-width: 44px; font-size: 22px; }
       .taeller { font-size: 20px; padding: 6px 12px; }
+      .taeller.lille { font-size: 16px; padding: 3px 10px; }
+      .hat { width: 44px; height: 44px; font-size: 24px; }
       .frem-mig { font-size: 22px; top: -5px; }
       .frem-maal { font-size: 26px; top: -8px; }
     }
@@ -97,8 +120,11 @@
 
   <div class="top">
     <a class="rund" href="../../">🏠</a>
-    <div class="frem" id="frem"><div class="frem-fyld" id="fremFyld"></div><span class="frem-mig" id="fremMig">🍔</span><span class="frem-maal">😋</span></div>
-    <div class="taeller" id="taeller">🍔 <span id="tal">0</span></div>
+    <div class="frem" id="frem"><div class="frem-fyld" id="fremFyld"></div><span class="frem-mig" id="fremMig">🍔</span><span class="frem-maal" id="fremMaal">🧔</span></div>
+    <div class="tal-boks">
+      <div class="taeller" id="taeller">🍔 <span id="tal">0</span></div>
+      <div class="taeller lille" id="stjBoks">⭐ <span id="stjTal">0</span></div>
+    </div>
   </div>
   <div class="hint skjult" id="hint">👆</div>
 
@@ -107,7 +133,9 @@
       <div class="start-burger">🍔</div>
       <h1>Burgerløbet</h1>
       <p>Saml alt det lækre på burgeren, og giv den til kæmpen</p>
-      <div class="bane-nr" id="baneNr">Bane 1</div><br>
+      <div class="bane-nr" id="baneNr">Bane 1</div>
+      <div class="hatte-titel">Vælg en hat · ⭐ <span id="stjTotal">0</span></div>
+      <div class="hatte" id="hatte"></div>
       <button class="knap" id="startKnap" aria-label="Start">▶</button>
     </div>
   </div>
@@ -115,7 +143,10 @@
     <div class="kort">
       <div class="res-tal">🍔 <span id="resTal">0</span></div>
       <div class="res-stjerner" id="resStjerner"><span>⭐</span><span>⭐</span><span>⭐</span></div>
+      <div class="res-stj">⭐ +<span id="resStj">0</span></div>
+      <div class="ny-hat" id="nyHat" hidden></div>
       <div class="knapper">
+        <button class="knap lille hjem" id="hjemKnap" aria-label="Vælg hat">🎩</button>
         <button class="knap lille" id="igenKnap" aria-label="Samme bane igen">↺</button>
         <button class="knap" id="næsteKnap" aria-label="Næste bane">▶</button>
       </div>
