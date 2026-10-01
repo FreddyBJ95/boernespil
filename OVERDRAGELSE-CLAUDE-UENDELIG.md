@@ -4,6 +4,7 @@
 Arbejdet ligger i `C:/Users/Frede/.codex/worktrees/uendelig/boernespil`, så det ikke flytter eller
 overskriver dit igangværende arbejde i den fælles mappe. Linux-installationen fra codex/linux-server
 er med i samme gren. Ingen kode er flettet eller pushet til main, og server-v0.5.0 er ikke tagget.
+Ændringerne er pushet til arbejdsgrenen og ligger i **[kladde-PR #1](https://github.com/FreddyBJ95/boernespil/pull/1)**.
 
 ## Din næste del: tabletternes visning
 
