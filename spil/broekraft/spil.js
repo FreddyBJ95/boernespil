@@ -51,7 +51,11 @@ if (ONLINE) {
   try { onlineInfo = (await (await fetch("/verdensliste", { cache: "no-store" })).json()).find(v => v.id === ONLINE_ID) || null; } catch (_) {}
 }
 const cfg = (ONLINE ? VERDENER.find(v => v.id === onlineInfo?.type) : VERDENER.find(v => v.id === læs("broekraft-verden", "græsø"))) || VERDENER[0];
-const UENDELIG = !!cfg.uendelig && !ONLINE;              // Den uendelige verden: landet laves, mens man går
+// Den uendelige verden: alene laves landet her, mens man går. Sammen (server 0.5.0) kommer landet fra
+// computeren, men årstiderne, kortet, toget, spådamen og dyrene kører stadig her på tabletten.
+// En gammel, endelig verden af typen uendelig (uendelig: false) spilles som en almindelig verden.
+const SERVERLAND = ONLINE && !!cfg.uendelig && onlineInfo?.uendelig === true;
+const UENDELIG = !!cfg.uendelig && (!ONLINE || SERVERLAND);
 const GULDSLOT = cfg.id === "guldslot" && !ONLINE;        // guldslottet i himlen (man kommer dertil på Guld-føniksen)
 const EVENTYR = UENDELIG || GULDSLOT;                     // spådamen, guldet og de magiske sten
 let føniksKommer = false;                                 // vi kommer flyvende på Guld-føniksens ryg
@@ -308,11 +312,19 @@ verden.animMat = animMat;
 if (cfg.vand === "chokolade") { animMat.vand.map = atlas.anim.chokolade; animMat.vand.opacity = 0.93; }   // Slikland: floden er af chokolade
 verden.tyngde = TYNGDE;
 // ---------- Uendelighedsverdenen: landet laves omkring barnet, søjle for søjle (uendelig.js) ----------
-const land = UENDELIG ? lavLand({ støj: lavStøj(gemt.frø), ID, BY: verden.BY, frø: gemt.frø }) : null;
+let landFrø = gemt.frø, indreLand = UENDELIG ? lavLand({ støj: lavStøj(landFrø), ID, BY: verden.BY, frø: landFrø }) : null;
+const land = UENDELIG ? {                         // sammen skiftes frøet ud, når serveren siger velkommen
+  søjle: (cx, cz) => indreLand.søjle(cx, cz), årstid: (x, z) => indreLand.årstid(x, z), område: (x, z) => indreLand.område(x, z),
+  højde: (x, z) => indreLand.højde(x, z), landsbyer: (x0, z0, x1, z1) => indreLand.landsbyer(x0, z0, x1, z1),
+} : null;
+function brugLandFrø(frø) {
+  if (!UENDELIG || !Number.isFinite(frø) || frø === landFrø) return;
+  landFrø = frø; indreLand = lavLand({ støj: lavStøj(frø), ID, BY: verden.BY, frø });
+}
 const LAND_R = 7;                                 // så mange søjler ud kan man se (tågen skjuler resten)
 let glemTid = 0;
 const kort = UENDELIG ? new Kort({
-  nøgle: "broekraft-kort-uendelig", frø: gemt.frø, BY: verden.BY, BLOKKE, hjem: { x: MIDT, z: MIDT },
+  nøgle: SERVERLAND ? `broekraft-kort-${ONLINE_ID}` : "broekraft-kort-uendelig", frø: SERVERLAND ? ONLINE_ID : gemt.frø, BY: verden.BY, BLOKKE, hjem: { x: MIDT, z: MIDT },
   farve: id => atlas.farve(id)?.getHex(THREE.SRGBColorSpace) ?? 0,
   spiller: () => ({ x: sp.pos.x, z: sp.pos.z, yaw: sp.yaw }), mærker: kortMærker,
 }) : null;
@@ -348,8 +360,8 @@ function opdaterLand(dt) {
     if (Math.max(Math.abs(cx - cx0), Math.abs(cz - cz0)) > LAND_R + 2) verden.glemSøjle(cx, cz, true);
   }
 }
-if (UENDELIG) {
-  document.body.classList.add("uendelig");
+if (UENDELIG) document.body.classList.add("uendelig");
+if (UENDELIG && !ONLINE) {
   verden.indlæsÆndringer(gemt.ændringer);
   landOmkring(gemt.spiller?.[0] ?? MIDT, gemt.spiller?.[2] ?? MIDT, 2);
   verden.opdater(150);                            // byg det nærmeste med det samme
@@ -1979,6 +1991,7 @@ function skiftTil(v) {
   gem();
   skriv("broekraft-verden", v.id);
   try { sessionStorage.setItem("broekraft-start", "1"); } catch (_) {}
+  if (ONLINE) { stopTale(); net?.luk(); location.href = location.pathname; return; }   // sammen: videre på sin egen tablet
   location.reload();
 }
 
@@ -2070,8 +2083,8 @@ function guldRegn() {                                            // guldmønter,
 function rejsTil(id, medFøniks) {                                // til en anden verden (med portal — eller på føniksens ryg)
   const v = VERDENER.find(w => w.id === id);
   if (!v) return;
-  if (!medFøniks) { portalTil(v); return; }
-  try { sessionStorage.setItem("broekraft-føniks", "1"); } catch (_) {}
+  if (!medFøniks && !ONLINE) { portalTil(v); return; }
+  if (medFøniks) try { sessionStorage.setItem("broekraft-føniks", "1"); } catch (_) {}
   if (!hentet.includes(v.id)) { hentet.push(v.id); skriv("broekraft-hentet", hentet); }
   skiftTil(v);
 }
@@ -2123,13 +2136,13 @@ function lilleHus() {
   const cx = Math.floor(sp.pos.x + r.x * 5), cz = Math.floor(sp.pos.z + r.z * 5), y0 = verden.topY(cx, cz);
   for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) {
     const x = cx + dx, z = cz + dz, kant = Math.abs(dx) === 2 || Math.abs(dz) === 2;
-    verden.sæt(x, y0, z, ID.Planker);
-    for (let y = y0 + 1; y <= y0 + 3; y++) verden.sæt(x, y, z, kant ? (y === y0 + 2 && (dx === 0 || dz === 0) ? ID.Glas : ID.Planker) : 0);
+    sætHer(x, y0, z, ID.Planker);
+    for (let y = y0 + 1; y <= y0 + 3; y++) sætHer(x, y, z, kant ? (y === y0 + 2 && (dx === 0 || dz === 0) ? ID.Glas : ID.Planker) : 0);
   }
-  for (let l = 0; l < 3; l++) for (let dx = -3 + l; dx <= 3 - l; dx++) for (let dz = -3 + l; dz <= 3 - l; dz++) verden.sæt(cx + dx, y0 + 4 + l, cz + dz, ID.Tagsten);
+  for (let l = 0; l < 3; l++) for (let dx = -3 + l; dx <= 3 - l; dx++) for (let dz = -3 + l; dz <= 3 - l; dz++) sætHer(cx + dx, y0 + 4 + l, cz + dz, ID.Tagsten);
   const dx = Math.abs(r.x) > Math.abs(r.z) ? -Math.sign(r.x) : 0, dz = dx ? 0 : -Math.sign(r.z);   // døren vender mod barnet
-  verden.sæt(cx + dx * 2, y0 + 1, cz + dz * 2, 0); verden.sæt(cx + dx * 2, y0 + 2, cz + dz * 2, 0);
-  verden.sæt(cx, y0 + 3, cz, ID.Lampe);
+  sætHer(cx + dx * 2, y0 + 1, cz + dz * 2, 0); sætHer(cx + dx * 2, y0 + 2, cz + dz * 2, 0);
+  sætHer(cx, y0 + 3, cz, ID.Lampe);
   gemSnart(); fest();
 }
 // Et fyrværkeri-show over barnet
@@ -2169,7 +2182,7 @@ function tegnFrame(nu) {
   if (!iGang || pause) tornado.stille();
   for (const d of dyr) d.opdater(dt, sp.pos);
   if (ONLINE) opdaterOnline(dt);
-  if (UENDELIG) opdaterLand(dt);
+  if (UENDELIG && !ONLINE) opdaterLand(dt);
   verden.opdater(ONLINE ? 6 : UENDELIG ? 6 : verden.snavset.size > 40 ? 12 : 4);
   if ((skjulT -= dt) <= 0) { skjulT = 0.25; verden.skjulFjerne(kamera.position.x, kamera.position.z, scene.fog.far + 8); }   // kun det, man kan se
   animerVæsker();
@@ -2307,6 +2320,7 @@ async function forbindOnline() {
   net.addEventListener("klump", e => {
     const { cx, cz } = e.detail;
     verden.søjle(cx, cz, e.detail.data);
+    if (SERVERLAND) { kort?.husk(cx, cz, e.detail.data); return; }   // den uendelige verden har ikke noget hav udenfor
     if (!havSøjler.has(cx + "," + cz)) { havSøjler.add(cx + "," + cz); lavHav(cx * 16, cz * 16, cx * 16 + 16, cz * 16 + 16); }
   });
   net.addEventListener("glem", e => verden.glemSøjle(e.detail.cx, e.detail.cz));
@@ -2343,6 +2357,7 @@ async function forbindOnline() {
 // Serveren siger velkommen — også når forbindelsen kommer igen efter et hul
 function velkommen(v) {
   minId = v.dig;
+  if (SERVERLAND) brugLandFrø(v.verden?.frø);
   verden.rydAlt();
   for (const f of andre.values()) f.fjern();
   andre.clear();
