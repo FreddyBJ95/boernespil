@@ -19,10 +19,14 @@ export const FIGURER = ["gris", "ko", "faar", "hone", "fro", "and", "snegl", "zo
 export const EMOJIER = ["❤️", "😂", "👍", "🎉", "😮", "👋"];
 
 export function læsBesked(data) {
-  if (typeof data !== "string" || new TextEncoder().encode(data).length > 32768) throw new Error("Beskeden er for stor eller ikke tekst");
+  if (typeof data !== "string") throw new Error("Beskeden er for stor eller ikke tekst");
+  const længde = new TextEncoder().encode(data).length;
+  if (længde > 32768) throw new Error("Beskeden er for stor eller ikke tekst");
   const besked = JSON.parse(data);
   if (!besked || Array.isArray(besked) || typeof besked.t !== "string") throw new Error("Ugyldig besked");
-  if (besked.t !== "rtc" && new TextEncoder().encode(data).length > 4096) throw new Error("Beskeden er for stor");
+  // Mål den oprindelige tekst, så mellemrum og ekstra felter også tæller med.
+  if (besked.t === "effekt" && længde > 1024) return null;
+  if (besked.t !== "rtc" && længde > 4096) throw new Error("Beskeden er for stor");
   return besked;
 }
 

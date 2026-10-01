@@ -125,6 +125,7 @@ export class BroekraftServer {
         if (nu - s.vindue >= 1000) { s.vindue = nu; s.antal = 0; }
         if (++s.antal > 100 || s.ventende >= 128) { socket.close(1008, "For mange beskeder"); return; }
         const b = læsBesked(data);
+        if (!b) return;                                // for store kosmetiske effekter ignoreres stille
         // Hver tablet får sin egen kø, så et valg bliver færdigt før den første bygning.
         s.ventende++;
         s.kø = s.kø.then(async () => {

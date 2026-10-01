@@ -1,17 +1,16 @@
 Broekraft Server lader 1–8 børn bygge i samme Broekraft-verden på familiens eget wifi.
 
-**Nyt i 0.5.0 (klargøres)**
+**Nyt i 0.5.0**
 - 🌍 Flere verdener: Underverdenen, Brandmandsbyen, Piratøen, Havbunden, Slikland, Skyøerne,
   Bondegården, Dinodalen, NUKE-banen og Ildtornadoerne. Portaler og de nye blokke er med i pakkerne.
 - ♾️ Serveren understøtter nu **Den uendelige verden**: landet indlæses omkring spillerne,
   og børnenes ændringer gemmes, så de er der efter en genstart. Verdenen vises som **uden kanter**.
+- 💥 Alle i samme verden kan nu se hinandens skud, raketter, missiler, tændte bomber,
+  svampeskyer og droner. Atombomber og missiler laver større fælles brag og kratere med aske,
+  atomslim og små flammer. Serveren bestemmer blokændringerne, så alle ser det samme.
 - 🔒 Skjulte verdener som Guldslottet kan ikke oprettes fra kontrolpanelet.
 - 🐧 Linux-pakker til 64-bit Intel/AMD og ARM64, herunder Raspberry Pi med 64-bit Raspberry Pi OS.
   Installer uden sudo; serveren kan køres uden skærm, og kontrolpanelet åbnes gennem en SSH-tunnel.
-
-**Før udgivelsen:** Claude skal færdiggøre og afprøve tabletternes visning af Den uendelige verden
-fra serveren. Den samlede version afprøves på tablets, og ejeren fletter arbejdsgrenen og godkender
-udgivelsen, før `server-v0.5.0` oprettes. Serverstøtte alene gør ikke denne verden klar til fælles spil.
 
 **Nyt i 0.4.0**
 - 🎆 **Fyrværkeri-verdenen er meget større**: torv med et kæmpe juletræ, lyskæder og gaver, en scene med

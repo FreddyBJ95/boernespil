@@ -1,5 +1,11 @@
 # Overdragelse fra Codex til Claude
 
+## Nyt 1. oktober: opgave E er færdig
+
+Læs `OVERDRAGELSE-CLAUDE-EFFEKTER.md`: fælles flyvende effekter og serverstyrede atomkratere
+er med i 0.5.0-arbejdsgrenen sammen med Den uendelige verden. Alle 105 tests og den færdige
+Windows-pakke består. Ejeren har bedt Codex færdiggøre fletningen og udgivelsen efter kontrol.
+
 ## Nyt: Den uendelige verden og pakker til Pi, Windows og Mac, 1. oktober 2026
 
 Læs **[OVERDRAGELSE-CLAUDE-UENDELIG.md](OVERDRAGELSE-CLAUDE-UENDELIG.md)** først.

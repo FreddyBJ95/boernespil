@@ -1,4 +1,4 @@
-import { Rum } from "./rum.js";
+import { Rum, bragRadius } from "./rum.js";
 import { ID, BLOKKE } from "../spil/broekraft/blokke.js";
 import { pakKlump, send } from "./protokol.js";
 
@@ -12,6 +12,7 @@ export class UendeligtRum extends Rum {
     super(meta, data);
     this.opgaver = new Set();
     this.beskyttede = new Map();
+    this.ventendeBrag = 0;
     this.sim.inde = this.simInde.bind(this);
     data.påIndlæsning = (cx, cz, bytes) => this.vækSøjle(cx, cz, bytes);
     data.påGlem = () => { this.simSkalRyddes = true; };
@@ -35,7 +36,10 @@ export class UendeligtRum extends Rum {
     const opgave = (async () => {
       try {
         await this.beskærer;
-        await Promise.all(keys.map(k => this.data.indlæs(...k.split(",").map(Number))));
+        // Også ved én læsefejl skal de andre søjler være færdige, før deres beskyttelse slippes.
+        const resultater = await Promise.allSettled(keys.map(k => Promise.resolve().then(() => this.data.indlæs(...k.split(",").map(Number)))));
+        const fejl = resultater.find(r => r.status === "rejected");
+        if (fejl) throw fejl.reason;
         return await handling();
       } finally {
         for (const k of keys) {
@@ -82,18 +86,20 @@ export class UendeligtRum extends Rum {
     return super.tænd(x, y, z, lunte);
   }
 
-  eksploder(x, y, z) {
-    const søjler = [];
-    for (let cx = Math.max(0, Math.floor((x - 3.3) / 16)); cx <= Math.min(this.meta.bredde / 16 - 1, Math.floor((x + 3.3) / 16)); cx++) {
-      for (let cz = Math.max(0, Math.floor((z - 3.3) / 16)); cz <= Math.min(this.meta.dybde / 16 - 1, Math.floor((z + 3.3) / 16)); cz++) søjler.push([cx, cz]);
+  eksploder(x, y, z, slags) {
+    const søjler = [], R = bragRadius(slags);
+    for (let cx = Math.max(0, Math.floor((x - R) / 16)); cx <= Math.min(this.meta.bredde / 16 - 1, Math.floor((x + R) / 16)); cx++) {
+      for (let cz = Math.max(0, Math.floor((z - R) / 16)); cz <= Math.min(this.meta.dybde / 16 - 1, Math.floor((z + R) / 16)); cz++) søjler.push([cx, cz]);
     }
-    const opgave = this.medSøjler(søjler, () => super.eksploder(x, y, z));
+    this.ventendeBrag++;
+    const opgave = this.medSøjler(søjler, () => super.eksploder(x, y, z, slags));
     opgave.catch(fejl => {
-      // Lunten er taget ud af tick-køen. Behold den, hvis naboens data endnu ikke kunne læses.
-      this.lunter.push({ x, y: y - 0.5, z, lunte: 2, vy: 0 });
-      console.error("TNT venter på landet:", fejl.message);
-      this.alle({ t: "fejl", besked: `TNT venter på landet: ${fejl.message}` });
-    });
+      // Et genforsøg bevarer både bombetype og træfpunkt, uden delvise blokændringer.
+      this.lunter.push({ x, y: y - 0.5, z, lunte: 2, vy: 0, venter: true, ...(slags ? { slags } : {}) });
+      const navn = slags ? "Braget" : "TNT";
+      console.error(`${navn} venter på landet:`, fejl.message);
+      this.alle({ t: "fejl", besked: `${navn} venter på landet: ${fejl.message}` });
+    }).finally(() => { this.ventendeBrag--; });
     return opgave;
   }
 
@@ -110,8 +116,7 @@ export class UendeligtRum extends Rum {
       });
     } else if (b.t === "brag") {
       // Rum validerer afstanden og starter derefter den asynkrone eksplosion.
-      super.besked(s, b, nu);
-      await this.vent();
+      await super.besked(s, b, nu);
     } else super.besked(s, b, nu);
   }
 
@@ -184,7 +189,14 @@ export class UendeligtRum extends Rum {
       .finally(() => { this.beskærer = null; });
   }
 
-  async vent() { while (this.opgaver.size) await Promise.all([...this.opgaver]); }
+  async vent() {
+    let fejl;
+    while (this.opgaver.size) {
+      const resultater = await Promise.allSettled([...this.opgaver]);
+      fejl ||= resultater.find(r => r.status === "rejected")?.reason;
+    }
+    if (fejl) throw fejl;
+  }
 
   // Stop strømning først og fuldfør TNT-kæder før data gemmes og workeren lukkes.
   async afslut() {
@@ -195,7 +207,7 @@ export class UendeligtRum extends Rum {
     this.fyrkasser.length = 0;
     while (this.lunter.length) {
       const t = this.lunter.shift();
-      await this.eksploder(t.x, t.y + 0.5, t.z);
+      await this.startEksplosion(t.x, t.y + 0.5, t.z, t.slags);
       await this.beskær();
     }
   }

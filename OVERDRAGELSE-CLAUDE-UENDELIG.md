@@ -1,5 +1,35 @@
 # Overdragelse fra Codex: Den uendelige verden på serveren
 
+## Pi-afprøvning 1. oktober 2026 — serveren er installeret
+
+- Pi: `vindr1@192.168.0.26`, værtsnavn Vindr, aarch64, 64-bit Debian 13/glibc 2.41.
+- Der er bygget en samlet Pi-pakke fra Codex-serveren (0489f95) og Claudes færdige,
+  committede tabletintegration (main d510586). Lokal afprøvningsgren: `codex/pi-afproevning`,
+  worktree `C:/Users/Frede/.codex/worktrees/pi-afproevning/boernespil`.
+  Flettecommit: 4d6991a. Der er ikke pushet til main eller lavet et release-tag.
+- Den installerede pakke er `server/dist/BroekraftServer-Pi-0.5.0-afproevning.tar.gz` i dette worktree.
+  SHA-256: `fd94d6eda97d2a28af9beeca367eebf2c6a31438eb6bf0734b88873de5468baf`.
+  Kopien på Pi'en ligger i `~/BroekraftServer-installation-20261001/`.
+- Program: `/home/vindr1/.local/bin/broekraft-server`. Data/certifikater:
+  `/home/vindr1/.local/share/BroekraftServer/`. Ingen adgangskode er skrevet i filer.
+- User-systemd-tjenesten `broekraft-server.service` kører og er enabled. Linger var allerede slået til.
+  Tjenesten venter på en privat IPv4-adresse, bruger `--ingen-browser`, stopper med SIGTERM og
+  giver op til 120 sekunder til gemning. Genstart med
+  `systemctl --user restart broekraft-server.service` som vindr1.
+- Tabletadresse: `https://192.168.0.26:8443/`. Certifikatopsætning:
+  `http://192.168.0.26:8080/certifikat`. Kontrolpanelet er kun lokalt på Pi'en og åbnes via SSH-tunnel.
+  Tunnelen i denne afprøvning er `http://127.0.0.1:18080/kontrol`.
+  Genskab med `ssh -N -o ExitOnForwardFailure=yes -L 127.0.0.1:18080:127.0.0.1:8080 vindr1@192.168.0.26`.
+  På ejerens computer tager Tailscale ruten til 192.168.0.0/24; her var binding til wifi-adressen
+  `-b 192.168.0.123` nødvendig. Tilpas den lokale kildeadresse, hvis wifi-adressen ændrer sig.
+- Alle 87 tests består på den samlede kopi. Den installerede ARM64-pakke er nu fysisk afprøvet
+  på Pi'en: begge workers, WebSocket, højt hjem, fjern bygning, gemning/genstart og fjernelse af blokke.
+  HTTPS er kontrolleret med serverens egen CA, LAN-HTTP giver 200, og tjenesten er genstartet.
+  SSH-skallen er lukket; tjenesten fortsætter. Kun SSH-tunnelen til kontrolpanelet står åben.
+- De to egne testverdener blev fjernet igen; serveren har ingen verdener, så ejeren kan oprette sine
+  egne i panelet. Ingen fysisk iPad-afprøvning og ingen fuld Pi-genstart er foretaget.
+  Teksten om manglende tabletintegration og fysisk Pi-afprøvning nedenfor er tidligere status.
+
 1. oktober 2026. Serverdelen af opgave D er færdig på **codex/uendelig**.
 Arbejdet ligger i `C:/Users/Frede/.codex/worktrees/uendelig/boernespil`, så det ikke flytter eller
 overskriver dit igangværende arbejde i den fælles mappe. Linux-installationen fra codex/linux-server
