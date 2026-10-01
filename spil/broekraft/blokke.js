@@ -23,6 +23,7 @@
 //  droner:       dronekassen — tænd den med 🔥 eller 🔨, så letter dronerne og tegner figurer på himlen
 //  kiste:        guldkisten derhjemme i Den uendelige verden — tryk på den og se alt dit guld (eventyr.js)
 //  sokkel:       en sokkel i stenringen — de seks magiske sten sættes i her (sten.js)
+//  butik:        købes for guld i butikken i Den uendelige verden og vises så i inventaret (eventyr.js)
 //  Nye blokke skal altid tilføjes NEDERST, så gemte verdener stadig passer.
 //  lyd:          "græs" | "sten" | "træ" | "sand" | "glas" | "uld" | "metal" | "vand" | "lava" | "ild"
 // Et nyt mønster er en funktion i MØNSTRE der tegner 16×16 pixels med set(x, y, farve).
@@ -217,6 +218,12 @@ export const BLOKKE = [
   { navn: "Skinner øst-vest", tekstur: { top: "skinnerØV", side: "planker", bund: "planker" }, skjult: true, lyd: "metal" },
   { navn: "Guldkiste", tekstur: { top: "guldkisteTop", side: "guldkiste", bund: "guld" }, kiste: true, uknuselig: true, skjult: true, lyser: true, lyd: "metal" },
   { navn: "Stensokkel", tekstur: { top: "sokkelTop", side: "borgsten", bund: "borgsten" }, sokkel: true, uknuselig: true, skjult: true, lyd: "sten" },
+  // --- Den uendelige verden: jordbær i sommerlandet, is i isboderne og butikkens særlige blokke ---
+  { navn: "Jordbær", tekstur: "jordbær", kryds: true, lyd: "græs" },
+  { navn: "Is i vaffel", tekstur: "isvaffel", kryds: true, lyd: "uld" },
+  { navn: "Glimmerguld", tekstur: "glimmerguld", lyser: true, skjult: true, butik: true, lyd: "metal" },
+  { navn: "Regnbuelys", tekstur: "regnbuelys", lyser: true, skjult: true, butik: true, lyd: "glas" },
+  { navn: "Hjerteblok", tekstur: "hjerter", lyser: true, skjult: true, butik: true, lyd: "uld" },
 ];
 
 export const ID = {};
@@ -666,6 +673,41 @@ const MØNSTRE = {
   sokkelTop: (set, r) => {
     MØNSTRE.borgsten(set, r);
     alle((x, y) => { const d = Math.hypot(x - 7.5, y - 7.5); if (d < 5) set(x, y, lys(hex(d < 3.5 ? "#2a2440" : "#d9b24a"), 1 + (r() - 0.5) * 0.1)); });
+  },
+  // En lille jordbærplante: grønne blade og røde bær med gule prikker
+  jordbær: (set, r) => {
+    alle((x, y) => set(x, y, [0, 0, 0], 0));
+    for (const [x0, y0] of [[3, 9], [8, 7], [11, 10], [5, 12]]) alle((x, y) => { if ((x - x0) ** 2 + ((y - y0) * 1.4) ** 2 < 6) set(x, y, lys(hex("#3f9b35"), 1 + (r() - 0.5) * 0.3)); });
+    for (const [x0, y0] of [[4, 12], [9, 11], [12, 13], [7, 14]]) {
+      alle((x, y) => { if ((x - x0) ** 2 + (y - y0) ** 2 < 3.2 && y >= y0 - 1) set(x, y, lys(hex("#e8283c"), 1 + (r() - 0.5) * 0.15)); });
+      set(x0, y0 - 2, hex("#2d7a26")); set(x0 - 1, y0, hex("#ffe27a")); set(x0 + 1, y0 + 1, hex("#ffe27a"));
+    }
+  },
+  // En is i vaffel: to kugler (jordbær og vanilje) på en sprød vaffel
+  isvaffel: set => {
+    alle((x, y) => set(x, y, [0, 0, 0], 0));
+    for (let y = 8; y < T; y++) { const b = Math.max(0, Math.round((T - y) * 0.45)); for (let x = 8 - b; x <= 7 + b; x++) set(x, y, hex((x + y) % 3 ? "#d9a05a" : "#a8743a")); }
+    alle((x, y) => { if ((x - 7.5) ** 2 + (y - 7) ** 2 < 14) set(x, y, hex(y < 5 ? "#fff6e0" : "#ffe9c8")); });
+    alle((x, y) => { if ((x - 7.5) ** 2 + (y - 3.5) ** 2 < 9) set(x, y, hex(x < 7 && y < 3 ? "#ffc8dc" : "#ff8ab8")); });
+    for (const [x, y] of [[6, 2], [9, 3], [7, 5], [5, 7], [10, 7]]) set(x, y, hex(["#3a9ad9", "#ffd23f", "#4cb748"][(x + y) % 3]));   // krymmel
+  },
+  // Butikkens blokke: glimtende guld, lysende regnbue og lyserøde hjerter
+  glimmerguld: (set, r) => {
+    fyld(set, r, "#ffcf3a", 0.1);
+    alle((x, y) => { if (x === 0 || y === 0 || x === 15 || y === 15) set(x, y, hex("#ffe98a")); });
+    for (const [cx, cy, s] of [[4, 4, 2], [11, 10, 2], [11, 3, 1], [4, 12, 1], [8, 7, 1]]) for (let i = -s; i <= s; i++) { set(cx + i, cy, hex("#ffffff")); set(cx, cy + i, hex("#ffffff")); }
+  },
+  regnbuelys: (set, r) => {
+    const f = ["#ff4d5e", "#ffa13a", "#ffe14a", "#5fe36a", "#4ab8ff", "#8a7cff", "#e06bff"];
+    alle((x, y) => set(x, y, lys(hex(f[Math.floor((x + y) / 2.3) % f.length]), 1.05 + (r() - 0.5) * 0.08)));
+    prik(set, r, ["#ffffff"], 6);
+  },
+  hjerter: (set, r) => {
+    fyld(set, r, "#ffb3d1", 0.08);
+    const hjerte = [".##.##.", "#######", "#######", ".#####.", "..###..", "...#..."];
+    for (const [x0, y0, f] of [[1, 1, "#ff3b7a"], [8, 8, "#e8283c"], [9, 1, "#ff6fa8"], [1, 9, "#ff6fa8"]]) {
+      hjerte.forEach((række, dy) => [...række].forEach((c, dx) => { if (c === "#" && x0 + dx < T && y0 + dy < T) set(x0 + dx, y0 + dy, hex(f)); }));
+    }
   },
   tørtGræsTop: (set, r) => { fyld(set, r, "#c8a84a", 0.22); prik(set, r, ["#a88a3a", "#dcc070", "#b89a42"], 30); },
   tørtGræsSide: (set, r) => {

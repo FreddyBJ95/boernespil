@@ -1,7 +1,8 @@
 // ===== Eventyret i Den uendelige verden: spådamen, opgaverne, guldet, butikken og guldkisten =====
 // Spådamen bor i et telt ved pladsen derhjemme (og i hver landsby). Tryk på hende, så læser hun en
 // opgave højt og tydeligt — og viser den med store billeder. Når opgaven er klaret, regner det med guld.
-// Guldet kan bruges i butikken (kæledyr, der følger efter én, hatte til dem, et lille hus, fyrværkeri)
+// Guldet kan bruges i butikken (kæledyr, der følger efter én, en pony med sadel, hatte, et lille hus,
+// fyrværkeri og blokke af glimmerguld, regnbuelys og hjerter)
 // og ses i guldkisten på pladsen. De store opgaver er de seks magiske sten (sten.js).
 
 import * as THREE from "./three.js";
@@ -22,6 +23,11 @@ export const OPGAVER = [
   { id: "landsby", ikon: "🏘️", mål: 1, guld: 10, tekst: "Kan du finde en landsby? Kig på kortet, når du går på opdagelse." },
   { id: "græskar", ikon: "🎃", mål: 3, guld: 8, tekst: "Kan du finde tre græskar i efterårslandet mod øst? Slå dem med hammeren." },
   { id: "dino", ikon: "🦕", mål: 1, guld: 15, tekst: "Kan du finde en dinosaur? De bor i junglen langt mod syd. Pas på de hurtige!" },
+  { id: "fyrværkeri", ikon: "🎆", mål: 1, guld: 6, giv: "Fyrværkeri", tekst: "Kan du tænde et fyrværkeri? Jeg har givet dig en fyrværkeri-kasse. Sæt den på jorden, og slå på den med hammeren!" },
+  { id: "jordbær", ikon: "🍓", mål: 3, guld: 6, tekst: "Kan du plukke tre jordbær? De gror i sommerlandet mod syd. Slå dem med hammeren." },
+  { id: "is", ikon: "🍦", mål: 1, guld: 8, tekst: "Kan du finde en isbod og hente en is? Isboderne står ved strandene i sommerlandet mod syd. Slå på isen med hammeren." },
+  { id: "pindsvin", ikon: "🦔", mål: 1, guld: 8, tekst: "Kan du finde et pindsvin? Det tripper rundt i efterårsskoven mod øst." },
+  { id: "egern", ikon: "🐿️", mål: 1, guld: 8, tekst: "Kan du finde et egern? Det hopper rundt mellem de røde og gule træer mod øst." },
 ];
 
 // ---------- Butikken ----------
@@ -32,11 +38,15 @@ export const VARER = [
   { id: "pingvin", ikon: "🐧", navn: "Pingvin", pris: 20, dyr: "pingvin" },
   { id: "enhjorning", ikon: "🦄", navn: "Enhjørning", pris: 40, dyr: "enhjorning" },
   { id: "drage", ikon: "🐉", navn: "Lille drage", pris: 60, dyr: "drage" },
+  { id: "pony", ikon: "🐴", navn: "Din egen pony med sadel", pris: 30, dyr: "hest" },
   { id: "hat", ikon: "🎩", navn: "Høj hat til dit dyr", pris: 8, hat: "hat" },
   { id: "sløjfe", ikon: "🎀", navn: "Sløjfe til dit dyr", pris: 8, hat: "sløjfe" },
   { id: "papkrone", ikon: "👑", navn: "Krone til dit dyr", pris: 25, hat: "krone" },
   { id: "hus", ikon: "🏠", navn: "Et lille hus (bygges, hvor du står)", pris: 20, hus: true, igen: true },
   { id: "fyrvaerkeri", ikon: "🎆", navn: "Fyrværkeri-show", pris: 10, show: true, igen: true },
+  { id: "glimmerguld", ikon: "✨", navn: "Glimmerguld at bygge med", pris: 12, blok: "Glimmerguld" },
+  { id: "regnbuelys", ikon: "🌈", navn: "Regnbuelys at bygge med", pris: 12, blok: "Regnbuelys" },
+  { id: "hjerteblok", ikon: "💖", navn: "Hjerteblokke at bygge med", pris: 12, blok: "Hjerteblok" },
 ];
 
 // ---------- Oplæsning på dansk (tablettens egen stemme) ----------
@@ -112,6 +122,16 @@ function byggHat(slags) {
   return g;
 }
 
+// En rød sadel med stigbøjler til ponyen fra butikken (ponyens ryg er 1,22 blok oppe)
+function byggSadel() {
+  const g = new THREE.Group();
+  klods(g, 0.66, 0.05, 0.66, "#3a6fd8", 0, 1.24, 0);                       // sadeldækkenet
+  klods(g, 0.5, 0.12, 0.46, "#c0392b", 0, 1.31, -0.02);                    // selve sadlen
+  klods(g, 0.5, 0.12, 0.08, "#8e2a20", 0, 1.4, -0.24); klods(g, 0.2, 0.14, 0.08, "#8e2a20", 0, 1.41, 0.2);
+  for (const s of [-1, 1]) { klods(g, 0.03, 0.34, 0.03, "#5a3a1a", s * 0.34, 1.08, 0); klods(g, 0.1, 0.04, 0.12, "#c8ccd4", s * 0.34, 0.9, 0); }
+  return g;
+}
+
 // ---------- Paneler (store knapper, til små fingre) ----------
 const STIL = `
 .eventyr-panel { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 36; width: min(640px, calc(100vw - 24px));
@@ -144,7 +164,7 @@ const STIL = `
 
 export class Eventyr {
   // s: { scene, sp, dyr, nytDyr(def, x, y, z), dyrDef(id), land, lyd, besked, fest(x, y), konfetti(), guldRegn(),
-  //      bygHus(x, y, z), fyrværkeriShow(), sten: { mangler() → næste sten eller null, fundet() → [..], rejsTil(sten) } }
+  //      bygHus(x, y, z), fyrværkeriShow(), givBlok(navn) → lægger blokken i hotbaren, sten: { mangler() → næste sten eller null, fundet() → [..], rejsTil(sten) } }
   constructor(s) {
     this.s = s;
     this.gem = this.læs();
@@ -227,6 +247,7 @@ export class Eventyr {
     const muligt = OPGAVER.filter(x => !g.klaret.slice(-4).includes(x.id));
     const ny = muligt[Math.floor(Math.random() * muligt.length)];
     g.opgave = { id: ny.id, tæl: 0, færdig: false };
+    if (ny.giv) this.s.givBlok(ny.giv);
     this.gemNu(); this.opdaterTæller();
     this.visOpgave(true, "Hej med dig! Jeg har en opgave til dig. ");
   }
@@ -290,6 +311,7 @@ export class Eventyr {
       const ejer = !v.igen && g.ejer.includes(v.id), råd = g.guld >= v.pris;
       const brug = v.dyr && ejer ? `<button class="anden" data-k="brug:${v.id}">${g.kæledyr === v.dyr ? "✅ Med dig" : "Tag med"}</button>`
         : v.hat && ejer ? `<button class="anden" data-k="brug:${v.id}">${g.hat === v.hat ? "✅ På" : "Tag på"}</button>`
+        : v.blok && ejer ? `<button class="anden" data-k="brug:${v.id}">🎒 Tag frem</button>`
         : `<button data-k="køb:${v.id}" ${råd ? "" : "disabled"}>💰 ${v.pris}</button>`;
       return `<div class="vare"><div class="ikon">${v.ikon}</div><div class="navn">${v.navn}</div>${brug}</div>`;
     }).join("");
@@ -313,6 +335,7 @@ export class Eventyr {
     this.brug(v);
   }
   brug(v) {
+    if (v.blok) { this.s.givBlok(v.blok); this.lukPanel(); return; }   // blokken ligger nu i hotbaren (og i ⋯)
     if (v.dyr) { this.gem.kæledyr = v.dyr; this.gemNu(); this.spawnKæledyr(); }
     if (v.hat) { this.gem.hat = this.gem.hat === v.hat ? null : v.hat; this.gemNu(); this.sætHat(); }
     this.visButik();
@@ -329,6 +352,7 @@ export class Eventyr {
   sætHat() {
     const d = this.kæledyr;
     if (!d) return;
+    if (d.def.id === "hest" && !d.sadel) { d.sadel = byggSadel(); d.model.add(d.sadel); }
     if (d.hat) { d.hat.parent?.remove(d.hat); d.hat = null; }
     if (!this.gem.hat) return;
     const hoved = d.model.userData.hoved?.[0] || d.model, boks = new THREE.Box3().setFromObject(hoved), top = new THREE.Vector3();
@@ -342,12 +366,12 @@ export class Eventyr {
   visKiste() {
     this.s.lyd.guld();
     const g = this.gem, alle = this.s.sten.alle(), fundet = this.s.sten.fundet();
-    const dyrene = VARER.filter(v => v.dyr && g.ejer.includes(v.id)).map(v => v.ikon).join(" ") || "—";
+    const dyrene = VARER.filter(v => (v.dyr || v.blok) && g.ejer.includes(v.id)).map(v => v.ikon).join(" ") || "—";
     const tekst = `Din skattekiste! Du har ${g.guld} guldmønter.`;
     this.visPanel(`<div class="hoved"><div class="portræt">💰</div><div class="tale">${tekst}</div></div>
       <div class="guldbunke">${g.guld ? "🪙".repeat(Math.min(g.guld, 60)) : "Tom — klar spådamens opgaver!"}</div>
       <div class="tale">De magiske sten:</div><div class="sten">${alle.map(x => `<span>${fundet.includes(x.id) ? x.ikon : "❔"}</span>`).join("")}</div>
-      <div class="tale">Dine dyr: ${dyrene}</div>
+      <div class="tale">Dine dyr og blokke: ${dyrene}</div>
       <div class="knapper"><button data-k="ok">👍 Luk</button></div>`, { ok: () => this.lukPanel() });
     sig(tekst);
   }
@@ -373,6 +397,7 @@ export class Eventyr {
       for (const d of this.s.dyr) {
         const a = Math.hypot(d.pos.x - p.x, d.pos.z - p.z);
         if (a < 5 && d.def.id === "pingvin" && !d.kæledyr) this.hændelse("pingvin");
+        if (a < 5 && (d.def.id === "pindsvin" || d.def.id === "egern")) this.hændelse(d.def.id);
         if (a < 8 && ["triceratops", "langhals", "dinounge", "dino"].includes(d.def.id)) this.hændelse("dino");
       }
       if (this.gem.kæledyr && (!this.kæledyr || !this.s.dyr.includes(this.kæledyr)) && this.s.rider?.() !== this.gem.kæledyr) this.spawnKæledyr();   // kæledyret kommer altid med

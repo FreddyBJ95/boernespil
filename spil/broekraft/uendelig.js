@@ -40,9 +40,9 @@ export const HJEMSTED = {
 // Dyrene, der bor hvert sted (dyr.js) — i dinojunglen er turbo-dinoerne farlige: de skubber en omkuld
 export const ÅRSTIDSDYR = {
   hjem: ["ko", "gris", "hone", "kanin"],
-  forår: ["faar", "kanin", "hone", "and"],
+  forår: ["faar", "kanin", "hone", "and", "kylling", "kylling"],
   sommer: ["ko", "gris", "hest", "hone"],
-  efterår: ["gris", "hest", "kanin", "faar"],
+  efterår: ["gris", "hest", "egern", "faar", "pindsvin", "egern"],
   vinter: ["pingvin", "rensdyr", "pingvin"],
   jungle: ["triceratops", "langhals", "dinounge", "dino", "dino"],
 };
@@ -78,7 +78,7 @@ export function lavLand({ støj, ID, BY, frø }) {
   const TOP = BY - 6, SNE = Math.min(38, BY - 10), TRÆGRÆNSE = SNE - 3;
   const BLOMSTER = [ID.Tulipan, ID["Hvid blomst"], ID["Blå blomst"], ID["Gul blomst"], ID["Rød blomst"]];
   const LØV = [ID["Orange blade"], ID["Røde blade"], ID["Gule blade"]];
-  const BLOKKE_KRYDS = new Set([...BLOMSTER, ID["Højt græs"], ID.Bregne, ID["Tør busk"], ID["Lille svamp"], ID.Solsikke, ID.Lian]);
+  const BLOKKE_KRYDS = new Set([...BLOMSTER, ID["Højt græs"], ID.Bregne, ID["Tør busk"], ID["Lille svamp"], ID.Solsikke, ID.Lian, ID.Jordbær, ID.Glødesvamp, ID["Is i vaffel"]]);
 
   // Hvilken årstid er det her? Grænserne bugter sig mere og mere, jo længere ud man kommer
   function årstid(x, z) {
@@ -131,10 +131,12 @@ export function lavLand({ støj, ID, BY, frø }) {
   function plante(x, z, o) {
     if (o.vand || o.plads || o.sti || o.top === ID.Sand || o.top === ID.Sten || o.h >= SNE) return 0;
     const r = H(x, z, 5), v = H(x, z, 6);
+    if (o.å !== "sommer" && o.å !== "vinter" && H(x, z, 7) < 0.02 && S(x, z, 45, 800) > 0.6) return ID.Glødesvamp;   // glødende svampe i skovene (de lyser om natten)
     switch (o.å) {
       case "forår": return r < 0.07 ? BLOMSTER[Math.floor(v * 4)] : r < 0.15 ? ID["Højt græs"] : 0;
       case "sommer":
         if (S(x, z, 28, 900) > 0.66) return r < 0.4 ? ID.Solsikke : r < 0.5 ? ID["Gul blomst"] : 0;   // solsikkemarker
+        if (S(x, z, 22, 950) > 0.7) return r < 0.3 ? ID.Jordbær : r < 0.38 ? ID["Højt græs"] : 0;          // jordbærmarker
         return r < 0.035 ? BLOMSTER[3 + Math.floor(v * 2)] : r < 0.12 ? ID["Højt græs"] : 0;
       case "jungle": return r < 0.14 ? ID.Bregne : r < 0.24 ? ID["Højt græs"] : 0;
       case "efterår": return r < 0.008 ? ID.Græskar : r < 0.024 ? ID["Lille svamp"] : r < 0.04 ? ID["Tør busk"] : r < 0.08 ? ID["Højt græs"] : 0;
@@ -188,9 +190,18 @@ export function lavLand({ støj, ID, BY, frø }) {
     else if (å === "efterår") { blade = LØV[Math.floor(v * 3)]; if (v > 0.66) { form = "birk"; stamme = ID.Birkestamme; } }
     const y0 = h + 1, top = y0 + { eg: 4, stor: 6, birk: 5, kirsebær: 4, gran: 7 }[form] + (Math.floor(v * 100) % 2);
     for (let y = y0; y < top; y++) put(x, y, z, stamme, true);
-    if (form === "gran") {                         // en spids kegle
-      for (let y = y0 + 2; y <= top; y++) skive(y, Math.max(0, Math.round((top - y) * 0.45)), blade);
-      put(x, top + 1, z, blade);
+    if (form === "gran") {                         // en spids kegle — og nogle af dem er pyntede juletræer
+      const jul = H(x, z, 12) < 0.1;
+      for (let y = y0 + 2; y <= top; y++) {
+        const r = Math.max(0, Math.round((top - y) * 0.45));
+        for (let dx = -r; dx <= r; dx++) for (let dz = -r; dz <= r; dz++) {
+          const d = dx * dx + dz * dz;
+          if (d > r * r + 0.6) continue;
+          put(x + dx, y, z + dz, jul && d > (r - 1) * (r - 1) && (dx + dz + y) % 3 === 0 ? ID.Lyskæde : blade);
+        }
+      }
+      put(x, top + 1, z, jul ? ID.Glimmerguld : blade);                 // en lysende guldstjerne i toppen
+      if (jul) for (const [dx, dz] of [[1, 1], [-1, 0], [0, -1]]) if (højde(x + dx, z + dz) === h) put(x + dx, h + 1, z + dz, ID.Gave);   // gaver under træet
     } else if (form === "kirsebær") { skive(top - 1, 3, blade); skive(top, 3, blade); skive(top + 1, 2, blade); }
     else if (form === "birk") { skive(top - 2, 1, blade); skive(top - 1, 2, blade); skive(top, 2, blade); skive(top + 1, 1, blade); }
     else { const r = form === "stor" ? 3 : 2; skive(top - 2, r - 1, blade); skive(top - 1, r, blade); skive(top, r, blade); skive(top + 1, r - 1, blade); }
@@ -250,6 +261,40 @@ export function lavLand({ støj, ID, BY, frø }) {
     return { x, z, h: o.h, å: o.å };
   });
 
+  // ---------- Isboder ved strandene i sommerlandet ----------
+  const ISBOD_CELLE = 96;
+  const isbod = husket((gx, gz) => {
+    if (H(gx, gz, 71) > 0.6 || årstid(gx * ISBOD_CELLE + 48, gz * ISBOD_CELLE + 48) !== "sommer") return null;
+    for (let i = 0; i < 32; i++) for (let j = 0; j < 32; j++) {     // led efter en tør, flad plet lige ved vandet
+      const x = gx * ISBOD_CELLE + 3 * ((i * 7 + gx) % 32), z = gz * ISBOD_CELLE + 3 * ((j * 11 + gz) % 32), h = højde(x, z);
+      if (h !== HAVNIVEAU + 1 || nærBane(x, z, 6) || Math.hypot(x - MIDT, z - MIDT) < 60) continue;
+      if ([[-2, -2], [2, -2], [-2, 2], [2, 2]].some(([dx, dz]) => højde(x + dx, z + dz) < HAVNIVEAU || højde(x + dx, z + dz) > h + 1)) continue;
+      if (område(x, z) === "sommer") return { x, z, h };
+    }
+    return null;
+  });
+
+  // ---------- Vandfald ned ad bjergsiderne ----------
+  const VANDFALD_CELLE = 80;
+  const vandfald = husket((gx, gz) => {
+    if (H(gx, gz, 61) > 0.7) return null;
+    for (let k = 0; k < 40; k++) {
+      const x = gx * VANDFALD_CELLE + 8 + Math.floor(H(gx * 31 + k, gz, 62) * (VANDFALD_CELLE - 16));
+      const z = gz * VANDFALD_CELLE + 8 + Math.floor(H(gx, gz * 31 + k, 63) * (VANDFALD_CELLE - 16));
+      if (bjergHer(x, z) < 0.4 || nærBane(x, z, 12)) continue;
+      const h = højde(x, z);
+      if (h < 22 || h >= SNE) continue;
+      for (const [dx, dz] of RETNINGER) {                         // ned ad bjergsiden: mindst 6 blokke på højst 6 skridt
+        if (højde(x + dx, z + dz) >= h) continue;
+        let n = 1;
+        while (n < 6 && højde(x + dx * (n + 1), z + dz * (n + 1)) < højde(x + dx * n, z + dz * n)) n++;
+        const fod = højde(x + dx * n, z + dz * n);
+        if (h - fod >= 6 && fod >= HAVNIVEAU) return { x, z, h, dx, dz, n, fod };
+      }
+    }
+    return null;
+  });
+
   // Lav en søjle på 16 × 16 blokke (cx, cz tæller i søjler). Svarer med blokkene som (x + z·16 + y·256)
   function søjle(cx, cz) {
     const data = new Uint8Array(256 * BY), x0 = cx * 16, z0 = cz * 16, x1 = x0 + 15, z1 = z0 + 15;
@@ -271,6 +316,8 @@ export function lavLand({ støj, ID, BY, frø }) {
       if (o.vand) {                                // søer og hav — og is på dem om vinteren
         for (let y = o.h + 1; y <= HAVNIVEAU && y < BY; y++) data[i + y * 256] = ID.Vand;
         if (o.å === "vinter") data[i + HAVNIVEAU * 256] = ID.Is;
+      } else if (o.å === "vinter" && o.top === ID.Sne && !o.sti && o.h + 4 < BY && H(x, z, 51) < 0.0015) {
+        data[i + (o.h + 1) * 256] = ID.Sne; data[i + (o.h + 2) * 256] = ID.Sne; data[i + (o.h + 3) * 256] = ID.Græskar;   // en snemand
       } else if (o.h + 1 < BY) {
         const p = plante(x, z, o);
         if (p) data[i + (o.h + 1) * 256] = p;
@@ -398,6 +445,44 @@ export function lavLand({ støj, ID, BY, frø }) {
         for (let y = h + 2 + i; y <= h + 4 + i && y < hus; y++) sæt(x + dx, y, z + dz, 0);
       }
       sæt(x - 2, hus, z, 0); sæt(x - 2, hus, z - 1, 0);                  // hullet i gulvet, hvor trappen kommer op
+    });
+
+    // ---- isboderne: fire pæle, et stribet tag og en disk med is ----
+    iCeller(ISBOD_CELLE, x0 - 4, z0 - 4, x1 + 4, z1 + 4, (gx, gz) => {
+      const b = isbod(gx, gz);
+      if (!b || !rører(b.x - 3, b.z - 3, b.x + 3, b.z + 3)) return;
+      const { x, z, h } = b;
+      flad(x - 2, z - 2, x + 2, z + 2, h, ID.Sand);
+      for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) sæt(x + dx, h + 4, z + dz, (dx + 2) & 1 ? ID["Hvid uld"] : ID["Lyserød uld"]);
+      for (const [dx, dz] of [[-2, -2], [2, -2], [-2, 2], [2, 2]]) for (let y = h + 1; y <= h + 3; y++) sæt(x + dx, y, z + dz, ID.Hegn);
+      for (let dx = -1; dx <= 1; dx++) { sæt(x + dx, h + 1, z + 2, ID.Planker); sæt(x + dx, h + 2, z + 2, ID["Is i vaffel"]); }
+      sæt(x - 1, h + 1, z - 1, ID.Is); sæt(x + 1, h + 1, z - 1, ID.Is);         // fryseren
+      sæt(x, h + 3, z, ID.Lampe);
+    });
+
+    // ---- vandfaldene: en kløft i bjergsiden, hvor vandet falder lodret ned fra en kilde og løber ud i en sø ----
+    iCeller(VANDFALD_CELLE, x0 - 12, z0 - 12, x1 + 12, z1 + 12, (gx, gz) => {
+      const v = vandfald(gx, gz);
+      if (!v || !rører(v.x - 10, v.z - 10, v.x + 10, v.z + 10)) return;
+      const { x, z, h, dx, dz, n, fod } = v, px = -dz, pz = dx;      // px, pz: på tværs af faldet
+      for (let s = -1; s <= 2; s++) {
+        const kant = s === -1 || s === 2;
+        for (const k of [-1, 0]) sæt(x + dx * k + px * s, h, z + dz * k + pz * s, kant ? ID.Sten : ID.Vand);   // kilden oppe på kanten
+        for (let k = 1; k <= n; k++) {                                // kløften: lodrette klippevægge og en å i bunden
+          const fx = x + dx * k + px * s, fz = z + dz * k + pz * s;
+          if (kant) for (let y = fod + 1; y <= Math.min(h, højde(fx, fz)); y++) sæt(fx, y, fz, ID.Sten);   // klippevægge langs kløften
+          else for (let y = fod + 1; y <= Math.max(fod + 4, højde(fx, fz)); y++) sæt(fx, y, fz, 0);
+          sæt(fx, fod, fz, kant ? ID.Sten : ID.Vand);
+          if (k === 1 && !kant) for (let y = fod + 1; y <= h; y++) sæt(fx, y, fz, ID.Vand);   // selve faldet
+        }
+      }
+      const sx = x + dx * (n + 2), sz = z + dz * (n + 2);              // søen for foden af faldet
+      for (let a = -1; a <= 1; a++) for (let s = -1; s <= 2; s++) {
+        const fx = sx + px * s + dx * a, fz = sz + pz * s + dz * a, g = højde(fx, fz);
+        if (g > fod + 2 || g < fod - 3) continue;
+        for (let y = fod; y <= g + 1; y++) sæt(fx, y, fz, y === fod ? ID.Vand : 0);
+      }
+      for (let s = 0; s <= 1; s++) { const fx = x + dx * (n + 1) + px * s, fz = z + dz * (n + 1) + pz * s; sæt(fx, fod, fz, ID.Vand); for (let y = fod + 1; y <= fod + 3; y++) sæt(fx, y, fz, 0); }
     });
 
     // ---- hjemmet ----
