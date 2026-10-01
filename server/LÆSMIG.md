@@ -37,8 +37,11 @@ beviser ikke, at firewallen tillader adgang. Panelet viser også, om en anden en
 
 Vælg **BroekraftServer-Linux-x64.tar.gz** til en almindelig 64-bit Intel/AMD-computer.
 Vælg **BroekraftServer-Linux-ARM64.tar.gz** til ARM64, fx Raspberry Pi med et 64-bit styresystem.
-`uname -m` viser `x86_64` eller `aarch64`. Pakkerne er til Linux med glibc, fx Ubuntu/Debian;
-32-bit Linux og Alpine/musl understøttes ikke af disse pakker. Deno skal ikke installeres.
+`uname -m` viser `x86_64` eller `aarch64`, og `getconf LONG_BIT` skal vise `64`.
+På Raspberry Pi vælges **Raspberry Pi OS (64-bit)**; en 64-bit processor eller kerne er ikke nok,
+hvis selve styresystemet er 32-bit. Pakkerne er til Linux med glibc, fx Ubuntu/Debian;
+`getconf GNU_LIBC_VERSION` viser den installerede glibc. 32-bit Linux og Alpine/musl understøttes
+ikke af disse pakker. Installationen kontrollerer dette, før programmet erstattes. Deno skal ikke installeres.
 
 Åbn en terminal i mappen med den hentede pakke:
 
@@ -55,16 +58,22 @@ almindelige bruger, **uden sudo**. Programmet installeres i `~/.local/bin/broekr
 Kontrolpanelet åbnes med `xdg-open`, hvis en skrivebordsbrowser er tilgængelig; ellers åbn adressen,
 programmet viser, normalt `http://127.0.0.1:8080/kontrol`. Stop med **Ctrl+C**.
 
-**Uden skærm:** Start med `~/.local/bin/broekraft-server --ingen-browser`. Kontrolpanelet er kun
-tilgængeligt lokalt, så forbind fra din egen computer med en SSH-tunnel:
+**Raspberry Pi uden skærm:** Forbind først med `ssh bruger@serverens-lokale-ip`, hent og pak
+ARM64-pakken ud på Pi'en, og kør `sh installer.sh` som den samme almindelige bruger hver gang.
+Start derefter `~/.local/bin/broekraft-server --ingen-browser`, og lad denne SSH-forbindelse stå åben.
+Kontrolpanelet er kun tilgængeligt lokalt på Pi'en, så åbn en anden terminal på din egen computer:
 
 ```sh
-ssh -L 18080:127.0.0.1:8080 bruger@serverens-lokale-ip
+ssh -N -o ExitOnForwardFailure=yes -L 127.0.0.1:18080:127.0.0.1:8080 bruger@serverens-lokale-ip
 ```
 
 Udskift bruger og IP med dine egne værdier. Åbn derefter `http://127.0.0.1:18080/kontrol` på din
 computer. Hvis serveren viser en anden HTTP-port end 8080, brug den som tunnelens sidste port.
-Lad serverprocessen køre, mens børnene spiller. Installationen opretter ikke automatisk en systemtjeneste.
+Lad både serverens SSH-forbindelse og tunnelen stå åbne, mens børnene spiller. Stop serveren med
+**Ctrl+C**, før du lukker dens SSH-forbindelse; hvis forbindelsen afbrydes, kan serveren også stoppe.
+Hvis `tmux` allerede er installeret, kan serveren i stedet køre i en session oprettet med
+`tmux new -s broekraft`; `Ctrl+B`, derefter `D`, kobler fra uden at stoppe serveren, og
+`tmux attach -t broekraft` åbner sessionen igen. Installationen opretter ikke en systemtjeneste.
 På en Linux-firewall skal indgående TCP til HTTP-porten (normalt 8080) og 8443 være tilladt fra
 hjemmenettet. Walkie-talkie bruger desuden direkte lokale forbindelser mellem tabletterne.
 
@@ -76,6 +85,8 @@ kun `~/.local/bin/broekraft-server`; datamappen bevares som backup.
 
 Vælg navn, type, størrelse, 1–8 spillere og om ild må sprede sig. Et tomt frø giver en ny tilfældig verden.
 En stor verden kan tage lidt tid; følg fremgangen i panelet. Nye verdener starter automatisk.
+Den uendelige verden har fast størrelse og vises som **uden kanter**. Den indlæser landet omkring
+spillerne undervejs og gemmer kun ændringerne. Skjulte verdener som Guldslottet kan ikke vælges her.
 Verdenerne gemmes på computeren, og de verdener, der kørte, starter selv igen, når programmet startes.
 Trykker du **Stop** ved en verden, bliver den stoppet, indtil du trykker **Start** igen.
 
@@ -135,8 +146,9 @@ Undgå at slukke computeren eller tvangslukke programmet, mens børnene bygger.
 Kontrolpanelet kan kun åbnes på selve servercomputeren.
 
 Klik **Backup** ved en verden. Panelet viser mappen med kopien; kopier gerne mappen til en USB-disk.
-Backup indeholder `meta.json` og `data.bin.gz`. For at gendanne: stop serveren, kopier begge filer
-til verdens mappe (navnet er id'et fra `meta.json`), og start serveren igen. Gem en kopi af den
+Backup indeholder hele verdens mappe. Almindelige verdener bruger `meta.json` og `data.bin.gz`;
+Den uendelige verden bruger `meta.json` og sine gemte ændringer. For at gendanne: stop serveren,
+kopier hele backupmappen til verdens mappe (navnet er id'et fra `meta.json`), og start serveren igen. Gem en kopi af den
 eksisterende mappe først. Slet kræver to bekræftelser; tidligere backups bevares.
 
 Data findes her:
@@ -152,9 +164,13 @@ Tændt TNT afsluttes, når en verden stoppes, så dets ændringer også gemmes.
 Installer Deno 2.9.7 eller nyere. Fra `server/`: `deno task start`, `deno task test`, `deno task byg`.
 Byg laver programmer til Windows, begge Mac-typer og Linux x64/ARM64 i `server/dist/`.
 Kun Linux: `deno task byg Linux-x64 Linux-ARM64`. Linux-pakker får `installer.sh` og arkitekturkontrol.
-Release-workflowet laver `.tar.gz` til Linux og afprøver x64-installation og HTTPS på Ubuntu.
-Et tag som `server-v0.2.0` bygger zip-filer og udgiver dem på GitHub Releases.
-Opret først tagget, når ejeren har godkendt den samlede spilversion.
+Release-workflowet laver zip-filer til Windows/Mac og `.tar.gz` til Linux. Installation, opdatering og
+HTTPS afprøves på både x64 og ARM64 Ubuntu, før pakkerne kan udgives. Begge baggrundsberegninger,
+`generator-worker.js` og `uendelig-worker.js`, medtages i de kompilerede programmer.
+Et tag som `server-v0.5.0` bygger pakkerne og udgiver dem på GitHub Releases.
+Arbejdsgrenen for 0.5.0 indeholder serverdelen til Den uendelige verden. Claude skal stadig færdiggøre
+og afprøve visningen af serverens land på tabletterne. Ejeren fletter grenen og godkender den samlede
+spilversion, før release-tagget oprettes; der pushes aldrig direkte til `main`.
 
 Certifikater laves med **node-forge 1.4.0**, som ligger i `server/vendor/node-forge` (BSD-3-Clause).
 RSA-nøgler skabes med WebCrypto. Certifikatbiblioteket indlæses som CommonJS og medtages i de kompilerede

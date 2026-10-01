@@ -1,11 +1,15 @@
 // Lille EventTarget-klient. Ingen afhængigheder og ingen antagelser om 3D-visningen.
 // maksId: det højeste blok-id, spillet kender (BLOKKE.length - 1). Nye blokke tilføjes løbende nederst.
-export function udpakKlump(buffer, maksId = 255) {
+export function udpakKlump(buffer, maksId = 255, mål = { bredde: 1024, dybde: 1024 }) {
   const bytes = new Uint8Array(buffer);
   if (bytes.length < 13 || bytes[0] !== 1 || (bytes.length - 11) % 2) throw new Error("Ugyldig klump");
   const header = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const cx = header.getInt32(1, true), cz = header.getInt32(5, true), højde = header.getUint16(9, true);
-  if (cx < 0 || cz < 0 || cx >= 64 || cz >= 64 || højde < 1 || højde > 64) throw new Error("Ugyldige klumpmål");
+  // Målene kommer fra velkomsten; ældre kald uden mål beholder den endelige verdens grænse.
+  const gyldigtMål = n => Number.isInteger(n) && n > 0 && n <= 65536;
+  if (!mål || !gyldigtMål(mål.bredde) || !gyldigtMål(mål.dybde)
+    || cx < 0 || cz < 0 || cx >= Math.ceil(mål.bredde / 16) || cz >= Math.ceil(mål.dybde / 16)
+    || højde < 1 || højde > 64 || (mål.højde !== undefined && højde !== mål.højde)) throw new Error("Ugyldige klumpmål");
   const data = new Uint8Array(256 * højde);
   let pos = 0;
   for (let i = 11; i < bytes.length; i += 2) {
@@ -46,7 +50,10 @@ class Forbindelse extends EventTarget {
       };
       socket.onmessage = ({ data }) => {
         try {
-          if (typeof data !== "string") { this.hændelse("klump", udpakKlump(data)); return; }
+          if (typeof data !== "string") {
+            if (!this.info?.verden) throw new Error("Klump før velkommen");
+            this.hændelse("klump", udpakKlump(data, 255, this.info.verden)); return;
+          }
           const b = JSON.parse(data), { t, ...detail } = b;
           if (t === "velkommen") {
             this.info = detail;

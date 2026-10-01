@@ -1,8 +1,24 @@
+import { verdensvalg, størrelsestekst } from "./verdensvalg.js";
+
 // Panelet bruger textContent til verdensnavne og viser aldrig indtastninger som HTML.
 const $ = s => document.querySelector(s);
 let token, sidsteAdresser = "", sidsteVerdener = "", sidsteCertifikater = "", sidsteNetstatus = "";
 const figurer = { gris: "🐷", ko: "🐮", faar: "🐑", hone: "🐔", fro: "🐸", and: "🦆", snegl: "🐌", zombie: "🧟" };
 const tekst = (tag, indhold) => { const e = document.createElement(tag); e.textContent = indhold; return e; };
+
+// Brug spillets opskrifter, så nye verdener kommer med, og skjulte verdener altid udelades.
+const typer = $("#opret [name=type]");
+typer.replaceChildren(...verdensvalg().map(v => {
+  const e = tekst("option", `${v.ikon} ${v.navn}`); e.value = v.id; return e;
+}));
+function visStørrelse() {
+  const uendelig = typer.value === "uendelig";
+  $("#størrelse").hidden = uendelig;
+  $("#opret [name=bredde]").disabled = uendelig;
+  $("#uden-kanter").hidden = !uendelig;
+}
+typer.onchange = visStørrelse;
+visStørrelse();
 
 async function handling(navn, data) {
   const svar = await fetch(`/api/${navn}`, { method: "POST", headers: { "content-type": "application/json", "x-broekraft-token": token }, body: JSON.stringify(data) });
@@ -28,7 +44,7 @@ function visVerdener(liste) {
   sidsteVerdener = nøgle; $("#verdener").replaceChildren();
   for (const v of liste) {
     const e = document.createElement("article");
-    e.append(tekst("h3", v.navn), tekst("p", `${v.bredde} × ${v.dybde} · ${v.spillere}/${v.maksSpillere} spillere · ${v.startet ? "Startet" : "Stoppet"}`));
+    e.append(tekst("h3", v.navn), tekst("p", `${størrelsestekst(v)} · ${v.spillere}/${v.maksSpillere} spillere · ${v.startet ? "Startet" : "Stoppet"}`));
     const mærkat = tekst("label", "🎤 Må tale sammen "), kontakt = document.createElement("input");
     mærkat.className = "flueben"; kontakt.type = "checkbox"; kontakt.checked = v.stemmer === true;
     kontakt.onchange = async () => {
@@ -115,7 +131,9 @@ $("#opret").onsubmit = async e => {
   const f = new FormData(e.target);
   $("#opret button").disabled = true;
   try {
-    await handling("opret", { navn: f.get("navn"), type: f.get("type"), bredde: Number(f.get("bredde")), maksSpillere: Number(f.get("maksSpillere")), frø: f.get("frø"), ildBreder: f.has("ildBreder") });
+    const valg = { navn: f.get("navn"), type: f.get("type"), maksSpillere: Number(f.get("maksSpillere")), frø: f.get("frø"), ildBreder: f.has("ildBreder") };
+    if (valg.type !== "uendelig") valg.bredde = Number(f.get("bredde"));
+    await handling("opret", valg);
     $("#besked").textContent = OPRETTER; await opdater();
   } catch (fejl) { $("#besked").textContent = fejl.message; $("#opret button").disabled = false; }
 };

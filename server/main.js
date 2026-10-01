@@ -2,6 +2,7 @@ import { extname, sep, resolve, join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Verdenslager, metadata, VERSION, UDGAVE } from "./verdener.js";
 import { Rum } from "./rum.js";
+import { UendeligtRum } from "./uendelig-rum.js";
 import { FIGURER, læsBesked, send } from "./protokol.js";
 import { hentCertifikater, certifikatSvar } from "./certifikat.js";
 import { Netværkstjek } from "./netvaerk.js";
@@ -39,8 +40,9 @@ export class BroekraftServer {
     const r = this.rum.get(id);
     if (r) r.meta = meta;
   }
-  liste() {
-    return [...this.rum.values()].map(r => ({ id: r.meta.id, navn: r.meta.navn, type: r.meta.type, bredde: r.meta.bredde, dybde: r.meta.dybde, spillere: r.spillere.size, maks: r.meta.maksSpillere }));
+  liste(version) {
+    return [...this.rum.values()].filter(r => version !== "0.1.0" || !(r instanceof UendeligtRum))
+      .map(r => ({ id: r.meta.id, navn: r.meta.navn, type: r.meta.type, bredde: r.meta.bredde, dybde: r.meta.dybde, uendelig: r instanceof UendeligtRum, spillere: r.spillere.size, maks: r.meta.maksSpillere }));
   }
 
   // Én handling pr. verden ad gangen undgår dobbelt start og sletning midt i backup.
@@ -55,7 +57,7 @@ export class BroekraftServer {
   async start(id) {
     if (this.rum.has(id)) return;
     const { meta, data } = await this.lager.indlæs(id);
-    this.rum.set(id, new Rum(meta, data));
+    this.rum.set(id, meta.type === "uendelig" && meta.version === "0.2.0" ? new UendeligtRum(meta, data) : new Rum(meta, data));
   }
 
   async gem(rum) {
@@ -68,15 +70,29 @@ export class BroekraftServer {
   async stop(id) {
     const rum = this.rum.get(id);
     if (!rum) return;
-    rum.afslut(); this.rum.delete(id);
-    try { await this.gem(rum); }
-    catch (fejl) { this.rum.set(id, rum); throw fejl; }
+    try {
+      await rum.afslut(); this.rum.delete(id);
+      await this.gem(rum);
+      if (rum instanceof UendeligtRum) await rum.data.luk();
+    } catch (fejl) { rum.stoppet = false; this.rum.set(id, rum); throw fejl; }
   }
 
   opret(valg) {
     if ([...this.job.values()].some(j => j.status === "arbejder")) throw new Error("Vent til den igangværende verden er færdig");
     const meta = metadata(valg), job = { id: meta.id, navn: meta.navn, procent: 0, status: "arbejder" };
     this.job.set(meta.id, job);
+    // Uendeligt land laves ved besøg, så oprettelsen gemmer kun frø og indstillinger.
+    if (meta.type === "uendelig" && meta.version === "0.2.0") {
+      meta.kører = true;
+      job.færdig = this.lås(meta.id, async () => {
+        try {
+          await this.lager.gemMeta(meta); this.metadata.set(meta.id, meta);
+          if (!this.lukker) await this.start(meta.id);
+          job.procent = 100; job.status = "færdig";
+        } catch (fejl) { job.status = "fejl"; job.fejl = fejl.message; }
+      });
+      return meta.id;
+    }
     const worker = new Worker(new URL("./generator-worker.js", import.meta.url).href, { type: "module" });
     job.færdig = new Promise(resolve => {
       const afslut = () => { worker.terminate(); resolve(); };
@@ -101,28 +117,35 @@ export class BroekraftServer {
   }
 
   tilslut(socket) {
-    const s = { id: crypto.randomUUID(), socket, rum: null, hej: false, vindue: performance.now(), antal: 0 };
+    const s = { id: crypto.randomUUID(), socket, rum: null, hej: false, vindue: performance.now(), antal: 0, ventende: 0, kø: Promise.resolve() };
     this.spillere.add(s);
     socket.onmessage = ({ data }) => {
       try {
         const nu = performance.now();
         if (nu - s.vindue >= 1000) { s.vindue = nu; s.antal = 0; }
-        if (++s.antal > 100) { socket.close(1008, "For mange beskeder"); return; }
+        if (++s.antal > 100 || s.ventende >= 128) { socket.close(1008, "For mange beskeder"); return; }
         const b = læsBesked(data);
-        if (b.t === "hej") {
-          if (!FIGURER.includes(b.figur) || !["0.1.0", VERSION].includes(b.version)) { send(s, { t: "fejl", besked: "Ukendt figur eller version; genindlæs siden" }); return; }
-          if (!s.hej) { s.figur = b.figur; s.version = b.version; s.hej = true; }
-          return;
-        }
-        if (!s.hej) { send(s, { t: "fejl", besked: "Send hej først" }); return; }
-        if (b.t === "verdener") { send(s, { t: "verdener", liste: this.liste() }); return; }
-        if (b.t === "vælg") {
-          const rum = this.rum.get(b.verden);
-          if (!rum) { send(s, { t: "fejl", besked: "Verdenen er ikke startet" }); return; }
-          if (s.rum !== rum && rum.spillere.size >= rum.meta.maksSpillere) { send(s, { t: "fuld" }); return; }
-          s.rum?.ud(s); rum.ind(s); return;
-        }
-        s.rum?.besked(s, b);
+        // Hver tablet får sin egen kø, så et valg bliver færdigt før den første bygning.
+        s.ventende++;
+        s.kø = s.kø.then(async () => {
+          if (this.lukker || !this.spillere.has(s)) return;
+          if (b.t === "hej") {
+            if (!FIGURER.includes(b.figur) || !["0.1.0", VERSION].includes(b.version)) { send(s, { t: "fejl", besked: "Ukendt figur eller version; genindlæs siden" }); return; }
+            if (!s.hej) { s.figur = b.figur; s.version = b.version; s.hej = true; }
+            return;
+          }
+          if (!s.hej) { send(s, { t: "fejl", besked: "Send hej først" }); return; }
+          if (b.t === "verdener") { send(s, { t: "verdener", liste: this.liste(s.version) }); return; }
+          if (b.t === "vælg") {
+            const rum = this.rum.get(b.verden);
+            if (!rum) { send(s, { t: "fejl", besked: "Verdenen er ikke startet" }); return; }
+            if (s.version === "0.1.0" && rum instanceof UendeligtRum) { send(s, { t: "fejl", besked: "Genindlæs spillet for at besøge Den uendelige verden" }); return; }
+            if (s.rum !== rum && rum.spillere.size >= rum.meta.maksSpillere) { send(s, { t: "fuld" }); return; }
+            await rum.ind(s, () => this.spillere.has(s) && this.rum.get(b.verden) === rum); return;
+          }
+          await s.rum?.besked(s, b);
+        }).catch(fejl => send(s, { t: "fejl", besked: fejl.message }))
+          .finally(() => { s.ventende--; });
       } catch (fejl) { send(s, { t: "fejl", besked: fejl instanceof SyntaxError ? "Ugyldig JSON" : fejl.message }); }
     };
     socket.onclose = () => { s.rum?.ud(s); this.spillere.delete(s); };
@@ -171,7 +194,7 @@ export class BroekraftServer {
       token: this.token, version: UDGAVE, adresser: this.adresser.map(ip => this.certifikater ? `https://${ip}:${this.httpsPort}/` : `http://${ip}:${this.port}/`), datamappe: this.lager.rod,
       netværk: await this.netværkstjek.hent(this.adresser), tabletSet: this.tabletSet,
       certifikatAdresser: this.certifikater ? this.adresser.map(ip => `http://${ip}:${this.port}/certifikat`) : [], aftryk: this.certifikater?.aftryk,
-      verdener: [...this.metadata.values()].map(m => ({ ...m, startet: this.rum.has(m.id), spillere: this.rum.get(m.id)?.spillere.size || 0 })),
+      verdener: [...this.metadata.values()].map(m => ({ ...m, uendelig: m.type === "uendelig" && m.version === "0.2.0", startet: this.rum.has(m.id), spillere: this.rum.get(m.id)?.spillere.size || 0 })),
       spillere: [...this.spillere].filter(s => s.rum).map(s => ({ figur: s.figur, verden: s.rum.meta.navn })),
       job: [...this.job.values()].map(({ færdig: _, ...j }) => j),
     });
@@ -216,7 +239,7 @@ export class BroekraftServer {
     let relativ;
     if (sti === "/") relativ = "server/sammen/index.html";
     else if (sti === "/kontrol" || sti === "/kontrol/") relativ = "server/kontrol/index.html";
-    else if (/^\/kontrol\/(kontrol\.(css|js)|qrcode\.js)$/.test(sti)) relativ = sti.endsWith("qrcode.js") ? "server/vendor/qrcode.js" : `server${sti}`;
+    else if (/^\/kontrol\/(kontrol\.(css|js)|verdensvalg\.js|qrcode\.js)$/.test(sti)) relativ = sti.endsWith("qrcode.js") ? "server/vendor/qrcode.js" : `server${sti}`;
     else if (sti === "/sammen" || sti === "/sammen/") relativ = "server/sammen/index.html";
     else if (sti === "/sammen/sammen.js") relativ = "server/sammen/sammen.js";
     else if (sti === "/tilslut") return new Response(null, { status: 307, headers: { location: "/tilslut/" } });
@@ -243,6 +266,7 @@ export class BroekraftServer {
 
   async luk() {
     this.lukker = true; clearInterval(this.tickTimer); clearInterval(this.gemTimer);
+    await Promise.all([...this.spillere].map(s => s.kø));
     for (const s of this.spillere) s.socket.close(1001, "Serveren lukker");
     await Promise.all([...this.job.values()].map(j => j.færdig));
     await Promise.all([...this.låse.values()]);

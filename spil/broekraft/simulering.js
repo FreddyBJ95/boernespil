@@ -56,6 +56,8 @@ export class Simulering {
     this.aktive.clear();
     const ændringer = [];
     for (const p of felter) {
+      // Serveren kan have glemt en søjle siden sidste trin; dens væsker venter på indlæsning.
+      if (!this.inde(...p)) continue;
       const id = this.hent(...p);
       if (id === ILD) this.ild(...p);
       else if (lava(id)) {

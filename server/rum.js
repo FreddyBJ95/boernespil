@@ -50,17 +50,24 @@ export class Rum {
   }
 
   ind(s) {
-    if (this.spillere.size >= this.meta.maksSpillere) { send(s, { t: "fuld" }); return false; }
-    const x = this.meta.bredde / 2, z = this.meta.dybde / 2;
-    let y = this.meta.højde - 2;
-    while (y > 1 && !this.hent(x, y - 1, z)) y--;
+    if (!this.spillere.has(s.id) && this.spillere.size >= this.meta.maksSpillere) { send(s, { t: "fuld" }); return false; }
+    // Forlad først det gamle rum, når det nye faktisk har en plads klar.
+    s.rum?.ud(s);
+    const { x, y, z } = this.startsted();
     Object.assign(s, { rum: this, x: x + 0.5, y, z: z + 0.5, yaw: 0, pitch: 0, r: s.r || 6, klumper: new Set() });
     this.spillere.set(s.id, s);
     const { id, navn, type, bredde, dybde, højde, frø, ildBreder } = this.meta;
-    send(s, { t: "velkommen", dig: s.id, verden: { id, navn, type, bredde, dybde, højde, frø, ildBreder, stemmer: this.meta.stemmer === true }, spillere: [...this.spillere.values()].map(p => this.spillerInfo(p)) });
+    send(s, { t: "velkommen", dig: s.id, verden: { id, navn, type, bredde, dybde, højde, frø, ildBreder, stemmer: this.meta.stemmer === true, uendelig: this.meta.type === "uendelig" && this.meta.version === "0.2.0" }, spillere: [...this.spillere.values()].map(p => this.spillerInfo(p)) });
     this.alle({ t: "ind", id: s.id, figur: s.figur, version: s.version }, s);
     this.strøm(s);
     return true;
+  }
+
+  startsted() {
+    const x = this.meta.bredde / 2, z = this.meta.dybde / 2;
+    let y = this.meta.højde - 2;
+    while (y > 1 && !this.hent(x, y - 1, z)) y--;
+    return { x, y, z };
   }
 
   spillerInfo(s) { return { id: s.id, figur: s.figur, version: s.version, x: s.x, y: s.y, z: s.z, yaw: s.yaw, pitch: s.pitch }; }

@@ -1,7 +1,10 @@
 # Broekraft-protokol 0.2.0
 
 WebSocket: `/ws`, samme host/origin som spillet (wss på HTTPS). JSON-tekst har feltet `t` og er højst 4096 UTF-8-bytes,
-bortset fra `rtc`, som må fylde 32768 bytes. Version 0.1.0 accepteres stadig uden stemmer.
+bortset fra `rtc`, som må fylde 32768 bytes. Version 0.1.0 accepteres stadig uden stemmer i endelige verdener.
+Nye uendelige verdener udelades fra 0.1.0-klientens liste; et direkte valg afvises med en besked om
+at genindlæse spillet. Den gamle tilslutning bevares. Ældre gemte, endelige `uendelig`-verdener har
+stadig format 0.1.0 og `uendelig:false`; de ændres ikke automatisk til en stor verden.
 Ukendte typer ignoreres. Binære klientbeskeder afvises. Serveren har en samlet grænse på 100 beskeder/s
 pr. forbindelse ud over grænserne nedenfor. En brudt forbindelse fjernes automatisk (WebSocket ping/pong).
 
@@ -25,8 +28,8 @@ Bundsten kan hverken sættes eller fjernes. Blokke kan ikke placeres i en spille
 
 | t | Felter |
 |---|---|
-| verdener | liste: [{id,navn,type,bredde,dybde,spillere,maks}] |
-| velkommen | dig, verden: {id,navn,type,bredde,dybde,højde,frø,ildBreder}, spillere: [{id,figur,x,y,z,yaw,pitch}] |
+| verdener | liste: [{id,navn,type,bredde,dybde,uendelig,spillere,maks}] |
+| velkommen | dig, verden: {id,navn,type,bredde,dybde,højde,frø,ildBreder,stemmer,uendelig}, spillere: [{id,figur,x,y,z,yaw,pitch}] |
 | fuld | – |
 | ind | id,figur |
 | ud | id |
@@ -92,12 +95,39 @@ Kilde til Windows-profiltjek: [Microsofts Get-NetConnectionProfile](https://lear
 Header på 11 bytes: type uint8=1, cx int32, cz int32, højde uint16. **Little endian**.
 Resten er RLE-par: antal uint8 (1–255), blok-id uint8. Rækker længere end 255 deles op.
 Udpakket data har præcis `16*16*højde` bytes med indeks `x + z*16 + y*256`.
-cx/cz er klumpkoordinater, ikke blokkoordinater. Verdensindeks er `x + z*bredde + y*bredde*dybde`.
+cx/cz er klumpkoordinater, ikke blokkoordinater: `0 <= cx < bredde/16` og `0 <= cz < dybde/16`,
+med bredde/dybde fra seneste `velkommen.verden`. Højden skal svare til velkomstens `højde`.
+For den uendelige verden er cx/cz 0…4095. De endelige verdener har stadig deres tidligere mål.
+Verdensindeks i de endelige verdener er `x + z*bredde + y*bredde*dybde`.
 
 Serveren sender nærmeste manglende klumper først, højst fire pr. spiller pr. 100 ms,
 inden for en cirkel med radius r. En hel klump kommer før dens senere blokændringer.
 Ved glem frigives klumpen; en ny tilslutning kræver, at klienten rydder alle gamle klumper.
 Langsomme klienter får begrænset strømmen og forbindes igen ved for stor sendekø.
+
+## Den uendelige verden (server 0.5.0)
+
+For `type: "uendelig"` sender serveren `velkommen.verden.uendelig: true`, `bredde: 65536`,
+`dybde: 65536` og `højde: 64`. Frøet er direkte `meta.frø`, så grundlandet passer byte for byte
+med `lavLand({støj: lavStøj(frø), ID, BY: 64, frø}).søjle(cx, cz)` på tabletten. Startpositionen
+er ved hjemmet, x/z = 32768,5; y ligger én blok over toppen. Koordinater for positioner,
+blokændringer, TNT, brag og fyrværkeri kontrolleres stadig mod verdens medsendte mål.
+
+**Claude integrerer visningen:** Når `velkommen.verden.uendelig` er sand, skal spillet bruge
+serverens `klump`, `blok` og `glem` som grundlag for de viste søjler. Det må ikke generere
+terrænet lokalt oven i serverens klumper. Ryd tidligere søjler ved hver `velkommen`, også ved
+verdensskift og genforbindelse. Der skal ikke oprettes én tæt blokmatrix på 65536²; behold de
+modtagne søjler enkeltvis. Kortet og årstiderne bruger fortsat verdens frø og indstillinger.
+
+Tog, luftballon, spådamen, guld, sten og dyr kører lokalt på hver tablet, som når barnet spiller
+alene. Andre spilleres figurer og blokændringer deles; toget er ikke fælles. Vand, lava, ild
+og TNT styres af serveren. Simulering ved en endnu ikke indlæst søjle venter, til søjlen er klar.
+
+Kontrolpanelet viser "uden kanter" og spørger ikke om størrelse for denne type. Kun typen
+`uendelig` bruger metadataformat 0.2.0 og regioner med ændringer; endelige verdener beholder
+format 0.1.0. Protokollen er fortsat 0.2.0, og 0.1.0-klienter kan stadig bruge endelige verdener.
+Ældre udgaver af spillets netmodul kan ikke læse klumpkoordinater over 63 og skal opdateres,
+før de går ind i den uendelige verden.
 
 ## Klientbibliotek til Claude
 
@@ -105,6 +135,8 @@ Langsomme klienter får begrænset strømmen og forbindes igen ved for stor send
 `verdener()`, `vælg(id)`, `udsyn(r)`, `pos(x,y,z,yaw,pitch)`, `sæt(x,y,z,id)`, `tænd(x,y,z)`, `emoji(e)` og `luk()`.
 `vælg` returnerer indholdet af velkommen uden t, eller kaster `Error("fuld")`.
 Kun ét udestående kald af hver forespørgselstype er tilladt. Svar udløber efter 15 sekunder.
+`udpakKlump(buffer,maksId=255,mål={bredde:1024,dybde:1024})` bevarer ældre direkte kald;
+forbindelsen bruger altid målene fra sin seneste velkomst og afviser klumper før velkomsten.
 
 Alle serverbeskeder bliver hændelser med `e.detail` uden t. Desuden:
 

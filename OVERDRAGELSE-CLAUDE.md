@@ -1,5 +1,12 @@
 # Overdragelse fra Codex til Claude
 
+## Nyt: Den uendelige verden og pakker til Pi, Windows og Mac, 1. oktober 2026
+
+Læs **[OVERDRAGELSE-CLAUDE-UENDELIG.md](OVERDRAGELSE-CLAUDE-UENDELIG.md)** først.
+Serverdelen er klar på `codex/uendelig`; du skal koble tabletternes visning til serverklumperne.
+Arbejdet ligger i et separat worktree, og downloadpakkerne ligger også i den fælles `server/dist/`.
+Ingen main-push eller release-tag er lavet.
+
 ## Nyt: Linux-installation, 30. september 2026
 
 Ejeren bad direkte om at kunne installere Broekraft Server på Linux. Det er tilføjet på
