@@ -1,6 +1,6 @@
 // ===== Service Worker — gør spillene installerbare og tilgængelige offline =====
 // Bump dette tal når der ændres filer, så de gamle bliver hentet på ny.
-const CACHE = "boernespil-v64";
+const CACHE = "boernespil-v65";
 
 const SPIL = ["balloner", "byg-burger", "enhjoerning", "vask", "slange", "tegne", "piano", "fisk", "broekraft", "rulle-rasmus", "burgerloeb"];
 const VOKSENSPIL = ["det-sidste-lys", "skrotstorm", "krystaljaegerne"];
@@ -17,7 +17,8 @@ const EKSTRA = [
   ...["soe", "hav", "grej"].map(f => `spil/fisk/modeller/${f}.glb`),
   ...["three.js", "spil.js", "verden.js", "slange.js", "mad.js", "lyd.js", "modeller.js"].map(f => `spil/slange/${f}`),
   ...["hoved", "mad", "hatte", "pynt"].map(f => `spil/slange/modeller/${f}.glb`),
-  ...["three.js", "spil.js", "baner.js", "bane.js", "temaer.js", "verden.js", "ting.js", "blob.js", "partikler.js", "teksturer.js", "lyd.js"].map(f => `spil/rulle-rasmus/${f}`),
+  ...["three.js", "spil.js", "baner.js", "bane.js", "temaer.js", "verden.js", "ting.js", "blob.js", "partikler.js", "teksturer.js", "lyd.js", "modeller.js"].map(f => `spil/rulle-rasmus/${f}`),
+  "spil/rulle-rasmus/modeller/rasmus.glb",                              // pynt, frugt og puder fra Blender
   ...["three.js", "spil.js", "figurer.js", "kaemper.js", "bane.js", "lyd.js"].map(f => `spil/burgerloeb/${f}`),
   ...["lag", "loeber", "mand", "dino", "monster"].map(f => `spil/burgerloeb/modeller/${f}.glb`),   // modellerne fra Blender
   "spil/glb.js",                                                        // læser modellerne fra Blender
