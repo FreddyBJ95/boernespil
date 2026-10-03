@@ -48,6 +48,15 @@ export async function prøvOffentligeFiler(hent, læsKilde) {
   };
   for (const [sti, mime] of billeder) await prøv(sti, mime);
 
+  // Slanges Blender-modeller og de nye våbenmoduler skal også følge med i pakken.
+  for (const navn of ["hoved", "mad", "hatte", "pynt"]) {
+    await prøv(`/spil/slange/modeller/${navn}.glb`, "model/gltf-binary");
+  }
+  for (const sti of ["/spil/glb.js", "/spil/slange/modeller.js",
+    ...["katalog", "udrustning", "projektiler"].map(navn => `/spil/sigtekorn/${navn}.js`)]) {
+    await prøv(sti, "text/javascript; charset=utf-8");
+  }
+
   // Sigtekorn henter både soldaten, våbnene, teksturerne og det bagte lys lokalt.
   for (const navn of ["leddeloes", "gevaer", "pistol", "snig", "kniv"]) {
     await prøv(`/spil/sigtekorn/modeller/${navn}.glb`, "model/gltf-binary");
