@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Min enhjørning 🦄</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; }
+    body {
+      font-family: ui-rounded, "SF Pro Rounded", "Baloo 2", system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: #ffe3f3; color: #5a2b6b;
+      -webkit-user-select: none; user-select: none;
+      -webkit-tap-highlight-color: transparent; touch-action: none;
+    }
+    #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+    .top {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 14px; pointer-events: none;
+    }
+    .top > * { pointer-events: auto; }
+    .rund {
+      font-size: 26px; text-decoration: none; background: rgba(255,255,255,.92); border-radius: 50%;
+      width: 52px; height: 52px; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 14px rgba(120,40,120,.2);
+    }
+    .hjerter {
+      font-size: 24px; font-weight: 900; background: rgba(255,255,255,.92); border-radius: 999px;
+      padding: 8px 18px; box-shadow: 0 4px 14px rgba(120,40,120,.18); white-space: nowrap;
+    }
+    .hjerter.hop { animation: hop .45s cubic-bezier(.2,1.6,.4,1); }
+    @keyframes hop { 40% { transform: scale(1.3); } }
+
+    /* Forneden: værktøjer/valg for den fane, man står på, og de fire faner */
+    .bund {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 9;
+      padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+      background: linear-gradient(180deg, rgba(255,255,255,.9), rgba(255,240,250,.97));
+      border-radius: 26px 26px 0 0; box-shadow: 0 -6px 24px rgba(150,60,150,.18);
+    }
+    .chips, .valg, .faner { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+    .chips { margin-bottom: 8px; }
+    .chip {
+      width: 50px; height: 40px; border-radius: 14px; border: none; background: #f6e8f8; cursor: pointer; padding: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 22px;
+    }
+    .chip canvas { width: 34px; height: 34px; pointer-events: none; }
+    .chip.valgt { background: #ffd6f0; box-shadow: 0 0 0 3px #ff7eb6; }
+    .valg { min-height: 60px; align-items: center; margin-bottom: 8px; }
+    .vbtn {
+      width: 58px; height: 58px; border-radius: 50%; border: 4px solid #fff; padding: 0; cursor: pointer;
+      box-shadow: 0 3px 8px rgba(120,40,120,.25); font-size: 30px; line-height: 1;
+      display: flex; align-items: center; justify-content: center; background: #fff; transition: transform .12s;
+    }
+    .vbtn canvas { width: 46px; height: 46px; pointer-events: none; }
+    .vbtn.valgt { transform: scale(1.14); box-shadow: 0 0 0 4px #ff7eb6, 0 3px 8px rgba(120,40,120,.25); }
+    .vbtn:active { transform: scale(.9); }
+    .faner { gap: 10px; }
+    .fane {
+      flex: 1; max-width: 120px; height: 58px; border: none; border-radius: 18px; cursor: pointer;
+      font-size: 32px; background: #f3e3f7; box-shadow: 0 3px 0 #e3c4ea;
+    }
+    .fane.valgt { background: linear-gradient(180deg, #ffb3dc, #ff7eb6); box-shadow: 0 3px 0 #d94f93; transform: translateY(-3px); }
+
+    @media (max-width: 520px), (max-height: 600px) {
+      .vbtn { width: 48px; height: 48px; font-size: 25px; border-width: 3px; }
+      .vbtn canvas { width: 38px; height: 38px; }
+      .fane { height: 48px; font-size: 26px; }
+      .chip { width: 44px; height: 36px; }
+      .valg { min-height: 50px; }
+      .rund { width: 44px; height: 44px; font-size: 22px; }
+      .hjerter { font-size: 19px; padding: 6px 14px; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+  <div class="top">
+    <a class="rund" href="../../">🏠</a>
+    <div class="hjerter" id="hjerteBoks">❤️ <span id="hjerter">0</span></div>
+  </div>
+  <div class="bund" id="bund">
+    <div class="chips" id="chips"></div>
+    <div class="valg" id="valg"></div>
+    <div class="faner" id="faner"></div>
+  </div>
+
+  <script src="../../effekter.js"></script>
+  <script>
+    // ===== Min enhjørning =====
+    // 🎨 Lav din egen enhjørning: farve, man, horn, vinger og mærke.
+    // 🎀 Pynt den med sadel, noget på hovedet og noget på benene.
+    // 🧽 Den hopper i mudder — vask den med svamp og bruser, tør den med føn, og børst manen.
+    // 🍎 Giv den mad. Tryk på den, så vrinsker den, hopper, laver magi med hornet eller flyver.
+    // Enhjørningen huskes på enheden til næste gang.
+
+    const $ = id => document.getElementById(id);
+    const TAU = Math.PI * 2;
+    const klem = (v, a, b) => Math.max(a, Math.min(b, v));
+    const tilf = (a, b) => a + Math.random() * (b - a);
+
+    // ---------- Valgmulighederne ----------
+    const KROP = ["#ffffff", "#ffd6ec", "#e3d4ff", "#c9f2df", "#cfe9ff", "#fff1b8", "#ffc9a8", "#4a3f6b"];
+    const MAN = {                                   // farverne i manen og halen
+      regnbue: ["#ff5c8a", "#ff9f1c", "#ffd23f", "#4cd964", "#2ec4f1", "#9b5de5"],
+      lyserød: ["#ff7eb6", "#ffb3dc", "#ff5c9a"],
+      lilla:   ["#9b5de5", "#c39bff", "#7b3fd1"],
+      blå:     ["#2ec4f1", "#8fe0ff", "#1d8fd8"],
+      mint:    ["#34d399", "#a7f3d0", "#10b981"],
+      guld:    ["#ffd23f", "#fff1a8", "#f0a500"],
+      ild:     ["#ff4d2e", "#ff9f1c", "#ffd23f"],
+      galakse: ["#3b1d8f", "#7b3fd1", "#ff7eb6", "#2ec4f1"],
+    };
+    const HORN = {
+      guld:    ["#fff4b0", "#ffc928", "#c98a00"],
+      sølv:    ["#ffffff", "#dfe5ee", "#9aa4b5"],
+      regnbue: null,
+      krystal: ["#f2fbff", "#bfe9ff", "#ff9fd0"],
+      lyserød: ["#ffe1f1", "#ff8fc6", "#d94f93"],
+    };
+    const VINGER = ["ingen", "hvid", "lyserød", "regnbue", "guld"];
+    const MÆRKER = ["", "⭐", "❤️", "🌈", "🌸", "🦋", "⚡", "🍓"];
+    const SADLER = {
+      ingen:   null,
+      hjerter: { sadel: "#ff7eb6", dækken: "#ffe1f1", kant: "#ffffff", rem: "#c94f86", pynt: "hjerter" },
+      cowboy:  { sadel: "#a0622d", dækken: "#e8463a", kant: "#ffffff", rem: "#6b3d15", pynt: "cowboy" },
+      konge:   { sadel: "#7b2cbf", dækken: "#ffd23f", kant: "#fff2a8", rem: "#4a1a7a", pynt: "konge" },
+      regnbue: { sadel: "#ffffff", dækken: "regnbue", kant: "#ffffff", rem: "#9b5de5", pynt: "" },
+      stjerner:{ sadel: "#3a86ff", dækken: "#cfe6ff", kant: "#ffffff", rem: "#1d4ed8", pynt: "stjerner" },
+    };
+    const HOVED = ["ingen", "krans", "krone", "sløjfe", "briller", "hat"];
+    const BEN = ["ingen", "varmere", "regnbuevarmere", "glitterhove"];
+    const MAD = [
+      { e: "🥕" }, { e: "🍎" }, { e: "🍓" }, { e: "🍉" }, { e: "🍪" },
+      { e: "🧁", glimmer: true }, { e: "🍭", glimmer: true },
+    ];
+
+    // ---------- Det, der huskes ----------
+    const STANDARD = { krop: "#ffffff", man: "regnbue", horn: "guld", vinger: "ingen", mærke: "⭐", sadel: "ingen", hoved: "krans", ben: "ingen", hjerter: 0 };
+    let d = { ...STANDARD };
+    try { Object.assign(d, JSON.parse(localStorage.getItem("enhjoerning") || "{}")); } catch (_) {}
+    function gem() { try { localStorage.setItem("enhjoerning", JSON.stringify(d)); } catch (_) {} }
+    function giHjerter(n) {
+      d.hjerter += n; gem(); $("hjerter").textContent = d.hjerter;
+      const el = $("hjerteBoks"); el.classList.remove("hop"); void el.offsetWidth; el.classList.add("hop");
+    }
+
+    // ---------- Farvehjælpere ----------
+    function blandet(hex, med, t) {                 // bland to farver (t = 0..1)
+      const a = parseInt(hex.slice(1), 16), b = parseInt(med.slice(1), 16);
+      const f = s => Math.round(((a >> s) & 255) * (1 - t) + ((b >> s) & 255) * t);
+      return `rgb(${f(16)}, ${f(8)}, ${f(0)})`;
+    }
+    const mørkere = (hex, t) => blandet(hex, "#3a1450", t);
+    const lysere = (hex, t) => blandet(hex, "#ffffff", t);
+    function rr(c, x, y, w, h, r) {
+      r = Math.min(r, w / 2, h / 2);
+      c.beginPath(); c.moveTo(x + r, y);
+      c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+      c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+    }
+    function hjerteSti(c, x, y, s) {
+      c.beginPath(); c.moveTo(x, y + s * 0.8);
+      c.bezierCurveTo(x - s * 1.6, y - s * 0.2, x - s * 0.6, y - s * 1.3, x, y - s * 0.45);
+      c.bezierCurveTo(x + s * 0.6, y - s * 1.3, x + s * 1.6, y - s * 0.2, x, y + s * 0.8);
+    }
+    function stjerneSti(c, x, y, r, takker = 5) {
+      c.beginPath();
+      for (let i = 0; i < takker * 2; i++) {
+        const rr2 = i % 2 ? r * 0.45 : r, a = Math.PI / takker * i - Math.PI / 2;
+        c.lineTo(x + Math.cos(a) * rr2, y + Math.sin(a) * rr2);
+      }
+      c.closePath();
+    }
+
+    // ===================================================================
+    // ---------- Enhjørningen. Den vender mod højre; jorden er y = 520 ----------
+    // ===================================================================
+    const KASSE = { x: -15, y: -80, b: 700, h: 610 };   // det område enhjørningen fylder (i dens egne mål)
+    const HALSLED = { x: 400, y: 262 };                // hovedet drejer en smule omkring halsens bund
+
+    // Pelsens former (bruges både til farver, omrids og som "maske" til mudder)
+    function benSti(c, x, b, top = 320) { rr(c, x - b / 2, top, b, 520 - top, b * 0.45); }
+    function halsSti(c) {
+      c.beginPath(); c.moveTo(355, 255);
+      c.bezierCurveTo(372, 175, 415, 112, 468, 92);
+      c.lineTo(548, 150);
+      c.bezierCurveTo(505, 200, 475, 255, 470, 335);
+      c.closePath();
+    }
+    function øreSti(c, vip, lille = 1) {
+      c.save(); c.translate(466, 80); c.rotate(-0.22 + vip); c.scale(lille, lille);
+      c.beginPath(); c.moveTo(-22, 4); c.quadraticCurveTo(-16, -58, 8, -84); c.quadraticCurveTo(28, -40, 22, 6); c.closePath();
+      c.restore();
+    }
+    // fn kaldes én gang for hver form med den rigtige drejning af hovedet
+    function pelsFormer(c, p, fn) {
+      for (const [x, y, rx, ry, rot] of [[300, 300, 165, 100, -0.04], [422, 288, 72, 88, 0], [180, 290, 82, 92, 0]]) {
+        c.beginPath(); c.ellipse(x, y, rx, ry, rot, 0, TAU); fn();
+      }
+      benSti(c, 198, 52); fn(); benSti(c, 422, 52); fn();
+      c.save(); c.translate(HALSLED.x, HALSLED.y); c.rotate(p.hoved); c.translate(-HALSLED.x, -HALSLED.y);
+      halsSti(c); fn();
+      c.beginPath(); c.arc(500, 140, 76, 0, TAU); fn();
+      c.beginPath(); c.ellipse(570, 184, 57, 47, 0.32, 0, TAU); fn();
+      øreSti(c, p.øre); fn();
+      c.restore();
+    }
+
+    // Hele enhjørningen. p = stillingen: hoved (drejning), øre, hale, blink, mund, vinge, ånde, glans
+    function tegnEnhjørning(c, t, p, vis = { udstyr: true }) {
+      const KF = d.krop, streg = mørkere(KF, 0.55), mørk = mørkere(KF, 0.12);
+      const manF = MAN[d.man] || MAN.regnbue;
+      // halen bagerst
+      tegnHale(c, t, p, manF);
+      // de fjerne ben (lidt mørkere, de står bag kroppen)
+      for (const x of [244, 388]) {
+        benSti(c, x, 46, 300);
+        c.fillStyle = mørk; c.fill(); c.lineWidth = 5; c.strokeStyle = streg; c.stroke();
+        c.save(); c.globalAlpha = 0.18; c.fillStyle = "#3a1450"; c.fill(); c.restore();
+        tegnHov(c, x, 46, true);
+        if (vis.udstyr) tegnBenpynt(c, x, 46, true);
+      }
+      // pelsen: først omrids rundt om det hele, så farven ovenpå (så det bliver én samlet form)
+      pelsFormer(c, p, () => { c.lineWidth = 11; c.strokeStyle = streg; c.lineJoin = "round"; c.stroke(); });
+      const g = c.createRadialGradient(330, 200, 30, 330, 300, 330);
+      g.addColorStop(0, lysere(KF, 0.35)); g.addColorStop(0.65, KF); g.addColorStop(1, mørkere(KF, 0.1));
+      pelsFormer(c, p, () => { c.fillStyle = g; c.fill(); });
+      // hove på de nære ben
+      for (const x of [198, 422]) { tegnHov(c, x, 52, false); if (vis.udstyr) tegnBenpynt(c, x, 52, false); }
+      // mærket på bagdelen
+      if (d.mærke) {
+        c.save(); c.translate(172, 305); c.rotate(-0.15);
+        c.font = "56px system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif"; c.textAlign = "center"; c.textBaseline = "middle";
+        c.globalAlpha = 0.95; c.fillText(d.mærke, 0, 0); c.restore();
+      }
+      // sadlen, og vingen (på den nære side) foran sadlen
+      if (vis.udstyr && d.sadel !== "ingen") tegnSadel(c, t, p);
+      if (d.vinger !== "ingen") tegnVinge(c, t, p, manF);
+      // hovedet: øjne, mund, man, horn og pynt — drejet med hovedet
+      c.save(); c.translate(HALSLED.x, HALSLED.y); c.rotate(p.hoved); c.translate(-HALSLED.x, -HALSLED.y);
+      tegnMan(c, t, p, manF);
+      // indersiden af øret
+      øreSti(c, p.øre, 0.6); c.fillStyle = "#ffb3d4"; c.fill();
+      tegnAnsigt(c, t, p);
+      if (vis.udstyr && d.sadel !== "ingen") tegnHovedtøj(c, t, p);
+      if (vis.udstyr && d.hoved === "hat") tegnHovedpynt(c, t, p);
+      tegnPandehår(c, t, p, manF);
+      tegnHorn(c, t, p);
+      if (vis.udstyr && d.hoved !== "hat") tegnHovedpynt(c, t, p);
+      c.restore();
+    }
+
+    function tegnHov(c, x, b, fjern) {
+      const glimmer = d.ben === "glitterhove";
+      rr(c, x - b / 2 - 1, 494, b + 2, 27, 9);
+      c.fillStyle = glimmer ? "#ffd23f" : mørkere(d.krop, fjern ? 0.62 : 0.5); c.fill();
+      c.lineWidth = 4; c.strokeStyle = mørkere(d.krop, 0.7); c.stroke();
+      if (glimmer) {
+        c.fillStyle = "#fff8d0";
+        for (let i = 0; i < 4; i++) { stjerneSti(c, x - b / 2 + 8 + i * (b - 14) / 3, 503 + (i % 2) * 8, 4, 4); c.fill(); }
+      }
+    }
+    function tegnBenpynt(c, x, b, fjern) {          // benvarmere: stribede, lodne bånd om underbenene
+      if (d.ben !== "varmere" && d.ben !== "regnbuevarmere") return;
+      const farver = d.ben === "varmere" ? ["#ff7eb6", "#ffffff"] : MAN.regnbue;
+      c.save();
+      rr(c, x - b / 2 - 6, 420, b + 12, 72, 14); c.clip();
+      for (let i = 0; i < 8; i++) { c.fillStyle = farver[i % farver.length]; c.fillRect(x - b, 420 + i * 9, b * 2, 9); }
+      if (fjern) { c.fillStyle = "rgba(58,20,80,.18)"; c.fillRect(x - b, 420, b * 2, 72); }
+      c.restore();
+      rr(c, x - b / 2 - 6, 420, b + 12, 72, 14); c.lineWidth = 3; c.strokeStyle = "rgba(90,40,100,.45)"; c.stroke();
+    }
+
+    // Halen: tykke lokker, der svajer
+    function tegnHale(c, t, p, farver) {
+      const n = 7;
+      for (let i = n - 1; i >= 0; i--) {
+        const sving = Math.sin(t * 1.7 + i * 0.6) * 14 * p.hale + p.haleSlag * Math.sin(t * 18 + i) * 25;
+        const rx = 118 + i * 3, ry = 236 + i * 7;
+        const tx = 46 - i * 7 + sving, ty = 372 + i * 19;
+        lok(c, rx, ry, tx, ty, 50 - i * 2, 18 + sving * 0.8, farver[i % farver.length]);
+      }
+    }
+    // En lok hår fra rod til spids, buet lidt (bøj = hvor meget den bugter)
+    function lok(c, rx, ry, tx, ty, b, bøj, farve) {
+      const dx = tx - rx, dy = ty - ry, l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l;
+      const mx = (rx + tx) / 2 + nx * (20 + bøj), my = (ry + ty) / 2 + ny * (20 + bøj);
+      c.beginPath();
+      c.moveTo(rx + nx * b / 2, ry + ny * b / 2);
+      c.quadraticCurveTo(mx + nx * b * 0.6, my + ny * b * 0.6, tx, ty);
+      c.quadraticCurveTo(mx - nx * b * 0.3, my - ny * b * 0.3, rx - nx * b / 2, ry - ny * b / 2);
+      c.closePath();
+      c.fillStyle = farve; c.fill();
+      c.lineWidth = 4; c.strokeStyle = mørkere(farve.startsWith("#") ? farve : "#ffffff", 0.35); c.stroke();
+      c.strokeStyle = "rgba(255,255,255,.45)"; c.lineWidth = 3;                    // glans i håret
+      c.beginPath(); c.moveTo(rx + nx * b * 0.15, ry + ny * b * 0.15); c.quadraticCurveTo(mx + nx * b * 0.2, my + ny * b * 0.2, tx * 0.3 + mx * 0.7, ty * 0.3 + my * 0.7); c.stroke();
+    }
+    // Manen ned langs halsen
+    function tegnMan(c, t, p, farver) {
+      const n = 8;
+      for (let i = n - 1; i >= 0; i--) {
+        const s = i / (n - 1);
+        const rx = 476 - s * 120 + Math.sin(s * 3) * 6, ry = 86 + s * 158;            // langs halsens bagkant
+        const sving = Math.sin(t * 2 + i * 0.8) * 7;
+        lok(c, rx, ry, rx - 34 - s * 26 + sving, ry + 88 + s * 22, 50, 14 + sving * 0.6, farver[i % farver.length]);
+      }
+    }
+    function tegnPandehår(c, t, p, farver) {
+      const sving = Math.sin(t * 2.2) * 4;
+      lok(c, 492, 70, 534 + sving, 112, 30, -10, farver[0]);
+      lok(c, 482, 76, 512 + sving, 122, 24, -8, farver[1 % farver.length]);
+    }
+
+    function tegnAnsigt(c, t, p) {
+      // kind
+      c.fillStyle = "rgba(255,120,170,.4)"; c.beginPath(); c.ellipse(550, 172, 18, 11, 0.2, 0, TAU); c.fill();
+      // næsebor
+      c.fillStyle = mørkere(d.krop, 0.55); c.beginPath(); c.ellipse(606, 178, 5, 8, 0.5, 0, TAU); c.fill();
+      // mund: et smil, eller åben når den tygger
+      if (p.mund > 0.05) {
+        const h = 4 + p.mund * 9;
+        c.fillStyle = "#7a1c40"; c.beginPath(); c.ellipse(592, 210, 15, h, 0.25, 0, TAU); c.fill();
+        c.fillStyle = "#ff8fb0"; c.beginPath(); c.ellipse(592, 210 + h * 0.4, 9, h * 0.45, 0.25, 0, TAU); c.fill();
+      } else {
+        c.strokeStyle = mørkere(d.krop, 0.6); c.lineWidth = 4; c.lineCap = "round";
+        c.beginPath(); c.moveTo(574, 206); c.quadraticCurveTo(590, 218, 607, 205); c.stroke();
+      }
+      // øjet: stort og blankt med lange vipper — eller lukket, når den blinker eller er glad
+      const ex = 524, ey = 130;
+      if (p.blink > 0.5 || p.glad > 0) {
+        c.strokeStyle = "#2a1236"; c.lineWidth = 5; c.lineCap = "round";
+        c.beginPath(); c.arc(ex, ey + (p.glad > 0 ? 6 : 0), 15, p.glad > 0 ? Math.PI * 1.1 : 0.15, p.glad > 0 ? Math.PI * 1.9 : Math.PI - 0.15, false); c.stroke();
+      } else {
+        c.fillStyle = "#2a1236"; c.beginPath(); c.ellipse(ex, ey, 17, 22, 0, 0, TAU); c.fill();
+        c.fillStyle = "#6a3c8f"; c.beginPath(); c.ellipse(ex + 2, ey + 8, 11, 11, 0, 0, TAU); c.fill();
+        c.fillStyle = "#ffffff";
+        c.beginPath(); c.arc(ex - 5, ey - 8, 6.5, 0, TAU); c.fill();
+        c.beginPath(); c.arc(ex + 6, ey + 7, 3, 0, TAU); c.fill();
+      }
+      c.strokeStyle = "#2a1236"; c.lineWidth = 4; c.lineCap = "round";               // vipper
+      for (const [x0, y0, x1, y1] of [[534, 116, 548, 104], [538, 124, 555, 117], [527, 110, 534, 95]]) {
+        c.beginPath(); c.moveTo(x0, y0); c.quadraticCurveTo((x0 + x1) / 2 + 3, (y0 + y1) / 2 - 3, x1, y1); c.stroke();
+      }
+    }
+
+    // Hornet med snoede striber
+    function tegnHorn(c, t, p) {
+      const sti = () => { c.beginPath(); c.moveTo(503, 80); c.quadraticCurveTo(526, 10, 550, -58); c.quadraticCurveTo(545, 10, 540, 72); c.closePath(); };
+      const valg = HORN[d.horn];
+      sti();
+      if (valg) {
+        const g = c.createLinearGradient(503, 0, 545, 0);
+        g.addColorStop(0, valg[0]); g.addColorStop(0.5, valg[1]); g.addColorStop(1, valg[2]);
+        c.fillStyle = g; c.fill();
+      } else { c.fillStyle = "#ffffff"; c.fill(); }
+      c.save(); sti(); c.clip();
+      for (let i = 0; i < 8; i++) {                                                  // snoningen
+        const y = 70 - i * 17;
+        c.beginPath(); c.moveTo(495, y + 10); c.lineTo(560, y - 8); c.lineTo(560, y - 2); c.lineTo(495, y + 16); c.closePath();
+        c.fillStyle = valg ? "rgba(255,255,255,.45)" : MAN.regnbue[i % 6]; c.fill();
+      }
+      c.restore();
+      sti(); c.lineWidth = 4; c.strokeStyle = valg ? mørkere(valg[2], 0.3) : "#7b3fd1"; c.stroke();
+      if (p.glans > 0) {                                                             // magi: hornet lyser
+        c.save(); c.globalAlpha = p.glans; c.globalCompositeOperation = "lighter";
+        const g = c.createRadialGradient(548, -50, 0, 548, -50, 70);
+        g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(0.3, "rgba(255,180,240,.7)"); g.addColorStop(1, "rgba(255,180,240,0)");
+        c.fillStyle = g; c.beginPath(); c.arc(548, -50, 70, 0, TAU); c.fill();
+        c.restore();
+      }
+    }
+
+    // En vinge med tre rækker fjer (bølget kant), der blafrer lidt — og meget, når den flyver
+    function tegnVinge(c, t, p, manF) {
+      const grund = { hvid: "#ffffff", lyserød: "#ffd6ec", guld: "#ffe48a" }[d.vinger] || "#ffffff";
+      const farver = d.vinger === "regnbue" ? [MAN.regnbue[5], MAN.regnbue[3], MAN.regnbue[1]]
+        : [blandet(grund, manF[0], 0.35), lysere(grund.startsWith("#") ? grund : "#ffffff", 0.2), grund];
+      c.save(); c.translate(372, 226);
+      c.rotate(-0.1 + Math.sin(t * (p.flyv ? 14 : 2)) * (p.flyv ? 0.4 : 0.05));
+      [1, 0.74, 0.48].forEach((f, r) => {
+        const tip = { x: -175 * f, y: -165 * f };
+        c.beginPath(); c.moveTo(0, 0);
+        c.quadraticCurveTo(-25 * f, -150 * f, tip.x, tip.y);                         // vingens overkant
+        const n = 6;                                                                  // bølget underkant af fjer
+        let fx = tip.x, fy = tip.y;
+        for (let j = 1; j <= n; j++) {
+          const u = j / n, ix = (1 - u) * (1 - u) * tip.x + 2 * (1 - u) * u * (-165 * f) + 0, iy = (1 - u) * (1 - u) * tip.y + 2 * (1 - u) * u * (-25 * f);
+          const mx = (fx + ix) / 2 - 16 * f, my = (fy + iy) / 2 + 14 * f;
+          c.quadraticCurveTo(mx, my, ix, iy);
+          fx = ix; fy = iy;
+        }
+        c.closePath();
+        c.fillStyle = farver[r]; c.fill();
+        c.lineWidth = 4; c.strokeStyle = "rgba(90,40,110,.5)"; c.stroke();
+      });
+      c.restore();
+    }
+
+    // ---------- Sadel og hovedtøj ----------
+    function tegnSadel(c, t, p) {
+      const s = SADLER[d.sadel];
+      c.save(); c.translate(300, 205); c.scale(1.3, 1.3); c.translate(-300, -205);   // lidt større, midt på ryggen
+      // dækken under sadlen
+      rr(c, 222, 196, 158, 80, 20);
+      if (s.dækken === "regnbue") {
+        c.save(); c.clip();
+        MAN.regnbue.forEach((f, i) => { c.fillStyle = f; c.fillRect(222, 196 + i * 14, 158, 14); });
+        c.restore(); rr(c, 222, 196, 158, 80, 20);
+      } else { c.fillStyle = s.dækken; c.fill(); }
+      c.lineWidth = 6; c.strokeStyle = s.kant; c.stroke();
+      c.lineWidth = 3; c.strokeStyle = "rgba(90,40,100,.4)"; c.stroke();
+      if (d.sadel === "cowboy") { c.strokeStyle = "#ffffff"; c.lineWidth = 5; for (const y of [250, 262]) { c.beginPath(); c.moveTo(230, y); c.lineTo(372, y); c.stroke(); } }
+      if (d.sadel === "konge") { c.fillStyle = "#ffd23f"; for (let x = 232; x < 376; x += 12) { c.beginPath(); c.moveTo(x, 276); c.lineTo(x + 6, 290); c.lineTo(x + 12, 276); c.fill(); } }
+      // gjorden om maven og stigbøjlen
+      c.fillStyle = s.rem; rr(c, 291, 250, 20, 140, 8); c.fill();
+      c.strokeStyle = s.rem; c.lineWidth = 8; c.lineCap = "round";
+      c.beginPath(); c.moveTo(318, 222); c.lineTo(326, 330); c.stroke();
+      c.lineWidth = 6; c.strokeStyle = d.sadel === "konge" ? "#ffd23f" : "#c0c8d4";
+      c.beginPath(); c.moveTo(310, 330); c.lineTo(342, 330); c.lineTo(338, 352); c.lineTo(314, 352); c.closePath(); c.stroke();
+      // selve sadlen
+      c.beginPath();
+      c.moveTo(232, 205); c.quadraticCurveTo(226, 164, 254, 166);
+      c.quadraticCurveTo(300, 198, 346, 174);
+      c.quadraticCurveTo(376, 158, 370, 206);
+      c.quadraticCurveTo(300, 232, 232, 205); c.closePath();
+      const g = c.createLinearGradient(0, 160, 0, 230);
+      g.addColorStop(0, lysere(s.sadel, 0.35)); g.addColorStop(1, mørkere(s.sadel, 0.2));
+      c.fillStyle = g; c.fill(); c.lineWidth = 5; c.strokeStyle = mørkere(s.sadel, 0.5); c.stroke();
+      c.strokeStyle = "rgba(255,255,255,.5)"; c.lineWidth = 4;
+      c.beginPath(); c.moveTo(262, 178); c.quadraticCurveTo(300, 198, 338, 182); c.stroke();
+      // pynt på sadlen
+      if (s.pynt === "hjerter") { c.fillStyle = "#ffffff"; for (const [x, y] of [[268, 198], [300, 210], [332, 198]]) { hjerteSti(c, x, y, 7); c.fill(); } }
+      if (s.pynt === "stjerner") { c.fillStyle = "#ffd23f"; for (const [x, y] of [[268, 198], [300, 210], [332, 198]]) { stjerneSti(c, x, y, 9); c.fill(); } }
+      if (s.pynt === "konge") { [["#e8463a", 270], ["#2ec4f1", 300], ["#34c77b", 330]].forEach(([f, x]) => { c.fillStyle = f; c.beginPath(); c.arc(x, 204, 7, 0, TAU); c.fill(); c.strokeStyle = "#ffd23f"; c.lineWidth = 3; c.stroke(); }); }
+      if (s.pynt === "cowboy") {                                                        // sadelhorn
+        rr(c, 362, 138, 14, 32, 5); c.fillStyle = mørkere(s.sadel, 0.15); c.fill(); c.lineWidth = 3; c.strokeStyle = mørkere(s.sadel, 0.5); c.stroke();
+        c.beginPath(); c.ellipse(369, 138, 13, 6, 0, 0, TAU); c.fill(); c.stroke();
+      }
+      c.restore();
+    }
+    function tegnHovedtøj(c, t, p) {                  // remme om hovedet og tøjler hen til sadlen
+      const s = SADLER[d.sadel];
+      c.strokeStyle = s.rem; c.lineWidth = 9; c.lineCap = "round";
+      c.beginPath(); c.ellipse(570, 186, 47, 38, 0.32, -2.3, 0.9); c.stroke();            // næsebånd
+      c.beginPath(); c.moveTo(486, 86); c.quadraticCurveTo(512, 140, 540, 178); c.stroke();     // kindrem
+      c.beginPath(); c.moveTo(480, 100); c.lineTo(528, 92); c.stroke();                     // pandebånd
+      c.fillStyle = d.sadel === "konge" ? "#ffd23f" : "#c0c8d4";
+      c.beginPath(); c.arc(590, 214, 8, 0, TAU); c.fill();                                  // ring ved munden
+      // tøjlerne (i hovedets koordinater, så de følger med)
+      c.lineWidth = 6;
+      c.beginPath(); c.moveTo(590, 214); c.quadraticCurveTo(480, 330 + Math.sin(t * 2) * 6, 372, 186); c.stroke();
+    }
+    function tegnHovedpynt(c, t, p) {
+      if (d.hoved === "krans") {                                                      // blomsterkrans rundt om hornets fod
+        const farver = ["#ff7eb6", "#ffd23f", "#9b5de5", "#ffffff", "#ff9f1c", "#2ec4f1", "#ff5c8a"];
+        for (let i = 0; i < 7; i++) {
+          const a = -2.75 + i * 0.36, x = 500 + Math.cos(a) * 52, y = 104 + Math.sin(a) * 40;
+          c.fillStyle = "#4cbf5a"; c.beginPath(); c.ellipse(x - 8, y + 6, 8, 4, 0.6, 0, TAU); c.fill();
+          c.fillStyle = farver[i];
+          for (let k = 0; k < 5; k++) { c.beginPath(); c.arc(x + Math.cos(k * 1.26 + i) * 7, y + Math.sin(k * 1.26 + i) * 7, 6, 0, TAU); c.fill(); }
+          c.fillStyle = "#ffe066"; c.beginPath(); c.arc(x, y, 4.5, 0, TAU); c.fill();
+        }
+      } else if (d.hoved === "krone") {
+        c.save(); c.translate(462, 42); c.rotate(-0.3);
+        c.beginPath(); c.moveTo(-30, 18); c.lineTo(-30, -10); c.lineTo(-15, 4); c.lineTo(0, -18); c.lineTo(15, 4); c.lineTo(30, -10); c.lineTo(30, 18); c.closePath();
+        const g = c.createLinearGradient(0, -18, 0, 18); g.addColorStop(0, "#fff4b0"); g.addColorStop(1, "#e6a800");
+        c.fillStyle = g; c.fill(); c.lineWidth = 3; c.strokeStyle = "#a87600"; c.stroke();
+        [["#e8463a", -15], ["#2ec4f1", 0], ["#34c77b", 15]].forEach(([f, x]) => { c.fillStyle = f; c.beginPath(); c.arc(x, 8, 4.5, 0, TAU); c.fill(); });
+        c.restore();
+      } else if (d.hoved === "sløjfe") {
+        c.save(); c.translate(452, 112); c.rotate(-0.4);
+        c.fillStyle = "#ff5c9a"; c.strokeStyle = "#c2306e"; c.lineWidth = 3;
+        for (const s of [-1, 1]) { c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(s * 34, -26, s * 38, 0); c.quadraticCurveTo(s * 34, 26, 0, 0); c.fill(); c.stroke(); }
+        c.beginPath(); c.arc(0, 0, 8, 0, TAU); c.fill(); c.stroke();
+        c.restore();
+      } else if (d.hoved === "briller") {                                             // seje solbriller
+        c.fillStyle = "#1d1430"; rr(c, 500, 110, 54, 36, 14); c.fill();
+        c.strokeStyle = "#ff5c9a"; c.lineWidth = 4; c.stroke();
+        c.beginPath(); c.moveTo(500, 124); c.lineTo(468, 112); c.stroke();
+        c.fillStyle = "rgba(255,255,255,.55)"; c.beginPath(); c.ellipse(514, 120, 8, 4, -0.5, 0, TAU); c.fill();
+      } else if (d.hoved === "hat") {                                                 // cowboyhat — hornet stikker op igennem
+        c.save(); c.translate(500, 76); c.rotate(-0.12);
+        c.fillStyle = "#b5733a"; c.strokeStyle = "#6b3d15"; c.lineWidth = 3;
+        c.beginPath(); c.ellipse(0, 6, 74, 15, 0, 0, TAU); c.fill(); c.stroke();
+        c.beginPath(); c.moveTo(-36, 6); c.quadraticCurveTo(-34, -40, 0, -38); c.quadraticCurveTo(34, -40, 36, 6); c.closePath(); c.fill(); c.stroke();
+        c.fillStyle = "#e8463a"; c.fillRect(-36, -6, 72, 9);
+        c.restore();
+      }
+    }
+
+    // ---------- Mudder, skum og vand: lag oven på pelsen ----------
+    const BRUNE = ["#5b3a1d", "#7a5230", "#4a2f16", "#8c6339", "#6b4424", "#96703f"];
+    let k = 1, dpr = 1, W = 0, H = 0, ox = 0, oy = 0;
+    const lag = { maske: document.createElement("canvas"), mudder: document.createElement("canvas"), skum: document.createElement("canvas"), vand: document.createElement("canvas"), glans: document.createElement("canvas") };
+    let celler = [], beskidt = false;
+    const neutral = () => ({ hoved: 0, øre: 0, hale: 1, haleSlag: 0, blink: 0, mund: 0, glad: 0, glans: 0, flyv: false });
+    function byggLag(behold) {
+      const kk = k * dpr, w = Math.ceil(KASSE.b * kk), h = Math.ceil(KASSE.h * kk);
+      const gemt = behold ? ["mudder", "skum", "vand"].map(n => { const c = document.createElement("canvas"); c.width = lag[n].width || 1; c.height = lag[n].height || 1; if (lag[n].width) c.getContext("2d").drawImage(lag[n], 0, 0); return c; }) : null;
+      for (const c of Object.values(lag)) { c.width = w; c.height = h; }
+      const m = lag.maske.getContext("2d");
+      m.setTransform(kk, 0, 0, kk, -KASSE.x * kk, -KASSE.y * kk);
+      m.fillStyle = "#000"; pelsFormer(m, neutral(), () => m.fill());
+      if (gemt) ["mudder", "skum", "vand"].forEach((n, i) => lag[n].getContext("2d").drawImage(gemt[i], 0, 0, w, h));
+      // et gitter af punkter på pelsen, så vi kan måle hvor ren den er
+      const data = m.getImageData(0, 0, w, h).data;
+      const gamle = celler; celler = [];
+      for (let y = KASSE.y + 6; y < KASSE.y + KASSE.h; y += 12) for (let x = KASSE.x + 6; x < KASSE.x + KASSE.b; x += 12) {
+        const px = Math.floor((x - KASSE.x) * kk), py = Math.floor((y - KASSE.y) * kk);
+        if (px < w && py < h && data[(py * w + px) * 4 + 3] > 100) celler.push({ x, y, mudder: 0, skum: false, vand: 0 });
+      }
+      if (behold && gamle.length) {                    // behold hvor beskidt den var
+        const mud = gamle.reduce((s, c) => s + c.mudder, 0) / gamle.length, vand = gamle.reduce((s, c) => s + c.vand, 0) / gamle.length;
+        celler.forEach(c => { c.mudder = mud; c.vand = vand; });
+      }
+    }
+    const lagCtx = n => { const c = lag[n].getContext("2d"), kk = k * dpr; c.setTransform(kk, 0, 0, kk, -KASSE.x * kk, -KASSE.y * kk); return c; };
+    function kunPåPels(n) {
+      const c = lag[n].getContext("2d");
+      c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = "destination-in"; c.drawImage(lag.maske, 0, 0);
+      c.globalCompositeOperation = "source-over";
+    }
+    function sølMudder() {                           // hop i mudderpølen: mest mudder nederst
+      const c = lagCtx("mudder"), R = Math.random;
+      for (let i = 0; i < 230; i++) {
+        const x = KASSE.x + R() * KASSE.b, y = 520 - Math.pow(R(), 1.6) * 360, s = 8 + R() * 22;
+        c.globalAlpha = 0.55 + R() * 0.4; c.fillStyle = BRUNE[i % BRUNE.length];
+        c.beginPath();
+        for (let j = 0; j < 5; j++) { const a = R() * TAU, dd = R() * s; c.moveTo(x + Math.cos(a) * dd + s * 0.5, y + Math.sin(a) * dd); c.ellipse(x + Math.cos(a) * dd, y + Math.sin(a) * dd, s * 0.5, s * 0.35, R() * 3, 0, TAU); }
+        c.fill();
+      }
+      for (let i = 0; i < 40; i++) {                   // drypstriber
+        const x = KASSE.x + R() * KASSE.b, y = 260 + R() * 220, b = 6 + R() * 5, l = 15 + R() * 30;
+        c.globalAlpha = 0.85; c.fillStyle = BRUNE[i % BRUNE.length]; rr(c, x, y, b, l, b / 2); c.fill();
+        c.beginPath(); c.arc(x + b / 2, y + l, b * 0.7, 0, TAU); c.fill();
+      }
+      c.globalAlpha = 1;
+      kunPåPels("mudder");
+      celler.forEach(cl => { cl.mudder = Math.max(cl.mudder, cl.y > 330 ? 1 : cl.y > 230 ? 0.75 : 0.45); });
+      beskidt = true;
+    }
+    function boble(c, x, y, r, farve) {
+      const g = c.createRadialGradient(x - r * .35, y - r * .4, r * .1, x, y, r);
+      g.addColorStop(0, "#ffffff"); g.addColorStop(.4, "#ffffff"); g.addColorStop(1, farve);
+      c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill();
+    }
+    function viskUd(n, x, y, R, styrke) {
+      const c = lagCtx(n);
+      c.globalCompositeOperation = "destination-out";
+      const g = c.createRadialGradient(x, y, R * 0.4, x, y, R);
+      g.addColorStop(0, `rgba(0,0,0,${styrke})`); g.addColorStop(1, "rgba(0,0,0,0)");
+      c.fillStyle = g; c.beginPath(); c.arc(x, y, R, 0, TAU); c.fill();
+      c.globalCompositeOperation = "source-over";
+    }
+    const nær = (cl, x, y, R) => (cl.x - x) ** 2 + (cl.y - y) ** 2 < R * R;
+    // Svampen: skum på, og mudderet løsner sig lidt
+    function svamp(x, y) {
+      const c = lagCtx("skum");
+      for (let i = 0; i < 5; i++) { const a = tilf(0, TAU), dd = Math.sqrt(Math.random()) * 30; boble(c, x + Math.cos(a) * dd, y + Math.sin(a) * dd, tilf(7, 15), ["#ffd6ec", "#cfe9ff", "#e3d4ff"][i % 3]); }
+      kunPåPels("skum");
+      viskUd("mudder", x, y, 40, 0.3);
+      let nye = 0;
+      for (const cl of celler) if (nær(cl, x, y, 36)) { if (!cl.skum) nye++; cl.skum = true; cl.mudder *= 0.85; }
+      return nye;
+    }
+    // Bruseren: skum og mudder skylles væk, og der kommer vanddråber
+    function bruser(x, y) {
+      viskUd("skum", x, y, 40, 1); viskUd("mudder", x, y, 40, 0.9);
+      const c = lagCtx("vand");
+      for (let i = 0; i < 3; i++) dråbe(c, x + tilf(-34, 34), y + tilf(-34, 34), tilf(3, 8));
+      kunPåPels("vand");
+      let nye = 0;
+      for (const cl of celler) if (nær(cl, x, y, 36)) { if (cl.mudder > 0.1) nye++; cl.mudder *= 0.4; cl.skum = false; cl.vand = 1; }
+      return nye;
+    }
+    function dråbe(c, x, y, r) {
+      const g = c.createRadialGradient(x - r * .35, y - r * .35, r * .1, x, y, r);
+      g.addColorStop(0, "rgba(255,255,255,.95)"); g.addColorStop(.4, "rgba(200,235,255,.6)"); g.addColorStop(1, "rgba(60,140,210,.6)");
+      c.fillStyle = g; c.beginPath(); c.ellipse(x, y, r, r * 1.15, 0, 0, TAU); c.fill();
+    }
+    // Fønnen: vanddråberne blæses væk
+    function føn(x, y) {
+      viskUd("vand", x, y, 46, 1);
+      let nye = 0;
+      for (const cl of celler) if (nær(cl, x, y, 42) && cl.vand > 0.1) { cl.vand = 0; nye++; }
+      return nye;
+    }
+    const andel = felt => celler.length ? celler.reduce((s, c) => s + (felt === "skum" ? (c.skum ? 1 : 0) : c[felt]), 0) / celler.length : 0;
+
+    // ---------- Skærm og baggrund ----------
+    const cv = $("scene"), ctx = cv.getContext("2d"), bundEl = $("bund");
+    const bg = document.createElement("canvas");
+    let jordY = 0;
+    function layout() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = cv.clientWidth || innerWidth; H = cv.clientHeight || innerHeight;
+      cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+      const top = 70, bund = bundEl.getBoundingClientRect().height + 10;
+      k = Math.min((W - 24) / KASSE.b, (H - top - bund) / KASSE.h);
+      ox = W / 2 - (KASSE.x + KASSE.b / 2) * k;
+      oy = top + (H - top - bund - KASSE.h * k) / 2 - KASSE.y * k;
+      jordY = oy + 520 * k;
+      tegnBaggrund();
+      byggLag(true);
+    }
+    function tegnBaggrund() {                        // en blød eng med regnbue, bakker, hegn og blomster
+      bg.width = cv.width; bg.height = cv.height;
+      const b = bg.getContext("2d");
+      b.setTransform(dpr, 0, 0, dpr, 0, 0);
+      let g = b.createLinearGradient(0, 0, 0, jordY);
+      g.addColorStop(0, "#9fd8ff"); g.addColorStop(0.6, "#ffd9f0"); g.addColorStop(1, "#fff0d6");
+      b.fillStyle = g; b.fillRect(0, 0, W, H);
+      // regnbuen
+      const rx = W * 0.5, ry = jordY + H * 0.1, r0 = Math.max(W, H) * 0.55;
+      b.globalAlpha = 0.28;
+      MAN.regnbue.forEach((f, i) => { b.strokeStyle = f; b.lineWidth = r0 * 0.045; b.beginPath(); b.arc(rx, ry, r0 - i * r0 * 0.045, Math.PI, TAU); b.stroke(); });
+      b.globalAlpha = 1;
+      // bakker
+      const bakke = (y0, h, f1, f2, fase) => {
+        b.beginPath(); b.moveTo(0, H);
+        for (let x = 0; x <= W + 20; x += 20) b.lineTo(x, y0 - Math.sin(x / W * 4 + fase) * h - Math.sin(x / W * 9 + fase) * h * 0.3);
+        b.lineTo(W, H); b.closePath();
+        const gg = b.createLinearGradient(0, y0 - h, 0, H); gg.addColorStop(0, f1); gg.addColorStop(1, f2);
+        b.fillStyle = gg; b.fill();
+      };
+      bakke(jordY - 90 * k, 26 * k, "#c6f0b8", "#9ddc8d", 1.2);
+      // hegn
+      b.strokeStyle = "#ffffff"; b.fillStyle = "#ffffff"; b.lineWidth = Math.max(4, 8 * k);
+      const hy = jordY - 60 * k;
+      for (let x = 10; x < W; x += 70 * k + 20) rr(b, x, hy - 70 * k, 12 * k + 4, 80 * k, 4), b.fill();
+      for (const y of [hy - 50 * k, hy - 20 * k]) { b.beginPath(); b.moveTo(0, y); b.lineTo(W, y); b.stroke(); }
+      bakke(jordY, 10 * k, "#9be38a", "#6cc86a", 3.7);
+      // blomster i græsset
+      for (let i = 0; i < W / 30; i++) {
+        const x = (i * 83.7) % W, y = jordY + 12 + ((i * 37) % 70) * (H - jordY) / 90;
+        if (y > H) continue;
+        b.fillStyle = ["#ffffff", "#ff9fd0", "#ffe066", "#c9a8ff"][i % 4];
+        for (let p = 0; p < 5; p++) { b.beginPath(); b.arc(x + Math.cos(p * 1.26) * 5, y + Math.sin(p * 1.26) * 5, 4, 0, TAU); b.fill(); }
+        b.fillStyle = "#ffb000"; b.beginPath(); b.arc(x, y, 3, 0, TAU); b.fill();
+      }
+    }
+    let skyer = [];
+    for (let i = 0; i < 5; i++) skyer.push({ x: Math.random(), y: 0.08 + Math.random() * 0.25, s: 0.6 + Math.random() * 0.6, v: 0.008 + Math.random() * 0.01 });
+    function tegnSkyer(dt) {
+      for (const s of skyer) {
+        s.x -= s.v * dt; if (s.x < -0.25) s.x = 1.25;
+        const x = s.x * W, y = s.y * H, r = 40 * s.s * Math.max(0.7, k);
+        ctx.fillStyle = "rgba(255,255,255,.9)";
+        ctx.beginPath();
+        for (const [dx, dy, rr2] of [[0, 0, 0.6], [0.6, -0.3, 0.7], [1.3, 0, 0.55]]) { ctx.moveTo(x + (dx + rr2) * r, y + dy * r); ctx.arc(x + dx * r, y + dy * r, rr2 * r, 0, TAU); }
+        ctx.fill();
+      }
+    }
+
+    // ---------- Lyd ----------
+    let ac = null, ud = null, støj = null, brus = null;
+    function lydKlar() {
+      try {
+        ac = Effekter.audio();
+        if (!ud) {
+          ud = ac.createGain(); ud.gain.value = 0.9; ud.connect(ac.destination);
+          støj = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate);
+          const dd = støj.getChannelData(0); for (let i = 0; i < dd.length; i++) dd[i] = Math.random() * 2 - 1;
+          // en vedvarende sus til bruser og føn (skrues op og ned)
+          const s = ac.createBufferSource(); s.buffer = støj; s.loop = true;
+          const f = ac.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = 2400; f.Q.value = 0.7;
+          const g = ac.createGain(); g.gain.value = 0;
+          s.connect(f); f.connect(g); g.connect(ud); s.start();
+          brus = { f, g };
+        }
+      } catch (_) {}
+    }
+    const nu = () => ac ? ac.currentTime : 0;
+    function tone(f, start, dur, type, vol, slut, vib) {
+      if (!ud) return;
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type || "sine"; o.frequency.setValueAtTime(f, start);
+      if (slut) o.frequency.exponentialRampToValueAtTime(slut, start + dur);
+      if (vib) { const l = ac.createOscillator(), lg = ac.createGain(); l.frequency.value = vib[0]; lg.gain.value = vib[1]; l.connect(lg); lg.connect(o.frequency); l.start(start); l.stop(start + dur + 0.05); }
+      o.connect(g); g.connect(ud);
+      g.gain.setValueAtTime(0.0001, start); g.gain.exponentialRampToValueAtTime(vol || 0.2, start + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+      o.start(start); o.stop(start + dur + 0.05);
+    }
+    function sus(start, dur, type, fra, til, vol, q) {
+      if (!ud) return;
+      const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+      s.buffer = støj; f.type = type; f.Q.value = q || 1;
+      f.frequency.setValueAtTime(fra, start); f.frequency.exponentialRampToValueAtTime(til, start + dur);
+      g.gain.setValueAtTime(0.0001, start); g.gain.exponentialRampToValueAtTime(vol, start + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+      s.connect(f); f.connect(g); g.connect(ud); s.start(start, Math.random(), dur + 0.05);
+    }
+    // Et vrinsk: en savtakket tone, der ryster og glider ned gennem et filter
+    function vrinsk() {
+      if (!ud) return;
+      const n = nu(), o = ac.createOscillator(), f = ac.createBiquadFilter(), g = ac.createGain(), l = ac.createOscillator(), lg = ac.createGain();
+      o.type = "sawtooth";
+      o.frequency.setValueAtTime(560, n); o.frequency.linearRampToValueAtTime(980, n + 0.18);
+      o.frequency.linearRampToValueAtTime(760, n + 0.5); o.frequency.exponentialRampToValueAtTime(330, n + 1.1);
+      l.frequency.value = 17; lg.gain.value = 70; l.connect(lg); lg.connect(o.frequency);
+      f.type = "bandpass"; f.frequency.value = 1500; f.Q.value = 1.4;
+      o.connect(f); f.connect(g); g.connect(ud);
+      g.gain.setValueAtTime(0.0001, n); g.gain.exponentialRampToValueAtTime(0.32, n + 0.05);
+      g.gain.setValueAtTime(0.32, n + 0.7); g.gain.exponentialRampToValueAtTime(0.0001, n + 1.15);
+      o.start(n); l.start(n); o.stop(n + 1.2); l.stop(n + 1.2);
+      sus(n + 0.9, 0.35, "lowpass", 900, 300, 0.15);
+    }
+    function magi() { [1047, 1319, 1568, 2093, 2637, 3136].forEach((f, i) => tone(f, nu() + i * 0.06, 0.4, "sine", 0.12)); }
+    function klik(i) { const f = [523, 587, 659, 784, 880, 1047, 1175, 1319][i % 8]; tone(f, nu(), 0.35, "triangle", 0.22); tone(f * 2, nu(), 0.18, "sine", 0.06); }
+    function knas() { for (let i = 0; i < 3; i++) sus(nu() + i * 0.07, 0.05, "bandpass", 2600, 1800, 0.3, 2); }
+    function glimmerBøvs() { sus(nu(), 0.5, "lowpass", 500, 200, 0.35, 3); setTimeout(magi, 250); }
+    function blop() { const f = tilf(400, 900); tone(f, nu(), 0.12, "sine", 0.18, f * 1.9); }
+    function hovtramp() { for (let i = 0; i < 4; i++) tone(140 - i * 8, nu() + i * 0.09, 0.08, "triangle", 0.25, 80); }
+    function plask() { sus(nu(), 0.5, "lowpass", 1400, 200, 0.6); tone(120, nu(), 0.3, "sine", 0.3, 60); }
+    function sætBrus(type) {                          // bruserens og fønnens sus
+      if (!brus) return;
+      const n = nu();
+      brus.g.gain.setTargetAtTime(type ? 0.2 : 0, n, 0.05);
+      brus.f.frequency.setTargetAtTime(type === "føn" ? 700 : 2800, n, 0.05);
+    }
+
+    // ---------- Partikler: hjerter, stjerner, dråber, mudder og glimmer ----------
+    let partikler = [];
+    const lokal = (x, y) => ({ x: ox + x * k, y: oy + y * k });   // fra enhjørningens mål til skærmen
+    function sprøjt(type, x, y, n, ekstra = {}) {
+      for (let i = 0; i < n; i++) {
+        const a = ekstra.vinkel != null ? ekstra.vinkel + tilf(-0.6, 0.6) : tilf(0, TAU), v = tilf(80, 320) * (ekstra.fart || 1);
+        partikler.push({ type, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - (ekstra.op || 0), g: ekstra.g ?? 500,
+          r: tilf(4, 9) * (ekstra.str || 1), farve: ekstra.farver ? ekstra.farver[i % ekstra.farver.length] : null, liv: tilf(0.6, 1.2) * (ekstra.liv || 1), max: 1.2 });
+      }
+    }
+    function opdaterPartikler(dt) {
+      for (const p of partikler) { p.liv -= dt; p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; }
+      partikler = partikler.filter(p => p.liv > 0 && p.y < H + 40);
+      if (partikler.length > 500) partikler.splice(0, partikler.length - 500);
+    }
+    function tegnPartikler() {
+      for (const p of partikler) {
+        ctx.globalAlpha = klem(p.liv / p.max * 2, 0, 1);
+        if (p.type === "hjerte") { ctx.fillStyle = p.farve || "#ff4d8d"; hjerteSti(ctx, p.x, p.y, p.r * 1.3); ctx.fill(); }
+        else if (p.type === "stjerne") { ctx.fillStyle = p.farve || "#ffd23f"; stjerneSti(ctx, p.x, p.y, p.r * 1.4); ctx.fill(); }
+        else { ctx.fillStyle = p.farve || "#9fdcff"; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (p.type === "dråbe" ? 0.6 : 1), 0, TAU); ctx.fill(); }
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // ---------- Tilstand: faner, stilling og reaktioner ----------
+    let fane = "lav", tid = 0;
+    const st = { hop: 0, steil: 0, ryst: 0, flyv: 0, haleSlag: 0, glad: 0, glans: 0, mund: 0, tygTid: 0, blinkTid: 2, blink: 0, øre: 0, regnbue: 0 };
+    let værktøj = "svamp", finger = null, sidsteStempel = null, mudderPøl = 0, renFejret = true;
+    let flyvendeMad = null;
+
+    function stilling() {                             // hvordan enhjørningen står lige nu
+      return {
+        hoved: Math.sin(tid * 1.4) * 0.025 + st.steil * -0.25 + (st.mund > 0 ? 0.06 : 0),
+        øre: st.øre, hale: 1, haleSlag: st.haleSlag, blink: st.blink, mund: st.mund, glad: st.glad, glans: st.glans, flyv: st.flyv > 0,
+      };
+    }
+    // hele enhjørningen hopper, steiler, ryster eller flyver
+    function kropFlyt() {
+      const hop = Math.sin(Math.min(1, 1 - st.hop) * Math.PI) * 90 * (st.hop > 0 ? 1 : 0);
+      const flyv = st.flyv > 0 ? Math.sin(Math.min(1, (2.2 - st.flyv) / 2.2) * Math.PI) * 120 : 0;
+      return { y: -(hop + flyv), rot: -st.steil * 0.32, x: st.ryst > 0 ? Math.sin(tid * 60) * 9 * st.ryst : 0 };
+    }
+
+    // ---------- Reaktioner, når man trykker på enhjørningen ----------
+    function trykPåEnhjørning(lx, ly) {
+      lydKlar();
+      const horn = lx > 495 && lx < 565 && ly > -70 && ly < 85;
+      const vinge = d.vinger !== "ingen" && lx > 200 && lx < 380 && ly > 20 && ly < 220;
+      const hoved = lx > 420 && ly < 240;
+      const hale = lx < 160 && ly > 220;
+      if (horn) {                                    // magi fra hornet, og en regnbue på himlen
+        st.glans = 1; st.regnbue = 3; magi();
+        const p = lokal(548, -55);
+        sprøjt("stjerne", p.x, p.y, 26, { farver: ["#ffd23f", "#ffffff", "#ff9fd0", "#9fe8ff"], g: 120, fart: 1.2 });
+        giHjerter(1);
+      } else if (vinge && st.flyv <= 0) {           // den flyver en tur
+        st.flyv = 2.2; tone(500, nu(), 0.8, "sine", 0.2, 1200); vrinsk();
+        giHjerter(1);
+      } else if (hale) {
+        st.haleSlag = 1; blop(); setTimeout(blop, 120);
+      } else if (hoved) {
+        st.steil = 1; vrinsk(); setTimeout(hovtramp, 600);
+        const p = lokal(560, 120); sprøjt("hjerte", p.x, p.y, 8, { g: -60, fart: 0.5 });
+        giHjerter(1);
+      } else {
+        st.hop = 1; vrinsk(); setTimeout(hovtramp, 450);
+        const p = lokal(320, 200); sprøjt("hjerte", p.x, p.y, 10, { g: -60, fart: 0.6 });
+        giHjerter(1);
+      }
+    }
+
+    // ---------- Mad ----------
+    function giMad(i, fraX, fraY) {
+      if (flyvendeMad || st.tygTid > 0) return;
+      lydKlar();
+      flyvendeMad = { m: MAD[i], fra: { x: fraX, y: fraY }, t: 0 };
+      st.mund = 1;
+    }
+    function opdaterMad(dt) {
+      if (flyvendeMad) {
+        flyvendeMad.t += dt / 0.6;
+        if (flyvendeMad.t >= 1) {
+          const m = flyvendeMad.m; flyvendeMad = null;
+          st.tygTid = 1.4; knas();
+          setTimeout(knas, 350); setTimeout(knas, 700);
+          setTimeout(() => {
+            const p = lokal(590, 200);
+            if (m.glimmer) {                          // søde sager: en glimmerbøvs med regnbuefarver
+              glimmerBøvs(); st.regnbue = 2.5;
+              sprøjt("stjerne", p.x, p.y, 30, { farver: MAN.regnbue, g: -40, fart: 0.9, vinkel: -0.3 });
+            } else {
+              sprøjt("hjerte", p.x, p.y - 30, 10, { g: -70, fart: 0.5 });
+            }
+            st.glad = 1.2; giHjerter(1);
+          }, 1300);
+        }
+      }
+      if (st.tygTid > 0) { st.tygTid -= dt; st.mund = st.tygTid > 0 ? 0.3 + Math.abs(Math.sin(tid * 12)) * 0.7 : 0; }
+      else if (!flyvendeMad) st.mund = Math.max(0, st.mund - dt * 4);
+    }
+    function tegnFlyvendeMad() {
+      if (!flyvendeMad) return;
+      const e = flyvendeMad.t, mål = lokal(592, 208), f = flyvendeMad.fra;
+      const x = f.x + (mål.x - f.x) * e, y = f.y + (mål.y - f.y) * e - Math.sin(e * Math.PI) * 120;
+      ctx.font = `${Math.round(60 * Math.max(0.7, k) * (1 - e * 0.5))}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(flyvendeMad.m.e, x, y);
+    }
+
+    // ---------- Vask ----------
+    function hopIMudder() {
+      lydKlar();
+      mudderPøl = 1; st.hop = 1; renFejret = false;
+      setTimeout(() => {
+        plask(); sølMudder();
+        const p = lokal(320, 515);
+        sprøjt("mudder", p.x, p.y, 40, { farver: BRUNE, vinkel: -Math.PI / 2, g: 900, op: 200, str: 1.4 });
+      }, 520);
+    }
+    function vask(x, y) {                             // et stempel med det valgte værktøj (x, y i enhjørningens mål)
+      const p = lokal(x, y);
+      if (værktøj === "svamp") { const n = svamp(x, y); if (Math.random() < 0.3) blop(); if (n) sprøjt("boble", p.x, p.y, 2, { farver: ["#ffffff", "#ffd6ec", "#cfe9ff"], g: -60, fart: 0.3 }); }
+      else if (værktøj === "bruser") { const n = bruser(x, y); sprøjt("dråbe", p.x, p.y, 3, { farver: ["#bfe6ff", "#ffffff"], g: 900, fart: 0.6 }); if (n) sprøjt("mudder", p.x, p.y, n, { farver: BRUNE, g: 900, fart: 0.5 }); }
+      else if (værktøj === "føn") { if (føn(x, y)) sprøjt("dråbe", p.x, p.y, 4, { farver: ["#bfe6ff", "#ffffff"], vinkel: 0, g: 200, fart: 1.5 }); }
+      else if (værktøj === "børste") {               // børst manen og halen blank
+        const iHår = (x < 175 && y > 220) || (x > 340 && x < 480 && y > 70 && y < 300);
+        if (Math.random() < 0.5) sprøjt(iHår ? "stjerne" : "hjerte", p.x, p.y, 1, { farver: iHår ? ["#ffd23f", "#ffffff", "#ff9fd0"] : null, g: -80, fart: 0.4 });
+        if (Math.random() < 0.15) tone(tilf(1500, 2500), nu(), 0.15, "sine", 0.06);
+      }
+    }
+    function tjekRen() {                              // er den skinnende ren (og tør)?
+      if (renFejret || !beskidt) return;
+      if (andel("mudder") < 0.08 && andel("skum") < 0.05 && andel("vand") < 0.12) {
+        renFejret = true; beskidt = false;
+        for (const n of ["mudder", "skum", "vand"]) { const c = lag[n].getContext("2d"); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, lag[n].width, lag[n].height); }
+        celler.forEach(c => { c.mudder = 0; c.skum = false; c.vand = 0; });
+        glansTid = 1.4; st.glad = 1.5; st.hop = 1; vrinsk();
+        const p = lokal(320, 250);
+        Effekter.fest(p.x, p.y);
+        giHjerter(3);
+      }
+    }
+    let glansTid = 0;
+    function tegnGlans() {                            // en blank stribe glider hen over den rene enhjørning
+      if (glansTid <= 0) return;
+      const c = lag.glans.getContext("2d"), w = lag.glans.width, h = lag.glans.height, pr = 1 - glansTid / 1.4;
+      c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, w, h);
+      const bånd = w * 0.2, x = -bånd + pr * (w + bånd * 2);
+      c.setTransform(1, 0, -0.4, 1, 0, 0);
+      const g = c.createLinearGradient(x, 0, x + bånd, 0);
+      g.addColorStop(0, "rgba(255,255,255,0)"); g.addColorStop(0.5, "rgba(255,255,255,.9)"); g.addColorStop(1, "rgba(255,255,255,0)");
+      c.fillStyle = g; c.fillRect(x, 0, bånd, h);
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      c.globalCompositeOperation = "destination-in"; c.drawImage(lag.maske, 0, 0); c.globalCompositeOperation = "source-over";
+      ctx.drawImage(lag.glans, ox + KASSE.x * k, oy + KASSE.y * k, KASSE.b * k, KASSE.h * k);
+    }
+    // Enhjørningen ryster sig som en våd hund, når den er blevet skyllet
+    function ryst() {
+      if (st.ryst > 0 || andel("vand") < 0.3) return;
+      st.ryst = 1.1; tone(300, nu(), 0.6, "sawtooth", 0.05, 200, [30, 40]);
+      const c = lagCtx("vand");
+      for (let i = 0; i < 40; i++) { c.globalCompositeOperation = "destination-out"; c.beginPath(); c.arc(KASSE.x + Math.random() * KASSE.b, 100 + Math.random() * 420, 30, 0, TAU); c.fill(); }
+      c.globalCompositeOperation = "source-over";
+      celler.forEach(cl => { if (Math.random() < 0.5) cl.vand = 0; });
+      const p = lokal(320, 300);
+      sprøjt("dråbe", p.x, p.y, 50, { farver: ["#bfe6ff", "#ffffff", "#9fdcff"], g: 700, fart: 1.6, str: 1.2 });
+    }
+
+    // ---------- Løkken ----------
+    function opdater(dt) {
+      tid += dt;
+      st.hop = Math.max(0, st.hop - dt * 1.6);
+      st.steil = Math.max(0, st.steil - dt * 1.2);
+      st.ryst = Math.max(0, st.ryst - dt);
+      st.flyv = Math.max(0, st.flyv - dt);
+      st.haleSlag = Math.max(0, st.haleSlag - dt * 1.5);
+      st.glad = Math.max(0, st.glad - dt);
+      st.glans = Math.max(0, st.glans - dt * 0.8);
+      st.regnbue = Math.max(0, st.regnbue - dt);
+      st.blinkTid -= dt; if (st.blinkTid <= 0) { st.blink = 1; st.blinkTid = tilf(2.5, 5); }
+      st.blink = Math.max(0, st.blink - dt * 7);
+      st.øre = Math.random() < dt * 0.3 ? 0.25 : st.øre * (1 - dt * 6);
+      mudderPøl = beskidt || fane === "vask" ? Math.min(1, mudderPøl + dt) : Math.max(0, mudderPøl - dt);
+      glansTid = Math.max(0, glansTid - dt);
+      opdaterMad(dt);
+      opdaterPartikler(dt);
+      if (st.flyv > 0 && Math.random() < dt * 30) { const p = lokal(tilf(150, 450), tilf(380, 480)); const f = kropFlyt(); sprøjt("stjerne", p.x, p.y + f.y * k, 1, { farver: MAN.regnbue, g: 150, fart: 0.2 }); }
+      // vask med fingeren
+      if (fane === "vask" && finger && st.ryst <= 0) {
+        const lx = (finger.x - ox) / k, ly = (finger.y - oy) / k;
+        if (!sidsteStempel) sidsteStempel = { x: lx, y: ly };
+        const dx = lx - sidsteStempel.x, dy = ly - sidsteStempel.y, dd = Math.hypot(dx, dy), n = Math.max(1, Math.min(20, Math.ceil(dd / 12)));
+        if (dd > 2 || værktøj !== "svamp") for (let i = 1; i <= n; i++) vask(sidsteStempel.x + dx * i / n, sidsteStempel.y + dy * i / n);
+        sidsteStempel = { x: lx, y: ly };
+        tjekRen();
+      }
+    }
+
+    function tegn(dt) {
+      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(bg, 0, 0);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      tegnSkyer(dt);
+      if (st.regnbue > 0) {                           // en stærk regnbue på himlen efter magi
+        const a = Math.min(1, st.regnbue) * 0.8, rx = W * 0.5, ry = jordY, r0 = Math.min(W, H) * 0.6;
+        ctx.globalAlpha = a;
+        MAN.regnbue.forEach((f, i) => { ctx.strokeStyle = f; ctx.lineWidth = r0 * 0.05; ctx.beginPath(); ctx.arc(rx, ry, r0 - i * r0 * 0.05, Math.PI, TAU); ctx.stroke(); });
+        ctx.globalAlpha = 1;
+      }
+      // mudderpøl / vandpyt og skygge
+      const f = kropFlyt();
+      if (mudderPøl > 0) {
+        ctx.fillStyle = beskidt ? `rgba(110,72,36,${0.75 * mudderPøl})` : `rgba(130,190,240,${0.5 * mudderPøl})`;
+        ctx.beginPath(); ctx.ellipse(ox + 315 * k, jordY + 6 * k, 280 * k * mudderPøl, 34 * k, 0, 0, TAU); ctx.fill();
+      }
+      ctx.fillStyle = "rgba(80,40,100,.18)";
+      const skyggeS = 1 - Math.min(0.6, -f.y / 300);
+      ctx.beginPath(); ctx.ellipse(ox + 315 * k, jordY + 4 * k, 230 * k * skyggeS, 22 * k * skyggeS, 0, 0, TAU); ctx.fill();
+      // enhjørningen (med mudder, skum og vand oven på pelsen)
+      ctx.save();
+      ctx.translate(ox + f.x * k, oy + f.y * k);
+      ctx.translate(198 * k, 520 * k); ctx.rotate(f.rot); ctx.translate(-198 * k, -520 * k);   // steiler omkring baghovene
+      ctx.scale(k, k);
+      ctx.lineJoin = "round"; ctx.lineCap = "round";
+      tegnEnhjørning(ctx, tid, stilling(), { udstyr: fane !== "vask" });
+      ctx.restore();
+      ctx.save();
+      ctx.translate(ox + f.x * k, oy + f.y * k);
+      ctx.translate(198 * k, 520 * k); ctx.rotate(f.rot); ctx.translate(-198 * k, -520 * k);
+      for (const n of ["mudder", "skum", "vand"]) ctx.drawImage(lag[n], KASSE.x * k, KASSE.y * k, KASSE.b * k, KASSE.h * k);
+      ctx.restore();
+      tegnGlans();
+      tegnFlyvendeMad();
+      tegnPartikler();
+      tegnVærktøj();
+    }
+
+    // Værktøjet følger fingeren, når man vasker
+    function tegnVærktøj() {
+      if (fane !== "vask" || !finger) return;
+      const x = finger.x, y = finger.y, s = Math.max(0.7, k) * 1.1;
+      ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+      if (værktøj === "bruser") {                      // bruserhovedet over fingeren, med vandstråler ned
+        ctx.strokeStyle = "rgba(190,230,255,.85)"; ctx.lineWidth = 3;
+        for (let i = -3; i <= 3; i++) { ctx.beginPath(); ctx.moveTo(i * 8, -70); ctx.lineTo(i * 12 + Math.sin(tid * 30 + i) * 2, 0); ctx.stroke(); }
+        ctx.fillStyle = "#c0c8d4"; ctx.strokeStyle = "#6c7684"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.ellipse(0, -76, 34, 12, 0, 0, TAU); ctx.fill(); ctx.stroke();
+        rr(ctx, -6, -120, 12, 40, 5); ctx.fill(); ctx.stroke();
+      } else tegnIkon(ctx, værktøj, 0, -10, 1);
+      ctx.restore();
+    }
+    // Små tegninger af værktøjerne (til knapperne og ved fingeren)
+    function tegnIkon(c, navn, x, y, s) {
+      c.save(); c.translate(x, y); c.scale(s, s); c.lineWidth = 3; c.lineJoin = "round"; c.lineCap = "round";
+      if (navn === "svamp") {
+        rr(c, -22, -15, 44, 30, 9); c.fillStyle = "#ffd84d"; c.fill(); c.strokeStyle = "#c99a00"; c.stroke();
+        c.fillStyle = "#e6b800"; for (const [a, b] of [[-10, -4], [6, 5], [12, -6], [-4, 8]]) { c.beginPath(); c.arc(a, b, 3, 0, TAU); c.fill(); }
+        c.fillStyle = "#ffffff"; for (const [a, b, r] of [[-18, -18, 7], [-6, -21, 6], [8, -19, 7]]) { c.beginPath(); c.arc(a, b, r, 0, TAU); c.fill(); }
+      } else if (navn === "bruser") {
+        c.fillStyle = "#c0c8d4"; c.strokeStyle = "#6c7684";
+        c.beginPath(); c.ellipse(0, -8, 20, 8, 0, 0, TAU); c.fill(); c.stroke();
+        rr(c, -4, -30, 8, 22, 3); c.fill(); c.stroke();
+        c.strokeStyle = "#5bb8f5"; for (let i = -2; i <= 2; i++) { c.beginPath(); c.moveTo(i * 6, 2); c.lineTo(i * 9, 20); c.stroke(); }
+      } else if (navn === "føn") {
+        c.fillStyle = "#ff7eb6"; c.strokeStyle = "#c2306e";
+        rr(c, -22, -16, 36, 22, 10); c.fill(); c.stroke();
+        rr(c, 10, -11, 14, 12, 3); c.fill(); c.stroke();
+        rr(c, -14, 2, 10, 20, 4); c.fill(); c.stroke();
+        c.strokeStyle = "#9fdcff"; for (let i = 0; i < 3; i++) { c.beginPath(); c.moveTo(28, -10 + i * 5); c.lineTo(38, -12 + i * 6); c.stroke(); }
+      } else if (navn === "børste") {
+        c.fillStyle = "#c39bff"; c.strokeStyle = "#7b3fd1";
+        rr(c, -24, -14, 48, 14, 6); c.fill(); c.stroke();
+        c.strokeStyle = "#7b3fd1"; for (let i = -20; i <= 20; i += 5) { c.beginPath(); c.moveTo(i, 0); c.lineTo(i, 14); c.stroke(); }
+      } else if (navn === "mudder") {
+        c.fillStyle = "#7a5230";
+        c.beginPath(); c.ellipse(0, 6, 24, 12, 0, 0, TAU); c.fill();
+        for (const [a, b, r] of [[-14, -10, 6], [10, -14, 5], [0, -20, 4], [18, -4, 4]]) { c.beginPath(); c.arc(a, b, r, 0, TAU); c.fill(); }
+        c.fillStyle = "rgba(255,230,200,.5)"; c.beginPath(); c.ellipse(-6, 3, 8, 3, -0.3, 0, TAU); c.fill();
+      }
+      c.restore();
+    }
+
+    let sidst = performance.now();
+    function loop(t) {
+      const dt = klem((t - sidst) / 1000, 0, 0.05);
+      sidst = t;
+      opdater(dt); tegn(dt);
+      requestAnimationFrame(loop);
+    }
+
+    // ---------- Styring ----------
+    function iEnhjørning(lx, ly) {                    // ramte fingeren pelsen (eller hornet/vingen)?
+      const kk = k * dpr, px = Math.floor((lx - KASSE.x) * kk), py = Math.floor((ly - KASSE.y) * kk);
+      if (px >= 0 && py >= 0 && px < lag.maske.width && py < lag.maske.height && lag.maske.getContext("2d").getImageData(px, py, 1, 1).data[3] > 100) return true;
+      return (lx > 495 && lx < 565 && ly > -70 && ly < 85) || (d.vinger !== "ingen" && lx > 200 && lx < 380 && ly > 20 && ly < 220) || (lx > 40 && lx < 180 && ly > 230 && ly < 460);
+    }
+    cv.addEventListener("pointerdown", e => {
+      lydKlar();
+      const f = kropFlyt(), lx = (e.clientX - ox) / k - f.x, ly = (e.clientY - oy) / k - f.y;
+      if (fane === "vask") {
+        finger = { id: e.pointerId, x: e.clientX, y: e.clientY }; sidsteStempel = null;
+        try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+        sætBrus(værktøj === "bruser" ? "bruser" : værktøj === "føn" ? "føn" : null);
+        return;
+      }
+      if (iEnhjørning(lx, ly)) trykPåEnhjørning(lx, ly);
+    });
+    cv.addEventListener("pointermove", e => { if (finger && e.pointerId === finger.id) { finger.x = e.clientX; finger.y = e.clientY; } });
+    function slip(e) {
+      if (!finger || e.pointerId !== finger.id) return;
+      finger = null; sætBrus(null);
+      if (værktøj === "bruser") setTimeout(ryst, 250);   // efter skylningen ryster den sig
+    }
+    cv.addEventListener("pointerup", slip);
+    cv.addEventListener("pointercancel", slip);
+
+    // ---------- Panelet forneden ----------
+    const FANER = [["lav", "🎨"], ["pynt", "🎀"], ["vask", "🧽"], ["mad", "🍎"]];
+    let underfane = { lav: "krop", pynt: "sadel" };
+    function lavFaner() {
+      const f = $("faner"); f.innerHTML = "";
+      for (const [id, ikon] of FANER) {
+        const b = document.createElement("button");
+        b.className = "fane" + (id === fane ? " valgt" : ""); b.textContent = ikon; b.setAttribute("aria-label", id);
+        b.addEventListener("click", () => skiftFane(id));
+        f.appendChild(b);
+      }
+    }
+    function skiftFane(id) {
+      lydKlar(); klik(FANER.findIndex(f => f[0] === id) * 2);
+      fane = id; finger = null; sætBrus(null);
+      lavFaner(); lavPanel();
+      if (id === "vask" && !beskidt) setTimeout(hopIMudder, 400);   // den hopper i mudderet, så der er noget at vaske
+      requestAnimationFrame(layout);
+    }
+    // En lille tegning på et lærred (til knapperne)
+    function ikonLærred(tegn, str = 46) {
+      const c = document.createElement("canvas"), pd = Math.min(window.devicePixelRatio || 1, 2);
+      c.width = c.height = Math.round(str * pd);
+      const g = c.getContext("2d"); g.setTransform(pd, 0, 0, pd, 0, 0); g.lineJoin = "round"; g.lineCap = "round";
+      tegn(g, str);
+      return c;
+    }
+    function knap(indhold, valgt, klikFn, baggrund) {
+      const b = document.createElement("button");
+      b.className = "vbtn" + (valgt ? " valgt" : "");
+      if (typeof indhold === "string") b.textContent = indhold; else b.appendChild(indhold);
+      if (baggrund) b.style.background = baggrund;
+      b.addEventListener("click", klikFn);
+      return b;
+    }
+    function chips(liste, valgt, vælg) {
+      const c = $("chips"); c.innerHTML = "";
+      for (const [id, ikon] of liste) {
+        const b = document.createElement("button");
+        b.className = "chip" + (id === valgt ? " valgt" : "");
+        if (typeof ikon === "string") b.textContent = ikon; else b.appendChild(ikon);
+        b.addEventListener("click", () => { klik(2); vælg(id); });
+        c.appendChild(b);
+      }
+    }
+    // Når man vælger noget: lidt glimmer og en tone
+    function valgt(i) {
+      lydKlar(); klik(i); magi();
+      const p = lokal(330, 220);
+      sprøjt("stjerne", p.x, p.y, 16, { farver: ["#ffd23f", "#ffffff", "#ff9fd0", "#9fe8ff"], g: 150, fart: 1.1 });
+      gem(); lavPanel();
+    }
+    function regnbueBaggrund(farver) { return `linear-gradient(135deg, ${farver.join(", ")})`; }
+    function lavPanel() {
+      const v = $("valg"); v.innerHTML = "";
+      $("chips").innerHTML = "";
+      if (fane === "lav") {
+        chips([["krop", "🦄"], ["man", "💈"], ["horn", ikonLærred(g => { g.translate(17, 30); g.beginPath(); g.moveTo(-6, 0); g.lineTo(0, -26); g.lineTo(6, 0); g.closePath(); g.fillStyle = "#ffc928"; g.fill(); g.strokeStyle = "#c98a00"; g.lineWidth = 2; g.stroke(); }, 34)],
+          ["vinger", "🕊️"], ["mærke", "⭐"]], underfane.lav, id => { underfane.lav = id; lavPanel(); });
+        const u = underfane.lav;
+        if (u === "krop") KROP.forEach((f, i) => v.appendChild(knap("", d.krop === f, () => { d.krop = f; valgt(i); }, f)));
+        if (u === "man") Object.entries(MAN).forEach(([id, farver], i) => v.appendChild(knap("", d.man === id, () => { d.man = id; valgt(i); }, regnbueBaggrund(farver.length > 1 ? farver : [farver[0], farver[0]]))));
+        if (u === "horn") Object.entries(HORN).forEach(([id, f], i) => v.appendChild(knap("", d.horn === id, () => { d.horn = id; valgt(i); }, f ? regnbueBaggrund(f) : regnbueBaggrund(MAN.regnbue))));
+        if (u === "vinger") VINGER.forEach((id, i) => v.appendChild(knap(id === "ingen" ? "✖️" : "", d.vinger === id, () => { d.vinger = id; valgt(i); },
+          id === "ingen" ? "#fff" : id === "regnbue" ? regnbueBaggrund(MAN.regnbue) : { hvid: "#ffffff", lyserød: "#ffd6ec", guld: "#ffe48a" }[id])));
+        if (u === "mærke") MÆRKER.forEach((m, i) => v.appendChild(knap(m || "✖️", d.mærke === m, () => { d.mærke = m; valgt(i); })));
+      } else if (fane === "pynt") {
+        chips([["sadel", "🏇"], ["hoved", "👑"], ["ben", "🧦"]], underfane.pynt, id => { underfane.pynt = id; lavPanel(); });
+        const u = underfane.pynt;
+        if (u === "sadel") Object.entries(SADLER).forEach(([id, s], i) => v.appendChild(knap(
+          { ingen: "✖️", hjerter: "💗", cowboy: "🤠", konge: "💎", regnbue: "🌈", stjerner: "⭐" }[id], d.sadel === id, () => { d.sadel = id; valgt(i); }, s ? s.dækken === "regnbue" ? "#fff" : s.dækken : "#fff")));
+        if (u === "hoved") HOVED.forEach((id, i) => v.appendChild(knap({ ingen: "✖️", krans: "🌸", krone: "👑", sløjfe: "🎀", briller: "🕶️", hat: "🤠" }[id], d.hoved === id, () => { d.hoved = id; valgt(i); })));
+        if (u === "ben") BEN.forEach((id, i) => v.appendChild(knap({ ingen: "✖️", varmere: "", regnbuevarmere: "", glitterhove: "✨" }[id], d.ben === id, () => { d.ben = id; valgt(i); },
+          id === "varmere" ? "repeating-linear-gradient(0deg, #ff7eb6 0 8px, #fff 8px 16px)" : id === "regnbuevarmere" ? regnbueBaggrund(MAN.regnbue) : id === "glitterhove" ? "#ffd23f" : "#fff")));
+      } else if (fane === "vask") {
+        for (const [id, i] of [["mudder", 0], ["svamp", 1], ["bruser", 2], ["føn", 3], ["børste", 4]]) {
+          const b = knap(ikonLærred(g => tegnIkon(g, id, 23, 26, 0.85)), id !== "mudder" && værktøj === id, () => {
+            lydKlar(); klik(i);
+            if (id === "mudder") hopIMudder(); else { værktøj = id; lavPanel(); }
+          });
+          v.appendChild(b);
+        }
+      } else if (fane === "mad") {
+        MAD.forEach((m, i) => {
+          const b = knap(m.e, false, () => { const r = b.getBoundingClientRect(); giMad(i, r.left + r.width / 2, r.top + r.height / 2); klik(i); });
+          v.appendChild(b);
+        });
+      }
+    }
+
+    $("hjerter").textContent = d.hjerter;
+    lavFaner(); lavPanel();
+    Effekter.vedStørrelse(layout);
+    layout();
+    requestAnimationFrame(loop);
+    if (location.search.includes("debug")) window.eh = { d, st, get fane() { return fane; }, skiftFane, hopIMudder, celler: () => celler, andel, tegn, opdater, set værktøj(v) { værktøj = v; },
+      vask, tjekRen, ryst, giMad, trykPåEnhjørning, layout, spol(sek) { for (let i = 0; i < sek * 60; i++) opdater(1 / 60); tegn(1 / 60); } };
+  </script>
+</body>
+</html>

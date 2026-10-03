@@ -23,7 +23,7 @@ Forsiden har faner, så man kan vælge kategori (appen husker den sidste):
 - 🧊 **3D:** ⛏️ Broekraft (byggespil i Minecraft-stil med mange verdener), 🎣 Mærkelige fisk, 🏁 Rulle Rasmus (styr en blob gennem fem baner ved at vippe iPad'en eller trykke),
   🍔 Burgerløbet (saml ingredienser på vejen, og send burgeren ind i munden på kæmpen)
 - 🎮 **2D:** 🎈 Pop ballonerne (stryg over ballonerne som i Fruit Ninja), 🍔 Byg en burger (byg en burger og giv den til den sultne mand),
-  🚜 Vaskehallen, 🐍 Fjollet Slange
+  🦄 Min enhjørning (lav din egen enhjørning, giv den sadel og pynt på, vask og fodr den), 🚜 Vaskehallen, 🐍 Fjollet Slange
 - 🎨 **Tegn & musik:** 🎨 Tegn! (hold to fingre nede, så kommer der en streg imellem dem), 🎹 Dyre-piano
 
 Nederst på forsiden ligger "For voksne" med 📷 Spil sammen (forbind tabletten til Broekraft Server).
