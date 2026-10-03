@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sigtekorn 🎯</title>
+<meta name="theme-color" content="#1a150e">
+<style>
+  :root { --sand: #e8cf9c; --mørk: rgba(18, 14, 9, 0.82); --ræve: #f0b25a; --slanger: #8fd16a; --sk: #5dff6a; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0d0b08; color: #f3e7cf; font: 500 16px/1.4 system-ui, "Segoe UI", sans-serif; user-select: none; }
+  canvas#scene { display: block; width: 100vw; height: 100vh; cursor: crosshair; }
+  .skjult { display: none !important; }
+  .lag { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 20; }
+  b, .tal { font-variant-numeric: tabular-nums; }
+
+  /* ---- låsen ---- */
+  #lås { background: radial-gradient(circle at 50% 30%, #3a2c1a, #0d0b08 70%); z-index: 40; }
+  .lås-kort { width: min(340px, 92vw); text-align: center; padding: 26px 24px 18px; background: var(--mørk); border: 1px solid #5a4528; border-radius: 18px; box-shadow: 0 20px 60px #000a; }
+  .lås-kort.ryst { animation: ryst 0.35s; }
+  @keyframes ryst { 20%, 60% { transform: translateX(-10px); } 40%, 80% { transform: translateX(10px); } }
+  .lås-ikon { font-size: 44px; } .lås-kort h1 { margin: 6px 0 4px; font-size: 24px; } .lås-tekst { margin: 0 0 14px; color: #d8c8a8; min-height: 42px; }
+  .lås-prikker { display: flex; gap: 14px; justify-content: center; margin-bottom: 16px; }
+  .lås-prikker i { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--sand); }
+  .lås-prikker i.fyldt { background: var(--sand); }
+  .lås-taster { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .lås-taster button { font: 700 22px system-ui; padding: 14px 0; border-radius: 12px; border: 1px solid #6a5434; background: #2a2116; color: #f3e7cf; cursor: pointer; }
+  .lås-taster button:hover { background: #3a2e1e; }
+  .lås-hjem { display: inline-block; margin-top: 14px; color: #c8b088; font-size: 14px; }
+
+  /* ---- menuen ---- */
+  #menu { background: linear-gradient(180deg, rgba(10, 8, 5, 0.55), rgba(10, 8, 5, 0.85)); }
+  .menu-kort { width: min(720px, 94vw); max-height: 92vh; overflow-y: auto; padding: 24px 28px; background: var(--mørk); border: 1px solid #5a4528; border-radius: 18px; box-shadow: 0 30px 80px #000c; }
+  .menu-kort h1 { margin: 0; font-size: 40px; letter-spacing: 1px; color: var(--sand); }
+  .menu-kort h1 small { display: block; font-size: 15px; letter-spacing: 0; color: #c8b088; font-weight: 500; }
+  .valg { display: grid; grid-template-columns: 150px 1fr; gap: 10px 16px; align-items: center; margin: 18px 0; }
+  .valg label { color: #d8c8a8; }
+  .knapper { display: flex; flex-wrap: wrap; gap: 8px; }
+  .knapper button, .stor { font: 600 15px system-ui; padding: 8px 14px; border-radius: 10px; border: 1px solid #6a5434; background: #2a2116; color: #f3e7cf; cursor: pointer; }
+  .knapper button.valgt { background: #c8963e; color: #1a140c; border-color: #e8b860; }
+  .stor { font-size: 19px; padding: 12px 24px; background: #c8963e; color: #1a140c; border-color: #e8b860; }
+  .stor.anden { background: #2a2116; color: #f3e7cf; border-color: #6a5434; }
+  input[type=range] { width: 100%; accent-color: #c8963e; }
+  .række { display: flex; align-items: center; gap: 12px; } .række output { min-width: 48px; text-align: right; font-variant-numeric: tabular-nums; }
+  .hjælp { color: #b8a684; font-size: 13.5px; line-height: 1.6; margin: 14px 0 0; }
+  .hjælp kbd { background: #2a2116; border: 1px solid #5a4528; border-radius: 5px; padding: 0 5px; font: 600 12px system-ui; }
+  #statLinje { color: #e8cf9c; font-size: 14px; margin: 10px 0 0; }
+  .menu-bund { display: flex; gap: 12px; align-items: center; margin-top: 18px; flex-wrap: wrap; }
+  .menu-bund a { color: #c8b088; margin-left: auto; font-size: 14px; }
+
+  /* ---- HUD ---- */
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; text-shadow: 0 1px 2px #000; }
+  #sigte { position: absolute; left: 50%; top: 50%; --hul: 6px; }
+  #sigte i { position: absolute; background: var(--sk); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.7); }
+  #sigte .t, #sigte .b { width: 2px; height: 9px; left: -1px; } #sigte .t { top: calc(-1 * var(--hul) - 9px); } #sigte .b { top: var(--hul); }
+  #sigte .v, #sigte .h { height: 2px; width: 9px; top: -1px; } #sigte .v { left: calc(-1 * var(--hul) - 9px); } #sigte .h { left: var(--hul); }
+  #ramt { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px; opacity: 0; }
+  #ramt::before, #ramt::after { content: ""; position: absolute; left: 10px; top: -2px; width: 2px; height: 26px; background: #fff; transform: rotate(45deg); box-shadow: 0 0 0 1px #0008; }
+  #ramt::after { transform: rotate(-45deg); }
+  #ramt.vis { opacity: 1; } #ramt.hoved::before, #ramt.hoved::after { background: #ff4a3a; } #ramt.dræbt { transform: scale(1.4); }
+  .boks { position: absolute; display: flex; gap: 22px; align-items: baseline; padding: 8px 16px; background: rgba(12, 10, 7, 0.45); border-radius: 12px; }
+  #livBoks { left: 18px; bottom: 16px; font-size: 32px; font-weight: 800; } #livBoks span.lavt b { color: #ff5a4a; }
+  #livBoks small { font-size: 17px; color: #d8c8a8; margin-right: 6px; }
+  #ammoBoks { right: 18px; bottom: 16px; font-size: 34px; font-weight: 800; gap: 10px; }
+  #ammoBoks #våbenNavn { font-size: 15px; color: #d8c8a8; font-weight: 600; margin-right: 8px; } #ammoBoks #ammoReserve { font-size: 19px; color: #d8c8a8; }
+  #ammoTal.lavt { color: #ff6a4a; }
+  #stilling { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 0; font-weight: 800; font-size: 22px; border-radius: 10px; overflow: hidden; }
+  #stilling span { padding: 5px 16px; background: rgba(12, 10, 7, 0.55); } #holdA { color: var(--ræve); } #holdB { color: var(--slanger); } #ur { color: #fff; font-size: 18px; padding-top: 7px !important; }
+  #drab { position: absolute; top: 12px; right: 14px; display: flex; flex-direction: column; gap: 4px; align-items: flex-end; font-size: 14.5px; }
+  #drab .linje { background: rgba(12, 10, 7, 0.6); padding: 3px 10px; border-radius: 7px; }
+  #drab .linje.egen { outline: 1px solid #e8cf9c; } #drab b { color: #fff; margin: 0 6px; font-weight: 600; }
+  .ræve { color: var(--ræve); } .slanger { color: var(--slanger); }
+  #skadeRetning i { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform: rotate(var(--v)); animation: fade 1.2s forwards; }
+  #skadeRetning i::before { content: ""; position: absolute; left: -60px; top: -27vh; width: 120px; height: 12px; border-radius: 50% 50% 0 0; background: radial-gradient(ellipse at 50% 100%, rgba(255, 50, 30, 0.95), rgba(255, 50, 30, 0) 70%); }
+  @keyframes fade { to { opacity: 0; } }
+  #rødKant { position: absolute; inset: 0; background: radial-gradient(circle, transparent 55%, rgba(200, 20, 10, 0.45)); opacity: 0; }
+  #rødKant.vis { animation: rød 0.6s forwards; } @keyframes rød { 0% { opacity: 1; } 100% { opacity: 0; } }
+  #kikkert { position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, transparent 0, transparent calc(44vh - 1px), #000 44vh); }
+  #kikkert::before, #kikkert::after { content: ""; position: absolute; background: #000; }
+  #kikkert::before { left: 0; right: 0; top: 50%; height: 1px; } #kikkert::after { top: 0; bottom: 0; left: 50%; width: 1px; }
+  #besked { position: absolute; top: 22%; left: 50%; transform: translateX(-50%); font-size: 26px; font-weight: 800; opacity: 0; transition: opacity 0.3s; text-align: center; }
+  #besked.vis { opacity: 1; }
+  #fart { position: absolute; left: 50%; top: calc(50% + 46px); transform: translateX(-50%); font-size: 15px; color: #e8cf9c; }
+  #død { position: absolute; bottom: 24%; left: 50%; transform: translateX(-50%); background: rgba(12, 10, 7, 0.7); padding: 12px 22px; border-radius: 12px; font-size: 20px; text-align: center; }
+  #tavle { position: absolute; top: 12%; left: 50%; transform: translateX(-50%); display: flex; gap: 18px; background: rgba(12, 10, 7, 0.85); padding: 16px 20px; border-radius: 14px; }
+  #tavle h2 { margin: 0 0 6px; font-size: 18px; } #tavle .ræve h2 { color: var(--ræve); } #tavle .slanger h2 { color: var(--slanger); }
+  #tavle table { border-collapse: collapse; min-width: 300px; font-size: 15px; } #tavle th { text-align: left; color: #b8a684; font-weight: 600; padding: 3px 10px; }
+  #tavle td { padding: 3px 10px; border-top: 1px solid #3a2e1e; font-variant-numeric: tabular-nums; } #tavle tr.mig td { color: #fff; font-weight: 800; } #tavle tr.død td { opacity: 0.5; }
+  #klik { z-index: 15; background: rgba(10, 8, 5, 0.5); font-size: 22px; font-weight: 700; cursor: pointer; }
+  #slut .menu-kort { text-align: center; } #slut h1 { font-size: 34px; } #slutTekst { color: #e8cf9c; margin: 10px 0 18px; }
+  #kunPc { z-index: 50; background: #0d0b08; text-align: center; padding: 20px; }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+
+<div id="hud" class="skjult">
+  <div id="rødKant"></div>
+  <div id="kikkert" class="skjult"></div>
+  <div id="sigte"><i class="t"></i><i class="b"></i><i class="v"></i><i class="h"></i></div>
+  <div id="ramt"></div>
+  <div id="skadeRetning"></div>
+  <div id="stilling"><span id="holdA">0</span><span id="ur">10:00</span><span id="holdB">0</span></div>
+  <div id="drab"></div>
+  <div id="besked"></div>
+  <div id="fart"></div>
+  <div id="livBoks" class="boks"><span><small>✚</small><b id="livTal">100</b></span><span><small>⛨</small><b id="panserTal">100</b></span></div>
+  <div id="ammoBoks" class="boks"><span id="våbenNavn">Stormgevær</span><b id="ammoTal">30</b><span id="ammoReserve">/ 90</span></div>
+  <div id="død" class="skjult"></div>
+  <div id="tavle" class="skjult"></div>
+</div>
+
+<div id="lås" class="lag skjult"></div>
+
+<div id="menu" class="lag skjult">
+  <div class="menu-kort">
+    <h1>Sigtekorn <small>Støvbyen · Ørkenrævene mod Sandslangerne · mod bots</small></h1>
+    <div class="valg">
+      <label>Sværhed</label><div class="knapper" id="valgSværhed"></div>
+      <label>Hold</label><div class="knapper" id="valgHold"></div>
+      <label>Våben</label><div class="knapper" id="valgVåben"></div>
+      <label>Følsomhed</label><div class="række"><input type="range" id="følsomhed" min="0.3" max="6" step="0.05"><output id="følsomhedTal"></output></div>
+      <label>Synsfelt</label><div class="række"><input type="range" id="synsfelt" min="80" max="110" step="1"><output id="synsfeltTal"></output></div>
+      <label>Lydstyrke</label><div class="række"><input type="range" id="lydstyrke" min="0" max="1" step="0.05"><output id="lydstyrkeTal"></output></div>
+      <label>Vis fart</label><div class="knapper" id="valgFart"></div>
+    </div>
+    <div class="menu-bund">
+      <button class="stor" id="start">▶ Start kamp</button>
+      <button class="stor anden skjult" id="fortsæt">Fortsæt</button>
+      <a href="../../">← Tilbage til spillene</a>
+    </div>
+    <p id="statLinje"></p>
+    <p class="hjælp"><kbd>W A S D</kbd> gå · <kbd>Mus</kbd> sigt · <kbd>Venstre klik</kbd> skyd · <kbd>Højre klik</kbd> kikkert / stik · <kbd>R</kbd> genlad ·
+      <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> våben · <kbd>Q</kbd> sidste våben · <kbd>Mellemrum</kbd> eller <kbd>musehjul</kbd> hop · <kbd>Shift</kbd> gå stille ·
+      <kbd>C</kbd> duk · <kbd>Tab</kbd> pointtavle · <kbd>Esc</kbd> pause.<br>Stå stille, når du skyder — og træk musen ned imod rekylen. Første hold til 50 drab vinder.</p>
+  </div>
+</div>
+
+<div id="slut" class="lag skjult"><div class="menu-kort"><h1 id="slutOverskrift"></h1><p id="slutTekst"></p>
+  <button class="stor" id="igen">↻ Spil igen</button> <button class="stor anden" id="tilMenu">Menu</button></div></div>
+
+<div id="klik" class="lag skjult">Klik for at fortsætte</div>
+<div id="kunPc" class="lag skjult"><div><h1>🖥️ Sigtekorn er til computer</h1><p>Spillet kræver en mus og et tastatur.</p><p><a href="../../" style="color:#e8cf9c">← Tilbage til spillene</a></p></div></div>
+
+<script type="module" src="spil.js"></script>
+</body>
+</html>
