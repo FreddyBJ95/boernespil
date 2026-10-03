@@ -178,6 +178,65 @@ def cylinder(navn, c, r, h, farve, mat="blød", rot=(0, 0, 0), seg=32, rund=0.0)
     return o
 
 
+def drej(navn, profil, farve, mat="blød", seg=32, c=(0, 0, 0)):
+    """En drejet form (som på en drejebænk) om spillets lodrette akse.
+    profil = [(radius, højde), …] nedefra og op i spillets mål; radius 0 lukker formen i den ende"""
+    bm = bmesh.new()
+    ringe = []
+    for r, y in profil:
+        if r < 1e-5: ringe.append([bm.verts.new(S(0, y, 0))])
+        else: ringe.append([bm.verts.new(S(math.cos(i / seg * math.tau) * r, y, math.sin(i / seg * math.tau) * r)) for i in range(seg)])
+    for a, b in zip(ringe, ringe[1:]):
+        if len(a) == 1 and len(b) == 1: continue
+        if len(a) == 1: [bm.faces.new((a[0], b[(i + 1) % seg], b[i])) for i in range(seg)]
+        elif len(b) == 1: [bm.faces.new((a[i], a[(i + 1) % seg], b[0])) for i in range(seg)]
+        else: [bm.faces.new((a[i], a[(i + 1) % seg], b[(i + 1) % seg], b[i])) for i in range(seg)]
+    if len(ringe[0]) > 1: bm.faces.new(list(reversed(ringe[0])))
+    if len(ringe[-1]) > 1: bm.faces.new(ringe[-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return _ny(navn, bm, farve, mat, c)
+
+
+def G(p):
+    """Blenders mål → spillets mål (x, op, frem). Bruges i farvefunktionerne: x, y, z = G(p)"""
+    return (p[0], p[2], -p[1])
+
+
+def klip(o, væk):
+    """Fjern de punkter, hvor væk(x, y, z) siger ja (spillets mål, i forhold til figurens midte)"""
+    bm = bmesh.new(); bm.from_mesh(o.data)
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if væk(*G(v.co))], context="VERTS")
+    bm.to_mesh(o.data); bm.free(); o.data.update()
+    return o
+
+
+def plade(navn, punkter, tyk, farve, mat="blød", ringe=4, plan="xy", c=(0, 0, 0), rund=0.0, midt=None):
+    """En flad figur (ostestykke, søstjerne, pizzastykke) ud fra en omrids-liste [(u, v), …] i spillets mål.
+    plan "xy" = står op og vender mod kameraet · "xz" = ligger ned. Ringene indad giver plads til farvemønstre.
+    midt = punktet, ringene samles om (standard: gennemsnittet af omridset)"""
+    mx = sum(p[0] for p in punkter) / len(punkter); my = sum(p[1] for p in punkter) / len(punkter)
+    if midt: mx, my = midt
+    def sted(u, v, w):
+        return S(u, v, w) if plan == "xy" else S(u, w, v)
+    bm = bmesh.new(); n = len(punkter)
+    lag = []
+    for w in (-tyk / 2, tyk / 2):
+        rr = [[bm.verts.new(sted(mx + (u - mx) * k / ringe, my + (v - my) * k / ringe, w)) for (u, v) in punkter] for k in range(1, ringe + 1)]
+        midt = bm.verts.new(sted(mx, my, w))
+        lag.append((midt, rr))
+    for midt, rr in lag:
+        for i in range(n): bm.faces.new((midt, rr[0][i], rr[0][(i + 1) % n]))
+        for a, b in zip(rr, rr[1:]):
+            for i in range(n): bm.faces.new((a[i], b[i], b[(i + 1) % n], a[(i + 1) % n]))
+    yd, ud = lag[0][1][-1], lag[1][1][-1]
+    for i in range(n): bm.faces.new((yd[i], yd[(i + 1) % n], ud[(i + 1) % n], ud[i]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    o = _ny(navn, bm, "#ffffff", mat, c)
+    if rund: _afrund(o, rund)
+    farv(o, farve)
+    return o
+
+
 def kasse(navn, c, str_, farve, mat="blød", rund=0.0, rot=(0, 0, 0)):
     bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
     bmesh.ops.scale(bm, vec=Vector(str_), verts=bm.verts)
@@ -269,7 +328,7 @@ def ao(objekter, styrke=0.6, samples=96, skjul=lambda o: ()):
         farve = me.color_attributes["Farve"]
         skygge = me.color_attributes.new("AO", "FLOAT_COLOR", "CORNER")
         me.color_attributes.active_color = skygge
-        væk = list(skjul(o))
+        væk = [d for d in skjul(o) if d != o]
         for d in væk: d.hide_render = True
         bpy.ops.object.bake(type="AO")
         for d in væk: d.hide_render = False
