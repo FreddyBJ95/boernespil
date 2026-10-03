@@ -37,6 +37,7 @@ LYS = materiale('Varmt lys', (1.0, .68, .22), .1, .3, 2)
 SOL = materiale('Solceller', (.055, .14, .24), .5, .35)
 GUMMI = materiale('Gummi', (.023, .035, .038), .05)
 STÅL = materiale('Børstet stål', (.46, .53, .5), .75)
+GRØN = materiale('Støvet salvie', (.23, .33, .19))
 
 def pos(x, y, z): return (x, -z, y)
 def ter(x, z):
@@ -150,7 +151,7 @@ for x,z,sx,sz,h in [(-185,-182,31,27,15),(-115,-195,27,24,12),(15,-217,31,33,19)
   cube('Fabrikstag',x,h+.7,z,sx+2,1.4,sz+2,ORANGE)
   for xx in range(int(x-sx/2+3),int(x+sx/2-2),5):cube('Fabriksrude',xx,h*.7,z+sz/2+.1,2.8,3,.3,GLAS)
   for zz in [-7,0,7]:cube('Støttebjælke',x-sx/2-.3,h/2,z+zz,.6,h,.6,MØRK)
-for x,z in [(-28,-250),(46,-252),(-138,-224)]:
+for x,z in [(-28,-236),(46,-252),(-138,-224)]:
   cyl('Silo',x,13,z,8,26,STÅL,12)
   cyl('Silokant',x,22,z,8.25,.6,RUST,12)
   rør('Silorør',(x,18,z),(x+20,18,z+10),.8,TURKIS)
@@ -198,17 +199,151 @@ for x,z,v,b,l,h in [(75,-29,math.pi/2,14,32,6),(-155,190,0,12,28,4)]:
     rør('Rampens trin',p(t,-b/2,yy),p(t,b/2,yy),.11,CREME)
   for side in [-1,1]:rør('Rampe gelænder',p(-l/2,side*b/2,1),p(l/2,side*b/2,h+1),.15,TURKIS)
 
+# Garagens åbne værksted er fyldt med egne små ting: værktøj, donkraft og kasser.
+cube('Værkstedsbord',-303,1.7,237,10,.35,3.2,STÅL)
+for xx in [-307,-299]:
+  for zz in [236,238]:cube('Bordben',xx,.8,zz,.25,1.6,.25,RUST)
+cube('Værktøjstavle',-303,3.5,239,10,3,.2,TURKIS)
+for i in range(6):
+  x=-307+i*1.5
+  rør('Hængende skruenøgle',(x,2.9,238.8),(x,4.1,238.8),.09,STÅL)
+  cyl('Skruenøglens hoved',x,4.2,238.65,.24,.12,STÅL,8)
+for x,z in [(-307,235.9),(-304,237),(-300,237)]:
+  cube('Reservedelskasse',x,2.2,z,1.4,.7,1.1,ORANGE,bevel=.05)
+  cube('Kasseetiket',x,2.2,z-.57,.8,.3,.03,CREME)
+cube('Kompressor',-258,1.4,236,3,2,2.5,TURKIS,bevel=.25)
+cyl('Trykmåler',-258,2.6,236,.4,.25,CREME)
+rør('Luftslange',(-258,1.7,235),(-263,.2,232),.07,MØRK)
+cube('Donkraft',-269,.4,233,1.4,.6,2.8,ORANGE)
+rør('Donkraftgreb',(-269,.5,231.7),(-269,1.8,229.8),.08,STÅL)
+for xx in [-310,-295]:
+  rør('Solsejlstolpe',(xx,0,228),(xx,5.5,228),.18,TURKIS)
+mesh('Skygge over værksted',[(-312,5.5,228),(-294,5.5,228),(-294,6.1,241),(-312,6.1,241)],[(0,1,2,3)],CREME)
+for zz in [228,230,232,234,236,238,240]:
+  rør('Solsejlets syning',(-312,5.55,zz),(-294,5.55,zz),.04,ORANGE)
+cube('Servicepumpe',-249,1.8,219,2.5,3.6,2.3,ORANGE,bevel=.2)
+cube('Pumpedisplay',-249,2.7,217.82,1.6,.8,.08,MØRK)
+tekst('Tankdisplay','07',-249,2.55,217.74,.5,LYS)
+rør('Pumpeslange',(-250.2,2.3,219),(-251.2,.5,219),.10,MØRK)
+cube('Garageflag fod',-252,.4,212,2,.8,2,MØRK)
+rør('Garageflag stang',(-252,.8,212),(-252,10,212),.12,STÅL)
+mesh('Garagevimpel',[(-252,10,212),(-252,7.5,212),(-246,9.3,212)],[(0,1,2)],TURKIS)
+cube('Serviceskilt',-258,6.1,239.3,10,2.1,.3,TURKIS)
+tekst('Garagepladsens skilt','SERVICE 07',-258,6,239,1.1,CREME)
+
+# Industrikvarteret får sidegader, små værksteder, porte og en rolig havneplads.
+for x,z,navn in [(-240,-90,'MEKANIK'),(-60,-138,'RADIO'),(-220,-280,'DEPOT'),(-330,-230,'SKROT')]:
+  cube('Sideværksted',x,4,z,22,8,17,TURKIS,bevel=.15)
+  cube('Værkstedstag',x,8.5,z,25,.8,20,RUST)
+  cube('Butiksport',x,2.8,z+8.7,8,5.5,.25,MØRK)
+  cube('Portoverligger',x,6,z+8.85,10,.55,.3,ORANGE)
+  tekst('Værkstedets navn',navn,x,6.7,z+8.9,1.2,CREME,math.pi)
+  for side in [-1,1]:
+    cube('Værkstedsvindue',x+side*7,4,z+8.7,3,2.6,.2,GLAS)
+    cube('Varm rude',x+side*7,3.8,z+8.85,2.1,.18,.06,LYS)
+  cube('Ventilator',x+8,6.4,z-8.7,2.4,2.4,.5,MØRK)
+  for yy in [5.6,6.2,6.8,7.4]:cube('Ventilatorlamel',x+8,yy,z-9,.12,.08,.7,STÅL)
+for x,z,sx,sz,h in [(-185,-182,31,27,15),(-115,-195,27,24,12),(15,-217,31,33,19)]:
+  cube('Fabriksdør',x,h*.2,z+sz/2+.25,5,h*.4,.4,MØRK)
+  cube('Lastelampe',x,h*.45,z+sz/2+.8,2,.35,1,LYS)
+  for side in [-1,1]:
+    rør('Nedløbsrør',(x+side*(sx/2-1),.4,z+sz/2+.6),(x+side*(sx/2-1),h,z+sz/2+.6),.12,STÅL)
+  for zz in [-4,0,4]:
+    cube('Tagventilation',x,h+1.9,z+zz,3,2.2,2,MØRK)
+    for xx in [-.6,0,.6]:cube('Ventilationsrille',x+xx,h+3.05,z+zz,.15,.15,1.4,STÅL)
+for x,z in [(-178,-165),(-120,-178),(38,-216),(-209,-279),(-340,-217)]:
+  cube('Lastepalet',x,.25,z,3,.5,3,CREME)
+  for dx in [-.8,0,.8]:cube('Pallebræt',x+dx,.55,z,.55,.15,3,RUST)
+  cube('Godskasse',x,1.4,z,2.4,1.6,2.4,ORANGE)
+  cube('Kassebånd',x,1.4,z+.02,2.55,1.8,.12,MØRK)
+
+# Parkerede servicebiler er samlet med resten af byen, så de ikke giver flere draw calls.
+for x,z,v in [(-216,-92,.2),(-63,-126,.3),(-298,-218,-.4),(-337,-250,.5)]:
+  cube('Parkeret skrotbil',x,1,z,3.2,1.2,6,ORANGE,v,bevel=.15)
+  cube('Parkeret kabine',x,2.1,z-.5,2.8,1.4,2.5,TURKIS,v,bevel=.1)
+  cube('Parkeret forrude',x,2.3,z+.85,2.2,.7,.08,GLAS,v)
+  for dx in [-1.65,1.65]:
+    for dz in [-1.8,1.8]:
+      d=cyl('Parkeret dæk',x+dx,.6,z+dz,.75,.4,GUMMI,12);d.rotation_euler[1]=math.pi/2
+
+# Tre ægte vindrotorer har hver sit eget centrumpunkt til stille animation i browseren.
+rotorer=[]
+for i,(x,z,h) in enumerate([(-367,-30,16),(66,-314,19),(245,166,15)]):
+  y=ter(x,z)
+  for dx,dz in [(-1.7,-1.7),(1.7,-1.7),(-1.7,1.7),(1.7,1.7)]:
+    rør('Vindmølle mast',(x+dx,y,z+dz),(x,y+h,z),.16,STÅL)
+  rør('Møllekryds',(x-1.5,y+4,z-1.5),(x+1.5,y+10,z-1.5),.12,TURKIS)
+  før=set(bpy.context.scene.objects)
+  for j in range(6):
+    v=j*math.tau/6
+    a=(x+math.sin(v)*.7,y+h+math.cos(v)*.7,z)
+    b=(x+math.sin(v)*4.5,y+h+math.cos(v)*4.5,z)
+    rør('Rotorblad',a,b,.32,TURKIS)
+  hub=cyl('Rotoraksel',x,y+h,z,.65,.45,TURKIS);hub.rotation_euler[0]=math.pi/2
+  dele=[o for o in bpy.context.scene.objects if o not in før]
+  bpy.ops.object.select_all(action='DESELECT')
+  for o in dele:o.select_set(True)
+  bpy.context.view_layer.objects.active=hub;bpy.ops.object.join();hub=bpy.context.object
+  hub.name='rotor_'+str(i);bpy.ops.object.transform_apply(location=False,rotation=True,scale=True);bpy.context.scene.cursor.location=pos(x,y+h,z);bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
+  rotorer.append(hub)
+
+# Ørkenen får salviefarvede kaktusser og buske uden at spærre nogen vej.
+def vejafstand(x,z):
+  bedste=10000
+  for bredde,p in RUTER:
+    for a,b in zip(p,p[1:]):
+      dx=b[0]-a[0];dz=b[2]-a[2]
+      t=max(0,min(1,((x-a[0])*dx+(z-a[2])*dz)/(dx*dx+dz*dz)))
+      bedste=min(bedste,math.hypot(x-a[0]-dx*t,z-a[2]-dz*t)-bredde/2)
+  return bedste
+for i in range(70):
+  x=random.uniform(-400,380);z=random.uniform(-360,345)
+  if vejafstand(x,z)<12 or min(math.hypot(x-cx,z-cz) for cx,cz in [(-275,220),(-285,-190),(-110,190)])<38:continue
+  y=ter(x,z);h=random.uniform(2,5)
+  cyl('Kaktus',x,y+h/2,z,.38,h,GRØN,6)
+  for side in [-1,1]:
+    rør('Kaktusarm',(x,y+h*.45,z),(x+side*1,y+h*.45,z),.26,GRØN)
+    cyl('Kaktusfinger',x+side*1,y+h*.65,z,.26,h*.4,GRØN,6)
+for x,z,navn,v in [(-305,106,'RUSTBY',.3),(-175,57,'BJERGPAS',0),(-72,-63,'STUNTVEJ',0),(-164,239,'SOLSTATION',0),(130,217,'UDSIGT',math.pi/2)]:
+  y=min((a[1] for _,p in RUTER for a in p),default=0)
+  rør('Rutens skiltestolpe',(x,y,z),(x,y+6,z),.18,RUST)
+  cube('Rutens skilt',x,y+5,z,8,2.4,.3,TURKIS,v)
+  tekst('Rutens navn',navn,x,y+4.75,z-.25,1.1,CREME,v)
+
+# Broernes afstivninger fortæller tydeligt, hvor dækket og den lave dal er.
+for bredde,punkter in RUTER:
+  for a,b in zip(punkter,punkter[1:]):
+    if min(a[1],b[1])<10:continue
+    dx=b[0]-a[0];dz=b[2]-a[2];l=math.hypot(dx,dz);nx=-dz/l;nz=dx/l
+    for side in [-1,1]:
+      kant=(bredde/2-1)*side
+      rør('Broens kantbjælke',(a[0]+nx*kant,a[1]-.5,a[2]+nz*kant),(b[0]+nx*kant,b[1]-.5,b[2]+nz*kant),.4,MØRK)
+      for j in range(5):
+        t0=j/5;t1=(j+1)/5
+        x0=a[0]+dx*t0+nx*kant;z0=a[2]+dz*t0+nz*kant;y0=a[1]+(b[1]-a[1])*t0
+        x1=a[0]+dx*t1+nx*kant;z1=a[2]+dz*t1+nz*kant;y1=a[1]+(b[1]-a[1])*t1
+        rør('Turkis broafstivning',(x0,y0-3,z0),(x1,y1-.5,z1),.22,TURKIS)
+        rør('Turkis broafstivning',(x0,y0-.5,z0),(x1,y1-3,z1),.22,TURKIS)
+    # Høje rammer står uden for bilens frie bane; traversen ligger seks meter over dækket.
+    x=(a[0]+b[0])/2;z=(a[2]+b[2])/2;y=(a[1]+b[1])/2
+    for side in [-1,1]:
+      xx=x+nx*(bredde/2-.5)*side;zz=z+nz*(bredde/2-.5)*side
+      rør('Broportal',(xx,y-.5,zz),(xx,y+7,zz),.4,ORANGE)
+    rør('Broportalens travers',(x+nx*(bredde/2-.5),y+7,z+nz*(bredde/2-.5)),(x-nx*(bredde/2-.5),y+7,z-nz*(bredde/2-.5)),.5,TURKIS)
+tekst('Bjergtårnets skilt','STORMLYGTE 07',346,78,10.7,1.35,CREME)
+cube('Bjergtårnets navneplade',346,78.3,11,17,2.5,.35,TURKIS)
+
 # Små detaljer samles pr. materiale, så browseren tegner få objekter.
 for i in range(100):
   x=random.uniform(-425,425);z=random.uniform(-390,390)
-  if min(math.hypot(x-a[0],z-a[2]) for _,p in RUTER for a in p)<25:continue
+  if vejafstand(x,z)<8 or min(math.hypot(x-cx,z-cz) for cx,cz in [(-275,220),(-285,-190),(-110,190)])<38:continue
   y=ter(x,z);bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1,radius=random.uniform(1.7,4.5),location=pos(x,y+1,z))
   o=bpy.context.object;o.name='Ørkensten';o.scale=(random.uniform(1,2),random.uniform(.7,1.6),random.uniform(.4,1));o.data.materials.append(KLIPPE)
 for x,z in [(-340,55),(-237,-226),(-60,-266),(205,-176),(270,150),(12,266),(-180,78)]:
   y=min((a[1] for _,p in RUTER for a in p),default=0)
   rør('Vejskiltstolpe',(x,0,z),(x,5,z),.16,MØRK)
   cube('Turkis vejskilt',x,4.6,z,5,2,.25,TURKIS)
-verden=join_materialer(list(bpy.context.scene.objects),'Verden')
+verden=join_materialer([o for o in bpy.context.scene.objects if o not in rotorer],'Verden')+rotorer
 eksport('oerken',verden)
 
 # Tre kørebare biler deler en enkel hjulstruktur, men har forskellige karrosserier.
@@ -286,7 +421,7 @@ scene.render.filepath=os.path.join(UD,'forside.jpg')
 scene.world.color=(.35,.42,.48)
 scene.use_nodes=True
 world=scene.world;world.use_nodes=True;world.node_tree.nodes['Background'].inputs[0].default_value=(.32,.45,.54,1);world.node_tree.nodes['Background'].inputs[1].default_value=.65
-bpy.ops.object.light_add(type='SUN',location=(0,0,100));sun=bpy.context.object;sun.name='Den varme sol';sun.data.energy=2.6;sun.rotation_euler=(.35,-.55,-.55)
+bpy.ops.object.light_add(type='SUN',location=(0,0,100));sun=bpy.context.object;sun.name='Den varme sol';sun.data.energy=2.6;sun.data.color=(1.0,.84,.62);sun.rotation_euler=(.35,-.55,-.55)
 bpy.ops.object.camera_add(location=pos(-298,9,196));cam=bpy.context.object;target=Vector(pos(-277,4,235));cam.rotation_euler=(target-cam.location).to_track_quat('-Z','Y').to_euler();cam.data.lens=33;scene.camera=cam
 scene.view_settings.view_transform='AgX'
 bpy.ops.wm.save_as_mainfile(filepath=os.path.join(os.path.dirname(__file__),'skrotstorm.blend'))

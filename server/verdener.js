@@ -5,7 +5,7 @@ import { STØRRELSE } from "../spil/broekraft/uendelig.js";
 import { UendeligtLager } from "./uendelig-lager.js";
 
 export const VERSION = "0.2.0";                              // protokollen mellem tablet og server
-export const UDGAVE = "0.5.2";                               // programmets udgave (vises i vinduet og kontrolpanelet)
+export const UDGAVE = "0.5.3";                               // programmets udgave (vises i vinduet og kontrolpanelet)
 // De endelige verdener beholder deres format; uendelige verdener gemmer kun ændringer.
 const DATA_VERSION = "0.1.0";
 const UENDELIG_VERSION = "0.2.0";

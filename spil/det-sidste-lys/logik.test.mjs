@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { aktivOpgave, fuldfør, gem, læsGemning, nyTilstand, OPGAVER, rigtigtSvar, samlRav, validerGemning } from "./logik.js";
+import { aktivOpgave, fuldfør, gem, læsGemning, nyTilstand, OPGAVER, rigtigtSvar, samlRav, validerGemning, findStednote, gemGåde, nyeIndstillinger, nytEventyr, validerIndstillinger, sikkerGemmetilstand } from "./logik.js";
 
 // Spillets fulde forløb kontrolleres sammen med de vigtige nat- og genstandsregler.
 let t = nyTilstand();
@@ -68,3 +68,42 @@ assert.equal(
   false,
 );
 console.log("Det Sidste Lys: fuldt forløb, gåder, natregler og gemningsvalidering bestået.");
+
+// Alle gemninger fra den første udgivelse kan fortsætte med sikre komfortstandarder.
+const gammel = { ...t };
+for (const felt of ["indstillinger", "gåder", "vink", "vejledning", "fund"]) delete gammel[felt];
+const opdateret = validerGemning(gammel);
+assert.deepEqual(opdateret.færdige, t.færdige);
+assert.deepEqual(opdateret.indstillinger, nyeIndstillinger());
+assert.deepEqual(opdateret.gåder, {});
+assert.deepEqual(validerIndstillinger({ følsomhed: Infinity, tekst: 500, kvalitet: "ultra", styring: "ukendt", rolig: "ja" }), nyeIndstillinger());
+const komfort = { følsomhed: .6, tekst: 1.4, kvalitet: "let", styring: "pile", rolig: true };
+assert.deepEqual(validerIndstillinger(komfort), komfort);
+let gemtGåde = gemGåde({ ...t, indstillinger: komfort, lyd: false }, "tide", ["Faldende", "II", "Vest"]);
+assert.equal(gemGåde(gemtGåde, "tide", ["hack", "II", "Vest"]), gemtGåde);
+const læstGåde = validerGemning(gemtGåde);
+assert.deepEqual(læstGåde.gåder.tide, ["Faldende", "II", "Vest"]);
+læstGåde.gåder.tide[0] = "Stigende";
+assert.equal(gemtGåde.gåder.tide[0], "Faldende", "Et genoptaget gådehjul deler ikke arrays med save");
+assert.deepEqual(validerGemning({ ...t, gåder: { spejle: [Infinity, 0, 0] } }).gåder, {});
+gemtGåde = findStednote(gemtGåde, "have");
+assert.equal(findStednote(gemtGåde, "have"), gemtGåde, "En stednote kan ikke dobbelttælles");
+assert.equal(findStednote(gemtGåde, "ukendt"), gemtGåde);
+assert.deepEqual(gemtGåde.færdige, t.færdige, "Valgfrie fund påvirker ikke de otte kapitler");
+const nyRejse = nytEventyr(gemtGåde);
+assert.deepEqual(nyRejse.færdige, []);
+assert.deepEqual(nyRejse.fund, []);
+assert.deepEqual(nyRejse.indstillinger, komfort, "Genstart bevarer de valgte adgangsindstillinger");
+assert.equal(nyRejse.lyd, false);
+console.log("Gamle gemninger, komfortvalg, gemte gåder og valgfrie stednoter består.");
+
+// Pagehide på et fyrgalleri kan efterfølges af pageshow fra samme levende bfcache-side.
+const påGalleri = { ...nyTilstand(), position: Object.freeze({ x: 38, z: -39.8 }) };
+const originalPosition = påGalleri.position;
+assert.ok(gem(sikkerGemmetilstand(påGalleri, true), lager));
+assert.deepEqual(læsGemning(lager).position, { x: 32, z: -35 }, "Fortsæt fra en ny indlæsning lander ved foden");
+assert.equal(påGalleri.position, originalPosition, "Pagehide erstatter ikke bfcache-spillerens levende position");
+assert.ok(Math.hypot(påGalleri.position.x-38, påGalleri.position.z+44) > 3.5);
+assert.ok(Math.hypot(påGalleri.position.x-38, påGalleri.position.z+44) < 4.7);
+assert.equal(sikkerGemmetilstand(påGalleri, false), påGalleri, "Almindelig save bevarer terrænpositionen");
+console.log("Galleri-save er sikkert ved genindlæsning og bevarer gangrummet ved browsertilbage.");

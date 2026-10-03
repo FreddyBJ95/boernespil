@@ -14,7 +14,7 @@ Deno.test("Voksenverdener: offline-cache medtager hele spillet og lokale 3D-bibl
   for (const id of VOKSENVERDENER) {
     for (const fil of await spilfiler(id)) assert.ok(filer.has(fil), `Offline-filen mangler: ${fil}`);
   }
-  for (const fil of ["three.module.js", "GLTFLoader.js", "BufferGeometryUtils.js"]) {
+  for (const fil of ["three.module.js", "GLTFLoader.js", "BufferGeometryUtils.js", "start.js"]) {
     assert.ok(filer.has(`spil/3d-faelles/${fil}`));
   }
   assert.ok(filer.has("spil/laas.js"));
@@ -30,14 +30,18 @@ for (const id of VOKSENVERDENER) {
     try {
       await prøvVoksenverden(
         (sti, options) =>
-          app.håndter(new Request("http://192.168.1.23:8080" + sti, options), { remoteAddr: { hostname: "192.168.1.42" } }),
+          app.håndter(new Request("http://192.168.1.23:8080" + sti, options), {
+            remoteAddr: { hostname: "192.168.1.42" },
+          }),
         id,
         true,
       );
     } finally {
       await app.luk();
       const sti = resolve(rod);
-      if (!sti.startsWith(testrod + sep) || !basename(sti).startsWith("voksenverden-test-")) throw new Error("Forkert testmappe");
+      if (!sti.startsWith(testrod + sep) || !basename(sti).startsWith("voksenverden-test-")) {
+        throw new Error("Forkert testmappe");
+      }
       await Deno.remove(sti, { recursive: true });
     }
   });

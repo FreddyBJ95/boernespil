@@ -14,6 +14,11 @@ await app.init();
 const prøveWorker =
   "self.addEventListener('install', () => self.skipWaiting()); self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));";
 const server = Deno.serve({ hostname: "127.0.0.1", port: 8080, onListen() {} }, async (req, info) => {
+  if (new URL(req.url).pathname === "/proeve-modeller") {
+    return new Response(await Deno.readTextFile(new URL("./tre-verdener-modelvisning.html", import.meta.url)), {
+      headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
+    });
+  }
   if (new URL(req.url).pathname === "/sw.js") {
     return new Response(prøveWorker, {
       headers: { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-store" },

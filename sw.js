@@ -1,6 +1,6 @@
 // ===== Service Worker — gør spillene installerbare og tilgængelige offline =====
 // Bump dette tal når der ændres filer, så de gamle bliver hentet på ny.
-const CACHE = "boernespil-v65";
+const CACHE = "boernespil-v66";
 
 const SPIL = ["balloner", "byg-burger", "enhjoerning", "vask", "slange", "tegne", "piano", "fisk", "broekraft", "rulle-rasmus", "burgerloeb"];
 const VOKSENSPIL = ["det-sidste-lys", "skrotstorm", "krystaljaegerne"];
@@ -8,11 +8,11 @@ const VOKSENSPIL = ["det-sidste-lys", "skrotstorm", "krystaljaegerne"];
 // Spil der består af flere filer end index.html
 const EKSTRA = [
   "tilslut/", "tilslut/index.html", "tilslut/tilslut.css", "tilslut/tilslut.js", "tilslut/adresse.js", "tilslut/vendor/jsQR.js",
-  ...["three.module.js", "GLTFLoader.js", "BufferGeometryUtils.js", "LICENSE-three.txt"].map(f => `spil/3d-faelles/${f}`),
-  ...["style.css", "spil.js", "verden.js", "logik.js", "lyd.js", "oe.glb", "forside.jpg"].map(f => `spil/det-sidste-lys/${f}`),
-  ...["style.css", "spil.js", "styring.js", "missioner.js", "verden-data.js", "fysik.js", "fremgang.js", "lyd.js", "forside.jpg", "ikon.svg",
+  ...["three.module.js", "GLTFLoader.js", "BufferGeometryUtils.js", "start.js", "LICENSE-three.txt"].map(f => `spil/3d-faelles/${f}`),
+  ...["style.css", "komfort.css", "spil.js", "styring.js", "verden.js", "logik.js", "lyd.js", "oe.glb", "maage.glb", "forside.jpg"].map(f => `spil/det-sidste-lys/${f}`),
+  ...["style.css", "spil.js", "styring.js", "missioner.js", "verden-data.js", "fysik.js", "fremgang.js", "lyd.js", "gps.js", "indstillinger.js", "brugerflade.js", "liv.js", "forside.jpg", "ikon.svg",
     "modeller/oerken.glb", "modeller/rotten.glb", "modeller/buggy.glb", "modeller/truck.glb"].map(f => `spil/skrotstorm/${f}`),
-  ...["style.css", "spil.js", "verden.js", "eventyr.js", "projektiler.js", "forside.jpg", "modeller/eventyr.glb"].map(f => `spil/krystaljaegerne/${f}`),
+  ...["style.css", "spil.js", "styring.js", "verden.js", "eventyr.js", "projektiler.js", "navigation.js", "kort.js", "lagring.js", "forside.jpg", "modeller/eventyr.glb", "modeller/detaljer.glb"].map(f => `spil/krystaljaegerne/${f}`),
   ...["three.js", "spil.js", "fisk.js", "staenger.js", "verden.js", "lyd.js", "modeller.js"].map(f => `spil/fisk/${f}`),
   ...["soe", "hav", "grej"].map(f => `spil/fisk/modeller/${f}.glb`),
   ...["three.js", "spil.js", "verden.js", "slange.js", "mad.js", "lyd.js", "modeller.js"].map(f => `spil/slange/${f}`),
@@ -59,11 +59,11 @@ self.addEventListener("install", e => {
   );
 });
 
-// Ryd gamle cacher
+// Ryd kun Spilkassens gamle cacher; andre projekter på samme origin beholder deres offline-filer.
 self.addEventListener("activate", e => {
   e.waitUntil(
     caches.keys()
-      .then(navne => Promise.all(navne.filter(n => n !== CACHE).map(n => caches.delete(n))))
+      .then(navne => Promise.all(navne.filter(n => n.startsWith("boernespil-v") && n !== CACHE).map(n => caches.delete(n))))
       .then(() => self.clients.claim())
   );
 });
@@ -75,8 +75,11 @@ self.addEventListener("fetch", e => {
     caches.match(e.request).then(svar => {
       if (svar) return svar;
       return fetch(e.request).then(net => {
-        const kopi = net.clone();
-        caches.open(CACHE).then(c => c.put(e.request, kopi)).catch(() => {});
+        // En kort serverfejl må ikke få Prøv igen til at vise den samme gemte fejl.
+        if (net.ok) {
+          const kopi = net.clone();
+          caches.open(CACHE).then(c => c.put(e.request, kopi)).catch(() => {});
+        }
         return net;
       }).catch(() => caches.match("index.html"));   // offline-fallback
     })

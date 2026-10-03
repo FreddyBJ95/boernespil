@@ -1,4 +1,4 @@
-import { BILER, MISSIONER, OPGRADERINGER } from "./verden-data.js";
+import { BILER, MISSIONER, OPGRADERINGER, gulv } from "./verden-data.js";
 const NØGLE = "skrotstorm-v1";
 const heltal = (n, min, max) => Number.isInteger(n) && n >= min && n <= max;
 
@@ -36,6 +36,12 @@ export function valider(data) {
   ny.dele = Array.isArray(data.dele) ? [...new Set(data.dele.filter((i) => heltal(i, 0, 2)))] : [];
   ny.port = heltal(data.port, 0, 5) ? data.port : 0;
   ny.sejre = heltal(data.sejre, 0, 10000) ? data.sejre : 0;
+  // Gamle v1-spil har ingen position. Ugyldig position ændrer aldrig optjent fremgang.
+  const p = data.position;
+  if (p && [p.x, p.y, p.z, p.vinkel].every(Number.isFinite) && Math.abs(p.x) < 440 && Math.abs(p.z) < 410 && p.y > 0 && p.y < 180) {
+    const støtte = gulv(p.x, p.z, p.y).y + .8;
+    if (Math.abs(støtte - p.y) < 1.5) ny.position = { x: p.x, y: støtte, z: p.z, vinkel: p.vinkel % (Math.PI * 2) };
+  }
   // Et tidsløb starter på ny efter en pause i browseren.
   if (MISSIONER[ny.mission]?.type === "løb") ny.port = 0;
   return ny;
@@ -50,8 +56,10 @@ export function hent() {
 }
 export function gem(data) {
   try {
-    localStorage.setItem(NØGLE, JSON.stringify(data));
-  } catch { /* Spillet virker også uden lager. */ }
+    const tekst = JSON.stringify(data);
+    if (localStorage.getItem(NØGLE) !== tekst) localStorage.setItem(NØGLE, tekst);
+    return true;
+  } catch { return false; /* Spillet virker også uden lager. */ }
 }
 export function opgrader(data, id) {
   const valgte = OPGRADERINGER.find((o) => o.id === id);

@@ -175,7 +175,7 @@ a {
 }
 #kort-panel {
   position: absolute;
-  right: 22px;
+  right: max(22px, env(safe-area-inset-right));
   bottom: 105px;
   width: 160px;
   background: #123638e6;
@@ -196,7 +196,7 @@ a {
 }
 #fart-panel {
   position: absolute;
-  left: 24px;
+  left: max(24px, env(safe-area-inset-left));
   bottom: 94px;
   text-shadow: 0 3px 8px #0009;
 }
@@ -232,8 +232,8 @@ a {
 #bund {
   position: absolute;
   bottom: max(20px, env(safe-area-inset-bottom));
-  left: 22px;
-  right: 22px;
+  left: max(22px, env(safe-area-inset-left));
+  right: max(22px, env(safe-area-inset-right));
   display: flex;
   gap: 9px;
   align-items: center;
@@ -272,7 +272,7 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+  padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
   backdrop-filter: blur(8px);
   z-index: 10;
   overflow-y: auto;
@@ -528,7 +528,7 @@ p {
   }
   #bund {
     bottom: 128px;
-    left: 15px;
+    left: max(15px, env(safe-area-inset-left));
     right: auto;
   }
   #bund button {
@@ -538,8 +538,8 @@ p {
   }
   #hud {
     top: max(12px, env(safe-area-inset-top));
-    left: 12px;
-    right: 12px;
+    left: max(12px, env(safe-area-inset-left));
+    right: max(12px, env(safe-area-inset-right));
     gap: 9px;
   }
   .brand {
@@ -581,7 +581,7 @@ p {
   }
   #kort-panel {
     width: 115px;
-    right: 14px;
+    right: max(14px, env(safe-area-inset-right));
     bottom: 128px;
     padding: 6px;
   }
@@ -590,7 +590,7 @@ p {
   }
   #fart-panel {
     bottom: 178px;
-    left: 16px;
+    left: max(16px, env(safe-area-inset-left));
   }
   #fart-panel b {
     font-size: 37px;
@@ -680,8 +680,8 @@ p {
 }
 @media (max-height: 520px) and (pointer: coarse), (max-height: 520px) and (max-width: 760px) {
   #hud {
-    left: 12px;
-    right: 12px;
+    left: max(12px, env(safe-area-inset-left));
+    right: max(12px, env(safe-area-inset-right));
   }
   .mission {
     width: 320px;
@@ -705,7 +705,7 @@ p {
     bottom: 25px;
   }
   #bund {
-    left: 12px;
+    left: max(12px, env(safe-area-inset-left));
     bottom: 91px;
   }
   .styr button {
@@ -724,4 +724,56 @@ p {
   .start-kort .lille {
     font-size: 11px;
   }
+}
+/* Kort og indstillinger er store, læsbare touchflader; fokus kan altid ses. */
+button { min-width: 44px; }
+.menulink { display: flex; align-items: center; min-height: 46px; padding: 8px 4px; }
+#kort-panel { cursor: pointer; color: var(--creme); }
+#kort-panel:hover { background: #164346f0; }
+#stort-kort { display: block; width: min(100%, 430px); height: auto; margin: 8px auto; background: #133638; border: 1px solid #71bbae55; border-radius: 18px; }
+.kort-forklaring { display: flex; justify-content: space-between; gap: 12px; font-size: 11px; color: var(--turkis); }
+.biltal { display: block; color: var(--orange); font-size: 10px; margin-top: 9px; }
+.bil-statistik { display: flex; gap: 8px; justify-content: space-between; margin-bottom: 18px; padding: 13px; background: #1b4848; border-radius: 12px; font-size: 11px; }
+.bil-statistik b { display: block; color: var(--orange); font-size: 19px; }
+.opgradering .gevinst { color: var(--turkis); margin-top: 8px; }
+.valg-række { display: grid; grid-template-columns: 1fr minmax(140px, 48%); align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid #82bdb334; font-size: 14px; min-height: 62px; }
+.valg-række b { display: block; font-size: 11px; color: var(--turkis); padding-top: 4px; }
+.valg-række select { width: 100%; min-height: 46px; padding: 8px 10px; color: var(--creme); background: #1a4445; border: 1px solid #81b1a7; border-radius: 10px; font: inherit; font-size: 13px; }
+.valg-række input { min-height: 44px; width: 100%; margin: 0; accent-color: var(--turkis); cursor: pointer; }
+.valg-række input[type=checkbox] { width: 44px; justify-self: end; }
+select:focus-visible, input:focus-visible { outline: 3px solid var(--orange); outline-offset: 3px; }
+.intro-trin { display: flex; align-items: start; gap: 15px; padding: 13px 0; line-height: 1.6; font-size: 13px; }
+.intro-trin > b { display: grid; place-items: center; flex: 0 0 40px; height: 40px; border-radius: 50%; background: var(--turkis); color: var(--mørk); font-size: 20px; }
+.intro-trin strong { display: block; font-size: 16px; margin-bottom: 3px; }
+.belønning { color: var(--orange); font-size: 44px; font-weight: 900; margin: 12px 0; }
+.belønning span { font-size: 16px; }
+#touch-rat { width: 126px; height: 112px; border-radius: 55px; padding: 3px; background: #183d3ddd; touch-action: none; pointer-events: auto; }
+#rat-skive { display: block; height: 78px; font-size: 79px; line-height: .95; color: #e6ddc2; pointer-events: none; }
+#touch-rat small { display: block; font-size: 8px; letter-spacing: 3px; color: var(--turkis); }
+@media (pointer: coarse), (max-width: 760px) {
+  #bund button, .top-knapper button { min-height: 44px; }
+  #lyd { min-height: 44px; }
+  .mission small { max-height: 30px; }
+}
+@media (max-width: 480px) {
+  .valg-række { grid-template-columns: 1fr 48%; gap: 8px; font-size: 12px; }
+  .valg-række select { font-size: 11px; padding: 6px; }
+  .bil-statistik { padding: 10px; font-size: 9px; }
+  .bil-statistik b { font-size: 16px; }
+  .kort-forklaring { font-size: 9px; }
+  .hjælp-række { grid-template-columns: 75px 1fr; gap: 9px; font-size: 12px; }
+}
+@media (max-height: 520px) {
+  .lag { padding-top: 12px; padding-bottom: 12px; }
+  .menu-kort { max-height: calc(100dvh - 24px); }
+  #stort-kort { max-width: 240px; }
+  .intro-trin { padding: 7px 0; }
+}
+
+/* På smalle telefoner er bilerne brede rækker, så egenskaber kan sammenlignes. */
+@media (max-width: 430px) {
+  .biler { grid-template-columns: 1fr; gap: 8px; }
+  .bilvalg { display: grid; grid-template-columns: 1fr 95px; gap: 3px 9px; font-size: 14px; padding: 12px; }
+  .bilvalg small { grid-column: 1; font-size: 11px; margin-top: 0; }
+  .bilvalg .biltal { grid-column: 2; grid-row: 1 / span 2; align-self: center; text-align: right; font-size: 11px; line-height: 1.6; margin-top: 0; }
 }

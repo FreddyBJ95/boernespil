@@ -195,8 +195,8 @@ a:hover {
 .toplinje {
   position: fixed;
   top: max(17px,env(safe-area-inset-top));
-  left: 26px;
-  right: 26px;
+  left: calc(26px + env(safe-area-inset-left));
+  right: calc(26px + env(safe-area-inset-right));
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -240,16 +240,16 @@ a:hover {
   gap: 7px;
 }
 .værktøj button {
-  width: 43px;
+  width: 44px;
   padding: 8px;
-  min-height: 43px;
+  min-height: 44px;
   font-size: 19px;
   background: rgba(15,35,42,.66);
   backdrop-filter: blur(8px);
 }
 .mål-kort {
   position: fixed;
-  left: 26px;
+  left: calc(26px + env(safe-area-inset-left));
   top: 98px;
   padding: 19px 20px;
   width: 295px;
@@ -320,8 +320,8 @@ a:hover {
 .bundlinje {
   position: fixed;
   bottom: max(24px,env(safe-area-inset-bottom));
-  left: 26px;
-  right: 26px;
+  left: calc(26px + env(safe-area-inset-left));
+  right: calc(26px + env(safe-area-inset-right));
   display: flex;
   justify-content: space-between;
   gap: 20px;
@@ -414,7 +414,7 @@ a:hover {
 }
 .ud-knap {
   position: fixed;
-  right: 26px;
+  right: calc(26px + env(safe-area-inset-right));
   top: 86px;
   z-index: 3;
   font-size: 12px;
@@ -720,7 +720,7 @@ a:hover {
     display: grid;
     position: fixed;
     bottom: max(76px,calc(env(safe-area-inset-bottom) + 62px));
-    left: 20px;
+    left: calc(20px + env(safe-area-inset-left));
     grid-template-columns: repeat(3,46px);
     grid-template-rows: 46px 46px;
     gap: 4px;
@@ -758,7 +758,7 @@ a:hover {
   }
   .interaktion {
     left: auto;
-    right: 18px;
+    right: calc(18px + env(safe-area-inset-right));
     bottom: 94px;
     transform: none;
     min-width: 0;
@@ -781,7 +781,7 @@ a:hover {
   .kig-hjælp {
     display: block;
     position: fixed;
-    right: 22px;
+    right: calc(22px + env(safe-area-inset-right));
     bottom: 160px;
     font-size: 8px;
     color: #c1c9bf;
@@ -790,8 +790,8 @@ a:hover {
   }
   .bundlinje {
     bottom: max(16px,env(safe-area-inset-bottom));
-    left: 20px;
-    right: 20px;
+    left: calc(20px + env(safe-area-inset-left));
+    right: calc(20px + env(safe-area-inset-right));
   }
   .samling {
     font-size: 10px;
@@ -806,15 +806,15 @@ a:hover {
     padding: 9px 12px;
   }
   .toplinje {
-    left: 20px;
-    right: 20px;
+    left: calc(20px + env(safe-area-inset-left));
+    right: calc(20px + env(safe-area-inset-right));
     top: max(14px,env(safe-area-inset-top));
   }
   .kompas {
     display: none;
   }
   .mål-kort {
-    left: 20px;
+    left: calc(20px + env(safe-area-inset-left));
     top: 82px;
     padding: 13px 15px;
     width: 250px;
@@ -894,8 +894,8 @@ a:hover {
     gap: 4px;
   }
   .værktøj button {
-    width: 37px;
-    min-height: 38px;
+    width: 44px;
+    min-height: 44px;
     padding: 7px;
     font-size: 17px;
   }
@@ -956,12 +956,12 @@ a:hover {
     top: 215px;
   }
   .touch-kontrol {
-    left: 15px;
-    grid-template-columns: repeat(3,43px);
-    grid-template-rows: 43px 43px;
+    left: calc(15px + env(safe-area-inset-left));
+    grid-template-columns: repeat(3,44px);
+    grid-template-rows: 44px 44px;
   }
   .interaktion {
-    right: 15px;
+    right: calc(15px + env(safe-area-inset-right));
     bottom: 91px;
   }
   .interaktion > button {
@@ -1030,8 +1030,8 @@ a:hover {
   }
   .touch-kontrol {
     bottom: 63px;
-    grid-template-columns: repeat(3,39px);
-    grid-template-rows: 39px 39px;
+    grid-template-columns: repeat(3,44px);
+    grid-template-rows: 44px 44px;
   }
   .bundlinje {
     bottom: 10px;
