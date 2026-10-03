@@ -124,6 +124,7 @@ const spillerFig = harLeddeløs() ? new Figur("ræve") : null;
 if (spillerFig) { spillerFig.model.visible = false; scene.add(spillerFig.model); }
 const egneLemmer = () => spillerFig && ind.egneLemmer;
 const spiller = { navn: "Dig", hold: "ræve", erSpiller: true, liv: 100, panser: 100, død: false, drab: 0, dødsfald: 0, hoveder: 0, a: nyAktør(0, 0.01, 47) };
+let dræber = null, dødSyn = { yaw: 0, pitch: 0 };                    // hvem dræbte dig (kameraet drejer hen mod dem)
 let våbenSæt = {}, aktivt = "storm", forrige = "pistol", dødTid = 0, beskyttet = 0, stime = 0, trinVej = 0, slag = 0, slagYaw = 0;
 // ---------- Våbenræs: hvert drab giver det næste våben i rækken — den første, der dræber med kniven, vinder ----------
 const RÆKKE = ["raket", "minigun", "lmg", "storm", "taktisk", "salve", "kamp", "mp", "sprøjte", "pump", "hagl", "spejder", "snig", "armbrøst", "revolver", "pistol", "kniv"];
@@ -280,7 +281,9 @@ function spillerRamt(s, fra, skud = null) {
   if (spiller.liv > 0) return false;
   spiller.død = true; spiller.dødsfald++; dødTid = tid; stime = 0; stat.død++;
   if (egneLemmer()) spillerFig.falder(skud, scene, verden, new THREE.Vector3(spiller.a.vel.x, 0, spiller.a.vel.z), botSpil.delLyd);   // du falder fra hinanden
-  hud.død(`Du blev ramt af <b class="${fra.hold}">${fra.navn}</b> · tilbage om 3`); hud.kikkert(false);
+  dræber = fra !== spiller ? fra : null; dødSyn = { yaw: spiller.a.yaw, pitch: spiller.a.pitch };
+  const med = fra.våben?.d ? ` med ${fra.våben.d.navn}` : "", rest = fra !== spiller && fra.liv > 0 ? ` · ${Math.ceil(fra.liv)} liv tilbage` : "";
+  hud.død(`${fra === spiller ? "Du ramte dig selv" : `Du blev ramt af <b class="${fra.hold}">${fra.navn}</b>${med}${rest}`} · tilbage om 3`); hud.kikkert(false);
   return true;
 }
 // Spilleren mister en arm (så kun pistol, kniv og granater — uden arme ingenting) eller et ben (så kravler man)
@@ -509,6 +512,9 @@ let sidst = performance.now(), akk = 0, trinOp = 0;
 const op = new THREE.Vector3(0, 1, 0), frem = new THREE.Vector3();
 function billede(nu) {
   requestAnimationFrame(billede);
+  tegnBillede(nu);
+}
+function tegnBillede(nu) {
   const dt = Math.min(0.1, (nu - sidst) / 1000); sidst = nu;
   if (iGang && !pause) { akk += dt; let n = 0; while (akk >= TICK && n++ < 30) { tick(TICK); akk -= TICK; } }
   const alfa = akk / TICK, a = spiller.a;
@@ -520,7 +526,12 @@ function billede(nu) {
   kamera.position.set(p.x, p.y + øjeHøjde(a) - trinOp - dødFald * 1.2, p.z);
   const v = vb(), [rp, ry] = v ? synligRekyl(v) : [0, 0];
   slag *= Math.exp(-dt * 8);
-  kamera.rotation.set(a.pitch + rp + slag * 0.05, a.yaw + ry + slagYaw * slag, dødFald * 0.6);
+  if (spiller.død && dræber) {                                     // død: kameraet drejer langsomt hen mod den, der dræbte dig
+    const dx = dræber.a.pos.x - kamera.position.x, dz = dræber.a.pos.z - kamera.position.z, dy = dræber.a.pos.y + 1.5 - kamera.position.y;
+    const k = Math.min(1, dt * 3);
+    dødSyn.yaw += vinkel(Math.atan2(-dx, -dz) - dødSyn.yaw) * k; dødSyn.pitch += (Math.atan2(dy, Math.hypot(dx, dz)) - dødSyn.pitch) * k;
+    kamera.rotation.set(dødSyn.pitch, dødSyn.yaw, dødFald * 0.25);
+  } else kamera.rotation.set(a.pitch + rp + slag * 0.05, a.yaw + ry + slagYaw * slag, dødFald * 0.6);
   const zoomet = v && v.kikkert > 0 && !spiller.død, kikkert = zoomet && v.d.sigte !== "sigte";   // "sigte": man kigger ned over våbnet (ingen kikkert)
   const fov = zoomet ? v.d.zoom[v.kikkert - 1] : grundFov();
   if (Math.abs(kamera.fov - fov) > 0.01) { kamera.fov = fov; kamera.updateProjectionMatrix(); }
@@ -652,4 +663,4 @@ spiller.a = nyAktør(0, 6, 30, 0); spiller.a.pitch = -0.12;
 requestAnimationFrame(billede);
 if (location.search.includes("debug")) window.sk = { spiller, get bots() { return bots; }, verden, bane, kamera, ind, tick, skyd, startKamp, taster, hånd, scene, himmelLys, renderer,
   get vb() { return vb(); }, get point() { return point; }, kør() { pause = false; $("menu").classList.add("skjult"); }, stop() { pause = true; }, udrust, kast: kastGranat, vælg: id => skiftVåben(id), effekter, hud, spillerFig, get aktivt() { return aktivt; }, get projektiler() { return projektiler; },
-  steg(n) { for (let i = 0; i < n; i++) tick(TICK); }, skydNu() { skydHoldt = true; spillerSkyder(); skydHoldt = false; skydLåst = false; } };
+  steg(n) { for (let i = 0; i < n; i++) tick(TICK); }, tegn: nu => tegnBillede(nu), skydNu() { skydHoldt = true; spillerSkyder(); skydHoldt = false; skydLåst = false; } };
