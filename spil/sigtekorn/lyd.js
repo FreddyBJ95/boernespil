@@ -54,18 +54,52 @@ function tone(mål, t, fra, til, varighed, type, styrke) {
   o.connect(g); g.connect(mål); o.start(t); o.stop(t + varighed + 0.02);
 }
 
-// Et skud. type: "gevær" | "snig" | "pistol" · pos: hvor (null = ens eget)
-export function skud(type, pos = null) {
+// Et skud. d = våbnet (fra kataloget) · pos: hvor (null = ens eget). Lyden afhænger af våbnets klasse
+export function skud(d, pos = null) {
   if (!ctx) return;
-  const t = ctx.currentTime, m = kæde(pos, pos ? 1.3 : 0.9);
-  if (type === "snig") {
+  const t = ctx.currentTime, m = kæde(pos, pos ? 1.3 : 0.9), k = d.klasse;
+  if (d.projektil === "raket") return raket(pos);
+  if (d.projektil === "pil") { tone(m, t, 320, 110, 0.16, "triangle", 0.5); støjStød(m, t, 0.1, "bandpass", 1500, 2, 0.4, 0.08); return; }
+  if (d.lydløs) { støjStød(m, t, 0.12, "bandpass", 900, 1.2, 0.55, 0.08); tone(m, t, 220, 90, 0.06, "sine", 0.25); return; }
+  if (k === "snig") {
     støjStød(m, t, 0.5, "bandpass", 1300, 0.6, 1.2, 0.35); støjStød(m, t, 0.9, "lowpass", 500, 0.7, 1.0, 0.8); tone(m, t, 90, 30, 0.45, "sine", 0.9);
-  } else if (type === "pistol") {
-    støjStød(m, t, 0.2, "bandpass", 2400, 0.9, 0.8, 0.09); støjStød(m, t, 0.3, "lowpass", 1100, 0.7, 0.5, 0.18); tone(m, t, 140, 60, 0.12, "sine", 0.4);
+  } else if (k === "pistol") {
+    const tung = d.skade > 50;
+    støjStød(m, t, 0.2, "bandpass", tung ? 1500 : 2400, 0.9, 0.8, 0.09); støjStød(m, t, 0.3, "lowpass", 1100, 0.7, tung ? 0.9 : 0.5, 0.18); tone(m, t, 140, 60, 0.12, "sine", tung ? 0.7 : 0.4);
+  } else if (k === "hagl") {
+    støjStød(m, t, 0.45, "lowpass", 900, 0.6, 1.3, 0.4); støjStød(m, t, 0.2, "bandpass", 2000, 0.6, 0.9, 0.12); tone(m, t, 70, 30, 0.3, "sine", 1.0);
+  } else if (k === "mp") {
+    støjStød(m, t, 0.15, "bandpass", 2600, 0.9, 0.8, 0.07); støjStød(m, t, 0.25, "lowpass", 1000, 0.7, 0.5, 0.15); tone(m, t, 110, 50, 0.1, "sine", 0.45);
+  } else if (k === "tung") {
+    støjStød(m, t, 0.2, "bandpass", 1500, 0.8, 1.0, 0.1); støjStød(m, t, 0.35, "lowpass", 650, 0.7, 0.8, 0.22); tone(m, t, 65, 32, 0.16, "sine", 0.7);
   } else {
     støjStød(m, t, 0.25, "bandpass", 1800, 0.8, 1.0, 0.11); støjStød(m, t, 0.4, "lowpass", 800, 0.7, 0.75, 0.28); tone(m, t, 75, 38, 0.2, "sine", 0.7);
   }
 }
+// Raketten bliver skudt af: et sus
+export function raket(pos = null) {
+  if (!ctx) return;
+  const t = ctx.currentTime, m = kæde(pos, 0.9), s = ctx.createBufferSource(); s.buffer = støj;
+  const f = ctx.createBiquadFilter(); f.type = "bandpass"; f.Q.value = 1.4; f.frequency.setValueAtTime(500, t); f.frequency.exponentialRampToValueAtTime(1800, t + 0.6);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.9, t + 0.05); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+  s.connect(f); f.connect(g); g.connect(m); s.start(t, Math.random(), 1); tone(m, t, 90, 40, 0.3, "sine", 0.6);
+}
+// En eksplosion: et dybt brag og knitren bagefter
+export function eksplosion(pos) {
+  if (!ctx) return;
+  const t = ctx.currentTime, m = kæde(pos, 2.2);
+  støjStød(m, t, 1.4, "lowpass", 320, 0.7, 1.4, 1.3); tone(m, t, 70, 22, 0.9, "sine", 1.2);
+  støjStød(m, t + 0.05, 0.6, "highpass", 2500, 0.7, 0.35, 0.5); støjStød(m, t + 0.12, 0.8, "bandpass", 900, 0.8, 0.4, 0.7);
+}
+// En granat eller pil rammer noget hårdt: et lille klik
+export function prel(pos) { if (!ctx) return; const t = ctx.currentTime, m = kæde(pos, 0.5); tone(m, t, 2400 + Math.random() * 600, 1700, 0.06, "triangle", 0.25); støjStød(m, t, 0.05, "highpass", 3000, 1, 0.2, 0.04); }
+export function blænd(pos) { if (!ctx) return; const t = ctx.currentTime, m = kæde(pos, 1.8); støjStød(m, t, 0.4, "bandpass", 2000, 0.6, 1.3, 0.25); tone(m, t, 120, 50, 0.3, "sine", 0.8); }
+// Når man selv er blændet: en høj, ringende tone i ørerne
+export function ringen(styrke) { if (!ctx) return; const t = ctx.currentTime, m = kæde(null, 0.25 * styrke); tone(m, t, 3600, 3400, 2.5 * styrke + 0.3, "sine", 0.5); }
+export function røg(pos) { if (!ctx) return; const t = ctx.currentTime, m = kæde(pos, 0.6); støjStød(m, t, 2.0, "highpass", 2600, 0.5, 0.35, 2.0); }
+export function impuls(pos) { if (!ctx) return; const t = ctx.currentTime, m = kæde(pos, 1.4); tone(m, t, 160, 40, 0.45, "sine", 1.0); støjStød(m, t, 0.4, "lowpass", 600, 1, 0.8, 0.35); }
+// Man kaster en granat
+export function kast() { if (!ctx) return; støjStød(kæde(null, 0.4), ctx.currentTime, 0.2, "bandpass", 1200, 1.5, 0.35, 0.15); }
 // Kniven suser gennem luften
 export function kniv() { if (!ctx) return; støjStød(kæde(null, 0.6), ctx.currentTime, 0.2, "bandpass", 3200, 2, 0.4, 0.16); }
 // Klik, når magasinet er tomt

@@ -88,6 +88,30 @@
   #klik { z-index: 15; background: rgba(10, 8, 5, 0.5); font-size: 22px; font-weight: 700; cursor: pointer; }
   #slut .menu-kort { text-align: center; } #slut h1 { font-size: 34px; } #slutTekst { color: #e8cf9c; margin: 10px 0 18px; }
   #kunPc { z-index: 50; background: #0d0b08; text-align: center; padding: 20px; }
+
+  /* ---- udrustningen: kort i sjældenhedens farve (som i Fortnite) ---- */
+  .menu-kort { width: min(900px, 96vw); }
+  .udrustning { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  .plads { display: flex; flex-direction: column; gap: 4px; cursor: pointer; }
+  .pladsnavn { font-size: 12.5px; color: #b8a684; } .pladsnavn kbd { background: #2a2116; border: 1px solid #5a4528; border-radius: 4px; padding: 0 4px; font: 700 11px system-ui; color: #e8cf9c; }
+  .kort { --s: #a3abb3; position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; cursor: pointer;
+    padding: 10px 11px 11px; border-radius: 12px; border: 2px solid color-mix(in srgb, var(--s) 70%, #000); color: #fff;
+    background: linear-gradient(160deg, color-mix(in srgb, var(--s) 55%, #1a140c), color-mix(in srgb, var(--s) 18%, #120e09) 70%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 6px 16px rgba(0,0,0,0.4); font: 500 13px system-ui; transition: transform .12s; }
+  .kort:hover { transform: translateY(-2px); } .kort.valgt { outline: 3px solid #fff; outline-offset: 1px; }
+  .kort .sjælden { font-size: 11px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; color: color-mix(in srgb, var(--s) 40%, #fff); }
+  .kort .navn { font-size: 16px; font-weight: 800; text-shadow: 0 1px 3px #000a; }
+  .kort.lille { min-height: 66px; } .kort.lille .navn { font-size: 14.5px; }
+  .kort .tekst { font-size: 12.5px; color: #e8dcc8; line-height: 1.35; min-height: 34px; }
+  .kort .streger { display: grid; grid-template-columns: 78px 1fr; gap: 3px 8px; width: 100%; margin-top: 4px; align-items: center; font-size: 11.5px; color: #d8c8a8; }
+  .kort .streger i { height: 6px; border-radius: 3px; background: rgba(0,0,0,0.45); overflow: hidden; } .kort .streger b { display: block; height: 100%; background: color-mix(in srgb, var(--s) 50%, #fff); border-radius: 3px; }
+  #vælger { z-index: 30; background: rgba(8, 6, 4, 0.82); }
+  .vælger-kort { width: min(1100px, 96vw); max-height: 92vh; overflow-y: auto; padding: 20px 24px; background: var(--mørk); border: 1px solid #5a4528; border-radius: 18px; }
+  .vælger-kort h2 { margin: 0 0 14px; color: var(--sand); font-size: 26px; }
+  .vælger-gitter { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  /* granaterne på skærmen og blændingen */
+  #granatBoks { right: 18px; bottom: 74px; font-size: 18px; gap: 12px; } #granatBoks span { opacity: 0.45; } #granatBoks span.har { opacity: 1; } #granatBoks span.aktiv { color: #ffd27a; }
+  #blænd { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 12; }
 </style>
 </head>
 <body>
@@ -104,12 +128,15 @@
   <div id="besked"></div>
   <div id="fart"></div>
   <div id="livBoks" class="boks"><span><small>✚</small><b id="livTal">100</b></span><span><small>⛨</small><b id="panserTal">100</b></span></div>
+  <div id="granatBoks" class="boks"></div>
   <div id="ammoBoks" class="boks"><span id="våbenNavn">Stormgevær</span><b id="ammoTal">30</b><span id="ammoReserve">/ 90</span></div>
   <div id="død" class="skjult"></div>
   <div id="tavle" class="skjult"></div>
 </div>
 
 <div id="lås" class="lag skjult"></div>
+<div id="vælger" class="lag skjult"></div>
+<div id="blænd"></div>
 
 <div id="menu" class="lag skjult">
   <div class="menu-kort">
@@ -117,7 +144,7 @@
     <div class="valg">
       <label>Sværhed</label><div class="knapper" id="valgSværhed"></div>
       <label>Hold</label><div class="knapper" id="valgHold"></div>
-      <label>Våben</label><div class="knapper" id="valgVåben"></div>
+      <label>Udrustning</label><div class="udrustning" id="udrustning"></div>
       <label>Følsomhed</label><div class="række"><input type="range" id="følsomhed" min="0.3" max="6" step="0.05"><output id="følsomhedTal"></output></div>
       <label>Synsfelt</label><div class="række"><input type="range" id="synsfelt" min="80" max="110" step="1"><output id="synsfeltTal"></output></div>
       <label>Lydstyrke</label><div class="række"><input type="range" id="lydstyrke" min="0" max="1" step="0.05"><output id="lydstyrkeTal"></output></div>
@@ -131,7 +158,7 @@
     </div>
     <p id="statLinje"></p>
     <p class="hjælp"><kbd>W A S D</kbd> gå · <kbd>Mus</kbd> sigt · <kbd>Venstre klik</kbd> skyd · <kbd>Højre klik</kbd> kikkert / stik · <kbd>R</kbd> genlad ·
-      <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> våben · <kbd>Q</kbd> sidste våben · <kbd>Mellemrum</kbd> eller <kbd>musehjul</kbd> hop · <kbd>Shift</kbd> gå stille ·
+      <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> våben · <kbd>4</kbd> granat (venstre klik: langt, højre: kort) · <kbd>Q</kbd> sidste våben · <kbd>Mellemrum</kbd> eller <kbd>musehjul</kbd> hop · <kbd>Shift</kbd> gå stille ·
       <kbd>Ctrl</kbd> eller <kbd>C</kbd> duk (også i luften: så kommer man højere op) · <kbd>Tab</kbd> pointtavle · <kbd>Esc</kbd> pause.<br>Stå stille, når du skyder — og træk musen ned imod rekylen. Første hold til 50 drab vinder.</p>
   </div>
 </div>

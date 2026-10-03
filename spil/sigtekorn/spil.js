@@ -8,6 +8,8 @@
 //  lyd.js         lydene                           hud.js     skærmen og statistikken     ../laas.js  koden
 //  lys.js         lyset, der er bagt i Blender     teksturer.js  fotos og tegnede teksturer
 //  leddeloes.js   de leddeløse soldater          dele.js     hoveder, arme og ben, der flyver af
+//  katalog.js     alle våben, knive, granater og baner          udrustning.js  menuen, hvor man vælger dem
+//  projektiler.js raketter, pile og granater
 
 import * as THREE from "./three.js";
 import { lås } from "../laas.js";
@@ -17,7 +19,10 @@ import { lavBane, START } from "./bane.js";
 import { hentLys, himmelMiljø } from "./lys.js";
 import { deleTrin, deleTegn, ryddDele } from "./dele.js";
 import { nyAktør, bevæg, øjeHøjde, TICK, U } from "./bevaegelse.js";
-import { VÅBEN, nytVåben, affyr, efterSkud, opdaterVåben, skudRetning, synligRekyl, retningsvektor, genlad, unøjagtighed, skade } from "./vaaben.js";
+import { VÅBEN, nytVåben, aftrækker, efterSkud, opdaterVåben, skudRetning, synligRekyl, retningsvektor, genlad, unøjagtighed, skade } from "./vaaben.js";
+import { SJÆLDEN } from "./katalog.js";
+import { lavUdrustning, retUdrustning } from "./udrustning.js";
+import { Projektiler } from "./projektiler.js";
 import { Hånd } from "./haand.js";
 import { Effekter } from "./effekter.js";
 import { Bot, SVÆRHED, NAVNE, træfKrop, vinkel, hentSoldat } from "./bots.js";
@@ -35,8 +40,11 @@ await lås($("lås"));
 
 // ---------- Indstillinger (gemmes på computeren) ----------
 const INDST = "sigtekorn-indstillinger";
-const ind = Object.assign({ sværhed: "normal", hold: 5, primær: "gevær", følsomhed: 2.0, synsfelt: 90, lydstyrke: 0.8, fart: false, fuldskærm: true },
+const ind = Object.assign({ sværhed: "normal", hold: 5, følsomhed: 2.0, synsfelt: 90, lydstyrke: 0.8, fart: false, fuldskærm: true },
   (() => { try { return JSON.parse(localStorage.getItem(INDST) || "{}"); } catch (_) { return {}; } })());
+if (ind.primær && !ind.udrustning) ind.udrustning = { primær: ind.primær === "gevær" ? "storm" : ind.primær };   // fra før udrustningen
+delete ind.primær;
+ind.udrustning = retUdrustning(ind.udrustning);
 const gemIndst = () => { try { localStorage.setItem(INDST, JSON.stringify(ind)); } catch (_) {} };
 Lyd.sætLydstyrke(ind.lydstyrke);
 
@@ -91,13 +99,25 @@ const hånd = new Hånd(t);
 hånd.lavMiljø(renderer);
 const hud = new Hud();
 let stat = læsStatistik();
+const projektiler = new Projektiler({
+  scene, verden, effekter, lyd: Lyd, kampfolk: () => kampfolk, nu: () => tid,
+  træf: (k, o, r, maks) => k.erSpiller ? træfKrop(k.a, o, r, maks) : k.træf(o, r, maks),
+  kugle: (skytte, offer, h, v, afstand, r) => træfOffer(skytte, offer, h.del, h.lem, v, afstand, r, null),
+  skad: (offer, s, skytte, skud, navn, hoved) => skadFra(offer, s, skytte, skud, navn, hoved),
+  blænd: pos => blænd(pos),
+  ryst: (pos, styrke) => { const d = pos.distanceTo(kamera.position); if (d < 25) slag = Math.min(1.4, slag + styrke * (1 - d / 25)); },
+}, t);
 
 // ---------- Spilleren ----------
 const spiller = { navn: "Dig", hold: "ræve", erSpiller: true, liv: 100, panser: 100, død: false, drab: 0, dødsfald: 0, hoveder: 0, a: nyAktør(0, 0.01, 47) };
-let våbenSæt = {}, aktivt = "gevær", forrige = "pistol", dødTid = 0, beskyttet = 0, stime = 0, trinVej = 0, slag = 0, slagYaw = 0;
+let våbenSæt = {}, aktivt = "storm", forrige = "pistol", dødTid = 0, beskyttet = 0, stime = 0, trinVej = 0, slag = 0, slagYaw = 0;
+// Udrustningen: plads 1 hovedvåben, 2 pistol, 3 nærkamp og 4 granaterne
 function udrust() {
-  våbenSæt = { [ind.primær]: nytVåben(ind.primær), pistol: nytVåben("pistol"), kniv: nytVåben("kniv") };
-  aktivt = ind.primær; forrige = "pistol";
+  const u = ind.udrustning;
+  våbenSæt = {};
+  for (const id of [u.primær, u.sekundær, u.kniv, ...u.granater.map(g => `granat_${g}`)]) våbenSæt[id] = nytVåben(id);
+  aktivt = u.primær; forrige = u.sekundær;
+  hånd.forbered(Object.keys(våbenSæt));
   hånd.vis(aktivt, VÅBEN[aktivt].træk);
 }
 const vb = () => våbenSæt[aktivt];
@@ -119,6 +139,7 @@ let bots = [], kampfolk = [], point = { ræve: 0, slanger: 0 }, tid = 0, kampSlu
 const botSpil = {
   scene, verden, knuder: bane.knuder, kampfolk: () => kampfolk, nu: () => tid, sværhed: () => SVÆRHED[ind.sværhed],
   skyd: (bot, o, ret, v) => skyd(bot, o, ret, v),
+  røgBlokerer: (a, b) => projektiler.røgBlokerer(a, b),
   delLyd: (pos, fart) => {                                         // en løs del rammer jorden (ikke for mange lyde på én gang)
     if (fart < 1.2 || tid - sidsteDelLyd < 0.04 || pos.distanceTo(kamera.position) > 40) return;
     sidsteDelLyd = tid; Lyd.dunk(pos, Math.min(1, fart / 6));
@@ -132,7 +153,7 @@ const botSpil = {
 const pilTekstur = (() => { const c = document.createElement("canvas"); c.width = c.height = 64; const g = c.getContext("2d"); g.fillStyle = "#7dff6a"; g.strokeStyle = "#0a2a0a"; g.lineWidth = 4; g.beginPath(); g.moveTo(10, 14); g.lineTo(54, 14); g.lineTo(32, 50); g.closePath(); g.fill(); g.stroke(); return new THREE.CanvasTexture(c); })();
 function lavBots() {
   for (const b of bots) scene.remove(b.model);
-  ryddDele(); effekter.ryd();
+  ryddDele(); effekter.ryd(); projektiler.ryd();
   const navne = [...NAVNE].sort(() => Math.random() - 0.5);
   bots = [];
   for (let i = 0; i < ind.hold - 1; i++) bots.push(new Bot(botSpil, "ræve", navne.pop()));
@@ -145,9 +166,30 @@ function lavBots() {
 }
 
 // ---------- Skud (fælles for spilleren og botterne) ----------
-const KRAFT = { gevær: 4.2, snig: 8, pistol: 3, kniv: 2 };       // hvor hårdt kuglen skubber kroppen, når den dræber (m/s)
+const KRAFT = { gevær: 4.2, mp: 3.2, hagl: 2.4, snig: 8, tung: 4.5, special: 5, pistol: 3, kniv: 2 };   // hvor hårdt et skud skubber (m/s)
 const tmpR = new THREE.Vector3(), tmpS = new THREE.Vector3(), tmpM = new THREE.Vector3();
+// Et skud med et våben: en kugle — eller mange hagl, en raket eller en pil
 function skyd(skytte, o, ret, v) {
+  const d = v.d;
+  if (d.projektil) {
+    const r = retningsvektor(ret.yaw, ret.pitch, new THREE.Vector3());
+    d.projektil === "raket" ? projektiler.raket(skytte, o, r, v) : projektiler.pil(skytte, o, r, v);
+  } else {
+    let ramte = null;
+    for (let i = 0; i < (d.hagl || 1); i++) {
+      let rt = ret;
+      if (d.hagl) { const vv = Math.random() * Math.PI * 2, a = Math.sqrt(Math.random()) * d.haglSpred; rt = { yaw: ret.yaw + Math.cos(vv) * a, pitch: ret.pitch + Math.sin(vv) * a }; }
+      const h = kugle(skytte, o, rt, v, i === 0 || Math.random() < 0.3);
+      if (h && (!ramte || h.dræbt || h.hoved)) ramte = h;
+    }
+    if (ramte && skytte === spiller) { hud.ramt(ramte.hoved, ramte.dræbt); Lyd.ramt(ramte.hoved); stat.træf++; }
+  }
+  if (skytte !== spiller) Lyd.skud(d, o);
+  const hørt = d.lydløs ? 9 : 45;                                  // botterne hører skuddet (lydpotten: kun tæt på)
+  for (const b of bots) if (b !== skytte && b.a.pos.distanceTo(o) < hørt) b.hør(o, skytte);
+}
+// Én kugle (eller ét hagl): hvad rammer den først — en mur eller en kæmper?
+function kugle(skytte, o, ret, v, spor) {
   const r = retningsvektor(ret.yaw, ret.pitch, tmpR.clone());
   const væg = verden.stråle(o, r, 300);
   let maks = væg ? væg.t : 300, ramt = null;
@@ -158,20 +200,32 @@ function skyd(skytte, o, ret, v) {
   }
   const slut = tmpS.copy(o).addScaledVector(r, maks).clone();
   // lysspor fra mundingen (spilleren: fra våbnet i hånden)
-  if (skytte === spiller) { if (Math.random() < 0.6) effekter.sporFra(hånd.munding(kamera, tmpM), slut); }
-  else effekter.sporFra(o.clone().addScaledVector(r, 0.7).add(new THREE.Vector3(0, -0.15, 0)), slut);
-  if (ramt) {
-    const s = skade(v, ramt.del, ramt.k, maks), hoved = ramt.del === "hoved";
-    effekter.blod(slut, r, verden, hoved ? 1.4 : 1);
-    const dræbt = ramt.k === spiller ? spillerRamt(s, skytte) : ramt.k.ramt(s, skytte, { r: r.clone(), del: ramt.del, lem: ramt.lem, kraft: KRAFT[v.id] * (hoved ? 1.25 : 1) });
-    if (skytte === spiller) { hud.ramt(hoved, dræbt); Lyd.ramt(hoved); stat.træf++; }
-    if (dræbt) drab(skytte, ramt.k, v, hoved);
-  } else if (væg) {
-    effekter.hul(slut, væg.normal); effekter.nedslag(slut, væg.normal, væg.kasse.mat);
+  if (spor) {
+    if (skytte === spiller) { if (Math.random() < 0.6) effekter.sporFra(hånd.munding(kamera, tmpM), slut); }
+    else effekter.sporFra(o.clone().addScaledVector(r, 0.7).add(new THREE.Vector3(0, -0.15, 0)), slut);
+  }
+  if (ramt) return { hoved: ramt.del === "hoved", dræbt: træfOffer(skytte, ramt.k, ramt.del, ramt.lem, v, maks, r, slut) };
+  if (væg) {
+    effekter.hul(slut, væg.normal); effekter.nedslag(slut, væg.normal, væg.kasse.mat, v.d.hagl ? 0.4 : 1);
     if (skytte !== spiller && slut.distanceTo(kamera.position) < 3) Lyd.nærSkud(slut);
   }
-  if (skytte !== spiller) Lyd.skud(v.id, o);
-  for (const b of bots) if (b !== skytte && b.a.pos.distanceTo(o) < 45) b.hør(o, skytte);   // botterne hører skuddet
+  return null;
+}
+// En kugle eller pil rammer en kæmper: skade, blod — og måske flyver en arm, et ben eller hovedet af
+function træfOffer(skytte, offer, del, lem, v, afstand, r, punkt) {
+  const s = skade(v, del, offer, afstand), hoved = del === "hoved";
+  if (punkt) effekter.blod(punkt, r, verden, hoved ? 1.4 : 1);
+  const dræbt = offer === spiller ? spillerRamt(s, skytte) : offer.ramt(s, skytte, { r: r.clone(), del, lem, kraft: (KRAFT[v.d.klasse] || 3) * (hoved ? 1.25 : 1) });
+  if (dræbt) drab(skytte, offer, v, hoved);
+  return dræbt;
+}
+// Skade fra en eksplosion (eller andet uden kugle)
+function skadFra(offer, s, skytte, skud, navn, hoved = false) {
+  if (offer.død) return false;
+  const dræbt = offer === spiller ? spillerRamt(s, skytte) : offer.ramt(s, skytte, skud);
+  if (skytte === spiller && offer !== spiller) { hud.ramt(hoved, dræbt); Lyd.ramt(hoved); }
+  if (dræbt) drab(skytte, offer, { d: { navn } }, hoved);
+  return dræbt;
 }
 // Spilleren blev ramt
 function spillerRamt(s, fra) {
@@ -186,6 +240,7 @@ function spillerRamt(s, fra) {
 }
 // Nogen blev dræbt: point, drabslisten og statistikken
 function drab(drabsmand, offer, v, hoved) {
+  if (drabsmand === offer) { hud.drabLinje(drabsmand, offer, v.d.navn, false, offer === spiller); return; }   // sin egen raket eller granat
   drabsmand.drab++; if (hoved) drabsmand.hoveder++;
   point[drabsmand.hold]++;
   hud.drabLinje(drabsmand, offer, v.d.navn, hoved, drabsmand === spiller || offer === spiller);
@@ -212,7 +267,7 @@ function knivHug(stik) {
   const s = skade(v, bedst.del, bedst.k, bedst.t, stik);
   hud.ramt(false, false); Lyd.ramt(false);
   effekter.blod(o.clone().addScaledVector(r, bedst.t), r, verden, 0.8);
-  if (bedst.k.ramt(s, spiller, { r, del: bedst.del, lem: bedst.lem, kraft: KRAFT.kniv })) { hud.ramt(false, true); drab(spiller, bedst.k, v, false); }
+  if (bedst.k.ramt(s, spiller, { r, del: bedst.del, lem: bedst.lem, kniv: true, kraft: KRAFT.kniv * (v.id === "hakke" ? 2 : 1) })) { hud.ramt(false, true); drab(spiller, bedst.k, v, false); }
 }
 
 // ---------- Input: tastatur og mus ----------
@@ -224,10 +279,18 @@ addEventListener("keydown", e => {
   if (e.repeat) return;
   taster.add(e.code);
   if (e.code === "KeyR" && !spiller.død) { const v = vb(); if (genlad(v)) { hånd.genladStart(v.d.genlad); Lyd.genlad(v.d.genlad); hud.kikkert(false); } }
-  const ny = { Digit1: ind.primær, Digit2: "pistol", Digit3: "kniv" }[e.code] || (e.code === "KeyQ" ? forrige : null);
+  const u = ind.udrustning;
+  let ny = { Digit1: u.primær, Digit2: u.sekundær, Digit3: u.kniv }[e.code] || (e.code === "KeyQ" ? forrige : null);
+  if (e.code === "Digit4") ny = næsteGranat();
   if (ny && ny !== aktivt && våbenSæt[ny] && !spiller.død) skiftVåben(ny);
 });
 addEventListener("keyup", e => taster.delete(e.code));
+// Plads 4: den næste granat, der er nogen tilbage af (tryk igen for den anden slags)
+function næsteGranat() {
+  const g = ind.udrustning.granater.map(x => `granat_${x}`).filter(id => våbenSæt[id]?.skud > 0);
+  if (!g.length) return null;
+  return g[(g.indexOf(aktivt) + 1) % g.length];
+}
 function skiftVåben(id) {
   const gammel = vb(); gammel.kikkert = 0; gammel.genlader = 0;
   forrige = aktivt; aktivt = id;
@@ -241,6 +304,7 @@ lærred.addEventListener("mousedown", e => {
     const v = vb();
     if (v.d.zoom && v.genlader <= 0) { v.kikkert = (Math.abs(v.kikkert) + 1) % (v.d.zoom.length + 1); Lyd.bip(1400); }
     else if (v.d.nærkamp && v.klar <= 0) knivHug(true);
+    else if (v.d.granat) kastGranat(true);
   }
 });
 addEventListener("mouseup", e => { if (e.button === 0) skydHoldt = false; });
@@ -277,8 +341,15 @@ function tick(dt) {
       if (trinVej > 1.9) { trinVej = 0; Lyd.trin(null, 0.55); for (const b of bots) if (b.a.pos.distanceTo(spiller.a.pos) < 16) b.hør(spiller.a.pos, spiller); }
     }
     if (spiller.a.landet) { spiller.a.landet = 0; Lyd.landing(); hånd.land = 1; }
-    // skyd (automatvåben: hold knappen nede; de andre: ét skud pr. klik)
-    if (skydHoldt && !skydLåst) spillerSkyder();
+    // skyd: aftrækkeren (automat, ét skud pr. klik, salver og minigunnens opspin står i vaaben.js)
+    if (v.d.nærkamp) { if (skydHoldt && v.klar <= 0) knivHug(false); }
+    else if (v.d.granat) { if (skydHoldt && !skydLåst) { skydLåst = true; kastGranat(false); } }
+    else {
+      if (skydHoldt && v.skud <= 0 && v.genlader <= 0 && v.kø === 0 && !skydLåst) {     // tomt: et klik, og så genlad
+        Lyd.klik(); skydLåst = true; if (genlad(v)) { hånd.genladStart(v.d.genlad); Lyd.genlad(v.d.genlad); }
+      }
+      if (aftrækker(v, skydHoldt, dt)) spillerSkyder();
+    }
     if (!skydHoldt) skydLåst = false;
   } else if (tid - dødTid > 3) genopstå();
   else { const s = 3 - (tid - dødTid); hud.død(hud.el.død.innerHTML.replace(/tilbage om \d/, `tilbage om ${Math.ceil(s)}`)); }
@@ -287,22 +358,48 @@ function tick(dt) {
     if (b.død && tid - b.dødTid > 3) b.spawn();
   }
   deleTrin(dt);                                                    // hoveder, arme og ben, der er skudt af, falder og bliver liggende
+  projektiler.trin(dt);
   if (kampSlut <= 0) slutKamp();
 }
 function spillerSkyder() {
   const v = vb();
-  if (!v.d.auto) skydLåst = true;
-  if (v.genlader > 0 || v.klar > 0) return;
-  if (v.d.nærkamp) { knivHug(false); return; }
-  if (v.skud <= 0) { Lyd.klik(); skydLåst = true; if (genlad(v)) { hånd.genladStart(v.d.genlad); Lyd.genlad(v.d.genlad); } return; }
-  if (!affyr(v)) return;
   const ret = skudRetning(v, spiller.a, spiller.a.yaw, spiller.a.pitch);
   efterSkud(v);
   skyd(spiller, kamera.position.clone(), ret, v);
-  hånd.skud(); Lyd.skud(v.id); stat.skud++;
-  effekter.mundingslys(hånd.munding(kamera, tmpM));
-  if (v.d.zoom) { slag = Math.min(1, slag + 0.35); hud.kikkert(false); }
-  for (const b of bots) if (b.a.pos.distanceTo(spiller.a.pos) < 45) b.hør(spiller.a.pos, spiller);
+  hånd.skud(v.d); Lyd.skud(v.d); stat.skud++;
+  if (!v.d.lydløs && !v.d.projektil) effekter.mundingslys(hånd.munding(kamera, tmpM));
+  if (v.d.zoom && v.d.kadence > 0.8) { slag = Math.min(1, slag + 0.35); hud.kikkert(false); }
+  if (v.d.klasse === "hagl" || v.d.projektil === "raket") slag = Math.min(1, slag + 0.3);
+}
+// Kast en granat: langt (venstre klik) eller kort (højre klik). Er der ikke flere, skiftes der tilbage
+function kastGranat(kort) {
+  const v = vb();
+  if (v.skud <= 0 || v.klar > 0) return;
+  v.skud--; v.klar = v.d.kadence;
+  const r = retningsvektor(spiller.a.yaw, spiller.a.pitch, new THREE.Vector3());
+  const o = kamera.position.clone().addScaledVector(r, 0.35).add(new THREE.Vector3(0, -0.12, 0));
+  const fart = r.clone().multiplyScalar(kort ? 7 : 16).add(new THREE.Vector3(spiller.a.vel.x * 0.6, (kort ? 2.5 : 2.0) + Math.max(0, spiller.a.vel.y) * 0.5, spiller.a.vel.z * 0.6));
+  projektiler.granat(v.d.granat, spiller, o, fart); Lyd.kast(); hånd.skud(v.d);
+  if (v.skud <= 0) setTimeout(() => { if (vb() === v) skiftVåben(næsteGranat() || (forrige.startsWith("granat_") ? ind.udrustning.primær : forrige)); }, 250);
+}
+// En blændgranat springer: dem, der kigger på den, bliver blændet (også spilleren)
+function blænd(pos) {
+  const V = THREE.Vector3;
+  if (!spiller.død) {
+    const r = pos.clone().sub(kamera.position), d = r.length(); r.divideScalar(d);
+    if (d < 40 && !verden.stråle(kamera.position, r, d - 0.1)) {
+      const vend = Math.max(0, (r.dot(kamera.getWorldDirection(new V())) + 0.35) / 1.35), styrke = Math.min(1, vend * 1.2) * (1 - d / 40);
+      if (styrke > 0.05) { hud.blænd(styrke); Lyd.ringen(styrke); }
+    }
+  }
+  for (const b of bots) {
+    if (b.død) continue;
+    const øje = b.øje(), r = pos.clone().sub(øje), d = r.length(); r.divideScalar(d);
+    if (d > 40 || verden.stråle(øje, r, d - 0.1)) continue;
+    const vend = (r.x * -Math.sin(b.a.yaw) + r.z * -Math.cos(b.a.yaw) + 0.35) / 1.35;
+    const tid_ = (0.5 + 3.2 * Math.max(0, vend)) * (1 - d / 40);
+    if (tid_ > 0.3) { b.blindTil = tid + tid_; b.mål = null; }
+  }
 }
 
 // ---------- Hvert billede: kamera, hånd, botter og skærm ----------
@@ -322,15 +419,15 @@ function billede(nu) {
   const v = vb(), [rp, ry] = v ? synligRekyl(v) : [0, 0];
   slag *= Math.exp(-dt * 8);
   kamera.rotation.set(a.pitch + rp + slag * 0.05, a.yaw + ry + slagYaw * slag, dødFald * 0.6);
-  const kikkert = v && v.kikkert > 0 && !spiller.død;
-  const fov = kikkert ? v.d.zoom[v.kikkert - 1] : grundFov();
+  const zoomet = v && v.kikkert > 0 && !spiller.død, kikkert = zoomet && v.d.sigte !== "sigte";   // "sigte": man kigger ned over våbnet (ingen kikkert)
+  const fov = zoomet ? v.d.zoom[v.kikkert - 1] : grundFov();
   if (Math.abs(kamera.fov - fov) > 0.01) { kamera.fov = fov; kamera.updateProjectionMatrix(); }
   himmel.position.copy(kamera.position);
   // botterne, hånden og effekterne
   for (const b of bots) b.tegn(Math.min(1, alfa), dt);
-  deleTegn();
+  deleTegn(); projektiler.tegn(dt);
   const fart = Math.hypot(a.vel.x, a.vel.z);
-  hånd.opdater(dt, { fart: v ? fart / v.d.fart : 0, jord: a.jord, musX, musY, duk: a.duk, skjul: kikkert || spiller.død, landet: false });
+  hånd.opdater(dt, { fart: v ? fart / v.d.fart : 0, jord: a.jord, musX, musY, duk: a.duk, skjul: kikkert || spiller.død, sigte: zoomet && !kikkert, landet: false });
   musX = musY = 0;
   effekter.opdater(dt); hud.opdater(dt);
   // skærmen
@@ -339,6 +436,7 @@ function billede(nu) {
     hud.stilling(point.ræve, point.slanger, kampSlut);
     hud.sigte(unøjagtighed(v, a) + (v.d.spredning || 0), kamera.fov * G, innerHeight, !spiller.død && !kikkert && !(v.d.zoom && !kikkert));
     hud.kikkert(kikkert); hud.fart(ind.fart ? fart : null);
+    hud.granater(ind.udrustning.granater.map(g => ({ ikon: VÅBEN[`granat_${g}`].ikon, antal: våbenSæt[`granat_${g}`]?.skud ?? 0, aktiv: aktivt === `granat_${g}` })));
     hud.tavle(taster.has("Tab"), kampfolk, HOLD);
   }
   kamera.getWorldDirection(frem); Lyd.lytter(kamera.position, frem, op);
@@ -410,7 +508,7 @@ function skyder(id, nøgle, vis) {
 }
 knapper("valgSværhed", Object.entries(SVÆRHED).map(([k, v]) => [k, v.navn]), "sværhed");
 knapper("valgHold", [1, 2, 3, 4, 5].map(n => [n, `${n} mod ${n}`]), "hold");
-knapper("valgVåben", [["gevær", "Stormgevær"], ["snig", "Snigskytte"]], "primær");
+lavUdrustning($("udrustning"), $("vælger"), ind, gemIndst, () => Lyd.bip());
 knapper("valgFart", [[false, "Nej"], [true, "Ja (u/s)"]], "fart");
 knapper("valgFuld", [[true, "Ja"], [false, "Nej"]], "fuldskærm");
 skyder("følsomhed", "følsomhed", v => v.toFixed(2));
@@ -422,5 +520,5 @@ visMenu();
 spiller.a = nyAktør(0, 6, 30, 0); spiller.a.pitch = -0.12;
 requestAnimationFrame(billede);
 if (location.search.includes("debug")) window.sk = { spiller, get bots() { return bots; }, verden, bane, kamera, ind, tick, skyd, startKamp, taster, hånd, scene, himmelLys, renderer,
-  get vb() { return vb(); }, get point() { return point; }, kør() { pause = false; $("menu").classList.add("skjult"); }, stop() { pause = true; },
+  get vb() { return vb(); }, get point() { return point; }, kør() { pause = false; $("menu").classList.add("skjult"); }, stop() { pause = true; }, udrust, kast: kastGranat, vælg: id => skiftVåben(id), effekter, hud, get projektiler() { return projektiler; },
   steg(n) { for (let i = 0; i < n; i++) tick(TICK); }, skydNu() { skydHoldt = true; spillerSkyder(); skydHoldt = false; skydLåst = false; } };

@@ -18,11 +18,19 @@ export class Effekter {
     const pletMat = new THREE.MeshStandardMaterial({ map: t.blod, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -6, roughness: 0.35 });
     const pletGeo = new THREE.PlaneGeometry(1, 1);
     this.pletter = Array.from({ length: PLETTER }, () => { const m = new THREE.Mesh(pletGeo, pletMat); m.visible = false; scene.add(m); return m; });
+    this.pletMat = pletMat;
+    this.brandMat = new THREE.MeshStandardMaterial({ map: t.skudhul, color: 0x2a2420, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -5, roughness: 1 });
     this.pletNr = 0;
     // støv (bløde skyer) og gnister (små og lysende)
     this.støv = lavPartikler(scene, STØV, t.røg, 0.42, THREE.NormalBlending, 0.75);
     this.gnist = lavPartikler(scene, GNIST, t.røg, 0.07, THREE.AdditiveBlending, 1);
     this.blodSky = lavPartikler(scene, 300, t.røg, 0.13, THREE.NormalBlending, 0.85);
+    // eksplosioner: ild (lysende), tyk røg og et kraftigt lys et kort øjeblik
+    this.ild = lavPartikler(scene, 500, t.røg, 1.35, THREE.AdditiveBlending, 0.95);
+    this.tykRøg = lavPartikler(scene, 600, t.røg, 2.1, THREE.NormalBlending, 0.6);
+    this.glimtSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: t.glimt, color: 0xffe0a0, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+    this.glimtSprite.visible = false; scene.add(this.glimtSprite); this.glimtTid = 0;
+    this.boom = new THREE.PointLight(0xffa860, 0, 22, 2); scene.add(this.boom); this.boomTid = 0; this.boomTid0 = 1; this.boomStyrke = 0;
     // lysspor efter kuglerne
     const sporMat = new THREE.LineBasicMaterial({ color: 0xffd98a, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
     this.spor = Array.from({ length: SPOR }, () => {
@@ -50,13 +58,42 @@ export class Effekter {
     if (væg) this.plet(fra.addScaledVector(r, væg.t), væg.normal, (0.35 + Math.random() * 0.35) * Math.min(1.3, mængde) * (1 - væg.t / 4));
     if (Math.random() < 0.55) { const g = verden.stråle(p, NED, 2.2); if (g) this.plet(p.clone().addScaledVector(NED, g.t), g.normal, 0.18 + Math.random() * 0.22); }
   }
-  plet(p, n, str) {
+  plet(p, n, str, brand = false) {
     const m = this.pletter[this.pletNr++ % PLETTER];
+    m.material = brand ? this.brandMat : this.pletMat;
     m.position.set(p.x + n[0] * 0.005, p.y + n[1] * 0.005, p.z + n[2] * 0.005);
     m.lookAt(m.position.x + n[0], m.position.y + n[1], m.position.z + n[2]);
     m.rotateZ(Math.random() * 6.3); m.scale.setScalar(str);
     m.visible = true;
   }
+  // En eksplosion: ildkugle, røg, gnister og et kraftigt lys
+  eksplosion(p) {
+    const ca = new THREE.Color(0xffe39a), cb = new THREE.Color(0xff4a12), op = [0, 1, 0];
+    for (let i = 0; i < 70; i++) sendUd(this.ild, p, op, ca.clone().lerp(cb, Math.random()), 2.5 + Math.random() * 6, 0.3 + Math.random() * 0.4, -1.5, 2.4);
+    const r1 = new THREE.Color(0x262220), r2 = new THREE.Color(0x5a544e);
+    for (let i = 0; i < 46; i++) sendUd(this.tykRøg, p, op, r1.clone().lerp(r2, Math.random()), 1 + Math.random() * 3, 2 + Math.random() * 2, -1.2, 1.2);
+    for (let i = 0; i < 34; i++) sendUd(this.gnist, p, op, new THREE.Color(0xffc060), 6 + Math.random() * 10, 0.4 + Math.random() * 0.6, 9, 0.4);
+    const j1 = new THREE.Color(0xb89060), j2 = new THREE.Color(0x7a5a38);                   // jord og sand, der kastes op
+    for (let i = 0; i < 30; i++) sendUd(this.støv, p, op, j1.clone().lerp(j2, Math.random()), 3 + Math.random() * 5, 0.8 + Math.random() * 0.8, 9, 0.6);
+    this.glimtSprite.position.copy(p); this.glimtSprite.position.y += 0.5; this.glimtSprite.scale.setScalar(5); this.glimtSprite.visible = true; this.glimtTid = 0.14;
+    this.lysBlink(0xffa860, 60, 0.32, p);
+  }
+  // Raketten trækker en hale af røg og lidt ild efter sig
+  røgspor(p) {
+    sendUd(this.tykRøg, p, [0, 0.2, 0], new THREE.Color(0x9a9690), 0.3, 0.9 + Math.random() * 0.5, -0.5, 1.5);
+    sendUd(this.ild, p, [0, 0, 0], new THREE.Color(0xffa040), 0.2, 0.08, 0, 1);
+  }
+  blændLys(p) {
+    for (let i = 0; i < 20; i++) sendUd(this.ild, p, [0, 1, 0], new THREE.Color(0xffffff), 3 + Math.random() * 4, 0.12 + Math.random() * 0.1, 0, 3);
+    this.lysBlink(0xffffff, 90, 0.2, p);
+  }
+  impuls(p) {
+    for (let i = 0; i < 40; i++) sendUd(this.gnist, p, [0, 0.6, 0], new THREE.Color(0x7ab8ff), 5 + Math.random() * 6, 0.3 + Math.random() * 0.3, 2, 1);
+    this.lysBlink(0x6aa8ff, 30, 0.25, p);
+  }
+  lysBlink(farve, styrke, tid, p) { this.boom.color.set(farve); this.boom.position.copy(p); this.boom.intensity = styrke; this.boomStyrke = styrke; this.boomTid = this.boomTid0 = tid; }
+  // Et sort brændemærke efter en eksplosion
+  brændemærke(p, n) { this.plet(p, n, 1.6 + Math.random() * 0.6, true); }
   // Ny kamp: væk med huller og pletter
   ryd() { for (const m of [...this.huller, ...this.pletter]) m.visible = false; }
   // Støv og gnister, der passer til det, kuglen ramte
@@ -76,7 +113,9 @@ export class Effekter {
   }
   mundingslys(p) { this.lys.position.copy(p); this.lys.intensity = 3.5; this.lysTid = 0.045; }
   opdater(dt) {
-    opdaterPartikler(this.støv, dt); opdaterPartikler(this.gnist, dt); opdaterPartikler(this.blodSky, dt);
+    opdaterPartikler(this.støv, dt); opdaterPartikler(this.gnist, dt); opdaterPartikler(this.blodSky, dt); opdaterPartikler(this.ild, dt); opdaterPartikler(this.tykRøg, dt);
+    if (this.boomTid > 0) { this.boomTid -= dt; this.boom.intensity = Math.max(0, this.boomStyrke * this.boomTid / this.boomTid0); }
+    if (this.glimtTid > 0) { this.glimtTid -= dt; this.glimtSprite.material.opacity = Math.max(0, this.glimtTid / 0.14); this.glimtSprite.scale.setScalar(5 + (0.14 - this.glimtTid) * 20); if (this.glimtTid <= 0) this.glimtSprite.visible = false; }
     for (const s of this.spor) {
       if (!s.l.visible) continue;
       s.t += dt;

@@ -8,7 +8,7 @@
 
 import * as THREE from "./three.js";
 import { nyAktør, bevæg, øjeHøjde, KROP, U } from "./bevaegelse.js";
-import { nytVåben, affyr, efterSkud, opdaterVåben, skudRetning, genlad, VÅBEN } from "./vaaben.js";
+import { nytVåben, aftrækker, efterSkud, opdaterVåben, skudRetning, genlad, VÅBEN } from "./vaaben.js";
 import { findVej, nærmesteKnude, POSTER, START } from "./bane.js";
 import { ramKasse } from "./verden.js";
 import { Figur, hentLeddeløs, harLeddeløs } from "./leddeloes.js";
@@ -17,6 +17,17 @@ import { Figur, hentLeddeløs, harLeddeløs } from "./leddeloes.js";
 export { hentLeddeløs as hentSoldat };
 
 const G = Math.PI / 180;
+// Botternes udrustning: hovedvåben efter hvor almindelige de er (de sjældne er sjældne), og en pistol
+const BOTVÅBEN = [["storm", 14], ["taktisk", 10], ["salve", 6], ["kamp", 5], ["mp", 9], ["sprøjte", 6], ["pump", 6], ["hagl", 4],
+  ["snig", 3], ["jagt", 3], ["spejder", 4], ["lmg", 4], ["minigun", 1.5], ["raket", 1.5], ["armbrøst", 2]];
+const BOTPISTOL = [["pistol", 5], ["lydløs", 2], ["automat", 2], ["revolver", 1.5]];
+function lodtrækning(liste) {
+  let r = Math.random() * liste.reduce((s, [, w]) => s + w, 0);
+  for (const [id, w] of liste) if ((r -= w) <= 0) return id;
+  return liste[0][0];
+}
+// Den model, figuren holder (de leddeløse har et gevær, en snigskytte og en pistol)
+const tpModel = id => { const k = VÅBEN[id]?.klasse; return !k || k === "kniv" ? null : k === "snig" ? "snig" : k === "pistol" ? "pistol" : "gevær"; };
 export const NAVNE = ["Grus", "Kaktus", "Sandorm", "Gekko", "Skorpion", "Mirage", "Kamel", "Sahara", "Oase", "Klit", "Støvsky", "Ørkenvind", "Palme", "Fata Morgana"];
 export const SVÆRHED = {
   let: { navn: "Let", reaktion: 0.8, drej: 3.5, fejl: 8, sigteTid: 0.9, rekylStyr: 0.15, hoved: 0.05, salve: [2, 4], strafe: 0 },
@@ -89,8 +100,10 @@ export class Bot {
     this.a = nyAktør(x + (Math.random() - 0.5) * 2, 0.01, z + (Math.random() - 0.5) * 2, this.hold === "ræve" ? 0 : Math.PI);
     this.liv = 100; this.panser = 100; this.død = false; this.dødTid = 0;
     const sv = this.s.sværhed(); this.sv = sv;
-    this.våben = nytVåben(Math.random() < (sv === SVÆRHED.let ? 0.3 : 0.12) ? "pistol" : Math.random() < 0.08 ? "snig" : "gevær");
-    if (this.våben.d.zoom) this.våben.kikkert = 1;                     // snigskytte-botten har altid kikkerten på
+    this.sekundær = lodtrækning(BOTPISTOL);
+    this.våben = nytVåben(Math.random() < (sv === SVÆRHED.let ? 0.2 : 0.06) ? this.sekundær : lodtrækning(BOTVÅBEN));
+    if (this.våben.d.zoom) this.våben.kikkert = 1;                     // botter med kikkert har den altid på
+    this.blindTil = 0;
     this.mål = null; this.setFørst = 0; this.sidstSet = null; this.sidstSetTid = -99; this.vej = []; this.vejMål = null;
     this.tænkTid = Math.random() * 0.12; this.salve = 0; this.salvePause = 0; this.fejlYaw = 0; this.fejlPitch = 0;
     this.fastTid = 0; this.fastPos = this.a.pos.clone(); this.lytte = null; this.strafe = 0; this.strafeTid = 0; this.dukker = false;
@@ -109,6 +122,7 @@ export class Bot {
   }
   // Kan botten se fjenden? (fri sigtelinje til hovedet eller brystet)
   kanSe(f, nu) {
+    if (nu < this.blindTil) return false;                                // blændet af en blændgranat
     const øje = this.øje(), d = Math.hypot(f.a.pos.x - øje.x, f.a.pos.z - øje.z);
     if (d > 90) return false;
     const ret = Math.atan2(-(f.a.pos.x - øje.x), -(f.a.pos.z - øje.z));
@@ -117,7 +131,7 @@ export class Bot {
     for (const h of [øjeHøjde(f.a) - 0.05, f.a.h * 0.62]) {
       const mål = new THREE.Vector3(f.a.pos.x, f.a.pos.y + h, f.a.pos.z), r = mål.clone().sub(øje), l = r.length(); r.divideScalar(l);
       const hit = this.s.verden.stråle(øje, r, l);
-      if (!hit) return true;
+      if (!hit && !this.s.røgBlokerer?.(øje, mål)) return true;          // (man kan ikke se gennem røg)
     }
     return false;
   }
@@ -131,7 +145,7 @@ export class Bot {
     if (this.død) { this.fald = Math.min(1, this.fald + dt * 2.5); return; }
     if (this.våben) opdaterVåben(this.våben, dt);
     if ((this.tænkTid -= dt) <= 0) { this.tænkTid = 0.1; this.tænk(nu); }
-    let frem = 0, side = 0, duk = false, hop = false, gå = false;
+    let frem = 0, side = 0, duk = false, hop = false, gå = false, trykker = false;
     const sv = this.sv;
     if (this.flygt && (nu > this.flygt.til || (!this.vej.length && this.flygt.fremme && nu > this.flygt.fremme + 1.2))) {   // færdig med at gemme sig: kig efter fjenden igen
       this.sidstSet = this.flygt.fra; this.sidstSetTid = nu; this.flygt = null; this.vej = []; this.vejMål = null;
@@ -145,8 +159,10 @@ export class Bot {
     } else if (this.mål && this.våben) {
       // ---- kamp: sigt og skyd ----
       const f = this.mål, øje = this.øje();
-      const del = this.hovedSigte ? øjeHøjde(f.a) - 0.04 : f.a.h * 0.6;
-      const dx = f.a.pos.x - øje.x, dy = f.a.pos.y + del - øje.y, dz = f.a.pos.z - øje.z, l = Math.hypot(dx, dz);
+      const d = this.våben.d, del = d.projektil === "raket" ? 0.15 : this.hovedSigte ? øjeHøjde(f.a) - 0.04 : f.a.h * 0.6;   // raketter: sigt efter fødderne
+      const dx = f.a.pos.x - øje.x, dz = f.a.pos.z - øje.z, l = Math.hypot(dx, dz);
+      const fald = d.projektil ? 0.5 * (d.projektil === "raket" ? 6.6 : 11) * (l / (d.projektil === "raket" ? 34 : 78)) ** 2 : 0;   // pile og raketter falder lidt
+      const dy = f.a.pos.y + del + fald - øje.y;
       const ønskYaw = Math.atan2(-dx, -dz) + this.fejlYaw, ønskPitch = Math.atan2(dy, l) + this.fejlPitch;
       this.drejMod(ønskYaw, ønskPitch, dt);
       // fejlen bliver mindre, jo længere botten sigter (men forsvinder aldrig helt)
@@ -158,8 +174,9 @@ export class Bot {
       if (this.salvePause > 0) { this.salvePause -= dt; if (sv.strafe > Math.random() * 1.5) side = this.strafe; }
       else if (nu >= this.setFørst && afvig < tolerance * 2.5 && l > 1) {          // først når botten har nået at reagere
         const fart = Math.hypot(this.a.vel.x, this.a.vel.z);
-        if (fart < this.våben.d.fart * 0.36 || this.våben.d.nærkamp) this.skyd();
+        if (fart < d.fart * 0.36 || d.klasse === "mp" || d.nærkamp) trykker = true;
       }
+      if ((d.klasse === "hagl" && l > 9) || (d.projektil === "raket" && l < 6)) { frem = d.klasse === "hagl" ? 1 : -1; trykker = trykker && d.klasse !== "hagl"; }   // haglgevær: storm frem · raket: træd tilbage
       if ((this.strafeTid -= dt) <= 0) { this.strafeTid = 0.3 + Math.random() * 0.5; this.strafe = Math.random() < 0.5 ? -1 : 1; }
       duk = this.dukker;
       if (this.våben.skud <= 0) genlad(this.våben);
@@ -175,6 +192,7 @@ export class Bot {
     }
     const maks = this.våben ? (this.våben.kikkert && this.våben.d.kikkertFart) || this.våben.d.fart : 6.2;
     bevæg(this.a, { frem, side, hop, gå, duk }, dt, this.s.verden, maks);
+    if (this.våben && aftrækker(this.våben, trykker, dt, true)) this.skyd();   // salver, opspin og kadence styres af aftrækkeren
     // fodtrin, som de andre kan høre
     const fart = Math.hypot(this.a.vel.x, this.a.vel.z);
     if (this.a.jord && !this.a.kravl && fart > maks * 0.6 && (this.trinTid -= dt * fart) <= 0) { this.trinTid = 1.9; this.s.trin(this); }
@@ -309,9 +327,9 @@ export class Bot {
     }
   }
   // Skyd ét skud (salver: et par skud og så en kort pause, så rekylen falder til ro)
+  // Ét skud (aftrækkeren har allerede brugt patronen)
   skyd() {
     const v = this.våben;
-    if (!affyr(v)) { if (v.skud <= 0) genlad(v); return; }
     const m = v.d.mønster, i = m ? Math.min(Math.floor(v.rekyl), m.length - 1) : 0, [op, højre] = m ? m[i] : [0, 0];
     // gode botter trækker imod rekylen
     const yaw = this.a.yaw + højre * G * this.sv.rekylStyr, pitch = this.a.pitch - op * G * this.sv.rekylStyr;
@@ -324,14 +342,14 @@ export class Bot {
       this.salve = 0; this.salvePause = v.d.auto ? 0.22 + Math.random() * 0.3 : 0.25 + Math.random() * 0.35;
       // langt væk (og ikke snigskytte): skyd en salve og gå i dækning igen i stedet for at stå midt på gaden
       const m = this.mål;
-      if (m && !v.d.zoom && m.a.pos.distanceTo(this.a.pos) > 35 && Math.random() < 0.45) this.søgDækning(m, this.s.nu());
+      if (m && !v.d.zoom && v.d.klasse !== "tung" && m.a.pos.distanceTo(this.a.pos) > 35 && Math.random() < 0.45) this.søgDækning(m, this.s.nu());
     }
   }
   // Ramt: mist liv — og vend dig mod den, der skød
   // skud: { r: kuglens retning, del: kropsdelen, lem: den del, der kan flyve af, kraft }
   ramt(skade, fra, skud = null) {
     this.liv -= skade.liv; this.panser = Math.max(0, this.panser - skade.panser);
-    if (this.fig && skud?.lem === "hoved") this.liv = 0;                                  // hovedet flyver af
+    if (this.fig && skud?.lem === "hoved" && !skud.kniv) this.liv = 0;                   // skudt i hovedet: hovedet flyver af
     if (!this.mål && fra && !fra.død) { this.sidstSet = fra.a.pos.clone(); this.sidstSetTid = this.s.nu(); this.vej = []; this.vejMål = null;
       this.drejMod(Math.atan2(-(fra.a.pos.x - this.a.pos.x), -(fra.a.pos.z - this.a.pos.z)), 0, 0.15); }
     if (this.liv <= 0) {
@@ -340,7 +358,7 @@ export class Bot {
       this.fig?.falder(skud, this.s.scene, this.s.verden, this.fart(), this.s.delLyd);
       return true;
     }
-    if (this.fig && skud?.lem) this.mistLem(skud.lem, skud);
+    if (this.fig && skud?.lem && skud.lem !== "hoved") this.mistLem(skud.lem, skud);
     if (fra && !this.flygt && this.liv < 55 && Math.random() < 0.55) this.søgDækning(fra, this.s.nu());
     return false;
   }
@@ -350,9 +368,9 @@ export class Bot {
   mistLem(lem, skud) {
     const { scene, verden, delLyd } = this.s, fart = this.fart();
     if (lem.startsWith("arm") && this.våben) {
-      this.fig.tabVåben(this.våben.id, scene, verden, fart, delLyd);
+      this.fig.tabVåben(tpModel(this.våben.id), scene, verden, fart, delLyd);
       this.fig.skydAf(lem, skud, scene, verden, fart, delLyd);
-      this.våben = this.fig.harArm() ? nytVåben("pistol") : null;
+      this.våben = this.fig.harArm() ? nytVåben(this.sekundær || "pistol") : null;
       if (!this.våben) this.mål = null;
     } else this.fig.skydAf(lem, skud, scene, verden, fart, delLyd);
     if (lem.startsWith("ben")) { this.a.kravl = true; this.dukker = false; }
@@ -367,7 +385,7 @@ export class Bot {
     if (this.fig) {
       if (this.død) return;                                              // delene ligger på jorden (dele.js)
       const c = Math.cos(a.yaw), s = Math.sin(a.yaw);                    // farten set fra soldaten selv (x til højre, z bagud)
-      this.fig.poser({ fart, vx: c * a.vel.x - s * a.vel.z, vz: s * a.vel.x + c * a.vel.z, duk: a.duk, pitch: a.pitch, kravl: !!a.kravl, våben: this.våben?.id ?? null, dt });
+      this.fig.poser({ fart, vx: c * a.vel.x - s * a.vel.z, vz: s * a.vel.x + c * a.vel.z, duk: a.duk, pitch: a.pitch, kravl: !!a.kravl, våben: tpModel(this.våben?.id), dt });
       return;
     }
     this.fase += dt * fart * 2.4;
