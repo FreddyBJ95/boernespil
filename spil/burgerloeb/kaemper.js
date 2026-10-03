@@ -2,7 +2,7 @@
 // De har alle det samme: en mund, der kan åbne sig og tygge, øjne, der følger burgeren,
 // hænder med kniv og gaffel, og en mave, der bliver større, når de har spist meget.
 import * as THREE from "./three.js";
-import { mat, lærredTekstur } from "./figurer.js";
+import { mat, lærredTekstur, MODELLER } from "./figurer.js";
 
 const kugle = (r, seg = 24) => new THREE.SphereGeometry(r, seg, Math.round(seg * 0.75));
 function mesh(geo, materiale, x = 0, y = 0, z = 0) { const m = new THREE.Mesh(geo, materiale); m.position.set(x, y, z); return m; }
@@ -20,13 +20,13 @@ function lavØje(forælder, x, y, z, r) {
   const pupil = mesh(kugle(r * 0.5), mat("#1d140c", { roughness: 0.3 })); øje.add(pupil);
   const glimt = mesh(kugle(r * 0.14, 10), mat("#ffffff")); glimt.position.set(-r * 0.18, r * 0.2, r * 0.42); pupil.add(glimt);
   forælder.add(øje);
-  return { øje, hvide, pupil, r };
+  return { øje, hvide, pupil, r, hvideY: 1 };
 }
 function kigOgBlink(ø, kig, t, fase) {
   const p = ø.øje.getWorldPosition(v1), d = v2.copy(kig).sub(p).normalize();
   ø.pupil.position.set(d.x * ø.r * 0.62, d.y * ø.r * 0.62, ø.r * 0.62);
   const blink = ((t + fase) % 4.2) < 0.12;
-  ø.hvide.scale.set(1, blink ? 0.12 : 1, 1); ø.pupil.visible = !blink;
+  ø.hvide.scale.y = blink ? 0.12 : ø.hvideY; ø.pupil.visible = !blink;
 }
 // Munden: en mørk åbning med tunge og tænder. b = hvor bred den er.
 // slags: "mand" (en række tænder), "dino" (spidse tænder foroven og forneden), "monster" (to hugtænder)
@@ -191,6 +191,29 @@ function lavMonster() {
   return samlKæmpe(g, { hoved, hovedY: 4.8, mund, øjne: [øje], hænder, mave, maveY: 0.4 });
 }
 
+// ---------- Kæmperne fra Blender: modellen har led med navne (hoved, oeje_v, mund …), som bevæges her ----------
+const MUNDBREDDE = { mand: 1.45, dino: 1.35, monster: 1.8 };
+const ØJE_R = { mand: 0.85, dino: 0.98, monster: 1.45 };
+function fraBlender(slags) {
+  const g = MODELLER[slags].clone();
+  const led = navn => g.getObjectByName(navn);
+  const hoved = led("hoved"), mave = led("mave");
+  const mund = lavMund(led("mund"), 0, 0, 0, MUNDBREDDE[slags], slags);
+  const øjne = ["v", "h"].filter(n => led("oeje_" + n)).map(n => ({
+    øje: led("oeje_" + n), hvide: led("hvide_" + n), pupil: led("pupil_" + n), bryn: led("bryn_" + n), r: ØJE_R[slags], hvideY: 1,
+  }));
+  const hænder = ["v", "h"].map((n, i) => {
+    const h = led("haand_" + n);
+    h.userData.x = h.position.x; h.userData.y = h.position.y; h.userData.s = i ? 1 : -1;
+    return h;
+  });
+  const kinder = ["v", "h"].map(n => led("kind_" + n)).filter(Boolean);
+  const bryn = øjne.filter(ø => ø.bryn);
+  return samlKæmpe(g, { hoved, hovedY: hoved.position.y, mund, øjne, hænder, mave, maveY: mave.position.y, kinder,
+    ekstra: bryn.length ? (t, å) => bryn.forEach(ø => { ø.bryn.position.y = 1.1 + å * 0.35; }) : null });
+}
+
 export function lavKæmpe(slags) {
+  if (MODELLER[slags]) return fraBlender(slags);
   return slags === "dino" ? lavDino() : slags === "monster" ? lavMonster() : lavMand();
 }

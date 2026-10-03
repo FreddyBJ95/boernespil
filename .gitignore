@@ -4,3 +4,7 @@
 _server.js
 _test.html
 .claude/
+
+# Prøvebilleder og Python-cache fra Blender-værktøjet
+blender/proever/
+blender/__pycache__/
