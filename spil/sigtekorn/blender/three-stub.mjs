@@ -28,4 +28,5 @@ export class SphereGeometry extends Ting {}
 export class CylinderGeometry extends Ting {}
 export class TorusGeometry extends Ting {}
 export class PlaneGeometry extends Ting {}
+export class BoxGeometry extends Ting {}
 export const DoubleSide = 2;

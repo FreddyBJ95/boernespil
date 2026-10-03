@@ -15,7 +15,7 @@ import * as THREE from "./three.js";
 import { lås } from "../laas.js";
 import { lavTeksturer } from "./teksturer.js";
 import { Kasseverden } from "./verden.js";
-import { lavBane, START } from "./bane.js";
+import { lavBane } from "./bane.js";
 import { hentLys, himmelMiljø } from "./lys.js";
 import { deleTrin, deleTegn, ryddDele } from "./dele.js";
 import { nyAktør, bevæg, øjeHøjde, TICK, U } from "./bevaegelse.js";
@@ -88,8 +88,9 @@ himmel.renderOrder = -1; scene.add(himmel);
 // ---------- Banen, effekterne, hånden og skærmen ----------
 const t = await lavTeksturer();
 const verden = new Kasseverden();
-const bane = lavBane(scene, verden, t);
-if (await hentLys(bane.masker)) {                                 // lyset fra Blender: himlen og det tilbagekastede lys
+const bane = lavBane(scene, verden, t, ind.udrustning.bane);     // banen, man har valgt i udrustningen
+document.querySelector(".menu-kort h1 small").textContent = `${bane.navn} · Ørkenrævene mod Sandslangerne · mod bots`;
+if (await hentLys(bane.masker, bane.id)) {                                 // lyset fra Blender: himlen og det tilbagekastede lys
   scene.remove(himmelLys);
   scene.environment = himmelMiljø(renderer, himmel);
   scene.add(new THREE.AmbientLight(0xe6dccb, 0.2));               // lidt lys overalt, så selv de mørkeste kroge ikke er helt sorte
@@ -128,8 +129,8 @@ function udrust() {
 const vb = () => våbenSæt[aktivt];
 // Start (eller start igen) det sted i Ørkenrævenes start, der er længst fra fjenderne
 function genopstå() {
-  let bedst = START.ræve[0], bd = -1;
-  for (const [x, z] of START.ræve) {
+  let bedst = bane.start.ræve[0], bd = -1;
+  for (const [x, z] of bane.start.ræve) {
     const d = Math.min(...bots.filter(b => b.hold !== spiller.hold && !b.død).map(b => Math.hypot(b.a.pos.x - x, b.a.pos.z - z)), 999);
     if (d > bd) { bd = d; bedst = [x, z]; }
   }
@@ -143,7 +144,7 @@ function genopstå() {
 let sidsteDelLyd = -1;
 let bots = [], kampfolk = [], point = { ræve: 0, slanger: 0 }, tid = 0, kampSlut = KAMPTID, iGang = false, pause = true;
 const botSpil = {
-  scene, verden, knuder: bane.knuder, kampfolk: () => kampfolk, nu: () => tid, sværhed: () => SVÆRHED[ind.sværhed],
+  scene, verden, bane, knuder: bane.knuder, kampfolk: () => kampfolk, nu: () => tid, sværhed: () => SVÆRHED[ind.sværhed],
   skyd: (bot, o, ret, v) => skyd(bot, o, ret, v),
   røgBlokerer: (a, b) => projektiler.røgBlokerer(a, b),
   kast: (bot, type, o, fart) => projektiler.granat(type, bot, o, fart),  // botterne kaster også granater

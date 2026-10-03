@@ -58,8 +58,10 @@ export function lavUdrustning(rod, vælger, ind, gem, bip) {
       .filter(([id]) => id !== andenGranat).map(([id, d]) => kort(id, d, id === nu)).join("")}</div><button class="stor anden luk">Tilbage</button></div>`;
     vælger.classList.remove("skjult");
     vælger.querySelectorAll(".kort").forEach(k => k.addEventListener("click", () => {
+      const nyBane = p.nøgle === "bane" && ind.udrustning.bane !== k.dataset.id;
       if (p.nøgle.startsWith("granat")) ind.udrustning.granater[+p.nøgle.slice(-1)] = k.dataset.id; else ind.udrustning[p.nøgle] = k.dataset.id;
       gem(); bip?.(); vælger.classList.add("skjult"); tegn();
+      if (nyBane) location.reload();                                  // en ny bane bygges, når siden starter
     }));
     vælger.querySelector(".luk").addEventListener("click", () => vælger.classList.add("skjult"));
   };

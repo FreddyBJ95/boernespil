@@ -70,5 +70,23 @@
    123,
    100
   ]
+ },
+ "beton": {
+  "polyhaven": "dirty_concrete",
+  "meter": 3.0,
+  "snitfarve": [
+   137,
+   131,
+   119
+  ]
+ },
+ "blik": {
+  "polyhaven": "box_profile_metal_sheet",
+  "meter": 2.0,
+  "snitfarve": [
+   198,
+   198,
+   198
+  ]
  }
 }

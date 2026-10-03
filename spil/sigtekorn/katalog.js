@@ -115,7 +115,8 @@ export const GRANATER = {
 
 // ---------- Baner (flere kommer) ----------
 export const BANER = {
-  stoevbyen: { navn: "Støvbyen", tekst: "En ørkenby med to pladser, tunneler og en lang midtergade." },
+  stoevbyen: { navn: "Støvbyen", sjælden: "sjælden", tekst: "En ørkenby med to pladser, tunneler og en lang midtergade." },
+  havnen: { navn: "Havnen", sjælden: "episk", tekst: "Containere i alle farver, en stor kran, en lagerhal og et skib ved kajen." },
 };
 
 // Standard-udrustningen

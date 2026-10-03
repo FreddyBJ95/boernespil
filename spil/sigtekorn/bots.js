@@ -9,7 +9,7 @@
 import * as THREE from "./three.js";
 import { nyAktør, bevæg, øjeHøjde, KROP, U } from "./bevaegelse.js";
 import { nytVåben, aftrækker, efterSkud, opdaterVåben, skudRetning, genlad, VÅBEN } from "./vaaben.js";
-import { findVej, nærmesteKnude, POSTER, START } from "./bane.js";
+import { findVej, nærmesteKnude } from "./bane.js";
 import { ramKasse } from "./verden.js";
 import { Figur, hentLeddeløs, harLeddeløs } from "./leddeloes.js";
 
@@ -95,7 +95,7 @@ export class Bot {
   spawn() {
     this.fig?.nulstil();
     for (const o of this.model.children) if (o.isSprite) o.visible = true;
-    const [x, z] = START[this.hold][Math.floor(Math.random() * START[this.hold].length)];
+    const start = this.s.bane.start[this.hold], [x, z] = start[Math.floor(Math.random() * start.length)];
     this.a = nyAktør(x + (Math.random() - 0.5) * 2, 0.01, z + (Math.random() - 0.5) * 2, this.hold === "ræve" ? 0 : Math.PI);
     this.liv = 100; this.panser = 100; this.død = false; this.dødTid = 0;
     const sv = this.s.sværhed(); this.sv = sv;
@@ -253,10 +253,11 @@ export class Bot {
   vælgPost() {
     const venner = this.s.kampfolk().filter(f => f !== this && f.hold === this.hold && !f.død);
     let sum = 0;
+    const POSTER = this.s.bane.poster;
     const vægte = POSTER.map(p => {
       const d = Math.hypot(p[0] - this.a.pos.x, p[1] - this.a.pos.z);
       let w = d < 8 ? 0.15 : 1;
-      const [fx, fz] = START[this.hold === "ræve" ? "slanger" : "ræve"][0];
+      const [fx, fz] = this.s.bane.start[this.hold === "ræve" ? "slanger" : "ræve"][0];
       if (Math.hypot(p[0] - fx, p[1] - fz) < 18) w *= 0.25;             // ikke helt hen til fjendernes start
       if (Math.abs(p[0]) < 5) w *= 0.3;                                // midtergaden: kun en gang imellem
       if (p === this.sidstePost) w *= 0.1;
@@ -287,12 +288,13 @@ export class Bot {
     this.flygt = { til: nu + 3.5 + Math.random() * 2, fremme: 0, fra: fra.a.pos.clone() };
     this.mål = null; this.holder = false;
   }
-  // Vejen til en post. Ligger posten ude i siden og langt væk, går botten tit ad sidevejen (den lange vej til A
-  // eller tunnelerne til B) i stedet for den korteste vej gennem midten
+  // Vejen til en post. Ofte går botten forbi en "omvej" (et punkt på en sidevej, som banen har valgt), så ikke
+  // alle går den korteste vej gennem midten — men kun hvis omvejen ikke er alt for lang
   vejTilPost(post) {
-    const { knuder } = this.s, [px, pz] = post, p = this.a.pos;
-    if (Math.abs(px) > 15 && Math.abs(pz - p.z) > 30 && Math.random() < 0.65) {
-      const via = { x: px > 0 ? 44 : -44, y: 0, z: Math.max(-20, Math.min(44, (p.z + pz) / 2)) };
+    const { knuder } = this.s, [px, pz] = post, p = this.a.pos, lige = Math.hypot(px - p.x, pz - p.z);
+    const muligt = this.s.bane.omveje.filter(([vx, vz]) => Math.hypot(vx - p.x, vz - p.z) + Math.hypot(px - vx, pz - vz) < lige * 1.45 + 12 && Math.hypot(vx - p.x, vz - p.z) > 8);
+    if (lige > 25 && muligt.length && Math.random() < 0.6) {
+      const [vx, vz] = muligt[Math.floor(Math.random() * muligt.length)], via = { x: vx, y: 0, z: vz };
       const a = nærmesteKnude(knuder, p.x, p.y, p.z), b = nærmesteKnude(knuder, via.x, 0, via.z), c = nærmesteKnude(knuder, px, 0, pz);
       const v1 = findVej(knuder, a, b), v2 = v1 && findVej(knuder, b, c);
       if (v1 && v2) { this.vej = v1.concat(v2.slice(1)); this.vejMål = { x: px, z: pz }; return; }

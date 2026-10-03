@@ -19,7 +19,9 @@ K = 1.25                                            # billedet gemmer lys / K, s
 SOL = (0.55, 0.78, 0.3)                             # samme sol som i spil.js (retningen mod solen, y er op)
 SOL_STYRKE, SOL_FARVE = 3.1, (1.0, 0.871, 0.686)    # 0xfff0d8 som lineære farver
 
-d = json.load(open(os.path.join(MAPPE, "ud", "bane.json"), encoding="utf-8"))
+BANE = os.environ.get("LYS_BANE", "stoevbyen")                  # hvilken bane (Støvbyens filer hedder bare bane.json og lys.*)
+NAVN = "" if BANE == "stoevbyen" else f"_{BANE}"
+d = json.load(open(os.path.join(MAPPE, "ud", f"bane{NAVN}.json"), encoding="utf-8"))
 tek = json.load(open(os.path.join(MAPPE, "..", "teksturer", "teksturer.json"), encoding="utf-8"))
 
 
@@ -35,6 +37,10 @@ ALBEDO = {
     "trækasse": snit["planker"], "dør": snit["doer"], "metal": snit["metal"], "vindue": hexlin(0x241a12),
     "stofRød": hexlin(0xb8402e), "stofBlå": hexlin(0x2e6a9a), "stofHvid": hexlin(0xe8dcc0), "bark": snit["bark"],
 }
+if "beton" in snit:                                                 # Havnen
+    blik = snit["blik"]
+    ALBEDO.update({"beton": snit["beton"], "lagerhal": gange(blik, hexlin(0xa0acb6)), "pier": gange(snit["planker"], hexlin(0x9a8070)),
+                   **{f"container{n}": gange(blik, hexlin(h)) for n, h in [("Rød", 0xe85038), ("Blå", 0x3a7ae0), ("Grøn", 0x4ab05a), ("Orange", 0xf89038), ("Gul", 0xf8cc3a), ("Hvid", 0xf0f0e8)]}})
 NAVNE = list(ALBEDO)
 
 s = nulstil()
@@ -116,8 +122,8 @@ so.rotation_euler = Vector((SOL[0], -SOL[2], SOL[1])).normalized().to_track_quat
 # ---------- Lamperne i tunnelerne (varmt lys) ----------
 LAMPE_W = float(os.environ.get("LYS_LAMPE", 70))
 lamper = []
-for x, y, z in d.get("lamper", []):
-    l = bpy.data.lights.new("lampe", "POINT"); l.energy = LAMPE_W; l.color = (1.0, 0.72, 0.42); l.shadow_soft_size = 0.06
+for x, y, z, *w in d.get("lamper", []):
+    l = bpy.data.lights.new("lampe", "POINT"); l.energy = w[0] if w else LAMPE_W; l.color = (1.0, 0.72, 0.42); l.shadow_soft_size = 0.06
     lo = bpy.data.objects.new("lampe", l); bpy.context.collection.objects.link(lo); lo.location = (x, -z, y); lamper.append(lo)
 
 
@@ -145,7 +151,7 @@ v = np.clip(lys / K, 0, 1)
 v = np.where(v <= 0.0031308, v * 12.92, 1.055 * np.power(v, 1 / 2.4) - 0.055)
 ud = bpy.data.images.new("lys_ud", STR, STR, alpha=False)
 ud.pixels.foreach_set(np.concatenate([v, np.ones((STR, STR, 1))], axis=2).astype(np.float32).ravel())
-png, webp = os.path.join(MAPPE, "ud", "lys.png"), os.path.join(MODELLER, "lys.webp")
+png, webp = os.path.join(MAPPE, "ud", f"lys{NAVN}.png"), os.path.join(MODELLER, f"lys{NAVN}.webp")
 ud.filepath_raw = png; ud.file_format = "PNG"; ud.save()
 # WebP fylder en sjettedel (laves af almindelig Python med Pillow — samme som hent_teksturer.py)
 subprocess.run(["python", "-c", f"from PIL import Image; Image.open(r'{png}').save(r'{webp}', 'WEBP', quality=92, method=6)"], check=True)
@@ -155,7 +161,7 @@ for pi, (mi, q) in enumerate(kilde):
     ls = me.polygons[pi].loop_start
     per[mi][q * 4:q * 4 + 4] = uv[ls:ls + 4]
 alle = np.concatenate(per) if per else np.zeros((0, 2), np.float32)
-np.round(np.clip(alle, 0, 1) * 65535).astype("<u2").tofile(os.path.join(MODELLER, "lys.bin"))
-with open(os.path.join(MODELLER, "lys.json"), "w", encoding="utf-8") as f:
+np.round(np.clip(alle, 0, 1) * 65535).astype("<u2").tofile(os.path.join(MODELLER, f"lys{NAVN}.bin"))
+with open(os.path.join(MODELLER, f"lys{NAVN}.json"), "w", encoding="utf-8") as f:
     json.dump({"k": K, "str": STR, "masker": [{"navn": m["mat"], "hjørner": m["hjørner"], "sum": m["sum"]} for m in d["masker"]]}, f, ensure_ascii=False)
 print("gemt", webp)
