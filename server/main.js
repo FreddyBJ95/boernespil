@@ -14,6 +14,7 @@ const MIME = {
   ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp",
   ".ico": "image/x-icon", ".webmanifest": "application/manifest+json", ".mp3": "audio/mpeg", ".woff2": "font/woff2",
   ".glb": "model/gltf-binary", ".bin": "application/octet-stream",
+  ".txt": "text/plain; charset=utf-8",
 };
 export const lokal = ip => ip === "127.0.0.1" || ip === "::1";
 export function privat(ip) {

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="da">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="theme-color" content="#1b3031">
+    <meta name="description"
+      content="Byg din skrotbil, kør gennem en stor 3D-ørken og væk dalens gamle stormlygte. Et roligt eventyr i voksenrummet.">
+    <title>Skrotstorm · Børnespil</title>
+    <link rel="icon" href="ikon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <main id="spil" aria-label="Skrotstorm">
+      <canvas id="verden" aria-label="En 3D-ørken med din skrotbil"></canvas>
+      <div class="vignette"></div>
+      <header id="hud" class="skjult">
+        <div class="brand"><span class="brand-ikon">S</span><span>SKROTSTORM<small id="område">DEN BLÅ GARAGE</small></span></div>
+        <div
+          class="top-knapper"><button id="lyd" aria-label="Slå lyd til eller fra">Lyd: til</button><button id="garage-knap">Garage</button><button id="pause-knap" aria-label="Pause">Ⅱ</button></div>
+        <div class="mission">
+          <div
+            class="mission-tekst"><span class="overlinje">NÆSTE OPGAVE <span id="antal"></span></span><strong id="mål-navn">Tre gode fund</strong><small id="mål-tekst"></small></div>
+          <div class="retning"><span id="pil">↑</span><b id="mål-afstand">0 m</b></div>
+        </div>
+        <div class="ressourcer"><span>⚙ <b id="skrot">0</b> skrot</span><span id="mission-status"></span></div>
+      </header>
+      <aside id="kort-panel"
+        class="skjult"><canvas id="kort" width="220" height="220" aria-label="Kort over veje og næste mål"></canvas><span>DALENS VEJE · N ↑</span></aside>
+      <div id="fart-panel"
+        class="skjult"><b id="fart">0</b><span>km/t</span><div class="nitro-måler"><i id="nitro-fyld"></i></div><small>NITRO</small></div>
+      <div id="besked" role="status" aria-live="polite"></div>
+      <div id="bund"
+        class="skjult"><span class="pc-hjælp">WASD / pile · Mellemrum: brems · Shift: nitro · R: redning · Esc: pause</span><button id="redning">↺ Gensæt bil</button><button id="hjælp-knap">?</button></div>
+      <div id="touch" class="skjult" aria-label="Touchstyring">
+        <div
+          class="styr"><button data-styr="venstre" aria-label="Drej til venstre">◀</button><button data-styr="højre" aria-label="Drej til højre">▶</button></div>
+        <div
+          class="pedaler"><button data-styr="bak" aria-label="Bak">BAK</button><button data-styr="brems" aria-label="Brems">■</button><button data-styr="nitro" aria-label="Nitro boost">⚡</button><button data-styr="gas" aria-label="Kør frem">GAS ▲</button></div>
+      </div>
+      <div id="menu" class="lag">
+        <section class="menu-kort start-kort">
+          <div class="overlinje">ET EVENTYR I VOKSENRUMMET</div>
+          <h1>SKROT<span>STORM</span></h1>
+          <p class="intro">En gammel bil. En hel ørken.<br>Og et lys, der venter på at blive tændt.</p>
+          <p
+            class="lille">Find reservedele, lever forsyninger, kør ræs og byg din egen bil. Otte opgaver forbinder garagen, industribyen og bjergene.</p>
+          <button id="start" class="primær" disabled>Bygger ørkenen…</button>
+          <p id="indlæsning" class="lille">Henter modeller fra den lokale spilkasse</p>
+          <div
+            class="menu-links"><button id="start-hjælp">Sådan kører du</button><a href="../../index.html">← Til spilkassen</a></div>
+        </section>
+      </div>
+      <div id="dialog" class="lag skjult" role="dialog" aria-modal="true"></div>
+      <div id="lås" class="lag skjult"></div>
+    </main>
+    <script type="module" src="spil.js"></script>
+  </body>
+</html>

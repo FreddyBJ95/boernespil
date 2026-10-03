@@ -1,0 +1,727 @@
+/* Store, rolige flader giver læselige kontroller også på telefonen. */
+:root {
+  color-scheme: dark;
+  --turkis: #59d0c3;
+  --orange: #f6a458;
+  --creme: #f2e5c5;
+  --mørk: #173132;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #172b2d;
+  color: var(--creme);
+}
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  font: inherit;
+  font-weight: 700;
+  color: var(--creme);
+  background: #1d3839ed;
+  border: 1px solid #7295905c;
+  border-radius: 12px;
+  padding: 12px 18px;
+  min-height: 46px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+button:hover {
+  background: #2b5050;
+  border-color: var(--turkis);
+}
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid var(--orange);
+  outline-offset: 3px;
+}
+button:disabled {
+  opacity: .48;
+  cursor: default;
+}
+a {
+  color: var(--turkis);
+  text-decoration: none;
+}
+.skjult {
+  display: none !important;
+}
+#spil,
+#verden {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+#verden {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+}
+.vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, #071b2d4d, transparent 30%, transparent 80%, #10202b50);
+}
+#hud {
+  position: absolute;
+  top: max(18px, env(safe-area-inset-top));
+  left: max(22px, env(safe-area-inset-left));
+  right: max(22px, env(safe-area-inset-right));
+  pointer-events: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.brand {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-shadow: 0 2px 7px #0008;
+}
+.brand-ikon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  background: var(--turkis);
+  color: var(--mørk);
+  border-radius: 9px;
+  font-size: 25px;
+}
+.brand small {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 2px;
+  margin-top: 4px;
+}
+.top-knapper {
+  display: flex;
+  gap: 7px;
+  justify-content: end;
+  pointer-events: auto;
+}
+.top-knapper button {
+  padding: 9px 14px;
+}
+.mission {
+  width: min(530px, 100%);
+  padding: 16px 18px;
+  background: #142c30eb;
+  border: 1px solid #8ee0d459;
+  border-radius: 15px;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  grid-column: 1 / -1;
+  box-shadow: 0 4px 18px #0002;
+}
+.mission-tekst {
+  flex: 1;
+}
+.overlinje {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 2px;
+  font-weight: 800;
+  color: var(--turkis);
+}
+.mission strong {
+  display: block;
+  font-size: 20px;
+  margin-top: 4px;
+}
+.mission small {
+  display: block;
+  margin-top: 5px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #d5ddd2;
+}
+.retning {
+  width: 62px;
+  text-align: center;
+}
+.retning span {
+  display: block;
+  font-size: 34px;
+  color: var(--orange);
+  line-height: 1.2;
+}
+.retning b {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.ressourcer {
+  display: flex;
+  gap: 20px;
+  font-size: 13px;
+  margin-top: -5px;
+  padding-left: 4px;
+  grid-column: 1 / -1;
+  text-shadow: 0 2px 4px #000a;
+}
+#kort-panel {
+  position: absolute;
+  right: 22px;
+  bottom: 105px;
+  width: 160px;
+  background: #123638e6;
+  border: 1px solid #9edfd66b;
+  border-radius: 15px;
+  padding: 9px;
+}
+#kort {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+#kort-panel span {
+  display: block;
+  font-size: 7px;
+  text-align: center;
+  letter-spacing: 1px;
+}
+#fart-panel {
+  position: absolute;
+  left: 24px;
+  bottom: 94px;
+  text-shadow: 0 3px 8px #0009;
+}
+#fart-panel b {
+  font-size: 51px;
+  letter-spacing: -3px;
+  line-height: 1;
+}
+#fart-panel > span {
+  font-size: 13px;
+  margin-left: 7px;
+}
+.nitro-måler {
+  width: 105px;
+  height: 5px;
+  background: #1734389c;
+  border-radius: 5px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+.nitro-måler i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--turkis);
+}
+#fart-panel small {
+  display: block;
+  font-size: 8px;
+  letter-spacing: 2px;
+  margin-top: 4px;
+}
+#bund {
+  position: absolute;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  left: 22px;
+  right: 22px;
+  display: flex;
+  gap: 9px;
+  align-items: center;
+}
+.pc-hjælp {
+  flex: 1;
+  font-size: 11px;
+  text-shadow: 0 2px 6px #000;
+  opacity: .85;
+}
+#besked {
+  position: absolute;
+  top: 48%;
+  left: 50%;
+  transform: translate(-50%,-50%) translateY(15px);
+  padding: 17px 23px;
+  border-radius: 14px;
+  color: #143230;
+  font-weight: 800;
+  background: var(--creme);
+  box-shadow: 0 8px 40px #0003;
+  opacity: 0;
+  transition: opacity .2s, transform .2s;
+  pointer-events: none;
+  max-width: min(80vw, 500px);
+  text-align: center;
+}
+#besked.vis {
+  opacity: 1;
+  transform: translate(-50%,-50%);
+}
+.lag {
+  position: absolute;
+  inset: 0;
+  background: #071c27a3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+  backdrop-filter: blur(8px);
+  z-index: 10;
+  overflow-y: auto;
+}
+#menu {
+  background: linear-gradient(90deg, #09252be8 4%, #0f2d3360 67%), url('forside.jpg') center / cover;
+}
+.menu-kort {
+  width: min(670px, 100%);
+  background: #102e32f5;
+  border: 1px solid #73b5ad64;
+  border-radius: 24px;
+  padding: 32px;
+  max-height: 100%;
+  overflow-y: auto;
+  box-shadow: 0 25px 60px #0004;
+}
+.start-kort {
+  width: min(480px, 100%);
+  background: #132f32e8;
+  margin-right: auto;
+  margin-left: max(0px, calc((100vw - 1100px) / 2));
+}
+h1 {
+  font-size: clamp(42px, 7vw, 62px);
+  line-height: .9;
+  letter-spacing: -4px;
+  margin: 23px 0;
+}
+h1 span {
+  display: block;
+  color: var(--orange);
+}
+h2 {
+  margin: 9px 0 14px;
+  font-size: 30px;
+  letter-spacing: -1px;
+}
+p {
+  line-height: 1.6;
+}
+.intro {
+  font-size: 20px;
+  line-height: 1.6;
+}
+.lille {
+  font-size: 13px;
+  color: #bbcec5;
+}
+.primær {
+  background: var(--orange);
+  color: #173132;
+  border: 0;
+  min-height: 52px;
+}
+.primær:hover {
+  background: #ffba75;
+}
+.start-kort .primær {
+  width: 100%;
+}
+.menu-links {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+}
+.menu-links button {
+  padding: 10px 0;
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+}
+.dialog-knapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 20px;
+}
+.biler {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 16px 0;
+}
+.bilvalg {
+  text-align: left;
+  padding: 13px;
+  border: 1px solid #4f7679;
+}
+.bilvalg.valgt {
+  border-color: var(--turkis);
+  background: #205f5b;
+}
+.bilvalg small {
+  display: block;
+  font-size: 10px;
+  line-height: 1.5;
+  font-weight: 400;
+  margin-top: 6px;
+}
+.opgradering {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0;
+  padding: 13px;
+  border: 1px solid #52767554;
+  border-radius: 12px;
+}
+.opgradering .forklaring {
+  flex: 1;
+}
+.opgradering strong,
+.opgradering small {
+  display: block;
+}
+.opgradering small {
+  font-size: 11px;
+  color: #b9cdc6;
+  margin-top: 5px;
+}
+.niveau {
+  letter-spacing: 3px;
+  color: var(--orange);
+  font-size: 12px;
+}
+.hjælp-række {
+  display: grid;
+  grid-template-columns: 95px 1fr;
+  gap: 14px;
+  margin: 12px 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.hjælp-række b {
+  color: var(--turkis);
+}
+#touch {
+  position: absolute;
+  left: max(12px, env(safe-area-inset-left));
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  justify-content: space-between;
+  align-items: end;
+  pointer-events: none;
+  display: none;
+}
+#touch button {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: auto;
+  box-shadow: 0 4px 12px #0003;
+}
+#touch button.trykket {
+  background: var(--turkis);
+  color: #163134;
+}
+.styr {
+  display: flex;
+  gap: 7px;
+}
+.styr button {
+  width: 67px;
+  height: 68px;
+  font-size: 25px;
+}
+.pedaler {
+  display: grid;
+  grid-template-columns: 48px 65px;
+  gap: 7px;
+}
+.pedaler button {
+  padding: 7px;
+  min-height: 48px;
+  font-size: 14px;
+}
+.pedaler [data-styr="gas"] {
+  background: #d68d49ee;
+  color: #102e32;
+}
+/* Låsen deler koden med resten af voksenrummet. */
+#lås {
+  z-index: 30;
+}
+.lås-kort {
+  width: 310px;
+  text-align: center;
+  background: #163436;
+  border: 1px solid #71a299;
+  border-radius: 24px;
+  padding: 25px;
+}
+.lås-ikon {
+  font-size: 35px;
+}
+.lås-kort h1 {
+  font-size: 28px;
+  letter-spacing: -1px;
+}
+.lås-tekst {
+  font-size: 13px;
+  min-height: 43px;
+}
+.lås-prikker {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin: 15px 0;
+}
+.lås-prikker i {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1px solid var(--turkis);
+}
+.lås-prikker .fyldt {
+  background: var(--turkis);
+}
+.lås-taster {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.lås-taster button {
+  height: 51px;
+  font-size: 19px;
+}
+.lås-hjem {
+  display: inline-block;
+  margin-top: 20px;
+  font-size: 12px;
+}
+.ryst {
+  animation: ryst .25s;
+}
+@keyframes ryst {
+  25% {
+    transform: translateX(-8px);
+  }
+  75% {
+    transform: translateX(8px);
+  }
+}
+@media (pointer: coarse), (max-width: 760px) {
+  #touch {
+    display: flex;
+  }
+  .pc-hjælp {
+    display: none;
+  }
+  #bund {
+    bottom: 128px;
+    left: 15px;
+    right: auto;
+  }
+  #bund button {
+    min-height: 38px;
+    padding: 7px 10px;
+    font-size: 11px;
+  }
+  #hud {
+    top: max(12px, env(safe-area-inset-top));
+    left: 12px;
+    right: 12px;
+    gap: 9px;
+  }
+  .brand {
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+  .brand-ikon {
+    width: 30px;
+    height: 30px;
+    font-size: 20px;
+  }
+  .brand small {
+    font-size: 7px;
+  }
+  .top-knapper {
+    gap: 5px;
+  }
+  .top-knapper button {
+    min-height: 39px;
+    padding: 7px 9px;
+    font-size: 11px;
+  }
+  .mission {
+    padding: 12px;
+    width: min(410px, 100%);
+  }
+  .mission strong {
+    font-size: 17px;
+  }
+  .mission small {
+    font-size: 11px;
+  }
+  .overlinje {
+    font-size: 8px;
+  }
+  .ressourcer {
+    font-size: 11px;
+    gap: 12px;
+  }
+  #kort-panel {
+    width: 115px;
+    right: 14px;
+    bottom: 128px;
+    padding: 6px;
+  }
+  #kort-panel span {
+    font-size: 6px;
+  }
+  #fart-panel {
+    bottom: 178px;
+    left: 16px;
+  }
+  #fart-panel b {
+    font-size: 37px;
+  }
+  .nitro-måler {
+    width: 84px;
+  }
+  .menu-kort {
+    padding: 24px;
+    border-radius: 19px;
+  }
+  .start-kort {
+    margin-left: 0;
+    margin-right: 0;
+  }
+  .intro {
+    font-size: 17px;
+  }
+  .biler {
+    gap: 6px;
+  }
+  .bilvalg {
+    padding: 10px;
+    font-size: 12px;
+  }
+  .bilvalg small {
+    font-size: 9px;
+  }
+}
+@media (max-width: 480px) {
+  #hud {
+    grid-template-columns: 1fr;
+  }
+  .brand {
+    padding-right: 125px;
+  }
+  .top-knapper {
+    position: absolute;
+    right: 0;
+    top: 0;
+  }
+  #lyd {
+    position: absolute;
+    right: 0;
+    top: 46px;
+    font-size: 9px;
+    min-height: 30px;
+    padding: 5px 8px;
+  }
+  .mission {
+    margin-top: 3px;
+    width: calc(100% - 70px);
+    padding: 10px;
+  }
+  .mission strong {
+    font-size: 15px;
+  }
+  .mission small {
+    font-size: 10px;
+    max-height: 44px;
+    overflow: hidden;
+  }
+  .retning {
+    width: 41px;
+  }
+  .retning span {
+    font-size: 27px;
+  }
+  .retning b {
+    font-size: 10px;
+  }
+  #besked {
+    font-size: 13px;
+    width: 80vw;
+  }
+  .opgradering {
+    padding: 10px;
+    gap: 8px;
+  }
+  .opgradering button {
+    padding: 9px 10px;
+    font-size: 11px;
+  }
+  .niveau {
+    font-size: 10px;
+  }
+}
+@media (max-height: 520px) and (pointer: coarse), (max-height: 520px) and (max-width: 760px) {
+  #hud {
+    left: 12px;
+    right: 12px;
+  }
+  .mission {
+    width: 320px;
+    padding: 8px 12px;
+  }
+  .mission small {
+    display: none;
+  }
+  .mission strong {
+    font-size: 15px;
+  }
+  .ressourcer {
+    margin-top: -3px;
+  }
+  #kort-panel {
+    bottom: 126px;
+    width: 89px;
+  }
+  #fart-panel {
+    left: 174px;
+    bottom: 25px;
+  }
+  #bund {
+    left: 12px;
+    bottom: 91px;
+  }
+  .styr button {
+    height: 62px;
+  }
+  .menu-kort {
+    padding: 20px;
+  }
+  .start-kort h1 {
+    font-size: 39px;
+    margin: 14px 0;
+  }
+  .start-kort .intro {
+    margin: 10px 0;
+  }
+  .start-kort .lille {
+    font-size: 11px;
+  }
+}

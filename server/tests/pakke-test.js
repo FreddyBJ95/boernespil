@@ -3,6 +3,7 @@ import { forbind } from "../../spil/broekraft/net.js";
 import { ID } from "../../spil/broekraft/blokke.js";
 import { MIDT } from "../../spil/broekraft/uendelig.js";
 import { UDGAVE } from "../verdener.js";
+import { VOKSENVERDENER, prøvVoksenverden } from "./tre-verdener-filer.js";
 import { prøvOffentligeFiler, prøvPrivateFiler } from "./offentlige-filer.js";
 
 // Køres mod en færdig pakke med en tom, isoleret datamappe, ikke familiens server.
@@ -10,6 +11,7 @@ const base = Deno.args[0];
 if (!base || !/^http:\/\/127\.0\.0\.1:\d+$/.test(base)) throw new Error("Angiv den lokale testservers HTTP-adresse");
 const klienter = [], verdener = [], status = async () => await (await fetch(base + "/api/status")).json();
 const { token, version } = await status(); assert.equal(version, UDGAVE);
+for (const id of VOKSENVERDENER) await prøvVoksenverden((sti, options) => fetch(base + sti, options), id);
 async function handling(navn, data) {
   const svar = await fetch(base + "/api/" + navn, { method: "POST", headers: { origin: base, "x-broekraft-token": token }, body: JSON.stringify(data) });
   const b = await svar.json(); assert.ok(svar.ok, b.fejl); return b;

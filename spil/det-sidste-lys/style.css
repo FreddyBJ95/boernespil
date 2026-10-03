@@ -1,0 +1,1055 @@
+:root {
+  color-scheme: dark;
+  --papir: #eae4d3;
+  --guld: #eabf7c;
+  --hav: #142c32;
+  --kant: rgba(230,223,201,.2);
+}
+#dialog {
+  z-index: 12;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #142c32;
+  color: var(--papir);
+  font-family: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+body {
+  touch-action: none;
+}
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: 1px solid var(--kant);
+  background: rgba(17,38,43,.85);
+  border-radius: 4px;
+  min-height: 44px;
+  padding: 10px 15px;
+}
+button:hover {
+  border-color: var(--guld);
+  background: #294249;
+}
+button:disabled {
+  opacity: .5;
+  cursor: default;
+}
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--guld);
+  outline-offset: 3px;
+}
+a {
+  color: var(--papir);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+.skjult {
+  display: none!important;
+}
+#verden,
+#verden canvas,
+#vignet {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+#verden canvas {
+  display: block;
+  touch-action: none;
+}
+#vignet {
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 45%,transparent 40%,rgba(4,17,23,.32));
+  z-index: 1;
+}
+.menu-lag {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  overflow: auto;
+  padding: max(34px,env(safe-area-inset-top)) 7vw max(25px,env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+}
+.forside,
+.menu-mørke {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 65% center;
+  pointer-events: none;
+}
+.menu-mørke {
+  background: linear-gradient(90deg,rgba(7,25,30,.97),rgba(10,32,37,.76) 42%,rgba(14,34,37,.12)
+    100%),linear-gradient(0deg,rgba(10,25,31,.45),transparent 50%);
+}
+.menu-indhold {
+  position: relative;
+  width: min(620px,100%);
+  padding-bottom: 5px;
+}
+.overlinje {
+  font-size: 11px;
+  letter-spacing: .23em;
+  color: var(--guld);
+  font-weight: 650;
+  margin: 0 0 18px;
+}
+.menu-indhold h1 {
+  font-family: Georgia,"Times New Roman",serif;
+  font-weight: 400;
+  font-size: clamp(58px,7.5vw,110px);
+  line-height: .94;
+  letter-spacing: -.055em;
+  margin: 22px 0 25px;
+}
+.menu-indhold h1 em {
+  font-style: italic;
+  color: var(--guld);
+}
+.indledning {
+  font-size: 17px;
+  line-height: 1.8;
+  max-width: 475px;
+  color: #dedccc;
+}
+.menu-handlinger {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 28px;
+}
+.primær {
+  background: var(--guld);
+  color: #142b30;
+  border-color: var(--guld);
+  font-weight: 700;
+  padding: 14px 24px;
+  min-height: 51px;
+}
+.primær:hover {
+  background: #f6cf91;
+  color: #142b30;
+}
+.sekundær {
+  background: transparent;
+  padding: 13px 20px;
+}
+.menu-status {
+  font-size: 12px;
+  color: #b0c1bf;
+  min-height: 18px;
+  margin-top: 12px;
+}
+.menu-note {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #a9bcba;
+  margin-top: 28px;
+}
+.menu-links {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  margin-top: 25px;
+  font-size: 12px;
+}
+.tekstknap {
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 5px 0;
+  color: var(--guld);
+}
+.tekstknap:hover {
+  background: transparent;
+  text-decoration: underline;
+}
+.menu-signatur {
+  position: absolute;
+  right: 5vw;
+  bottom: 40px;
+  letter-spacing: .23em;
+  font-size: 10px;
+  color: #e7dec3;
+  writing-mode: vertical-rl;
+}
+.toplinje {
+  position: fixed;
+  top: max(17px,env(safe-area-inset-top));
+  left: 26px;
+  right: 26px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  z-index: 2;
+  text-shadow: 0 1px 6px #17232b;
+}
+.ø-navn {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .14em;
+}
+.lille-sol {
+  font-size: 29px;
+  color: var(--guld);
+}
+.ø-navn small {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: .03em;
+  margin-top: 5px;
+  color: #d1ded7;
+}
+.kompas {
+  font-size: 11px;
+  letter-spacing: .12em;
+  display: flex;
+  gap: 16px;
+  color: #d4dace;
+}
+.kompas i {
+  font-style: normal;
+  opacity: .4;
+}
+.værktøj {
+  display: flex;
+  gap: 7px;
+}
+.værktøj button {
+  width: 43px;
+  padding: 8px;
+  min-height: 43px;
+  font-size: 19px;
+  background: rgba(15,35,42,.66);
+  backdrop-filter: blur(8px);
+}
+.mål-kort {
+  position: fixed;
+  left: 26px;
+  top: 98px;
+  padding: 19px 20px;
+  width: 295px;
+  border: 1px solid var(--kant);
+  background: linear-gradient(110deg,rgba(17,35,41,.9),rgba(17,35,41,.6));
+  backdrop-filter: blur(9px);
+  z-index: 2;
+  border-radius: 4px;
+}
+.mål-kort > p:first-child {
+  font-size: 9px;
+  letter-spacing: .18em;
+  color: var(--guld);
+  margin: 0 0 11px;
+}
+.mål-kort h2 {
+  font-family: Georgia,serif;
+  font-weight: 400;
+  font-size: 21px;
+  line-height: 1.2;
+  margin: 0 0 10px;
+}
+.mål-kort > p {
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 0;
+  color: #d1d5cc;
+}
+.mål-under {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 13px;
+  font-size: 10px;
+  color: var(--guld);
+}
+.mål-under button {
+  min-height: 32px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  font-size: 10px;
+}
+.fremgang {
+  height: 2px;
+  background: #3c5050;
+  margin-top: 12px;
+}
+.fremgang i {
+  display: block;
+  height: 2px;
+  background: var(--guld);
+  width: 0;
+  transition: width .7s;
+}
+.sigte {
+  position: fixed;
+  left: calc(50% - 2px);
+  top: calc(50% - 2px);
+  width: 4px;
+  height: 4px;
+  background: #fff9;
+  box-shadow: 0 0 0 3px #152e3933;
+  border-radius: 50%;
+  z-index: 2;
+  pointer-events: none;
+}
+.bundlinje {
+  position: fixed;
+  bottom: max(24px,env(safe-area-inset-bottom));
+  left: 26px;
+  right: 26px;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-end;
+  z-index: 2;
+}
+.samling {
+  font-size: 12px;
+  text-shadow: 0 2px 5px #182630;
+}
+.samling small {
+  display: block;
+  margin-top: 5px;
+  font-size: 9px;
+  color: #b6c9c4;
+}
+.bund-knapper {
+  display: flex;
+  gap: 8px;
+}
+.bund-knapper button {
+  background: rgba(15,35,42,.78);
+  backdrop-filter: blur(8px);
+  font-size: 12px;
+  min-width: 85px;
+}
+.interaktion {
+  position: fixed;
+  bottom: 85px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  min-width: 250px;
+  z-index: 3;
+}
+.interaktion small {
+  display: block;
+  margin-bottom: 9px;
+  color: #e8e7d7;
+  font-size: 11px;
+  text-shadow: 0 1px 6px #142632;
+}
+.interaktion > button {
+  background: rgba(17,38,44,.9);
+  padding: 11px 15px;
+  border-color: #e2c58c80;
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
+  backdrop-filter: blur(8px);
+}
+.tast {
+  font-size: 10px;
+  border: 1px solid #a9b7ad;
+  padding: 2px 5px;
+  border-radius: 2px;
+}
+.pil {
+  color: var(--guld);
+}
+.flyt-guide {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 24px;
+  color: #c5d3c9;
+  font-size: 9px;
+  letter-spacing: .05em;
+  text-shadow: 0 1px 3px #15242a;
+  z-index: 2;
+}
+.besked {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 21%;
+  max-width: 480px;
+  width: 80%;
+  padding: 14px 22px;
+  border: 1px solid #efd29d66;
+  background: #182f39ee;
+  border-radius: 4px;
+  z-index: 4;
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: center;
+  box-shadow: 0 8px 40px #0003;
+}
+.ud-knap {
+  position: fixed;
+  right: 26px;
+  top: 86px;
+  z-index: 3;
+  font-size: 12px;
+  color: var(--guld);
+}
+.dialog-lag {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(4,16,22,.65);
+  backdrop-filter: blur(10px);
+  padding: 18px;
+  touch-action: auto;
+}
+.dialog-kort {
+  position: relative;
+  background: #183138;
+  border: 1px solid #8ba29a66;
+  border-radius: 6px;
+  width: min(590px,100%);
+  max-height: calc(100dvh - 36px);
+  overflow: auto;
+  padding: 35px 38px;
+  box-shadow: 0 20px 90px #0006;
+  touch-action: pan-y;
+}
+.dialog-kort h2 {
+  font-family: Georgia,serif;
+  font-size: 33px;
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: -.015em;
+  margin: 10px 0 20px;
+}
+.dialog-kort p {
+  font-size: 14px;
+  line-height: 1.8;
+  color: #d5ddd3;
+}
+.dialog-kort .overlinje {
+  font-size: 10px;
+  color: var(--guld);
+}
+.dialog-kort blockquote {
+  border-left: 2px solid var(--guld);
+  margin: 15px 0;
+  padding: 4px 0 4px 19px;
+  font-family: Georgia,serif;
+  font-size: 17px;
+  line-height: 1.7;
+  color: #eee5cb;
+}
+.luk {
+  position: absolute;
+  right: 12px;
+  top: 10px;
+  font-size: 24px;
+  padding: 2px 9px;
+  min-height: 37px;
+  background: transparent;
+  border: 0;
+}
+.dialog-knapper {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
+.dialog-knapper button {
+  flex: 1;
+  min-width: 145px;
+}
+.puzzle-række {
+  margin-top: 19px;
+}
+.puzzle-række > label,
+.puzzle-række > p {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  color: #bed0c7;
+  margin: 0 0 8px;
+}
+.valg {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.valg button {
+  flex: 1;
+  min-width: 60px;
+  padding: 11px 8px;
+  font-size: 12px;
+  min-height: 44px;
+}
+.valg button.valgt {
+  background: #e9bf7b;
+  color: #172d32;
+  border-color: #e9bf7b;
+  font-weight: 700;
+}
+.svar-besked {
+  min-height: 25px;
+  color: #efd49c!important;
+  font-size: 12px!important;
+}
+.spejl-række {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+  margin: 24px 0;
+}
+.spejl {
+  background: #0d242b;
+  padding: 15px 7px;
+  text-align: center;
+  border: 1px solid #526a65;
+  border-radius: 4px;
+}
+.spejl strong {
+  display: block;
+  font-size: 11px;
+  color: #a7c7be;
+  margin-bottom: 12px;
+}
+.spejl button {
+  display: block;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  margin: auto;
+  font-size: 22px;
+  border: 2px solid var(--guld);
+  color: var(--guld);
+  background: #26424a;
+}
+.spejl small {
+  display: block;
+  font-size: 10px;
+  margin-top: 9px;
+  color: #c8d4cd;
+}
+.pause-kort {
+  text-align: center;
+  width: min(410px,100%);
+}
+.pause-kort > button {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+}
+.pause-kort .tekstknap {
+  text-align: center;
+}
+.tilbage-link {
+  display: block;
+  margin-top: 24px;
+  font-size: 11px;
+  color: #aec2b7;
+}
+.kort-ramme {
+  background: #112a31;
+  border: 1px solid #3d5a5d;
+  border-radius: 3px;
+  width: 100%;
+  margin-top: 16px;
+}
+.kort-ramme svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.kort-ramme button {
+  font-size: 12px;
+}
+.kort-liste {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 14px;
+}
+.kort-liste button {
+  text-align: left;
+  font-size: 12px;
+}
+.kort-liste button small {
+  display: block;
+  font-size: 10px;
+  margin-top: 5px;
+  color: #a7bfb6;
+}
+.dagbog-ide {
+  padding: 13px 15px;
+  margin: 12px 0;
+  background: #102a31;
+  border-left: 2px solid #708e85;
+}
+.dagbog-ide h3 {
+  font-family: Georgia,serif;
+  font-size: 18px;
+  margin: 0 0 6px;
+  font-weight: 400;
+}
+.dagbog-ide p {
+  font-size: 12px;
+  margin: 0;
+  line-height: 1.6;
+}
+.styring {
+  display: grid;
+  grid-template-columns: 135px 1fr;
+  gap: 9px;
+  font-size: 12px;
+  color: #c7d6ca;
+  margin: 20px 0;
+}
+.styring strong {
+  font-weight: 500;
+  color: var(--guld);
+}
+.touch-kontrol,
+.kig-hjælp {
+  display: none;
+}
+.lås-lag {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #10272ef5;
+  padding: 20px;
+}
+.lås-kort {
+  padding: 32px;
+  width: min(350px,100%);
+  text-align: center;
+  border: 1px solid #92b2a56b;
+  background: #1a353c;
+  border-radius: 10px;
+}
+.lås-ikon {
+  font-size: 32px;
+}
+.lås-kort h1 {
+  font-size: 24px;
+  font-family: Georgia,serif;
+  font-weight: 400;
+}
+.lås-tekst {
+  font-size: 13px;
+  line-height: 1.6;
+  min-height: 42px;
+}
+.lås-prikker {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin: 22px;
+}
+.lås-prikker i {
+  width: 11px;
+  height: 11px;
+  border: 1px solid var(--guld);
+  border-radius: 50%;
+}
+.lås-prikker .fyldt {
+  background: var(--guld);
+}
+.lås-taster {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 8px;
+}
+.lås-taster button {
+  font-size: 20px;
+  min-height: 48px;
+}
+.lås-hjem {
+  display: block;
+  font-size: 12px;
+  color: var(--guld);
+  margin-top: 25px;
+}
+.ryst {
+  animation: ryst .2s 2;
+}
+@keyframes ryst {
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+@media (pointer:coarse),(max-width:800px) {
+  .touch-kontrol {
+    display: grid;
+    position: fixed;
+    bottom: max(76px,calc(env(safe-area-inset-bottom) + 62px));
+    left: 20px;
+    grid-template-columns: repeat(3,46px);
+    grid-template-rows: 46px 46px;
+    gap: 4px;
+    z-index: 4;
+    touch-action: none;
+  }
+  .touch-kontrol button {
+    padding: 0;
+    font-size: 17px;
+    background: #172e37b8;
+    border-radius: 7px;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .touch-kontrol button[data-gå=frem] {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .touch-kontrol button[data-gå=venstre] {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .touch-kontrol button[data-gå=tilbage] {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .touch-kontrol button[data-gå=højre] {
+    grid-column: 3;
+    grid-row: 2;
+  }
+  .touch-kontrol button:active {
+    background: #ccab72;
+    color: #1a3136;
+  }
+  .interaktion {
+    left: auto;
+    right: 18px;
+    bottom: 94px;
+    transform: none;
+    min-width: 0;
+    max-width: 170px;
+  }
+  .interaktion > button {
+    min-height: 54px;
+    width: 150px;
+    padding: 12px 9px;
+    gap: 12px;
+  }
+  .interaktion small {
+    max-width: 155px;
+    font-size: 10px;
+  }
+  .tast,
+  .flyt-guide {
+    display: none;
+  }
+  .kig-hjælp {
+    display: block;
+    position: fixed;
+    right: 22px;
+    bottom: 160px;
+    font-size: 8px;
+    color: #c1c9bf;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .bundlinje {
+    bottom: max(16px,env(safe-area-inset-bottom));
+    left: 20px;
+    right: 20px;
+  }
+  .samling {
+    font-size: 10px;
+    max-width: 48%;
+  }
+  .samling small {
+    font-size: 8px;
+  }
+  .bund-knapper button {
+    min-width: 70px;
+    font-size: 11px;
+    padding: 9px 12px;
+  }
+  .toplinje {
+    left: 20px;
+    right: 20px;
+    top: max(14px,env(safe-area-inset-top));
+  }
+  .kompas {
+    display: none;
+  }
+  .mål-kort {
+    left: 20px;
+    top: 82px;
+    padding: 13px 15px;
+    width: 250px;
+  }
+  .mål-kort h2 {
+    font-size: 19px;
+  }
+  .mål-kort > p {
+    font-size: 11px;
+  }
+  .mål-under {
+    margin-top: 8px;
+  }
+  .ud-knap {
+    right: 18px;
+    top: 77px;
+    max-width: 140px;
+    font-size: 10px;
+  }
+  .spejl-række {
+    gap: 9px;
+  }
+  .menu-signatur {
+    display: none;
+  }
+}
+@media (max-width:520px) {
+  .menu-lag {
+    padding: 28px 27px;
+    align-items: center;
+  }
+  .menu-mørke {
+    background: linear-gradient(90deg,#0b222ded,#112b32ad),linear-gradient(0deg,#0a1b2eaa,transparent);
+  }
+  .menu-indhold h1 {
+    font-size: 68px;
+  }
+  .menu-indhold .overlinje {
+    font-size: 9px;
+    letter-spacing: .18em;
+  }
+  .indledning {
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  .indledning br {
+    display: none;
+  }
+  .menu-note {
+    font-size: 10px;
+    margin-top: 20px;
+  }
+  .menu-links {
+    font-size: 10px;
+    gap: 20px;
+    margin-top: 18px;
+  }
+  .menu-handlinger {
+    margin-top: 21px;
+  }
+  .primær {
+    font-size: 13px;
+    padding: 13px 17px;
+  }
+  .ø-navn {
+    font-size: 9px;
+    letter-spacing: .10em;
+    gap: 8px;
+  }
+  .ø-navn small {
+    font-size: 9px;
+  }
+  .lille-sol {
+    font-size: 25px;
+  }
+  .værktøj {
+    gap: 4px;
+  }
+  .værktøj button {
+    width: 37px;
+    min-height: 38px;
+    padding: 7px;
+    font-size: 17px;
+  }
+  .mål-kort {
+    width: calc(100% - 40px);
+    top: 79px;
+    padding: 12px 14px;
+  }
+  .mål-kort > p:first-child {
+    font-size: 8px;
+    margin-bottom: 6px;
+  }
+  .mål-kort h2 {
+    font-size: 19px;
+    margin-bottom: 5px;
+  }
+  .mål-kort > p {
+    font-size: 10px;
+    line-height: 1.5;
+  }
+  .mål-under {
+    margin-top: 2px;
+  }
+  .fremgang {
+    margin-top: 4px;
+  }
+  .dialog-kort {
+    padding: 29px 23px;
+  }
+  .dialog-kort h2 {
+    font-size: 28px;
+  }
+  .dialog-kort p {
+    font-size: 13px;
+  }
+  .dialog-kort blockquote {
+    font-size: 16px;
+    padding-left: 14px;
+  }
+  .spejl-række {
+    gap: 7px;
+  }
+  .spejl {
+    padding: 12px 4px;
+  }
+  .spejl button {
+    width: 58px;
+    height: 58px;
+  }
+  .besked {
+    top: 33%;
+    font-size: 12px;
+  }
+  .samling {
+    max-width: 46%;
+  }
+  .ud-knap {
+    top: 215px;
+  }
+  .touch-kontrol {
+    left: 15px;
+    grid-template-columns: repeat(3,43px);
+    grid-template-rows: 43px 43px;
+  }
+  .interaktion {
+    right: 15px;
+    bottom: 91px;
+  }
+  .interaktion > button {
+    width: 143px;
+  }
+  .kig-hjælp {
+    right: 16px;
+  }
+  .kort-liste button {
+    font-size: 10px;
+    padding: 8px;
+  }
+  .styring {
+    grid-template-columns: 105px 1fr;
+    font-size: 11px;
+  }
+}
+@media (max-height:520px) {
+  .menu-lag {
+    padding: 20px 5vw;
+  }
+  .menu-indhold h1 {
+    font-size: 57px;
+    margin: 13px 0;
+  }
+  .menu-indhold .overlinje {
+    margin-bottom: 10px;
+  }
+  .indledning {
+    font-size: 12px;
+    line-height: 1.5;
+    margin: 12px 0;
+  }
+  .menu-handlinger {
+    margin-top: 13px;
+  }
+  .menu-note {
+    display: none;
+  }
+  .menu-links {
+    margin-top: 7px;
+  }
+  .menu-status {
+    margin: 8px 0;
+  }
+  .mål-kort {
+    top: 70px;
+    padding: 10px 13px;
+    width: 235px;
+  }
+  .mål-kort > p:first-child {
+    margin-bottom: 5px;
+  }
+  .mål-kort h2 {
+    font-size: 17px;
+    margin-bottom: 5px;
+  }
+  .mål-kort > p {
+    font-size: 10px;
+  }
+  .toplinje {
+    top: 9px;
+  }
+  .interaktion {
+    bottom: 70px;
+  }
+  .touch-kontrol {
+    bottom: 63px;
+    grid-template-columns: repeat(3,39px);
+    grid-template-rows: 39px 39px;
+  }
+  .bundlinje {
+    bottom: 10px;
+  }
+  .kig-hjælp {
+    bottom: 131px;
+  }
+  .ud-knap {
+    top: 75px;
+  }
+  .dialog-kort {
+    max-height: calc(100dvh - 24px);
+    padding: 24px 28px;
+  }
+  .dialog-kort h2 {
+    font-size: 26px;
+  }
+  .dialog-kort .overlinje {
+    margin-bottom: 8px;
+  }
+}

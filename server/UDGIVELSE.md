@@ -1,5 +1,12 @@
 Broekraft Server lader 1–8 børn bygge i samme Broekraft-verden på familiens eget wifi.
 
+**Nyt i 0.5.2**
+- Spilkassens logo, maskotter og appikoner følger nu med familieserveren.
+- Tre nye 3D-spil i voksenrummet: Det Sidste Lys, Skrotstorm og Krystaljægerne.
+  De har hver deres opgaver, gemt fremgang og styring til computer, tablet og telefon.
+- De nye spil bruger lokale 3D-biblioteker og modeller fra Blender, så de kan spilles fra
+  familieserveren uden at hente en 3D-motor fra internettet.
+
 **Nyt i 0.5.1**
 - 🦄 Ny verden: Enhjørningeland
 - Lyserødt græs, lilla blade, mintblade, regnbueblomster og perlemor kan nu bruges, når I spiller sammen.

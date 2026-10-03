@@ -1,7 +1,7 @@
 name: Broekraft Server
 on:
   pull_request:
-    paths: ['server/**', 'spil/broekraft/**', '.github/workflows/broekraft-server.yml']
+    paths: ['server/**', 'spil/**', 'tilslut/**', 'billeder/**', 'index.html', 'style.css', 'effekter.js', 'manifest.json', 'sw.js', '*.png', '.github/workflows/broekraft-server.yml']
   push:
     tags: ['server-v*']
   workflow_dispatch:
@@ -15,6 +15,11 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.9.7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Afprøv gåder, bilfysik, grotter og gemninger
+        run: node --test spil/det-sidste-lys/logik.test.mjs spil/det-sidste-lys/navigation.test.mjs spil/skrotstorm/tests.mjs spil/krystaljaegerne/eventyr.test.mjs
       - name: Afprøv generator, protokol og simulering
         working-directory: server
         run: deno task test

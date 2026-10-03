@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="da">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="theme-color" content="#17283a">
+    <title>Krystaljægerne · Voksenrummet</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <div id="lås" class="lås skjult"></div>
+    <canvas id="verden" aria-label="Krystaljægernes tredimensionelle verden"></canvas>
+    <div id="menu" class="lag skjult">
+      <div
+        class="forside"><span class="mærke">VOKSENRUMMET · ET 3D-EVENTYR</span><h1>Krystal<span>jægerne</span></h1><p>En stille ø. Tre glemte segl.<br>Et lille lys, der følger dig hjem.</p><div class="menuknapper"><button id="start">Begynd rejsen</button><button id="fortsæt" class="sekundær skjult">Fortsæt eventyret</button></div><p id="indlæser" class="lille">Smeder øens verden …</p><a href="../../index.html">← Tilbage til spillene</a></div>
+    </div>
+    <div id="hud" class="skjult">
+      <header><a href="../../index.html" aria-label="Tilbage til spillene">←</a><div><strong>KRYSTALJÆGERNE</strong><span id="område">Lysvig</span></div><div class="topknapper"><button id="taske" title="Rejsetaske" aria-label="Rejsetaske">▣</button><button id="lyd" title="Slå lyd fra" aria-label="Slå lyd til eller fra">♫</button><button id="hjælp" title="Hjælp" aria-label="Hjælp">?</button><button id="pause" title="Pause" aria-label="Pause">Ⅱ</button></div></header>
+      <section class="status">
+        <div><span>Liv</span><progress id="liv" value="100" max="100"></progress><small id="livtekst">100 / 100</small></div>
+        <div><span>Energi</span><progress id="mana" value="100" max="100"></progress></div>
+        <p><b id="niveau">Niveau 1</b> · <span id="mønter">0</span> kobber · <span id="udstyr">Udstyr I</span></p>
+      </section>
+      <section id="opgave" class="opgave"><span>NÆSTE MÅL</span><h2></h2><p></p><small></small><b id="afstand"></b></section>
+      <canvas id="kort" width="170" height="170" aria-label="Kort over området"></canvas>
+      <div id="besked" role="status" aria-live="polite"></div>
+      <div id="prompt" class="skjult"></div>
+      <nav
+        class="våben"><button data-våben="sværd" class="valgt"><span>⚔</span><b>Sværd</b><small>1 · tæt & bredt</small></button><button data-våben="bue"><span>➶</span><b>Bue</b><small>2 · langt & præcist</small></button><button data-våben="magi"><span>✦</span><b>Magi</b><small>3 · lys & område</small></button><button id="eliksir"><span>♜</span><b>Eliksir</b><small id="eliksirtekst">Q · 3 tilbage</small></button></nav>
+      <div id="joystick">
+        <div id="pind"></div>
+      </div>
+      <div class="touchhandling"><button id="interager">E · Brug</button><button id="angrib">Angrib</button></div>
+      <p class="bundtip">WASD / pile: gå · klik / mellemrum: angrib · E: brug · Q: eliksir · Esc: pause</p>
+    </div>
+    <div id="dialog" class="lag skjult">
+      <div
+        class="kort"><span id="dialogmærke" class="mærke"></span><h2 id="dialogtitel"></h2><div id="dialogtekst"></div><div id="dialogknapper"></div></div>
+    </div>
+    <script type="module" src="spil.js"></script>
+  </body>
+</html>

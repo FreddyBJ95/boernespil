@@ -1,0 +1,826 @@
+/* Den fælles PIN-lås bruger samme rolige palet som eventyret. */
+.lås {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 30%,#284b58,#101d2d 75%);
+  z-index: 50;
+}
+.lås-kort {
+  width: min(340px,92vw);
+  text-align: center;
+  padding: 26px 24px 18px;
+  background: #142b3ce8;
+  border: 1px solid #5a7b7a;
+  border-radius: 18px;
+  box-shadow: 0 20px 60px #000a;
+}
+.lås-ikon {
+  font-size: 42px;
+}
+.lås-kort h1 {
+  font-size: 28px;
+  margin: 12px 0;
+  letter-spacing: 0;
+}
+.lås-tekst {
+  font: 14px/1.5 system-ui;
+  min-height: 44px;
+  color: #c7dade;
+}
+.lås-prikker {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin: 18px;
+}
+.lås-prikker i {
+  width: 15px;
+  height: 15px;
+  border: 1px solid #80b6ad;
+  border-radius: 50%;
+}
+.lås-prikker i.fyldt {
+  background: #78d8c8;
+}
+.lås-taster {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 8px;
+}
+.lås-taster button {
+  font-size: 22px;
+  height: 54px;
+}
+.lås-hjem {
+  display: block;
+  margin-top: 20px;
+  font: 13px system-ui;
+}
+.ryst {
+  animation: ryst .25s;
+}
+@keyframes ryst {
+  25% {
+    transform: translateX(-7px);
+  }
+  75% {
+    transform: translateX(7px);
+  }
+}
+:root {
+  font-family: Georgia,'Times New Roman',serif;
+  color: #e3f2ed;
+  background: #142536;
+  color-scheme: dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  overflow: hidden;
+  touch-action: none;
+}
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  font-family: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  border: 1px solid #779c98;
+  border-radius: 9px;
+  background: #243e4c;
+  color: #e3f2ed;
+  padding: 12px 22px;
+  transition: background .15s,transform .15s;
+}
+button:hover {
+  background: #355c68;
+}
+button:active {
+  transform: scale(.96);
+}
+button:disabled {
+  opacity: .5;
+  cursor: wait;
+}
+a {
+  color: #bdd9d4;
+  text-decoration: none;
+}
+canvas#verden {
+  width: 100vw;
+  height: 100dvh;
+  display: block;
+}
+.skjult {
+  display: none!important;
+}
+.lag {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  background: #0c1b2eb8;
+  backdrop-filter: blur(7px);
+}
+#menu {
+  background: linear-gradient(90deg,#101e30ed 0%,#101e30b8 42%,#14263b28 100%),url('forside.jpg') center/cover no-repeat;
+  justify-items: start;
+  backdrop-filter: none;
+}
+.forside {
+  margin: 5vw;
+  max-width: 540px;
+}
+.mærke {
+  font: 600 12px system-ui;
+  letter-spacing: 3px;
+  color: #79dbd1;
+}
+h1 {
+  font-size: clamp(48px,7vw,92px);
+  font-weight: 400;
+  letter-spacing: -3px;
+  line-height: .92;
+  margin: 28px 0;
+  color: #efe5d1;
+}
+h1 span {
+  display: block;
+  color: #7ce0d5;
+}
+h2 {
+  font-weight: 400;
+}
+p {
+  line-height: 1.65;
+}
+.forside > p {
+  font-size: 20px;
+  color: #bdd0d7;
+}
+.menuknapper {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 32px 0 18px;
+}
+.menuknapper button:first-child {
+  background: #9e624a;
+  border-color: #d5a172;
+  padding: 15px 28px;
+}
+.sekundær {
+  background: #223e4db0;
+}
+.lille {
+  font: 12px system-ui!important;
+  color: #8cabae!important;
+}
+.forside > a {
+  font: 14px system-ui;
+}
+.kort {
+  width: min(540px,calc(100vw - 30px));
+  max-height: 85dvh;
+  overflow: auto;
+  background: #172e40;
+  border: 1px solid #57747d;
+  border-radius: 18px;
+  padding: 32px;
+  box-shadow: 0 24px 70px #0008;
+}
+.kort h2 {
+  font-size: 32px;
+  color: #efd3a3;
+  margin: 14px 0;
+}
+.kort p,
+.kort li {
+  font: 15px/1.7 system-ui;
+  color: #cbdbdf;
+}
+.kort ul {
+  padding-left: 22px;
+}
+.kort button {
+  margin: 6px 8px 4px 0;
+}
+.kort .fare {
+  border-color: #ca8d69;
+  background: #633e36;
+}
+#hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  font-family: system-ui;
+}
+#hud button,
+#hud a,
+#joystick {
+  pointer-events: auto;
+}
+header {
+  position: absolute;
+  top: max(16px,env(safe-area-inset-top));
+  left: 22px;
+  right: 22px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+header > a {
+  font-size: 28px;
+  background: #193243bb;
+  border-radius: 50%;
+  height: 40px;
+  width: 40px;
+  text-align: center;
+}
+header strong {
+  font: 600 13px Georgia;
+  letter-spacing: 3px;
+}
+header span {
+  display: block;
+  font-size: 11px;
+  color: #9dbabf;
+  margin-top: 5px;
+}
+.topknapper {
+  margin-left: auto;
+  display: flex;
+  gap: 7px;
+}
+.topknapper button {
+  padding: 7px;
+  width: 38px;
+  height: 38px;
+  background: #193243c9;
+}
+.status {
+  position: absolute;
+  top: 85px;
+  left: 24px;
+  width: 220px;
+  padding: 13px 15px;
+  background: #172b3dc9;
+  border: 1px solid #567a785c;
+  border-radius: 10px;
+}
+.status > div {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 11px;
+  margin: 5px 0;
+}
+.status small {
+  font-size: 10px;
+  white-space: nowrap;
+}
+.status span {
+  width: 38px;
+}
+progress {
+  width: 124px;
+  height: 9px;
+  border: 0;
+  border-radius: 20px;
+  background: #0f202b;
+  overflow: hidden;
+}
+progress::-webkit-progress-bar {
+  background: #0f202b;
+}
+progress::-webkit-progress-value {
+  background: #76c88f;
+}
+#mana::-webkit-progress-value {
+  background: #9a8de2;
+}
+progress::-moz-progress-bar {
+  background: #76c88f;
+}
+.status p {
+  font-size: 10px;
+  margin: 10px 0 0;
+  color: #c7c9ae;
+}
+.opgave {
+  position: absolute;
+  top: 208px;
+  left: 24px;
+  width: 240px;
+  padding: 16px;
+  background: #172b3dc9;
+  border-left: 2px solid #c19264;
+  border-radius: 0 9px 9px 0;
+}
+.opgave > span {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: #81dcd1;
+}
+.opgave h2 {
+  font: 20px Georgia;
+  margin: 8px 0;
+  color: #ebd3ad;
+}
+.opgave p {
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 6px 0;
+}
+.opgave small {
+  font-size: 11px;
+  color: #75cbbf;
+}
+.opgave b {
+  display: block;
+  font-size: 11px;
+  color: #caae83;
+  margin-top: 8px;
+}
+#kort {
+  position: absolute;
+  right: 24px;
+  top: 84px;
+  width: 170px;
+  height: 170px;
+  border: 1px solid #b28a6255;
+  border-radius: 50%;
+  background: #13293de0;
+}
+#besked {
+  position: absolute;
+  left: 50%;
+  top: 15%;
+  transform: translateX(-50%);
+  max-width: 460px;
+  width: 80%;
+  text-align: center;
+  transition: opacity .4s;
+  background: #1c394ad9;
+  border: 1px solid #81aea34d;
+  border-radius: 9px;
+  padding: 14px;
+  color: #f2d4a0;
+  opacity: 0;
+  font-size: 14px;
+}
+#prompt {
+  position: absolute;
+  bottom: 150px;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 1px solid #8ed6bd;
+  background: #163340e6;
+  border-radius: 20px;
+  padding: 10px 24px;
+  font-size: 13px;
+}
+.våben {
+  position: absolute;
+  bottom: 38px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+}
+.våben button {
+  min-width: 90px;
+  padding: 9px 14px;
+  background: #172d40dc;
+  border-color: #58757e5e;
+}
+.våben button.valgt {
+  border-color: #7be6d3;
+  background: #2d555d;
+  box-shadow: 0 0 20px #45ddce22;
+}
+.våben span {
+  display: block;
+  font: 24px Georgia;
+  color: #ebc697;
+}
+.våben b {
+  font-size: 11px;
+  display: block;
+  margin: 4px 0;
+}
+.våben small {
+  font-size: 9px;
+  color: #a3bdc3;
+}
+.bundtip {
+  position: absolute;
+  bottom: 4px;
+  text-align: center;
+  width: 100%;
+  font-size: 10px;
+  color: #97b2bb;
+}
+#joystick {
+  position: absolute;
+  left: 25px;
+  bottom: 70px;
+  background: #c0e2d01a;
+  border: 1px solid #b0dedc5c;
+  border-radius: 50%;
+  width: 106px;
+  height: 106px;
+  display: none;
+}
+#pind {
+  position: absolute;
+  left: 31px;
+  top: 31px;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #79cabb70;
+  border: 1px solid #a5e1d7;
+}
+.touchhandling {
+  position: absolute;
+  right: 24px;
+  bottom: 70px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.touchhandling button {
+  padding: 12px 18px;
+  background: #284c59dc;
+  font: 12px system-ui;
+}
+#angrib {
+  border-color: #d0a070;
+  color: #efd3a3;
+}
+@media (pointer:coarse) {
+  #joystick {
+    display: block;
+  }
+  .bundtip {
+    display: none;
+  }
+  .våben {
+    bottom: 12px;
+  }
+  .våben button {
+    min-width: 65px;
+    padding: 7px 10px;
+  }
+  .våben small {
+    font-size: 8px;
+  }
+  .touchhandling {
+    bottom: 110px;
+  }
+  #prompt {
+    bottom: 190px;
+  }
+}
+@media (max-width:650px) {
+  header {
+    left: 12px;
+    right: 12px;
+    top: 12px;
+  }
+  header strong {
+    font-size: 10px;
+    letter-spacing: 2px;
+  }
+  .status {
+    top: 65px;
+    left: 12px;
+    width: 182px;
+    padding: 8px;
+  }
+  .status small {
+    display: none;
+  }
+  .opgave {
+    top: 157px;
+    left: 12px;
+    width: 182px;
+    padding: 10px;
+  }
+  .opgave h2 {
+    font-size: 16px;
+  }
+  .opgave p {
+    font-size: 10px;
+  }
+  #kort {
+    width: 108px;
+    height: 108px;
+    right: 12px;
+    top: 66px;
+  }
+  .våben button {
+    min-width: 65px;
+    padding: 7px 9px;
+  }
+  .våben small {
+    display: none;
+  }
+  .våben span {
+    font-size: 22px;
+  }
+  .touchhandling {
+    right: 14px;
+  }
+  .kort {
+    padding: 22px;
+  }
+  .forside {
+    margin: 9vw;
+  }
+  .forside > p {
+    font-size: 17px;
+  }
+}
+/* Betjeningsflader er store nok til fingre, også i smal portrait. */
+.kort {
+  touch-action: pan-y;
+}
+.topknapper button {
+  min-height: 40px;
+}
+.touchhandling button {
+  min-height: 48px;
+  min-width: 88px;
+}
+.våben button {
+  min-height: 65px;
+}
+@media (max-width:650px) {
+  header {
+    gap: 8px;
+  }
+  header > div:nth-child(2) {
+    max-width: 102px;
+  }
+  header strong {
+    display: block;
+    font-size: 9px;
+    letter-spacing: 1px;
+  }
+  header span {
+    font-size: 9px;
+  }
+  .topknapper {
+    gap: 4px;
+  }
+  .topknapper button {
+    width: 36px;
+    padding: 5px;
+  }
+  header > a {
+    width: 34px;
+    height: 36px;
+    flex-shrink: 0;
+  }
+  .status {
+    width: 172px;
+  }
+  .opgave {
+    width: 172px;
+  }
+  .våben {
+    gap: 5px;
+  }
+  .våben button {
+    min-width: 65px;
+  }
+}
+@media (max-height:500px) {
+  .status {
+    top: 61px;
+    padding: 7px 10px;
+  }
+  .opgave {
+    top: 153px;
+    padding: 9px 12px;
+    width: 210px;
+  }
+  .opgave h2 {
+    font-size: 16px;
+    margin: 5px 0;
+  }
+  .opgave p {
+    font-size: 10px;
+    margin: 4px 0;
+  }
+  .opgave b {
+    margin-top: 4px;
+  }
+  #kort {
+    width: 112px;
+    height: 112px;
+    top: 65px;
+  }
+  .våben {
+    bottom: 10px;
+  }
+  .bundtip {
+    display: none;
+  }
+  .touchhandling {
+    bottom: 84px;
+  }
+  #joystick {
+    bottom: 34px;
+  }
+  .opgave small {
+    font-size: 10px;
+  }
+  #prompt {
+    bottom: 86px;
+  }
+  .kort {
+    padding: 18px 26px;
+  }
+  .kort h2 {
+    font-size: 25px;
+    margin: 8px 0;
+  }
+  .forside h1 {
+    font-size: 52px;
+    margin: 18px 0;
+  }
+  .forside > p {
+    font-size: 15px;
+    line-height: 1.4;
+  }
+  .menuknapper {
+    margin: 15px 0;
+  }
+  .forside .lille {
+    margin: 9px 0;
+  }
+}
+/* Smalle skærme får fingerstyring også med en tilsluttet mus. */
+@media (max-width:700px) {
+  #joystick {
+    display: block;
+    bottom: 100px;
+  }
+  .touchhandling {
+    bottom: 112px;
+  }
+  .våben {
+    bottom: 12px;
+  }
+  .bundtip {
+    display: none;
+  }
+  #prompt {
+    bottom: 190px;
+    font-size: 11px;
+    padding: 9px 15px;
+  }
+  #besked {
+    top: auto;
+    bottom: 245px;
+    width: calc(100% - 32px);
+    max-width: 360px;
+    font-size: 12px;
+    padding: 11px;
+  }
+  .våben button {
+    min-height: 66px;
+  }
+}
+@media (max-height:500px) {
+  #joystick {
+    display: block;
+    bottom: 34px;
+  }
+  .touchhandling {
+    bottom: 88px;
+  }
+  #besked {
+    top: auto;
+    bottom: 117px;
+    max-width: 370px;
+    width: 42%;
+    font-size: 11px;
+    padding: 9px;
+  }
+  .våben {
+    bottom: 10px;
+  }
+  #prompt {
+    bottom: 85px;
+    max-width: 320px;
+    font-size: 11px;
+    padding: 8px 12px;
+  }
+}
+/* Telefoner i landscape: ét lavt værktøjsbånd og fri plads omkring fingerpinden. */
+@media (max-height:500px) and (max-width:1000px) {
+  #joystick {
+    display: block!important;
+    bottom: 22px;
+    width: 96px;
+    height: 96px;
+  }
+  #pind {
+    left: 26px;
+    top: 26px;
+  }
+  .våben {
+    bottom: 10px;
+    gap: 5px;
+  }
+  .våben button {
+    height: 50px;
+    min-height: 50px;
+    min-width: 62px;
+    padding: 4px 8px;
+    border-radius: 7px;
+  }
+  .våben span {
+    font-size: 18px;
+    line-height: 20px;
+  }
+  .våben b {
+    font-size: 9px;
+    line-height: 11px;
+    margin: 2px 0;
+  }
+  .våben small {
+    display: none;
+  }
+  .bundtip {
+    display: none;
+  }
+  .touchhandling {
+    bottom: 78px;
+    right: 14px;
+    gap: 7px;
+  }
+  .touchhandling button {
+    min-height: 44px;
+    padding: 9px 12px;
+    min-width: 80px;
+  }
+  .status {
+    top: 59px;
+    padding: 6px 10px;
+  }
+  .opgave {
+    top: 142px;
+    width: 210px;
+    padding: 8px 11px;
+  }
+  .opgave h2 {
+    font-size: 15px;
+    margin: 4px 0;
+  }
+  .opgave p {
+    font-size: 10px;
+    line-height: 1.35;
+    max-height: 27px;
+    overflow: hidden;
+  }
+  .opgave small {
+    font-size: 9px;
+  }
+  .opgave b {
+    display: none;
+  }
+  #prompt {
+    left: 56%;
+    bottom: 75px;
+    max-width: 250px;
+    font-size: 10px;
+    padding: 7px 12px;
+  }
+  #besked {
+    left: 63%;
+    top: auto;
+    bottom: 126px;
+    width: 280px;
+    max-width: calc(100vw - 300px);
+    font-size: 10px;
+    padding: 9px;
+  }
+  #kort {
+    width: 96px;
+    height: 96px;
+    top: 62px;
+    right: 14px;
+  }
+}
