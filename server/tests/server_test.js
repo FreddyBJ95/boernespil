@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { BroekraftServer, lokal, privat } from "../main.js";
 import { Verdenslager, metadata } from "../verdener.js";
 import { forbind } from "../../spil/broekraft/net.js";
+import { prøvOffentligeFiler, prøvPrivateFiler } from "./offentlige-filer.js";
 
 const vent = ms => new Promise(r => setTimeout(r, ms));
 function hændelse(f, type, vælg = () => true) {
@@ -69,6 +70,18 @@ Deno.test("Kontrolpanel: lokal adgang, origin, token, statiske filer og dobbelt 
     assert.equal((await post("/api/slet", { id: v.meta.id, bekræft: v.meta.id, bekræftIgen: "SLET" })).status, 200);
     assert.equal((await v.lager.liste()).length, 0);
     assert.ok((await Deno.stat(join(backup.mappe, "meta.json"))).isFile);
+  } finally { await v.luk(); }
+});
+
+// En tablet må hente alle nye billedtyper uden at få adgang til serverens filer.
+Deno.test("HTTP: Spilkassens billeder, appikoner og Sigtekorns modeller virker med GET og HEAD", async () => {
+  const v = await opsæt();
+  const hent = (sti, init) => v.app.håndter(new Request(v.base + sti, init), { remoteAddr: { hostname: "192.168.1.4" } });
+  try {
+    await prøvOffentligeFiler(hent, sti => Deno.readFile(new URL("../../" + sti.slice(1), import.meta.url)));
+    await prøvPrivateFiler(hent);
+    const post = await hent("/billeder/spilkassen/ordmaerke.webp", { method: "POST" }); await post.text();
+    assert.equal(post.status, 405, "Billedfiler skal kun kunne læses");
   } finally { await v.luk(); }
 });
 

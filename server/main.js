@@ -8,7 +8,13 @@ import { hentCertifikater, certifikatSvar } from "./certifikat.js";
 import { Netværkstjek } from "./netvaerk.js";
 
 const ROD = fileURLToPath(new URL("../", import.meta.url));
-const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".ico": "image/x-icon", ".webmanifest": "application/manifest+json", ".mp3": "audio/mpeg", ".woff2": "font/woff2" };
+// Logoer og spillets billeder og 3D-modeller får den filtype, browseren forventer.
+const MIME = {
+  ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
+  ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp",
+  ".ico": "image/x-icon", ".webmanifest": "application/manifest+json", ".mp3": "audio/mpeg", ".woff2": "font/woff2",
+  ".glb": "model/gltf-binary", ".bin": "application/octet-stream",
+};
 export const lokal = ip => ip === "127.0.0.1" || ip === "::1";
 export function privat(ip) {
   const tal = ip.split(".").map(Number);
@@ -249,7 +255,8 @@ export class BroekraftServer {
     else if (sti === "/test-klient.html" || sti === "/test-klient.js") relativ = `server${sti}`;
     else {
       if (sti.includes("\\") || sti.includes("\0") || sti.split("/").some(del => del.startsWith("."))) return new Response("Ikke fundet", { status: 404 });
-      if (!sti.startsWith("/spil/") && !/^\/(index\.html|style\.css|effekter\.js|manifest\.json|sw\.js|icon-(192|512)\.png)$/.test(sti)) return new Response("Ikke fundet", { status: 404 });
+      if (!sti.startsWith("/spil/") && !sti.startsWith("/billeder/") &&
+        !/^\/(index\.html|style\.css|effekter\.js|manifest\.json|sw\.js|icon-(192|512)\.png|favicon\.png|apple-touch-icon\.png|icon-maskable-512\.png)$/.test(sti)) return new Response("Ikke fundet", { status: 404 });
       relativ = sti.slice(1) + (sti.endsWith("/") ? "index.html" : "");
     }
     const fil = resolve(ROD, relativ);
