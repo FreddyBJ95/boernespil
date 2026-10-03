@@ -89,6 +89,12 @@ export function fald(pos) {
   støjStød(m, t, 0.22, "lowpass", 260, 0.8, 0.9, 0.2); tone(m, t, 95, 45, 0.16, "sine", 0.45);
   støjStød(m, t + 0.06, 0.14, "bandpass", 2400, 2, 0.12, 0.12);
 }
+// En løs del (en arm, et hoved, et våben) rammer jorden: et lille dump
+export function dunk(pos, styrke = 1) {
+  if (!ctx) return;
+  const t = ctx.currentTime, m = kæde(pos, 0.5 * styrke);
+  støjStød(m, t, 0.12, "lowpass", 420 + Math.random() * 300, 1, 0.8, 0.09); tone(m, t, 140 + Math.random() * 60, 60, 0.08, "sine", 0.3);
+}
 // Man ramte nogen: et lille "tik" — og et klart "ting" ved hovedskud
 export function ramt(hoved) {
   if (!ctx) return;

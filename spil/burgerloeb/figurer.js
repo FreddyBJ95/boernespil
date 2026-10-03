@@ -1,5 +1,6 @@
 // ===== Figurer til Burgerløbet: burgerens lag, den lille løbende burger og kæmpen for enden =====
 import * as THREE from "./three.js";
+import { hentGLB, smelt } from "../glb.js";
 
 // Lagene: h = hvor tykt laget er · emoji = billedet på portene
 export const LAG = {
@@ -14,6 +15,16 @@ export const LAG = {
   bacon: { h: 0.08, emoji: "🥓" },
   aeg:   { h: 0.13, emoji: "🥚" },
 };
+
+// ---------- Modellerne fra Blender (modeller/*.glb, lavet med blender/burger.py) ----------
+// Kan de ikke hentes, tegnes figurerne med simple former i stedet, ligesom før.
+export const MODELLER = {};
+export function hentModeller(navne, ventMaks = 8000) {
+  const alle = navne.map(n => hentGLB(new URL(`modeller/${n}.glb`, import.meta.url))
+    .then(m => { MODELLER[n] = smelt(m, navn => /^(hvide|kind)_/.test(navn)); })   // øjnenes hvide og kinderne skal kunne bevæge sig
+    .catch(() => {}));
+  return Promise.race([Promise.all(alle), new Promise(r => setTimeout(r, ventMaks))]);
+}
 
 // ---------- Små hjælpere ----------
 const gemt = {};
@@ -44,7 +55,9 @@ function knoldet(geo, styrke) {
 // ---------- Ét lag af burgeren. Bunden af laget er i y = 0 ----------
 export function lavLag(type) {
   const g = new THREE.Group();
-  switch (type) {
+  const model = MODELLER.lag && MODELLER.lag.getObjectByName(type);
+  if (model) g.add(model.clone());
+  else switch (type) {
     case "bund":
       g.add(mesh(engang("bund", () => lathe([[0, 0], [0.6, 0], [0.66, 0.06], [0.68, 0.18], [0.64, 0.3], [0.56, 0.34], [0, 0.34]])), M("bolle")));
       g.add(mesh(engang("snit", () => new THREE.CylinderGeometry(0.57, 0.57, 0.02, 32)), M("snit"), 0, 0.335));
@@ -139,6 +152,7 @@ export function lavLag(type) {
 
 // ---------- Løberen: en bundbolle med to små ben og røde sko ----------
 export function lavLøber() {
+  if (MODELLER.loeber) return løberFraModel();
   const g = new THREE.Group();
   const bund = lavLag("bund");
   bund.position.y = 0.42;
@@ -160,6 +174,19 @@ export function lavLøber() {
   stak.position.y = 0.42 + LAG.bund.h;
   g.add(stak);
   // en blød skygge under løberen
+  const skygge = mesh(engang("skygge", () => new THREE.CircleGeometry(0.75, 24)),
+    engang("skyggeMat", () => new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22, depthWrite: false })), 0, 0.02, 0);
+  skygge.rotation.x = -Math.PI / 2;
+  g.add(skygge);
+  return { gruppe: g, ben, stak, bund, skygge };
+}
+// Den samme løber, men fra Blender: bollen og benene er led i modellen
+function løberFraModel() {
+  const g = MODELLER.loeber.clone();
+  const ben = [g.getObjectByName("ben_v"), g.getObjectByName("ben_h")], bund = g.getObjectByName("bund");
+  const stak = new THREE.Group();
+  stak.position.y = 0.42 + LAG.bund.h;
+  g.add(stak);
   const skygge = mesh(engang("skygge", () => new THREE.CircleGeometry(0.75, 24)),
     engang("skyggeMat", () => new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22, depthWrite: false })), 0, 0.02, 0);
   skygge.rotation.x = -Math.PI / 2;

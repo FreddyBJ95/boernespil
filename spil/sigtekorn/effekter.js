@@ -22,6 +22,7 @@ export class Effekter {
     // støv (bløde skyer) og gnister (små og lysende)
     this.støv = lavPartikler(scene, STØV, t.røg, 0.42, THREE.NormalBlending, 0.75);
     this.gnist = lavPartikler(scene, GNIST, t.røg, 0.07, THREE.AdditiveBlending, 1);
+    this.blodSky = lavPartikler(scene, 300, t.røg, 0.13, THREE.NormalBlending, 0.85);
     // lysspor efter kuglerne
     const sporMat = new THREE.LineBasicMaterial({ color: 0xffd98a, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
     this.spor = Array.from({ length: SPOR }, () => {
@@ -44,7 +45,7 @@ export class Effekter {
   // Blod: en lille rød sky, en plet på muren bag den, der blev ramt (hvis den er tæt på), og nogle gange dråber på jorden
   blod(p, r, verden, mængde = 1) {
     const ca = new THREE.Color(FARVE.krop[0]), cb = new THREE.Color(FARVE.krop[1]);
-    for (let i = 0; i < 5 * mængde; i++) sendUd(this.støv, p, [r.x * 0.8, r.y * 0.8, r.z * 0.8], ca.clone().lerp(cb, Math.random()), 1 + Math.random() * 1.6, 0.25 + Math.random() * 0.3, -4, 1.4);
+    for (let i = 0; i < 12 * mængde; i++) sendUd(this.blodSky, p, [r.x * 0.8, r.y * 0.8, r.z * 0.8], ca.clone().lerp(cb, Math.random()), 1 + Math.random() * 1.6, 0.25 + Math.random() * 0.3, -4, 1.4);
     const fra = p.clone().addScaledVector(r, 0.3), væg = verden.stråle(fra, r, 2.4);
     if (væg) this.plet(fra.addScaledVector(r, væg.t), væg.normal, (0.35 + Math.random() * 0.35) * Math.min(1.3, mængde) * (1 - væg.t / 4));
     if (Math.random() < 0.55) { const g = verden.stråle(p, NED, 2.2); if (g) this.plet(p.clone().addScaledVector(NED, g.t), g.normal, 0.18 + Math.random() * 0.22); }
@@ -75,7 +76,7 @@ export class Effekter {
   }
   mundingslys(p) { this.lys.position.copy(p); this.lys.intensity = 3.5; this.lysTid = 0.045; }
   opdater(dt) {
-    opdaterPartikler(this.støv, dt); opdaterPartikler(this.gnist, dt);
+    opdaterPartikler(this.støv, dt); opdaterPartikler(this.gnist, dt); opdaterPartikler(this.blodSky, dt);
     for (const s of this.spor) {
       if (!s.l.visible) continue;
       s.t += dt;

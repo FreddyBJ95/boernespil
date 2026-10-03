@@ -49,7 +49,7 @@ export async function prøvOffentligeFiler(hent, læsKilde) {
   for (const [sti, mime] of billeder) await prøv(sti, mime);
 
   // Sigtekorn henter både soldaten, våbnene, teksturerne og det bagte lys lokalt.
-  for (const navn of ["soldat", "gevaer", "pistol", "snig", "kniv"]) {
+  for (const navn of ["leddeloes", "gevaer", "pistol", "snig", "kniv"]) {
     await prøv(`/spil/sigtekorn/modeller/${navn}.glb`, "model/gltf-binary");
   }
   const fotos = JSON.parse(new TextDecoder().decode(await prøv("/spil/sigtekorn/teksturer/teksturer.json", "application/json")));

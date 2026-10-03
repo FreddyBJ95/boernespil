@@ -3,9 +3,9 @@
 // Kagerrullerne slår de øverste lag af. Ved portene vælger man venstre eller højre.
 // Stjerner låser hatte op. Trampoliner sender burgeren op i luften, 🧲 trækker ting til sig, 🛡️ beskytter.
 import * as THREE from "./three.js";
-import { lavLag, lavLøber, LAG, lavHat, HATTE, lavSkjold, emojiSprite } from "./figurer.js";
+import { lavLag, lavLøber, LAG, lavHat, HATTE, lavSkjold, emojiSprite, hentModeller } from "./figurer.js";
 import { byggBane, BREDDE, LUFT } from "./bane.js";
-import { KÆMPE_EMOJI } from "./kaemper.js";
+import { KÆMPE_EMOJI, KÆMPER } from "./kaemper.js";
 import * as Lyd from "./lyd.js";
 
 const $ = id => document.getElementById(id);
@@ -493,8 +493,12 @@ $("næsteKnap").addEventListener("click", () => { niveau++; nyBane(); start(); }
 $("igenKnap").addEventListener("click", () => { nyBane(); start(); });
 $("hjemKnap").addEventListener("click", () => { niveau++; nyBane(); });   // næste bane, men først startkortet med hattene
 
-nyBane();
-requestAnimationFrame(loop);
+// Hent modellerne fra Blender (burgeren og denne banes kæmpe), og byg så banen. De andre kæmper hentes bagefter.
+hentModeller(["lag", "loeber", KÆMPER[(niveau - 1) % KÆMPER.length]]).then(() => {
+  nyBane();
+  requestAnimationFrame(loop);
+  hentModeller(KÆMPER);
+});
 if (location.search.includes("debug")) window.bl = { get tilstand() { return tilstand; }, get pz() { return pz; }, set pz(v) { pz = v; }, get lag() { return lag; },
   get bane() { return bane; }, get antal() { return antalSamlet; }, get stjerner() { return stjRun; }, set målX(v) { målX = v; }, set pause(v) { pauset = v; }, set skjold(v) { harSkjold = v; },
   get løber() { return løber; }, start, scene, kamera, renderer,

@@ -17,9 +17,9 @@ export const FYSIK = {
   hop: 301.993 * U,         // hoppets fart opad
   luftLoft: 30 * U,         // så meget kan man ændre farten pr. tick i luften (air strafe)
   trin: 18 * U,             // så højt et trin kan man gå op ad
-  gå: 0.52, duk: 0.34,      // fart, når man går eller dukker sig
+  gå: 0.52, duk: 0.34, kravl: 0.26,      // fart, når man går eller dukker sig
 };
-export const KROP = { b: 16 * U, høj: 72 * U, dukHøj: 54 * U, øje: 64 * U, dukØje: 46 * U };
+export const KROP = { b: 16 * U, høj: 72 * U, dukHøj: 54 * U, øje: 64 * U, dukØje: 46 * U, kravlHøj: 0.5, kravlØje: 0.36 };
 export const TICK = 1 / 128;
 
 // En aktør er en spiller eller en bot: fødderne, farten, hvor den kigger hen, og om den dukker sig
@@ -29,32 +29,34 @@ export function nyAktør(x, y, z, yaw = 0) {
 }
 
 // Øjets højde over fødderne (glider, mens man dukker sig)
-export const øjeHøjde = a => KROP.øje - (KROP.øje - KROP.dukØje) * a.duk;
+export const øjeHøjde = a => a.kravl ? KROP.kravlØje : KROP.øje - (KROP.øje - KROP.dukØje) * a.duk;
 
 // Ét tick. ind = { frem, side: -1..1, hop, gå, duk } · maxFart: våbnets fart (m/s) · verden: Kasseverden
 export function bevæg(a, ind, dt, verden, maxFart) {
   a.forrige.copy(a.pos);
   // dukke sig og rejse sig igen. På jorden rejser man sig opad (kun hvis der er plads over hovedet).
   // I luften trækker man benene op, mens hovedet bliver, hvor det er — så kommer man højere op (crouch-jump som i CS)
+  // Mangler man et ben, kravler man: lavt, langsomt og uden at kunne hoppe
   const førH = a.h;
-  if (ind.duk) a.duk = Math.min(1, a.duk + dt / 0.2);
+  if (a.kravl) a.duk = 1;
+  else if (ind.duk) a.duk = Math.min(1, a.duk + dt / 0.2);
   else if (a.duk > 0) {
     const ny = Math.max(0, a.duk - dt / 0.2), nyH = KROP.høj - (KROP.høj - KROP.dukHøj) * ny;
     if (a.jord ? verden.fri(a.pos.x, a.pos.y, a.pos.z, a.b, KROP.høj) : verden.fri(a.pos.x, a.pos.y - (nyH - førH), a.pos.z, a.b, nyH)) a.duk = ny;
   }
-  a.h = KROP.høj - (KROP.høj - KROP.dukHøj) * a.duk;
-  if (!a.jord && a.h !== førH) { a.pos.y += førH - a.h; a.forrige.y += førH - a.h; }
+  a.h = a.kravl ? KROP.kravlHøj : KROP.høj - (KROP.høj - KROP.dukHøj) * a.duk;
+  if (!a.jord && !a.kravl && a.h !== førH) { a.pos.y += førH - a.h; a.forrige.y += førH - a.h; }
 
   // den vej, man gerne vil (frem/tilbage og til siden ud fra, hvor man kigger)
   const fx = -Math.sin(a.yaw), fz = -Math.cos(a.yaw), hx = Math.cos(a.yaw), hz = -Math.sin(a.yaw);
   let ønskX = fx * ind.frem + hx * ind.side, ønskZ = fz * ind.frem + hz * ind.side;
   const l = Math.hypot(ønskX, ønskZ);
   if (l > 1e-6) { ønskX /= l; ønskZ /= l; }
-  const ønsketFart = l > 1e-6 ? maxFart * (ind.gå ? FYSIK.gå : 1) * (a.duk > 0.5 ? FYSIK.duk : 1) : 0;
+  const ønsketFart = l > 1e-6 ? maxFart * (a.kravl ? FYSIK.kravl : (ind.gå ? FYSIK.gå : 1) * (a.duk > 0.5 ? FYSIK.duk : 1)) : 0;
 
   // hop (kun et nyt tryk — men på samme tick som man lander, så friktionen ikke når at bremse: bunny hop)
   let hoppede = false;
-  if (a.jord && ind.hop && a.hopKlar) { a.vel.y = FYSIK.hop; a.jord = false; a.hopKlar = false; hoppede = true; }
+  if (a.jord && ind.hop && a.hopKlar && !a.kravl) { a.vel.y = FYSIK.hop; a.jord = false; a.hopKlar = false; hoppede = true; }
   if (!ind.hop) a.hopKlar = true;
 
   if (a.jord) {
