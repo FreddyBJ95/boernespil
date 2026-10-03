@@ -74,6 +74,7 @@
   @keyframes fade { to { opacity: 0; } }
   #rødKant { position: absolute; inset: 0; background: radial-gradient(circle, transparent 55%, rgba(200, 20, 10, 0.45)); opacity: 0; }
   #rødKant.vis { animation: rød 0.6s forwards; } @keyframes rød { 0% { opacity: 1; } 100% { opacity: 0; } }
+  #prik { position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: #ff2a2a; box-shadow: 0 0 5px 1px rgba(255, 40, 40, 0.75); }
   #kikkert { position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, transparent 0, transparent calc(44vh - 1px), #000 44vh); }
   #kikkert::before, #kikkert::after { content: ""; position: absolute; background: #000; }
   #kikkert::before { left: 0; right: 0; top: 50%; height: 1px; } #kikkert::after { top: 0; bottom: 0; left: 50%; width: 1px; }
@@ -126,6 +127,7 @@
 <div id="hud" class="skjult">
   <div id="rødKant"></div>
   <div id="kikkert" class="skjult"></div>
+  <div id="prik" class="skjult"></div>
   <div id="sigte"><i class="t"></i><i class="b"></i><i class="v"></i><i class="h"></i></div>
   <div id="ramt"></div>
   <div id="skadeRetning"></div>

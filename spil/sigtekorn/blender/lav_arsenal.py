@@ -67,6 +67,23 @@ def ring(navn, c, R, r, mat, drej=(0, math.pi / 2, 0)):
     return o
 
 
+def hult_rør(navn, a, b, r, tyk, mat, seg=28):
+    """Et rør uden låg, man kan kigge igennem (rødpunktsigtet): væggen er tyk tyk og går indad"""
+    a, b = Vector(a), Vector(b)
+    bm = bmesh.new()
+    bmesh.ops.create_cone(bm, cap_ends=False, segments=seg, radius1=r, radius2=r, depth=(b - a).length)
+    rot = (b - a).normalized().to_track_quat("Z", "Y").to_matrix().to_4x4()
+    bmesh.ops.transform(bm, matrix=Matrix.Translation((a + b) / 2) @ rot, verts=bm.verts)
+    o = _obj(navn, bm, mat)
+    v = o.modifiers.new("væg", "SOLIDIFY"); v.thickness = tyk; v.offset = -1; v.use_even_offset = True
+    for p in o.data.polygons: p.use_smooth = True
+    return o
+
+
+# Hvor øjet er, når man sigter ned over våbnet: bag sigtet på sigtelinjen (kun de våben, der har "sigte" i katalog.js)
+ØJE = {"kamp": (0, -0.01, 0.087), "jagt": (0, 0.1, 0.048), "armbroest": (0, -0.1, 0.073)}
+
+
 def kurve_klinge(navn, punkter, tyk, mat):
     """En klinge set fra siden (punkter i (y, z)), trukket ud i tykkelsen"""
     bm = bmesh.new()
@@ -115,8 +132,8 @@ def kamp(M):
           kasse("magasin", -0.016, 0.04, -0.17, 0.016, 0.11, -0.05, M["POLY"], 0.004), greb("greb", 0, -0.01, -0.05, M["POLY"]),
           kasse("skæfte", -0.022, -0.3, -0.065, 0.022, -0.05, 0.03, TAN, 0.009), kasse("kindstøtte", -0.018, -0.24, 0.03, 0.018, -0.1, 0.05, TAN, 0.006),
           kasse("kolbe", -0.024, -0.315, -0.07, 0.024, -0.295, 0.035, M["GUMMI"], 0.004),
-          rør("sigte", (0, 0.03, 0.085), (0, 0.17, 0.085), 0.02, M["POLY"], 20, 0.003), rør("sigteglas", (0, 0.168, 0.085), (0, 0.172, 0.085), 0.017, M["GLAS"], 20, 0.0005),
-          kasse("sigtefod", -0.012, 0.06, 0.049, 0.012, 0.14, 0.066, M["POLY"], 0.003)]
+          hult_rør("sigte", (0, 0.1, 0.087), (0, 0.155, 0.087), 0.025, 0.0035, M["POLY"]), ring("sigtekant", (0, 0.1, 0.087), 0.0235, 0.0022, M["POLY"], (math.pi / 2, 0, 0)),
+          kasse("sigtefod", -0.012, 0.105, 0.049, 0.012, 0.15, 0.063, M["POLY"], 0.003)]
     d += bøjle("bøjle", 0.005, 0.07, -0.05, M["POLY"])
     return d, hænder((0, -0.015, -0.09), (0, 0.27, -0.035), ærme(0, -0.015, -0.09)), (0, 0.67, 0.015), (0, 0.27, -0.025)
 
@@ -172,7 +189,8 @@ def jagt(M):
          kasse("kolbeplade", -0.022, -0.372, -0.135, 0.022, -0.36, 0.022, M["LYS"], 0.003),
          rør("modtager", (0, -0.05, 0.022), (0, 0.15, 0.022), 0.017, M["STÅL"], 20), rør("pibe", (0, 0.15, 0.022), (0, 0.79, 0.022), 0.011, M["STÅL"], 16, 0.0015, 0.009),
          rør("bolt", (0.017, 0.0, 0.027), (0.052, -0.012, 0.004), 0.004, M["LYS"], 10), kugle("boltknop", (0.055, -0.013, 0.002), 0.01, M["LYS"]),
-         kasse("korn", -0.002, 0.76, 0.03, 0.002, 0.77, 0.048, M["STÅL"], 0.0006), kasse("bagsigte", -0.008, 0.25, 0.03, 0.008, 0.26, 0.044, M["STÅL"], 0.001)]
+         kasse("korn", -0.002, 0.76, 0.03, 0.002, 0.77, 0.048, M["STÅL"], 0.0006), kasse("bagsigteV", -0.009, 0.25, 0.03, -0.0025, 0.26, 0.05, M["STÅL"], 0.0008), kasse("bagsigteH", 0.0025, 0.25, 0.03, 0.009, 0.26, 0.05, M["STÅL"], 0.0008),
+         kasse("bagsigteFod", -0.009, 0.25, 0.03, 0.009, 0.26, 0.042, M["STÅL"], 0.0008)]
     d += bøjle("bøjle", -0.02, 0.06, -0.035, M["STÅL"])
     return d, hænder((0, -0.075, -0.045), (0, 0.3, -0.035), ærme(0, -0.075, -0.045)), (0, 0.8, 0.022), (0, 0.3, -0.025)
 
@@ -234,7 +252,7 @@ def armbrøst(M):
     d = [løft("skæfte", [firkant(y, -w, w, zb, zt) for (y, w, zb, zt) in [(-0.3, 0.02, -0.09, 0.02), (-0.12, 0.018, -0.05, 0.02), (0.05, 0.016, -0.03, 0.02), (0.36, 0.015, -0.02, 0.018)]], M["TRÆ"], 0.008),
          greb("greb", 0, -0.01, -0.03, M["POLY"]), rør("pil", (0, 0.05, 0.025), (0, 0.42, 0.025), 0.004, M["TRÆ"], 8),
          rør("pilespids", (0, 0.42, 0.025), (0, 0.45, 0.025), 0.007, M["LYS"], 8, 0.0005, 0.001), kasse("stigbøjle", -0.03, 0.4, -0.03, 0.03, 0.41, 0.02, M["STÅL"], 0.003),
-         rør("kikkert", (0, -0.06, 0.07), (0, 0.12, 0.07), 0.014, M["POLY"], 18), kasse("kikkertfod", -0.008, -0.02, 0.02, 0.008, 0.08, 0.058, M["POLY"], 0.002)]
+         hult_rør("kikkert", (0, 0.0, 0.073), (0, 0.05, 0.073), 0.022, 0.003, M["POLY"]), kasse("kikkertfod", -0.008, 0.005, 0.02, 0.008, 0.045, 0.052, M["POLY"], 0.002)]
     for s in (-1, 1):
         d += [rør(f"bue{s}a", (0, 0.35, 0.012), (s * 0.14, 0.335, 0.012), 0.012, M["POLY"], 12, 0.002, 0.01),
               rør(f"bue{s}b", (s * 0.14, 0.335, 0.012), (s * 0.27, 0.29, 0.012), 0.01, M["POLY"], 12, 0.002, 0.007),
@@ -307,5 +325,5 @@ for navn in valgt:
     nulstil()
     M = sæt()
     dele, hd, munding, forgreb = BYG[navn](M)
-    gem(navn, dele, hd, munding, forgreb)
+    gem(navn, dele, hd, munding, forgreb, øje=ØJE.get(navn))
     prøvebillede(f"{navn}.png", (0.55, -0.35, 0.22), (0, 0.15, -0.02), (480, 300))

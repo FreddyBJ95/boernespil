@@ -10,7 +10,7 @@ export class Hud {
     this.ramtTid = 0; this.skader = []; this.drab = [];
     this.el = { sigte: $("sigte"), ramt: $("ramt"), liv: $("livTal"), panser: $("panserTal"), ammo: $("ammoTal"), reserve: $("ammoReserve"), våben: $("våbenNavn"),
       holdA: $("holdA"), holdB: $("holdB"), ur: $("ur"), drab: $("drab"), retning: $("skadeRetning"), besked: $("besked"), tavle: $("tavle"), død: $("død"),
-      kikkert: $("kikkert"), fart: $("fart"), rød: $("rødKant"), granater: $("granatBoks"), blænd: $("blænd") };
+      kikkert: $("kikkert"), prik: $("prik"), fart: $("fart"), rød: $("rødKant"), granater: $("granatBoks"), blænd: $("blænd") };
     this.blændStyrke = 0; this.blændTid = 0; this.granatTekst = "";
   }
   // Sigtekornet: afstanden mellem stregerne vokser med unøjagtigheden (u i radianer), så man kan se, hvornår man rammer
@@ -66,6 +66,7 @@ export class Hud {
   // Blændet: skærmen bliver hvid og falmer langsomt (styrke 0..1)
   blænd(styrke) { this.blændStyrke = Math.max(this.blændStyrke, styrke); this.blændTid = 0.6 + 3.4 * styrke; this.blændStart = this.blændTid; }
   kikkert(til) { this.el.kikkert.classList.toggle("skjult", !til); }
+  prik(til) { this.el.prik.classList.toggle("skjult", !til); }       // rødpunktet midt i rødpunktsigtet
   fart(v) { this.el.fart.textContent = v == null ? "" : `${Math.round(v / 0.0254)} u/s`; }
   // Pointtavlen (hold Tab): navn, drab, dødsfald og hovedskud
   tavle(vis, kampfolk, holdNavne) {

@@ -36,12 +36,14 @@ def punkt(navn, sted):
     return m
 
 
-def gem(navn, dele, hd, munding, forgreb=None, str_=1024):
+def gem(navn, dele, hd, munding, forgreb=None, str_=1024, øje=None):
     """Saml våbnet, bag dets materialer og gem det sammen med hænderne og punkterne som modeller/<navn>.glb.
-    Punkterne: munding (glimtet), greb (højre hånd) og forgreb (venstre hånd) — botterne holder våbnet i dem"""
+    Punkterne: munding (glimtet), greb (højre hånd) og forgreb (venstre hånd) — botterne holder våbnet i dem.
+    øje: hvor øjet er, når man sigter ned over våbnet (spillet lægger det punkt midt foran kameraet)"""
     v = saml(navn, dele); bag(v, navn, str_)
     ting = [v, hd, punkt("munding", munding)]
     if hd and "greb" in hd: ting.append(punkt("greb", tuple(hd["greb"])))
     if forgreb: ting.append(punkt("forgreb", forgreb))
+    if øje: ting.append(punkt("oeje", øje))
     eksportér([o for o in ting if o], f"{navn}.glb")
     return v

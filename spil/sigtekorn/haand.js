@@ -103,7 +103,7 @@ const BYG = { gevær: stormgevær, snig: snigskytte, pistol, kniv, granat, ingen
 const GLB_PLADS = { gevær: [0.15, -0.18, -0.4], snig: [0.15, -0.19, -0.42], pistol: [0.085, -0.1, -0.44], kniv: [0.16, -0.16, -0.36], granat: [0.17, -0.17, -0.38], ingen: [0, 0, 0] };
 const GLB_DREJ = { gevær: [0, 0.07, -0.05], snig: [0, 0.06, -0.04], pistol: [0.02, 0.06, -0.04], kniv: [0.35, 0.2, -0.35], granat: [0, 0, 0] };   // lidt skråt, så man ser våbnets højre side
 const PLADS = { gevær: [0.2, -0.22, -0.52], snig: [0.19, -0.2, -0.5], pistol: [0.17, -0.18, -0.42], kniv: [0.2, -0.19, -0.38], granat: [0.18, -0.2, -0.4], ingen: [0, 0, 0] };
-const SIGTE = [0, -0.083, -0.3];                                    // våbnet midt foran øjet, når man sigter (kampgevær, jagtgevær, armbrøst)
+const SIGTE = [0, -0.083, -0.3];                                    // våbnet midt foran øjet, når man sigter (hvis modellen ikke har punktet "oeje")
 const SPARK = { snig: 1.6, pistol: 0.8, hagl: 1.8, tung: 0.6, special: 0.9 };
 // Grebet i klassens første model (stormgeværet, snigskytten, pistolen, kniven): de andre modeller flyttes, så deres
 // greb (punktet "greb" i filen) sidder samme sted — så ligger alle våben ens i hånden
@@ -142,6 +142,8 @@ export class Hånd {
       ny.traverse(o => { if (o.isMesh) { o.material.envMapIntensity = 0.7; o.frustumCulled = false; } });
       m.holder.clear(); m.holder.add(ny);
       m.g = ny; m.g.userData.munding = mund ? mund.position.clone() : new THREE.Vector3(0, 0, -0.7);
+      const øje = ny.getObjectByName("oeje");                       // når man sigter, lægges dette punkt lige foran kameraet
+      m.sigte = øje ? øje.position.clone().add(ny.position).negate().toArray() : null;
       m.glb = true;
     }).catch(fejl => console.warn("Kunne ikke hente modellen til", id, fejl));
   }
@@ -177,7 +179,7 @@ export class Hånd {
     const id = this.aktiv; if (!id) return;
     const m = this.modeller[id], k = m.klasse, p0 = (m.glb && GLB_PLADS[k]) || PLADS[k];
     this.sigte += ((s.sigte ? 1 : 0) - this.sigte) * Math.min(1, dt * 12);
-    const p = p0.map((v, i) => v + (SIGTE[i] - v) * this.sigte);
+    const mål = m.sigte || SIGTE, p = p0.map((v, i) => v + (mål[i] - v) * this.sigte);
     this.træk = Math.max(0, this.træk - dt / (this.trækTid || 0.5));
     this.spark *= Math.exp(-dt * 16);
     this.hug = Math.max(0, this.hug - dt * 3.2);
