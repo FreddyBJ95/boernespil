@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { BroekraftServer } from "../main.js";
-import { Verdenslager, metadata } from "../verdener.js";
+import { Verdenslager, metadata, UDGAVE } from "../verdener.js";
 import { forbind } from "../../spil/broekraft/net.js";
 import { MIDT } from "../../spil/broekraft/uendelig.js";
 import { ID } from "../../spil/broekraft/blokke.js";
@@ -35,7 +35,7 @@ Deno.test("Uendelig HTTP/WS: opret uden fuld fil, to spillere, fjern klump og ge
     assert.equal(app.rum.get(id).data.søjler.size, 0);
     await assert.rejects(Deno.stat(lager.mappe(id) + "/data.bin.gz"), Deno.errors.NotFound);
     const status = await (await fetch(base + "/api/status")).json();
-    assert.equal(status.verdener[0].uendelig, true); assert.equal(status.version, "0.5.0");
+    assert.equal(status.verdener[0].uendelig, true); assert.equal(status.version, UDGAVE);
     const valg = await fetch(base + "/kontrol/verdensvalg.js"); assert.equal(valg.status, 200); await valg.text();
     const url = base.replace("http", "ws") + "/ws";
     for (const figur of ["gris", "ko"]) {
