@@ -95,7 +95,7 @@ export class Bot {
   spawn() {
     this.fig?.nulstil();
     for (const o of this.model.children) if (o.isSprite) o.visible = true;
-    const start = this.s.bane.start[this.hold], [x, z] = start[Math.floor(Math.random() * start.length)];
+    const start = this.s.bane.start[this.hold], [x, z] = this.s.spawnSted?.(this) || start[Math.floor(Math.random() * start.length)];
     this.a = nyAktør(x + (Math.random() - 0.5) * 2, 0.01, z + (Math.random() - 0.5) * 2, this.hold === "ræve" ? 0 : Math.PI);
     this.liv = 100; this.panser = 100; this.død = false; this.dødTid = 0;
     const sv = this.s.sværhed(); this.sv = sv;
@@ -145,6 +145,7 @@ export class Bot {
   tick(dt) {
     const nu = this.s.nu();
     if (this.død) { this.fald = Math.min(1, this.fald + dt * 2.5); return; }
+    if (this.s.træning?.()) return this.mål_(dt, nu);
     if (this.våben) opdaterVåben(this.våben, dt);
     if ((this.tænkTid -= dt) <= 0) { this.tænkTid = 0.1; this.tænk(nu); }
     let frem = 0, side = 0, duk = false, hop = false, gå = false, trykker = false;
@@ -199,6 +200,16 @@ export class Bot {
     // fodtrin, som de andre kan høre
     const fart = Math.hypot(this.a.vel.x, this.a.vel.z);
     if (this.a.jord && !this.a.kravl && fart > maks * 0.6 && (this.trinTid -= dt * fart) <= 0) { this.trinTid = 1.9; this.s.trin(this); }
+  }
+  // Træning: botten er et mål. Den kigger på spilleren og skyder ikke — men bevæger sig, alt efter sværheden:
+  // let står stille, normal går fra side til side, svær dukker sig også, og ekspert er hurtig og hopper
+  mål_(dt, nu) {
+    const s = this.s.kampfolk().find(k => k.erSpiller), sv = this.s.sværhed();
+    if (s) this.drejMod(Math.atan2(-(s.a.pos.x - this.a.pos.x), -(s.a.pos.z - this.a.pos.z)), 0, dt);
+    const niveau = { let: 0, normal: 1, svær: 2, ekspert: 3 }[Object.keys(SVÆRHED).find(k => SVÆRHED[k] === sv)] ?? 1;
+    if ((this.strafeTid -= dt) <= 0) { this.strafeTid = 0.5 + Math.random() * (1.4 - niveau * 0.3); this.strafe = Math.random() < 0.5 ? -1 : 1; this.dukker = niveau >= 2 && Math.random() < 0.3; }
+    const side = niveau ? this.strafe : 0, hop = niveau === 3 && Math.random() < dt * 0.4;
+    bevæg(this.a, { frem: 0, side, hop, gå: niveau === 1, duk: this.dukker }, dt, this.s.verden, niveau === 3 ? 6.2 : 5);
   }
   drejMod(yaw, pitch, dt) {
     const d = vinkel(yaw - this.a.yaw), maks = this.sv.drej * dt;

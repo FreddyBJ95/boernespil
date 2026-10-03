@@ -97,5 +97,7 @@ export function gemStatistik(s) { try { localStorage.setItem(STAT, JSON.stringif
 export function statistikTekst(s) {
   if (!s.drab && !s.død) return "Ingen kampe endnu — held og lykke!";
   const kd = s.død ? (s.drab / s.død).toFixed(2) : s.drab, hs = s.drab ? Math.round(100 * s.hoved / s.drab) : 0, ram = s.skud ? Math.round(100 * s.træf / s.skud) : 0;
-  return `${s.drab} drab · ${s.død} gange død · K/D ${kd} · ${hs} % hovedskud · ${ram} % træffere · bedste stime ${s.bedsteStime}`;
+  const træning = Object.entries(s.træning || {}).map(([k, t]) => `${k} ${t.toFixed(1).replace(".", ",")} s`).join(", ");   // rekorderne i træning
+  return `${s.drab} drab · ${s.død} gange død · K/D ${kd} · ${hs} % hovedskud · ${ram} % træffere · bedste stime ${s.bedsteStime}` +
+    (træning ? ` · træning: ${træning}` : "");
 }
