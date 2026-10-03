@@ -8,6 +8,36 @@ import { nyAktør, bevæg, øjeHøjde, KROP, U } from "./bevaegelse.js";
 import { nytVåben, affyr, efterSkud, opdaterVåben, skudRetning, genlad, VÅBEN } from "./vaaben.js";
 import { findVej, nærmesteKnude, STEDER, START } from "./bane.js";
 import { ramKasse } from "./verden.js";
+import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
+import { clone as klonSkelet } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/utils/SkeletonUtils.js";
+
+// ---------- Soldaten fra Blender (blender/lav_soldat.py): krop, udstyr, skelet og animationer ----------
+let soldat = null;
+export function hentSoldat() {
+  return new Promise(klar => new GLTFLoader().load("modeller/soldat.glb", g => { soldat = g; klar(true); }, undefined, e => { console.warn("Ingen soldat-model", e); klar(false); }));
+}
+const HOLDFARVER = {
+  ræve: { uniform: 0xb89b6e, vest: 0x7e6644, kasket: 0xc8b08a, tørklæde: 0x9a3a2a, vis: ["kasket", "tørklæde"], skjul: ["hjelm", "briller"] },
+  slanger: { uniform: 0x5b6a3e, vest: 0x363d26, hjelm: 0x4a5530, vis: ["hjelm", "briller"], skjul: ["kasket", "tørklæde"] },
+};
+function byggSoldatGLB(hold) {
+  const f = HOLDFARVER[hold], g = new THREE.Group(), krop = klonSkelet(soldat.scene);
+  krop.traverse(o => {
+    if (o.isMesh) {
+      o.castShadow = true; o.frustumCulled = false;
+      o.material = o.material.clone();
+      if (f[o.material.name] !== undefined) o.material.color.set(f[o.material.name]);
+    }
+  });
+  for (const n of f.skjul) { const o = krop.getObjectByName(n); if (o) o.visible = false; }
+  g.add(krop);
+  const mixer = new THREE.AnimationMixer(krop), handlinger = {};
+  for (const c of soldat.animations) handlinger[c.name] = mixer.clipAction(c);
+  if (handlinger.død) { handlinger.død.setLoop(THREE.LoopOnce, 1); handlinger.død.clampWhenFinished = true; }
+  g.userData = { glb: true, mixer, handlinger, bryst: krop.getObjectByName("bryst"), nu: null };
+  return g;
+}
+const qPitch = new THREE.Quaternion(), xAkse = new THREE.Vector3(1, 0, 0);
 
 const G = Math.PI / 180;
 export const NAVNE = ["Grus", "Kaktus", "Sandorm", "Gekko", "Skorpion", "Mirage", "Kamel", "Sahara", "Oase", "Klit", "Støvsky", "Ørkenvind", "Palme", "Fata Morgana"];
@@ -70,7 +100,7 @@ export class Bot {
   // s: { scene, verden, knuder, kampfolk(), skyd(skytte, o, r), lyd, nu(), sværhed }
   constructor(s, hold, navn) {
     this.s = s; this.hold = hold; this.navn = navn; this.erSpiller = false;
-    this.model = byggSoldat(hold); s.scene.add(this.model);
+    this.model = soldat ? byggSoldatGLB(hold) : byggSoldat(hold); s.scene.add(this.model);
     this.drab = 0; this.dødsfald = 0; this.hoveder = 0;
     this.spawn();
   }
@@ -236,6 +266,7 @@ export class Bot {
     this.model.position.lerpVectors(a.forrige, a.pos, alfa);
     this.model.rotation.y = a.yaw;
     const fart = Math.hypot(a.vel.x, a.vel.z);
+    if (u.glb) { this.tegnGLB(u, fart, dt); return; }
     this.fase += dt * fart * 2.4;
     const sving = Math.sin(this.fase) * Math.min(1, fart / 4) * 0.7;
     u.ben[0].rotation.x = sving; u.ben[1].rotation.x = -sving;
@@ -247,5 +278,19 @@ export class Bot {
     else this.model.rotation.x = 0;
   }
 }
+// Soldaten fra Blender: vælg animationen efter fart og dukning — og drej brystet med sigtet
+Bot.prototype.tegnGLB = function (u, fart, dt) {
+  const a = this.a;
+  const navn = this.død ? "død" : a.duk > 0.5 ? (fart > 0.4 ? "dukgå" : "duk") : fart > 3.6 ? "løb" : fart > 0.4 ? "gå" : "stå";
+  if (navn !== u.nu) {
+    const ny = u.handlinger[navn], gammel = u.handlinger[u.nu];
+    if (ny) { ny.reset(); ny.play(); if (gammel) ny.crossFadeFrom(gammel, navn === "død" ? 0.08 : 0.18, false); }
+    u.nu = navn;
+  }
+  const h = u.handlinger[navn];
+  if (h && (navn === "løb" || navn === "gå" || navn === "dukgå")) h.timeScale = Math.max(0.6, fart / (navn === "løb" ? 5.4 : navn === "gå" ? 2.4 : 1.6));
+  u.mixer.update(dt);
+  if (u.bryst && !this.død) u.bryst.quaternion.multiply(qPitch.setFromAxisAngle(xAkse, -a.pitch));   // sigt op og ned
+};
 // En vinkel mellem −π og π
 export function vinkel(v) { return ((v + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; }

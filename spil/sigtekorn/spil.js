@@ -16,7 +16,7 @@ import { nyAktør, bevæg, øjeHøjde, TICK, U } from "./bevaegelse.js";
 import { VÅBEN, nytVåben, affyr, efterSkud, opdaterVåben, skudRetning, synligRekyl, retningsvektor, genlad, unøjagtighed, skade } from "./vaaben.js";
 import { Hånd } from "./haand.js";
 import { Effekter } from "./effekter.js";
-import { Bot, SVÆRHED, NAVNE, træfKrop, vinkel } from "./bots.js";
+import { Bot, SVÆRHED, NAVNE, træfKrop, vinkel, hentSoldat } from "./bots.js";
 import * as Lyd from "./lyd.js";
 import { Hud, læsStatistik, gemStatistik, statistikTekst } from "./hud.js";
 
@@ -75,8 +75,10 @@ himmel.renderOrder = -1; scene.add(himmel);
 const t = lavTeksturer();
 const verden = new Kasseverden();
 const bane = lavBane(scene, verden, t);
+await hentSoldat();                                               // soldaten fra Blender (ellers klodssoldaten)
 const effekter = new Effekter(scene, t);
 const hånd = new Hånd(t);
+hånd.lavMiljø(renderer);
 const hud = new Hud();
 let stat = læsStatistik();
 
@@ -351,8 +353,9 @@ function slutKamp() {
 // Fang musen — med rå bevægelse (uden Windows’ museacceleration), hvis browseren kan, så sigtet er præcist
 function lås_mus() {
   Lyd.start();
-  try { const p = lærred.requestPointerLock({ unadjustedMovement: true }); p?.catch?.(() => lærred.requestPointerLock()); }
-  catch (_) { lærred.requestPointerLock?.(); }
+  const fejl = () => hud.besked("Musen kunne ikke fanges — åbn spillet i Chrome eller Edge", 4000);
+  const igen = () => { try { lærred.requestPointerLock()?.catch?.(fejl); } catch (_) { fejl(); } };
+  try { lærred.requestPointerLock({ unadjustedMovement: true })?.catch?.(igen); } catch (_) { igen(); }
 }
 document.addEventListener("pointerlockchange", () => {
   const låst = document.pointerLockElement === lærred;

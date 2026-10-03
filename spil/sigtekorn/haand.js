@@ -2,6 +2,11 @@
 // Våbnet tegnes i sin egen lille scene oven på verdenen (så det aldrig stikker ind i en mur).
 
 import * as THREE from "./three.js";
+import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
+import { RoomEnvironment } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/environments/RoomEnvironment.js";
+
+// Modellerne fra Blender (blender/lav_*.py) — indtil de er hentet, bruges klodsmodellerne nedenfor
+const MODELFILER = { gevær: "modeller/gevaer.glb", pistol: "modeller/pistol.glb", snig: "modeller/snig.glb", kniv: "modeller/kniv.glb" };
 
 const M = {
   metal: new THREE.MeshStandardMaterial({ color: 0x2a2c30, metalness: 0.75, roughness: 0.42 }),
@@ -83,6 +88,8 @@ function kniv() {
   return g;
 }
 const BYG = { gevær: stormgevær, snig: snigskytte, pistol, kniv };
+const GLB_PLADS = { gevær: [0.15, -0.18, -0.4], snig: [0.15, -0.19, -0.42], pistol: [0.085, -0.1, -0.44], kniv: [0.16, -0.16, -0.36] };
+const GLB_DREJ = { gevær: [0, 0.07, -0.05], snig: [0, 0.06, -0.04], pistol: [0.02, 0.06, -0.04], kniv: [0.35, 0.2, -0.35] };                       // lidt skråt, så man ser geværets højre side
 const PLADS = { gevær: [0.2, -0.22, -0.52], snig: [0.19, -0.2, -0.5], pistol: [0.17, -0.18, -0.42], kniv: [0.2, -0.19, -0.38] };
 
 export class Hånd {
@@ -101,7 +108,23 @@ export class Hånd {
     }
     const glimtMat = new THREE.MeshBasicMaterial({ map: t.glimt, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
     this.glimt = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 0.16), glimtMat); this.glimt.visible = false; this.scene.add(this.glimt);
+    this.hentModeller();
     Object.assign(this, { aktiv: null, træk: 0, spark: 0, sparkRot: 0, fase: 0, svajX: 0, svajY: 0, glimtTid: 0, genlad: 0, genladTid: 1, hug: 0, land: 0 });
+  }
+  // Hent de flotte modeller fra Blender og byt dem ind, når de er klar
+  hentModeller() {
+    const hent = new GLTFLoader();
+    for (const [id, fil] of Object.entries(MODELFILER)) hent.load(fil, gltf => {
+      const m = this.modeller[id], ny = gltf.scene, mund = ny.getObjectByName("munding");
+      ny.traverse(o => { if (o.isMesh) { o.material.envMapIntensity = 0.7; o.frustumCulled = false; } });
+      m.holder.clear(); m.holder.add(ny);
+      m.g = ny; m.g.userData.munding = mund ? mund.position.clone() : new THREE.Vector3(0, 0, -0.7);
+      m.glb = true;
+    }, undefined, fejl => console.warn("Kunne ikke hente", fil, fejl));
+  }
+  lavMiljø(renderer) {                                              // et blødt spejlbillede af et rum, så metallet skinner
+    const pm = new THREE.PMREMGenerator(renderer);
+    this.scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
   }
   // Skift våben: det nye kommer op fra neden
   vis(id, trækTid) {
@@ -127,7 +150,7 @@ export class Hånd {
     // s: { fart (0..1), jord, musX, musY, duk, skjul (kikkert) }
     this.rod.visible = !s.skjul;
     const id = this.aktiv; if (!id) return;
-    const m = this.modeller[id], p = PLADS[id];
+    const m = this.modeller[id], p = (m.glb && GLB_PLADS[id]) || PLADS[id];
     this.træk = Math.max(0, this.træk - dt / (this.trækTid || 0.5));
     this.spark *= Math.exp(-dt * 16);
     this.hug = Math.max(0, this.hug - dt * 3.2);
@@ -139,7 +162,8 @@ export class Hånd {
     const gang = s.jord ? Math.min(1, s.fart) : 0.2, dyk = Math.sin(Math.PI * this.genlad), trk = this.træk * this.træk;
     m.holder.position.set(p[0] + Math.sin(this.fase) * 0.011 * gang + this.svajX, p[1] - Math.abs(Math.cos(this.fase)) * 0.009 * gang - this.svajY - 0.07 * dyk - 0.25 * trk - 0.02 * this.land - 0.012 * s.duk,
       p[2] + 0.045 * this.spark);
-    m.holder.rotation.set(0.07 * this.spark - 0.32 * dyk + 0.7 * trk + 0.02 * this.land, this.svajX * 2, 0.45 * dyk + this.svajX);
+    const d = (m.glb && GLB_DREJ[id]) || [0, 0, 0];
+    m.holder.rotation.set(d[0] + 0.07 * this.spark - 0.32 * dyk + 0.7 * trk + 0.02 * this.land, d[1] + this.svajX * 2, d[2] + 0.45 * dyk + this.svajX);
     if (id === "kniv") { const h = Math.sin(this.hug * Math.PI); m.holder.rotation.y += h * 0.9; m.holder.rotation.x -= h * 0.4; m.holder.position.x -= h * 0.08; }
     if (this.glimtTid > 0 && (this.glimtTid -= dt) <= 0) this.glimt.visible = false;
   }
