@@ -6,6 +6,7 @@ import { planlægRute, redningspunkt, rutemarkører, næsteVejpunkt } from './gp
 import { validerValg, STANDARD, gemValg, hentValg } from './indstillinger.js';
 import { DELE, gulv, KOLLISIONER, MISSIONER, terrænHøjde } from "./verden-data.js";
 import { næsteMål, opdaterOpgave } from "./missioner.js";
+import { lyd } from "./lyd.js";
 
 const input = { gas: 1, drej: 0, bremse: false, nitro: false };
 function simulér(bil, fremgang, sekunder, styr = input) {
@@ -409,3 +410,92 @@ assert.equal(frameprøve.tid(), frameTid);
 dokument.hidden = false; frameTid += 1000 / 60; frameprøve.ramme(frameTid);
 assert.equal(tegninger.length, førSkjult + 1);
 console.log('Skrotstorm: pause højst 20 Hz, skjult fane uden render og frisk frame-tid bestået.');
+
+// Det faktiske lydmodul prøves med et isoleret API, aldrig med browserens lager eller voksenlås.
+function lydmiljø(fejl = null, lukFejl = 'async') {
+  const valg = { fejl }, spor = { kontekster: 0, lukninger: 0, resume: 0, gains: [], toner: [] };
+  const prøv = navn => { if (valg.fejl === navn) throw Error('Valgfri lydfejl: ' + navn); };
+  const parameter = () => ({ value: 0,
+    setTargetAtTime(v) { prøv('parameter'); this.value = v; },
+    setValueAtTime(v) { prøv('parameter'); this.value = v; },
+    linearRampToValueAtTime() { prøv('parameter'); }, exponentialRampToValueAtTime() { prøv('parameter'); },
+  });
+  const knude = () => ({ connect() { prøv('connect'); }, start() { prøv('start'); }, stop() {} });
+  class Audio {
+    constructor() {
+      prøv('constructor'); spor.kontekster++;
+      this.sampleRate = 16; this.currentTime = 0; this.destination = {};
+    }
+    createOscillator() {
+      prøv('createOscillator'); const o = { ...knude(), frequency: parameter() }; spor.toner.push(o); return o;
+    }
+    createGain() {
+      prøv('createGain'); const g = { ...knude(), gain: parameter() }; spor.gains.push(g); return g;
+    }
+    createBuffer(c, n) {
+      prøv('createBuffer'); return { getChannelData() { prøv('getChannelData'); return new Float32Array(n); } };
+    }
+    createBufferSource() { prøv('createBufferSource'); return knude(); }
+    resume() {
+      spor.resume++; prøv('resumeSynkront');
+      return valg.fejl === 'resumeAsync' ? Promise.reject(Error('Afvist genoptagelse')) : Promise.resolve();
+    }
+    close() {
+      spor.lukninger++;
+      if (lukFejl === 'sync') throw Error('Afvist lukning');
+      return Promise.reject(Error('Afvist lukning'));
+    }
+  }
+  return { Audio, valg, spor };
+}
+const lydVindue = Object.getOwnPropertyDescriptor(globalThis, 'window');
+const lydLager = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+const afvisninger = [], fangAfvisning = fejl => afvisninger.push(fejl);
+process.on('unhandledRejection', fangAfvisning);
+try {
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { getItem: () => null, setItem() {} } });
+  Object.defineProperty(globalThis, 'window', { configurable: true, writable: true, value: {} });
+  assert.equal(lyd().start(), false, 'WebAudio kan mangle, uden at Start kaster');
+  for (const [i, fejl] of ['constructor','createOscillator','createGain','connect','start','createBuffer','getChannelData','createBufferSource'].entries()) {
+    const m = lydmiljø(fejl, i % 2 ? 'sync' : 'async');
+    globalThis.window = { AudioContext: m.Audio };
+    const lyde = lyd();
+    assert.equal(lyde.start(), false, fejl + ' er valgfri');
+    assert.equal(m.spor.lukninger, fejl === 'constructor' ? 0 : 1, 'en halv graf forsøges lukket');
+    assert.doesNotThrow(() => { lyde.opdater(20, true); lyde.klang(); });
+    m.valg.fejl = null;
+    assert.equal(lyde.start(), true, 'et nyt tryk kan bygge en hel graf');
+    assert.equal(m.spor.kontekster, fejl === 'constructor' ? 1 : 2, 'en halv graf bliver ikke genbrugt');
+    assert.equal(m.spor.resume, 1);
+  }
+  for (const fejl of ['resumeSynkront','resumeAsync']) {
+    const m = lydmiljø(fejl);
+    globalThis.window = { webkitAudioContext: m.Audio };
+    const lyde = lyd();
+    assert.doesNotThrow(() => lyde.start());
+    await new Promise(resolve => setImmediate(resolve));
+    m.valg.fejl = null;
+    assert.equal(lyde.start(), true);
+    assert.equal(m.spor.kontekster, 1, 'en hel graf kan genoptages uden at oprette lyd igen');
+    assert.equal(m.spor.resume, 2);
+    lyde.opdater(20, true);
+    assert.ok(m.spor.gains[0].gain.value > 0);
+    lyde.opdater(20, false);
+    assert.ok(m.spor.gains.every(g => g.gain.value === 0), 'pause stopper motor og vind');
+    lyde.volumen(0); lyde.opdater(20, true); lyde.klang();
+    assert.ok(m.spor.gains.every(g => g.gain.value === 0), 'nul lydstyrke er stille');
+    assert.equal(m.spor.toner.length, 1, 'nul lydstyrke giver ingen klang');
+    lyde.volumen(.65); assert.equal(lyde.skift(), true); lyde.opdater(20, true); lyde.klang();
+    assert.ok(m.spor.gains.every(g => g.gain.value === 0), 'mute er stille');
+    assert.equal(m.spor.toner.length, 1);
+    lyde.skift(); m.valg.fejl = 'parameter';
+    assert.doesNotThrow(() => { lyde.opdater(20, true); lyde.klang(); }, 'enheden kan afvise senere lyd uden at stoppe spillet');
+  }
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(afvisninger, [], 'hverken resume eller halvgrafens lukning giver ufangede promisefejl');
+} finally {
+  process.off('unhandledRejection', fangAfvisning);
+  if (lydVindue) Object.defineProperty(globalThis, 'window', lydVindue); else delete globalThis.window;
+  if (lydLager) Object.defineProperty(globalThis, 'localStorage', lydLager); else delete globalThis.localStorage;
+}
+console.log('Skrotstorm: valgfri lyd, halv graf, synkront/async resume, Safari-fallback, pause og mute bestået.');

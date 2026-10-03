@@ -2,7 +2,7 @@
 
 4. oktober 2026, 01:30 dansk tid. Codex arbejder fortsat frem til ca. 02:33 på
 `codex/tre-verdener-detaljer` i `C:/Users/Frede/.codex/worktrees/pi-afproevning/boernespil/`.
-Den første stabile milepæl er committet, og Claudes main frem til `968fed5` er samlet med.
+Den første stabile milepæl er committet, og Claudes main frem til `195fc51` er samlet med.
 Server 0.5.3 og cache `boernespil-v66` klargøres; udgivelse og Pi-opdatering er endnu ikke udført.
 
 - Det Sidste Lys: detaljer i havn, landsby og have, animerede måger, fire valgfrie stednoter,
@@ -16,12 +16,15 @@ Server 0.5.3 og cache `boernespil-v66` klargøres; udgivelse og Pi-opdatering er
 - Fælles opstart giver selvstændig retry/hjemlink ved import-/modelfejl eller tabt WebGL-kontekst.
   Voksenlåsen bevares. Lyd er valgfri og kan ikke afbryde spillet ved afvisning.
 - Offline-lageret gemmer ikke 404/503 og rydder kun gamle Spilkassen-cacher.
-- Pakkekontrollen opdager alle 107 aktuelle offentlige Fisk/Rasmus/Sigtekorn-filer,
-  inklusive alle våben, banemoduler og begge lysatlas.
+- Pakkekontrollen opdager alle 120 aktuelle offentlige Fisk/Rasmus/Sigtekorn-filer,
+  inklusive alle våben, banemoduler og de tre lysatlas (også Fjeldbyen).
 
-44 spilprøver og 139 serverprøver består; Windows-pakken består også før den sidste styringsrettelse.
+44 spilprøver og 139 serverprøver består; Windows-pakken består også før de sidste UI-/lydrettelser.
 Krystaljægernes mellemrum virker nu efter pause og museklik, mens Tab bevarer normal knapbetjening.
 Vigtige statusoplysninger er mindst 11 px på små telefoner.
+Alle tre spil tager hensyn til skærmudskæringer i liggende format. Lys' knapper er mindst 44 px,
+og målkortet kan rulles uden at dække fingerpinden. Krystals kampvarsel, besked og Brug-prompt
+står hver for sig. Skrotstorms afviste eller delvist oprettede lyd kan ikke blokere Start.
 Nye UI-komponenter er kontrolleret i Chrome ved bl.a. 320×567 og liggende telefonformat;
 Blender-filerne er indlæst gennem den faktiske GLTFLoader og en ren sceneprøve.
 Den nye udgave er endnu ikke gennemspillet manuelt i browseren: den eksisterende voksenkode
