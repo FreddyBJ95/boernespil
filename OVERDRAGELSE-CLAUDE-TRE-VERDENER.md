@@ -19,7 +19,9 @@ Server 0.5.3 og cache `boernespil-v66` klargøres; udgivelse og Pi-opdatering er
 - Pakkekontrollen opdager alle 107 aktuelle offentlige Fisk/Rasmus/Sigtekorn-filer,
   inklusive alle våben, banemoduler og begge lysatlas.
 
-43 spilprøver, 139 serverprøver og den nybyggede Windows-pakke består.
+44 spilprøver og 139 serverprøver består; Windows-pakken består også før den sidste styringsrettelse.
+Krystaljægernes mellemrum virker nu efter pause og museklik, mens Tab bevarer normal knapbetjening.
+Vigtige statusoplysninger er mindst 11 px på små telefoner.
 Nye UI-komponenter er kontrolleret i Chrome ved bl.a. 320×567 og liggende telefonformat;
 Blender-filerne er indlæst gennem den faktiske GLTFLoader og en ren sceneprøve.
 Den nye udgave er endnu ikke gennemspillet manuelt i browseren: den eksisterende voksenkode

@@ -27,7 +27,7 @@ import { opdatérFlyvere } from "./projektiler.js";
 import { fortsætSpor, friLinje, rumRute, ruteLængde, vælgMål, øRute } from "./navigation.js";
 import { tegnRejsekort } from "./kort.js";
 import { forsøgGem } from "./lagring.js";
-import { guideEfterSkridt, trykTast } from "./styring.js";
+import { guideEfterSkridt, tastFokus, trykTast } from "./styring.js";
 
 const $ = (id) => document.getElementById(id);
 // Uændret tekst genudskrives ikke; statusfelter forbliver rolige for skærmlæsere.
@@ -1301,7 +1301,12 @@ $("verden").addEventListener("wheel", (e) => {
   e.preventDefault();
 }, { passive: false });
 $("verden").addEventListener("contextmenu", (e) => e.preventDefault());
+// Kun en rigtig Tab-navigation gør HUD-knappers Mellemrum til et almindeligt knaptryk.
+let tastaturMenu = false;
+$("verden").tabIndex = -1;
+window.addEventListener("pointerdown", () => { tastaturMenu = false; });
 window.addEventListener("keydown", (e) => {
+  if (e.key === "Tab") tastaturMenu = true;
   if (paused && e.key === "Tab") {
     const knapper = [...$("dialog").querySelectorAll("button:not(:disabled),input,select,a[href]")];
     if (knapper.length) {
@@ -1326,9 +1331,12 @@ window.addEventListener("keydown", (e) => {
     return;
   }
   if (paused) return;
-  // Dialogens felter beholder deres almindelige Space/pile; kun selve spillet optager bevægelsestasterne.
-  if (e.target.closest("input,select")) return;
-  if ([" ", "Enter"].includes(e.key) && e.target.closest("button,a") && e.target.id !== "angrib") return;
+  // Formularfelter og Tab-valgte knapper beholder deres almindelige taster.
+  const fokus = tastFokus(e.key.toLowerCase(), tastaturMenu,
+    Boolean(e.target.closest("input,select,textarea,[contenteditable]")), Boolean(e.target.closest("button,a")));
+  tastaturMenu = fokus.tastaturMenu;
+  if (!fokus.spil) return;
+  if (fokus.flytFokus) $("verden").focus({ preventScroll: true });
   if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)) e.preventDefault();
   if (!trykTast(taster, e.key.toLowerCase(), e.repeat)) return;
   if (e.repeat) return;

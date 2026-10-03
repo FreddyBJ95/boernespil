@@ -25,7 +25,7 @@ import { bygGrotte, bygØ, frit, STEDER } from "./verden.js";
 import { opdatérFlyvere } from "./projektiler.js";
 import { fortsætSpor, friLinje, rumRute, ruteLængde, vælgMål, øRute } from "./navigation.js";
 import { forsøgGem } from "./lagring.js";
-import { guideEfterSkridt, trykTast } from "./styring.js";
+import { guideEfterSkridt, tastFokus, trykTast } from "./styring.js";
 
 test("200 frø: begge dybder har sammenhængende rum og et tilgængeligt mål", () => {
   for (let frø = 0; frø < 200; frø++) {
@@ -531,6 +531,84 @@ test("holdt W og Space genstarter ikke sig selv efter en dialog, før de trykkes
     assert.ok(trykTast(taster, tast, false));
     assert.ok(taster.has(tast));
   }
+});
+
+test("faktisk tastatur: Pause/Fortsæt og våbenklik bevarer angreb, mens Tab og formularer er native", () => {
+  // De faktiske handlers prøves uden renderer, voksenlås eller gemt spil.
+  const kilde = fs.readFileSync(new URL("./spil.js", import.meta.url), "utf8");
+  const luk = kilde.slice(kilde.indexOf("function lukDialog()"), kilde.indexOf("function bekræftNy()"));
+  const input = kilde.slice(kilde.indexOf("// Kun en rigtig Tab-navigation"), kilde.indexOf('window.addEventListener("blur"'));
+  assert.ok(luk && input.includes("tastFokus"));
+  const hændelser = new Map(), dokument = { activeElement: null };
+  const felt = (navn, tag = "button") => ({
+    id: navn, isConnected: true,
+    classList: { add() {} },
+    closest: (valg) => valg.split(",").includes(tag) ? {} : null,
+    querySelectorAll: () => [],
+    focus() { dokument.activeElement = this; },
+  });
+  const felter = {
+    verden: felt("verden", "canvas"), pause: felt("pause"), fortsæt: felt("fortsæt"),
+    våben: felt("våben"), dialog: felt("dialog"), formular: felt("formular", "input"),
+    valg: felt("valg", "select"), tekst: felt("tekst", "textarea"), angrib: felt("angrib"),
+  };
+  const vindue = { addEventListener: (type, fn) => hændelser.set(type, fn) };
+  const prøve = new Function("window", "document", "$", "tastFokus", "trykTast", `
+    let kører = true, paused = true, angrebHold = 1, angreb = 0;
+    const taster = new Set(["w", " "]), fokusTilbage = $("pause");
+    const angrib = () => { angreb++; }, pausemenu = () => { paused = true; taster.clear(); };
+    const brug = () => {}, eliksir = () => {}, inventar = () => {}, rejsekort = () => {}, skiftVåben = () => {};
+    ${luk}
+    ${input}
+    return { lukDialog, taster, antal: () => angreb, erPaused: () => paused, hold: () => angrebHold };
+  `)(vindue, dokument, (id) => felter[id], tastFokus, trykTast);
+  const send = (key, target = dokument.activeElement, repeat = false) => {
+    let forhindret = false;
+    hændelser.get("keydown")({ key, target, repeat, preventDefault: () => { forhindret = true; } });
+    return forhindret;
+  };
+  const slip = (key) => hændelser.get("keyup")({ key });
+  felter.fortsæt.focus();
+  prøve.lukDialog();
+  assert.equal(dokument.activeElement, felter.pause, "dialogen returnerer fokus til sin åbnende knap");
+  assert.equal(prøve.erPaused(), false);
+  assert.equal(prøve.hold(), null);
+  assert.equal(prøve.taster.size, 0, "holdte taster fra pausen er ryddet");
+  send("w", felter.pause, true);
+  assert.equal(prøve.taster.has("w"), false, "browserens gamle gentagelse tager ikke styringen");
+  send("w");
+  assert.ok(prøve.taster.has("w"));
+  assert.equal(dokument.activeElement, felter.verden);
+  assert.equal(send(" "), true, "Mellemrum stopper browserens pauseknap-klik");
+  assert.equal(prøve.antal(), 1);
+  assert.ok(prøve.taster.has(" "), "holdt Mellemrum kan fortsat angribe i spillets loop");
+  slip(" ");
+  hændelser.get("pointerdown")();
+  felter.våben.focus();
+  assert.equal(send(" "), true, "våben valgt med mus/finger stjæler ikke næste angreb");
+  assert.equal(prøve.antal(), 2);
+  slip(" ");
+  send("Tab");
+  felter.våben.focus();
+  assert.equal(send(" "), false, "en faktisk Tab-valgt våbenknap aktiveres af browseren");
+  assert.equal(prøve.antal(), 2);
+  assert.equal(prøve.taster.has(" "), false);
+  felter.angrib.focus();
+  assert.equal(send(" "), false, "Tab-valgt Angrib bruger også sit almindelige knaptryk");
+  assert.equal(send("ArrowUp"), true, "nye skridt forlader menufokus");
+  assert.equal(dokument.activeElement, felter.verden);
+  assert.equal(send(" "), true);
+  assert.equal(prøve.antal(), 3);
+  slip(" ");
+  for (const formular of [felter.formular, felter.valg, felter.tekst]) {
+    hændelser.get("pointerdown")();
+    formular.focus();
+    for (const key of ["w", "ArrowDown", " ", "Enter"]) assert.equal(send(key), false);
+    assert.equal(dokument.activeElement, formular, "formularens eget fokus bevares");
+  }
+  felter.våben.focus();
+  assert.equal(send("Enter"), false, "Enter beholder almindelig knapaktivering også efter museklik");
+  assert.equal(prøve.antal(), 3);
 });
 
 test("genåbnet første guide venter på en ny spillerhandling, også efter Mira og Fortsæt", () => {
