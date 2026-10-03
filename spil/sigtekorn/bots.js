@@ -100,10 +100,11 @@ export class Bot {
     this.liv = 100; this.panser = 100; this.død = false; this.dødTid = 0;
     const sv = this.s.sværhed(); this.sv = sv;
     this.sekundær = lodtrækning(BOTPISTOL);
-    this.våben = nytVåben(Math.random() < (sv === SVÆRHED.let ? 0.2 : 0.06) ? this.sekundær : lodtrækning(BOTVÅBEN));
+    const ræsId = this.s.ræsVåben?.(this);                             // våbenræs: rækkens våben (og ingen granater)
+    this.våben = nytVåben(ræsId || (Math.random() < (sv === SVÆRHED.let ? 0.2 : 0.06) ? this.sekundær : lodtrækning(BOTVÅBEN)));
     if (this.våben.d.zoom) this.våben.kikkert = 1;                     // botter med kikkert har den altid på
     this.blindTil = 0; this.næsteKast = 0;
-    this.granater = Math.random() < 0.65 ? [lodtrækning([["he", 5], ["blænd", 3], ["røg", 2]])] : [];
+    this.granater = !ræsId && Math.random() < 0.65 ? [lodtrækning([["he", 5], ["blænd", 3], ["røg", 2]])] : [];
     this.mål = null; this.setFørst = 0; this.sidstSet = null; this.sidstSetTid = -99; this.vej = []; this.vejMål = null;
     this.tænkTid = Math.random() * 0.12; this.salve = 0; this.salvePause = 0; this.fejlYaw = 0; this.fejlPitch = 0;
     this.fastTid = 0; this.fastPos = this.a.pos.clone(); this.lytte = null; this.strafe = 0; this.strafeTid = 0; this.dukker = false;
@@ -178,8 +179,9 @@ export class Bot {
         if (fart < d.fart * 0.36 || d.klasse === "mp" || d.nærkamp) trykker = true;
       }
       if ((d.klasse === "hagl" && l > 9) || (d.projektil === "raket" && l < 6)) { frem = d.klasse === "hagl" ? 1 : -1; trykker = trykker && d.klasse !== "hagl"; }   // haglgevær: storm frem · raket: træd tilbage
+      if (d.nærkamp) { frem = l > d.rækkevidde * 0.7 ? 1 : 0; trykker = l < d.rækkevidde + 0.25 && afvig < 0.6; }   // kniv: løb hen og hug
       if ((this.strafeTid -= dt) <= 0) { this.strafeTid = 0.3 + Math.random() * 0.5; this.strafe = Math.random() < 0.5 ? -1 : 1; }
-      duk = this.dukker;
+      duk = this.dukker && !d.nærkamp;
       if (this.våben.skud <= 0) genlad(this.våben);
     } else {
       // ---- gå efter vej-nettet (mod det, den har hørt, det sidste sted, den så fjenden, eller en post) — eller hold posten ----
@@ -378,14 +380,22 @@ export class Bot {
     return false;
   }
   fart() { return new THREE.Vector3(this.a.vel.x, Math.max(-2, this.a.vel.y), this.a.vel.z); }
+  // Våbenræs: et nyt våben med det samme (mangler botten en arm, kun noget den kan holde med én hånd)
+  giv(id) {
+    if (this.fig && !this.fig.harArm()) return;
+    const enHånd = VÅBEN[id].nærkamp || VÅBEN[id].klasse === "pistol", mangler = this.fig && (this.fig.mangler.armR || this.fig.mangler.armL);
+    this.våben = nytVåben(enHånd || !mangler ? id : this.sekundær || "pistol");
+    if (this.våben.d.zoom) this.våben.kikkert = 1;
+  }
   // En arm eller et ben flyver af. Uden en arm taber den våbnet og trækker pistolen med den anden hånd
   // (uden arme kan den ikke skyde). Uden et ben kravler den
   mistLem(lem, skud) {
     const { scene, verden, delLyd } = this.s, fart = this.fart();
     if (lem.startsWith("arm") && this.våben) {
-      this.fig.tabVåben(null, scene, verden, fart, delLyd);
+      const enHånd = this.våben.d.nærkamp || this.våben.d.klasse === "pistol";    // en pistol eller kniv beholder den
+      if (!enHånd) this.fig.tabVåben(null, scene, verden, fart, delLyd);
       this.fig.skydAf(lem, skud, scene, verden, fart, delLyd);
-      this.våben = this.fig.harArm() ? nytVåben(this.sekundær || "pistol") : null;
+      this.våben = !this.fig.harArm() ? null : enHånd ? this.våben : nytVåben(this.sekundær || "pistol");
       if (!this.våben) this.mål = null;
     } else this.fig.skydAf(lem, skud, scene, verden, fart, delLyd);
     if (lem.startsWith("ben")) { this.a.kravl = true; this.dukker = false; }
