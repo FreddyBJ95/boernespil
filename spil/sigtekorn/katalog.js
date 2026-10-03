@@ -126,6 +126,8 @@ export const ALLE = {};
 for (const gruppe of [PRIMÆR, SEKUNDÆR, KNIVE]) for (const [id, d] of Object.entries(gruppe)) {
   ALLE[id] = { ...d, fart: d.fart * U, kikkertFart: d.kikkertFart ? d.kikkertFart * U : undefined };
 }
+// Uden arme kan man ingenting holde
+ALLE.ingen = { navn: "Ingen arme", klasse: "ingen", sjælden: "almindelig", kadence: 99, magasin: 0, reserve: 0, fart: 230 * U, træk: 0.3, stå: 0, duk: 0, bevæg: 0, hop: 0 };
 // Granaterne er også "våben" i hånden (plads 4): venstre klik kaster langt, højre klik kaster kort
 for (const [id, g] of Object.entries(GRANATER)) ALLE[`granat_${id}`] = { navn: g.navn, klasse: "granat", granat: id, sjælden: g.sjælden, ikon: g.ikon,
   kadence: 0.6, magasin: g.antal, reserve: 0, fart: 245 * U, træk: 0.45, stå: 0, duk: 0, bevæg: 0, hop: 0, model: g.model };

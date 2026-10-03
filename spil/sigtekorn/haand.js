@@ -99,10 +99,10 @@ function granat() {
   g.userData = { munding: new THREE.Vector3(0, 0, -0.1), venstre: null, højre: [0.0, -0.06, 0.03] };
   return g;
 }
-const BYG = { gevær: stormgevær, snig: snigskytte, pistol, kniv, granat };
-const GLB_PLADS = { gevær: [0.15, -0.18, -0.4], snig: [0.15, -0.19, -0.42], pistol: [0.085, -0.1, -0.44], kniv: [0.16, -0.16, -0.36], granat: [0.17, -0.17, -0.38] };
+const BYG = { gevær: stormgevær, snig: snigskytte, pistol, kniv, granat, ingen: () => Object.assign(new THREE.Group(), { userData: { munding: new THREE.Vector3(), venstre: null, højre: null } }) };
+const GLB_PLADS = { gevær: [0.15, -0.18, -0.4], snig: [0.15, -0.19, -0.42], pistol: [0.085, -0.1, -0.44], kniv: [0.16, -0.16, -0.36], granat: [0.17, -0.17, -0.38], ingen: [0, 0, 0] };
 const GLB_DREJ = { gevær: [0, 0.07, -0.05], snig: [0, 0.06, -0.04], pistol: [0.02, 0.06, -0.04], kniv: [0.35, 0.2, -0.35], granat: [0, 0, 0] };   // lidt skråt, så man ser våbnets højre side
-const PLADS = { gevær: [0.2, -0.22, -0.52], snig: [0.19, -0.2, -0.5], pistol: [0.17, -0.18, -0.42], kniv: [0.2, -0.19, -0.38], granat: [0.18, -0.2, -0.4] };
+const PLADS = { gevær: [0.2, -0.22, -0.52], snig: [0.19, -0.2, -0.5], pistol: [0.17, -0.18, -0.42], kniv: [0.2, -0.19, -0.38], granat: [0.18, -0.2, -0.4], ingen: [0, 0, 0] };
 const SIGTE = [0, -0.083, -0.3];                                    // våbnet midt foran øjet, når man sigter (kampgevær, jagtgevær, armbrøst)
 const SPARK = { snig: 1.6, pistol: 0.8, hagl: 1.8, tung: 0.6, special: 0.9 };
 // Grebet i klassens første model (stormgeværet, snigskytten, pistolen, kniven): de andre modeller flyttes, så deres
@@ -126,11 +126,11 @@ export class Hånd {
   forbered(ids) {
     for (const id of ids) {
       if (this.modeller[id]) continue;
-      const k = id.startsWith("granat_") ? "granat" : grundklasse(id), g = BYG[k](), holder = new THREE.Group();
+      const k = id.startsWith("granat_") ? "granat" : id === "ingen" ? "ingen" : grundklasse(id), g = BYG[k](), holder = new THREE.Group();
       holder.add(g); hænder(holder, g.userData.venstre, g.userData.højre);
       holder.visible = false; this.rod.add(holder);
       const m = this.modeller[id] = { holder, g, klasse: k };
-      if (k !== "granat") this.hentModel(id, m);
+      if (k !== "granat" && k !== "ingen") this.hentModel(id, m);
     }
   }
   hentModel(id, m) {

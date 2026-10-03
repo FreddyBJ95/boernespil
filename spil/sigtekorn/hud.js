@@ -26,9 +26,10 @@ export class Hud {
   }
   ammo(v) {
     this.el.våben.textContent = v.d.navn; this.el.våben.style.color = SJÆLDEN[v.d.sjælden]?.farve || "";
-    this.el.ammo.textContent = v.d.nærkamp ? "" : v.genlader > 0 ? "…" : v.d.granat ? `${v.d.ikon} ${v.skud}` : v.skud;
-    this.el.reserve.textContent = v.d.nærkamp || v.d.granat ? "" : v.d.opspin && v.spin < v.d.opspin && v.spin > 0 ? "snurrer…" : `/ ${v.reserve}`;
-    this.el.ammo.classList.toggle("lavt", !v.d.nærkamp && v.skud <= Math.ceil(v.d.magasin * 0.2));
+    const intet = v.d.nærkamp || v.d.klasse === "ingen";
+    this.el.ammo.textContent = intet ? "" : v.genlader > 0 ? "…" : v.d.granat ? `${v.d.ikon} ${v.skud}` : v.skud;
+    this.el.reserve.textContent = intet || v.d.granat ? "" : v.d.opspin && v.spin < v.d.opspin && v.spin > 0 ? "snurrer…" : `/ ${v.reserve}`;
+    this.el.ammo.classList.toggle("lavt", !intet && v.skud <= Math.ceil(v.d.magasin * 0.2));
   }
   stilling(a, b, sekunder) {
     this.el.holdA.textContent = a; this.el.holdB.textContent = b;
