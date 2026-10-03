@@ -8,7 +8,7 @@
   z-index: 50;
 }
 .lås-kort {
-  width: min(340px,92vw);
+  width: min(340px,calc(92vw - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px)));
   text-align: center;
   padding: 26px 24px 18px;
   background: #142b3ce8;
@@ -129,8 +129,15 @@ canvas#verden {
   background: #0c1b2eb8;
   backdrop-filter: blur(7px);
 }
+/* Skærmudskæringer holder menu og dialoger fri af kanterne uden at flytte baggrunden. */
+.lag,
+.lås {
+  padding-left: env(safe-area-inset-left,0px);
+  padding-right: env(safe-area-inset-right,0px);
+}
 #menu {
-  background: linear-gradient(90deg,#101e30ed 0%,#101e30b8 42%,#14263b28 100%),url('forside.jpg') center/cover no-repeat;
+  background: linear-gradient(90deg,#101e30ed 0%,#101e30b8 42%,#14263b28 100%),url('forside.jpg') center/cover
+    no-repeat;
   justify-items: start;
   backdrop-filter: none;
 }
@@ -185,9 +192,12 @@ p {
 }
 .forside > a {
   font: 14px system-ui;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
 }
 .kort {
-  width: min(540px,calc(100vw - 30px));
+  width: min(540px,calc(100vw - 30px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px)));
   max-height: 85dvh;
   overflow: auto;
   background: #172e40;
@@ -219,6 +229,9 @@ p {
 #hud {
   position: fixed;
   inset: 0;
+  /* Alle HUD-kanter og fingerknapper følger samme sikre felt ved hvert breakpoint. */
+  left: env(safe-area-inset-left,0px);
+  right: env(safe-area-inset-right,0px);
   pointer-events: none;
   font-family: system-ui;
 }
@@ -283,7 +296,7 @@ header span {
   margin: 5px 0;
 }
 .status small {
-  font-size: 10px;
+  font-size: 11px;
   white-space: nowrap;
 }
 .status span {
@@ -310,7 +323,7 @@ progress::-moz-progress-bar {
   background: #76c88f;
 }
 .status p {
-  font-size: 10px;
+  font-size: 11px;
   margin: 10px 0 0;
   color: #c7c9ae;
 }
@@ -822,5 +835,561 @@ progress::-moz-progress-bar {
     height: 96px;
     top: 62px;
     right: 14px;
+  }
+}
+/* Kort, målhjælp og kampfeedback deler den samme læsbare visuelle rytme. */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+#dialogtitel:focus-visible {
+  outline: 3px solid #f0d196;
+  outline-offset: 3px;
+}
+.topknapper button {
+  min-width: 44px;
+  min-height: 44px;
+  width: 44px;
+  height: 44px;
+}
+header > a {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  display: grid;
+  place-items: center;
+}
+#gemtstatus {
+  display: block!important;
+  font-size: 11px;
+  white-space: normal;
+  color: #92c3b3;
+  margin-top: 7px;
+}
+#åbnkort {
+  position: absolute;
+  right: 24px;
+  top: 84px;
+  width: 170px;
+  height: 194px;
+  padding: 0;
+  background: none;
+  border: 0;
+  pointer-events: auto;
+}
+#åbnkort #kort {
+  position: static;
+  width: 100%;
+  height: auto;
+}
+#åbnkort > span {
+  display: block;
+  font: 11px/14px system-ui;
+  letter-spacing: 0;
+  color: #b9d1c6;
+  margin-top: 5px;
+}
+#kampmål {
+  position: absolute;
+  left: 50%;
+  top: 78px;
+  transform: translateX(-50%);
+  width: min(345px,35vw);
+  background: #142c3de3;
+  border: 1px solid #76a89d66;
+  border-radius: 10px;
+  padding: 11px 14px;
+  text-align: center;
+}
+#kampmål > span {
+  display: block;
+  font: 17px Georgia;
+  color: #eed9b3;
+  margin-bottom: 8px;
+}
+#fjendeliv {
+  width: 100%;
+  height: 7px;
+}
+#fjendeliv::-webkit-progress-value {
+  background: #d4a682;
+}
+#kampmål small {
+  display: block;
+  color: #acd6c7;
+  font-size: 10px;
+  line-height: 1.45;
+  margin-top: 8px;
+}
+#bossvarsel {
+  display: block;
+  font-size: 11px;
+  color: #ecc0df;
+  margin-top: 7px;
+}
+.varsler {
+  border-color: #dda3c9!important;
+  background: #3c2c43e6!important;
+}
+#vejledning {
+  position: absolute;
+  left: 50%;
+  bottom: 151px;
+  transform: translateX(-50%);
+  width: min(420px,65vw);
+  padding: 12px 42px 12px 16px;
+  background: #17383fe8;
+  border: 1px solid #74c5af80;
+  border-radius: 9px;
+  font-size: 12px;
+  pointer-events: auto;
+}
+#vejledning b {
+  display: block;
+  color: #efd7a7;
+  margin-bottom: 5px;
+  font: 17px Georgia;
+}
+#vejledning span {
+  display: block;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #c4deda;
+}
+#skjulvejledning {
+  position: absolute;
+  top: 3px;
+  right: 2px;
+  background: none;
+  border: 0;
+  padding: 6px;
+  min-width: 44px;
+  min-height: 44px;
+}
+#stortkort {
+  display: block;
+  width: 100%;
+  max-height: 47dvh;
+  object-fit: contain;
+  border: 1px solid #618c80;
+  border-radius: 12px;
+}
+.kortforklaring {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 11px!important;
+}
+.kortforklaring span:first-child {
+  color: #80ffdf;
+}
+.kortforklaring span:nth-child(2) {
+  color: #edda9b;
+}
+.kort h3 {
+  font: 20px Georgia;
+  color: #eddaaf;
+  margin: 22px 0 6px;
+}
+.kort h3 + p {
+  margin-top: 6px;
+}
+.kort button {
+  min-height: 44px;
+}
+.valg {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 15px 0;
+  border-bottom: 1px solid #72938b35;
+  font: 14px/1.5 system-ui;
+  min-height: 54px;
+}
+.valg input {
+  width: 23px;
+  height: 23px;
+  accent-color: #76d8bc;
+  flex-shrink: 0;
+}
+.valg select {
+  font: 14px system-ui;
+  padding: 9px;
+  min-height: 44px;
+  background: #1d3c48;
+  border: 1px solid #719e94;
+  border-radius: 7px;
+  color: #d9ece0;
+  margin-left: auto;
+}
+#prompt {
+  bottom: 131px;
+  max-width: 390px;
+}
+#vejledning:not(.skjult) ~ #prompt {
+  bottom: 240px;
+}
+@media (max-width:700px) {
+  header {
+    gap: 7px;
+    left: 10px;
+    right: 10px;
+  }
+  header > a {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+  }
+  header > div:nth-child(2) {
+    max-width: 50px;
+    width: 50px;
+  }
+  header strong {
+    display: none;
+  }
+  header span {
+    font-size: 8px;
+    line-height: 1.35;
+    margin-top: 0;
+  }
+  .topknapper {
+    gap: 3px;
+  }
+  .topknapper button {
+    width: 44px;
+    padding: 5px;
+  }
+  .status {
+    top: 67px;
+    width: 172px;
+  }
+  .status > div {
+    font-size: 11px;
+    margin: 3px 0;
+  }
+  .status p {
+    line-height: 1.3;
+    margin-top: 5px;
+  }
+  #gemtstatus {
+    line-height: 1.25;
+    margin-top: 3px;
+  }
+  .opgave {
+    top: 180px;
+    width: 172px;
+  }
+  #åbnkort {
+    width: 108px;
+    height: 131px;
+    top: 69px;
+    right: 12px;
+  }
+  #åbnkort #kort {
+    width: 108px;
+    height: 108px;
+  }
+  #kampmål {
+    top: 209px;
+    left: auto;
+    right: 12px;
+    transform: none;
+    width: 145px;
+    padding: 8px;
+  }
+  #kampmål > span {
+    font-size: 14px;
+  }
+  #kampmål small {
+    font-size: 9px;
+  }
+  #bossvarsel {
+    font-size: 9px;
+  }
+  #vejledning {
+    bottom: 223px;
+    width: calc(100% - 28px);
+    max-width: 360px;
+    padding: 11px 43px 11px 13px;
+  }
+  #vejledning b {
+    font-size: 15px;
+  }
+  #vejledning span {
+    font-size: 10px;
+  }
+  #besked {
+    bottom: 327px;
+  }
+  #prompt {
+    bottom: 185px;
+  }
+}
+@media (max-height:500px) and (max-width:1000px) {
+  #åbnkort {
+    top: 63px;
+    right: 14px;
+    width: 96px;
+    height: 116px;
+  }
+  #åbnkort #kort {
+    width: 96px;
+    height: 96px;
+  }
+  #åbnkort > span {
+    font-size: 11px;
+  }
+  .status {
+    top: 63px;
+    width: 205px;
+    padding: 6px 10px;
+  }
+  .status p {
+    margin-top: 5px;
+  }
+  #gemtstatus {
+    margin-top: 4px;
+    font-size: 11px;
+  }
+  .opgave {
+    top: 165px;
+    width: 205px;
+    max-height: 80px;
+  }
+  .opgave h2 {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .opgave p {
+    max-height: 14px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  #kampmål {
+    left: 54%;
+    right: auto;
+    top: 66px;
+    transform: translateX(-50%);
+    width: 240px;
+    padding: 8px 12px;
+  }
+  #kampmål > span {
+    font-size: 14px;
+    margin-bottom: 5px;
+  }
+  #kampmål small {
+    font-size: 9px;
+    margin-top: 5px;
+  }
+  #bossvarsel {
+    font-size: 9px;
+    margin-top: 4px;
+  }
+  #vejledning {
+    left: 55%;
+    bottom: 117px;
+    width: 280px;
+    max-width: calc(100vw - 330px);
+    font-size: 10px;
+    padding: 8px 35px 8px 10px;
+  }
+  #vejledning b {
+    font-size: 14px;
+  }
+  #vejledning span {
+    font-size: 9px;
+    line-height: 1.35;
+  }
+  #skjulvejledning {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 3px;
+  }
+  /* Belønninger har deres eget felt under bossvarslet; vejledningen venter imens. */
+  .har-besked #vejledning {
+    display: none;
+  }
+  #besked {
+    top: 182px;
+    bottom: auto;
+    left: 56%;
+    width: 280px;
+    max-width: calc(100vw - 350px);
+  }
+  #prompt,
+  #vejledning:not(.skjult) ~ #prompt {
+    bottom: 75px;
+    left: 55%;
+    max-width: 260px;
+  }
+  #stortkort {
+    max-height: 38dvh;
+  }
+  .kort h3 {
+    margin-top: 16px;
+    font-size: 18px;
+  }
+}
+/* Den smalle telefon beholder alle knapper; områdets navn står også på rejsekortet. */
+@media (max-width:350px) {
+  header > div:nth-child(2) {
+    display: none;
+  }
+  .status,
+  .opgave {
+    width: 152px;
+  }
+  #kampmål {
+    width: 134px;
+  }
+}
+/* Korte portraitskærme viser handlinger før vejledning; den fulde opgave står på rejsekortet. */
+@media (max-height:600px) {
+  #menu {
+    align-items: start;
+    overflow-y: auto;
+    touch-action: pan-y;
+  }
+  .forside {
+    margin: 24px 5vw;
+  }
+}
+@media (max-width:700px) and (max-height:700px) and (min-height:501px) {
+  .status {
+    top: 63px;
+    padding: 4px 8px;
+  }
+  .status > div {
+    margin: 3px 0;
+    font-size: 11px;
+  }
+  .status p {
+    font-size: 11px;
+    line-height: 1.3;
+    margin-top: 5px;
+  }
+  #gemtstatus {
+    font-size: 11px;
+    line-height: 1.25;
+    margin-top: 3px;
+  }
+  .opgave {
+    top: 184px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .opgave h2 {
+    font-size: 14px;
+    line-height: 1.2;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .opgave p {
+    display: none;
+  }
+  .opgave small,
+  .opgave b {
+    font-size: 11px;
+    line-height: 1.25;
+  }
+  .opgave b {
+    margin-top: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #åbnkort {
+    top: 65px;
+    width: 90px;
+    height: 108px;
+  }
+  #åbnkort #kort {
+    width: 90px;
+    height: 90px;
+  }
+  #åbnkort > span {
+    font-size: 11px;
+    line-height: 14px;
+    margin-top: 3px;
+  }
+  #kampmål {
+    top: 182px;
+    padding: 7px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  #kampmål > span {
+    font-size: 13px;
+    line-height: 1.25;
+    margin-bottom: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #kampmål small {
+    font-size: 11px;
+    line-height: 1.25;
+    margin-top: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #bossvarsel {
+    font-size: 11px;
+    line-height: 1.25;
+    margin-top: 0;
+  }
+  #joystick {
+    bottom: 92px;
+  }
+  .touchhandling {
+    bottom: 90px;
+  }
+  #vejledning {
+    bottom: 213px;
+    padding: 9px 44px 9px 11px;
+  }
+  #vejledning b {
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+  #vejledning span {
+    font-size: 10px;
+    line-height: 1.35;
+  }
+  .har-nær #vejledning {
+    bottom: 238px;
+    min-height: 44px;
+  }
+  .har-nær #vejledning span {
+    display: none;
+  }
+  .har-besked #vejledning {
+    display: none;
+  }
+  #besked {
+    bottom: 240px;
+    padding: 8px;
+    font-size: 11px;
+    line-height: 14px;
+    max-height: 44px;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  #prompt,
+  #vejledning:not(.skjult) ~ #prompt {
+    bottom: 198px;
+    max-width: calc(100% - 28px);
+    padding: 6px 12px;
+    font-size: 10.5px;
+    text-align: center;
   }
 }

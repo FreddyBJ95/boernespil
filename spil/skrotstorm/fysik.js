@@ -42,7 +42,7 @@ export function kør(bil, input, fremgang, dt) {
   if (bil.påJord) {
     const kraft = input.gas > 0 ? e.kraft * (boost ? 1.6 : 1) : input.gas < 0 ? -e.kraft * 0.68 : 0;
     bil.fart += kraft * dt;
-    const modstand = (før.vej ? 0.15 : 0.35 - fremgang.hjul * 0.06) + Math.abs(bil.fart) * 0.016;
+    const modstand = (før.vej ? 0.15 : 0.35 - fremgang.hjul * 0.06) + Math.abs(bil.fart) * 0.005;
     bil.fart *= Math.max(0, 1 - modstand * dt);
     if (input.bremse) bil.fart *= Math.max(0, 1 - dt * 2.8);
     bil.fart = Math.max(-9, Math.min(top, bil.fart));

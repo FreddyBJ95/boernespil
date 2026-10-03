@@ -1,7 +1,7 @@
 import * as THREE from "../3d-faelles/three.module.js";
 import { GLTFLoader } from "../3d-faelles/GLTFLoader.js";
 import { mergeGeometries } from "../3d-faelles/BufferGeometryUtils.js";
-import { terrænHøjde } from "./logik.js";
+import { aktivOpgave, terrænHøjde } from "./logik.js";
 
 export const STEDER = {
   havn: { navn: "Den stille havn", x: -25, z: 73, ikon: "⚓" },
@@ -12,6 +12,16 @@ export const STEDER = {
   grotte: { navn: "Havgrotten", x: -66, z: 46, ikon: "◇" },
 };
 export const RAVTRÆER = [{ x: -46, z: -31 }, { x: -54, z: -20 }, { x: -35, z: -37 }];
+
+// Markør, afstand og kort følger altid den samme endnu manglende genstand.
+export function næsteMål(tilstand) {
+  const opgave = aktivOpgave(tilstand);
+  if (!opgave) return null;
+  if (opgave.id !== "harpiks") return STEDER[opgave.sted];
+  return RAVTRÆER.filter((_, i) => !tilstand.rav.includes(i)).sort((a, b) =>
+    Math.hypot(a.x - tilstand.position.x, a.z - tilstand.position.z) -
+    Math.hypot(b.x - tilstand.position.x, b.z - tilstand.position.z))[0] || STEDER.skov;
+}
 const HUSE = [
   [-8, 25, 3.8, 3.8],
   [-30, 55, 4.6, 4.6],
@@ -28,6 +38,31 @@ export function stjernePositioner(antal = 260) {
   for (let i = 0; i < antal; i++) {
     const a = i * 2.399, y = .12 + (i % 47) / 55, r = Math.sqrt(1 - y * y);
     punkter.push(Math.cos(a) * r * 480, y * 480, Math.sin(a) * r * 480);
+  }
+  return punkter;
+}
+
+// Små lys mellem træerne flytter sig langs endelige, rolige baner.
+export function skovLysPositioner(tid = 0) {
+  const punkter = [];
+  for (let i=0;i<28;i++) {
+    const x=-48+Math.sin(i*2.399+tid*.10)*(7+i%4),z=-22+Math.cos(i*1.73+tid*.07)*(10+i%7);
+    punkter.push(x,terrænHøjde(x,z)+1.2+Math.sin(tid*.7+i)*.5,z);
+  }
+  return punkter;
+}
+
+// Stenene står langs én sammenhængende kyststi og deles af kort og lysinstanser.
+export function sporPositioner() {
+  const ender = [[-12, -62], [-25, -50], [-37, -31], [-47, -8], [-55, 14], [-62, 31], [-66, 46]];
+  const punkter = [];
+  for (let k = 0; k < ender.length - 1; k++) {
+    const [ax, az] = ender[k], [bx, bz] = ender[k + 1];
+    const antal = Math.ceil(Math.hypot(bx - ax, bz - az) / 3.8);
+    for (let i = 0; i < antal; i++) {
+      const x = ax + (bx - ax) * i / antal, z = az + (bz - az) * i / antal;
+      punkter.push({ x, y: terrænHøjde(x, z) + .30, z });
+    }
   }
   return punkter;
 }
@@ -52,11 +87,27 @@ export function kanGå(x, z) {
   return !HUSE.some(([hx, hz, bx, bz]) => Math.abs(x - hx) < bx + .48 && Math.abs(z - hz) < bz + .48);
 }
 
+// Let grafik bruger to nære lanternelys; de lysende Blender-materialer bevares overalt.
+export function sætLanterneBudget(lanterner, position, letGrafik) {
+  let første = -1, anden = -1, nærmest = Infinity, næstnærmest = Infinity;
+  if (letGrafik) {
+    lanterner.forEach((lys, i) => {
+      const afstand = (lys.position.x - position.x) ** 2 + (lys.position.z - position.z) ** 2;
+      if (afstand < nærmest) {
+        anden = første; næstnærmest = nærmest; første = i; nærmest = afstand;
+      } else if (afstand < næstnærmest) { anden = i; næstnærmest = afstand; }
+    });
+  }
+  lanterner.forEach((lys, i) => { lys.visible = !letGrafik || i === første || i === anden; });
+}
+
 // Statiske Blender-dele samles efter materiale, mens rav og prisme bevares enkeltvis.
 function samlModel(model) {
   model.updateMatrixWorld(true);
   const grupper = new Map();
   const bevægelige = [];
+  const båd = new THREE.Group();
+  båd.position.set(-32, 0, 87);
   const rod = new THREE.Group();
   model.traverse((del) => {
     if (!del.isMesh) return;
@@ -70,8 +121,17 @@ function samlModel(model) {
     geometri.deleteAttribute("color");
     geometri.computeVertexNormals();
     const materiale = del.material;
-    if (/Gammelt_rav|Den_gamle_linse|Havgrotten_prisme|Lanternens_lys/.test(del.name)) {
+    if (del.name.startsWith("Flydebaad_")) {
+      geometri.translate(32, 0, -87);
+      båd.add(new THREE.Mesh(geometri, materiale));
+    } else if (/Gammelt_rav|Den_gamle_linse|Havgrotten_prisme|Lanternens_lys|Prismens_spejl/.test(del.name)) {
+      let centrum = null;
+      if (del.name.startsWith("Prismens_spejl")) {
+        geometri.computeBoundingBox();centrum=geometri.boundingBox.getCenter(new THREE.Vector3());
+        geometri.translate(-centrum.x,-centrum.y,-centrum.z);
+      }
       const o = new THREE.Mesh(geometri, materiale);
+      if (centrum) o.position.copy(centrum);
       o.name = del.name;
       rod.add(o);
       bevægelige.push(o);
@@ -90,7 +150,8 @@ function samlModel(model) {
     rod.add(o);
     geometrier.forEach((g) => g.dispose());
   }
-  return { rod, bevægelige };
+  rod.add(båd);
+  return { rod, bevægelige, båd };
 }
 
 export class ØVerden {
@@ -121,6 +182,7 @@ export class ØVerden {
     this.#hav();
     this.#lys();
     this.#spor();
+    this.#skovLys();
     this.markør = this.#markør();
     window.addEventListener("resize", () => this.tilpas());
   }
@@ -130,15 +192,59 @@ export class ØVerden {
     const model = await new GLTFLoader().loadAsync("./oe.glb", (e) => {
       this.status(e.total ? Math.min(95, Math.round(e.loaded / e.total * 90)) : 50);
     });
-    const { rod, bevægelige } = samlModel(model.scene);
+    const { rod, bevægelige, båd } = samlModel(model.scene);
+    this.båd = båd;
     this.model = rod;
     this.genstande = bevægelige;
     this.scene.add(rod);
+    this.vind = { value: 0 };
+    this.model.traverse(o=>{
+      if (!o.isMesh || !/^Fyrregrøn|Gylden strandsennep|Salvie/.test(o.material.name)) return;
+      o.material.onBeforeCompile = shader=>{
+        shader.uniforms.vindTid=this.vind;
+        shader.vertexShader='uniform float vindTid;\n'+shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\ntransformed.x += sin(position.z*.19+position.x*.16+vindTid)*.055; transformed.z += cos(position.x*.18+vindTid*.8)*.045;');
+      };
+      o.material.customProgramCacheKey=()=>"lyso-vind-v1";
+    });
     this.rav = bevægelige.filter((o) => o.name.startsWith("Gammelt_rav"));
     this.linse = bevægelige.find((o) => o.name.startsWith("Den_gamle_linse"));
     this.prisme = bevægelige.find((o) => o.name.startsWith("Havgrotten_prisme"));
     this.lanterne = bevægelige.find((o) => o.name.startsWith("Lanternens_lys"));
+    this.spejle = bevægelige.filter(o => o.name.startsWith("Prismens_spejl"));
+    await this.#måger();
     this.status(100);
+  }
+
+  // Få kloner af en Blender-måge giver bevægelse over kysten uden mange tegnekald.
+  async #måger() {
+    const model = await new GLTFLoader().loadAsync("./maage.glb");
+    const prototype = model.scene;
+    prototype.traverse(o => {
+      if (o.isMesh) { o.material.side = THREE.DoubleSide; o.castShadow = false; }
+    });
+    this.måger = [];
+    for (let i = 0; i < (this.mobil ? 3 : 5); i++) {
+      const rod = new THREE.Group(), fugl = prototype.clone(true);
+      const vinger = [new THREE.Group(), new THREE.Group()];
+      for (const del of [...fugl.children]) {
+        const side = del.name.includes("venstre") ? 0 : del.name.includes("hoejre") ? 1 : -1;
+        if (side >= 0) vinger[side].add(del);
+      }
+      fugl.add(...vinger);rod.add(fugl);rod.scale.setScalar(.8 + i*.07);this.scene.add(rod);
+      this.måger.push({ rod, vinger, fase: i*1.65 });
+    }
+  }
+
+  anvendIndstillinger(valg) {
+    const letGrafik = valg.kvalitet === "let" || (valg.kvalitet === "auto" && this.mobil);
+    this.letGrafik = letGrafik;
+    this.spot.visible = !letGrafik;
+    sætLanterneBudget(this.lanterner, this.kamera.position, letGrafik);
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio, letGrafik ? 1.1 : this.mobil ? 1.3 : 1.75));
+    this.renderer.shadowMap.enabled = !letGrafik && !this.mobil;
+    this.renderer.toneMappingExposure = 1.1;
+    this.rolig = valg.rolig;
+    this.tilpas();
   }
 
   #himmel() {
@@ -246,21 +352,14 @@ export class ØVerden {
   }
 
   #spor() {
-    this.spor = new THREE.Group();
-    this.scene.add(this.spor);
-    const punkter = [[-12, -62], [-25, -50], [-37, -31], [-47, -8], [-55, 14], [-62, 31], [-66, 46]];
+    const punkter = sporPositioner();
     const geometri = new THREE.IcosahedronGeometry(.28, 0);
     this.sporMat = new THREE.MeshStandardMaterial({ color: "#7cdfda", emissive: "#46c5d5", emissiveIntensity: 2, roughness: .3 });
-    for (let k = 0; k < punkter.length - 1; k++) {
-      const [ax, az] = punkter[k], [bx, bz] = punkter[k + 1];
-      const n = Math.ceil(Math.hypot(bx - ax, bz - az) / 3.8);
-      for (let i = 0; i < n; i++) {
-        const x = ax + (bx - ax) * i / n, z = az + (bz - az) * i / n;
-        const o = new THREE.Mesh(geometri, this.sporMat);
-        o.position.set(x, terrænHøjde(x, z) + .30, z);
-        this.spor.add(o);
-      }
-    }
+    this.spor = new THREE.InstancedMesh(geometri, this.sporMat, punkter.length);
+    const matrix = new THREE.Matrix4();
+    punkter.forEach((p, i) => this.spor.setMatrixAt(i, matrix.makeTranslation(p.x, p.y, p.z)));
+    this.spor.computeBoundingSphere();
+    this.scene.add(this.spor);
     this.spor.visible = false;
   }
 
@@ -275,6 +374,13 @@ export class ØVerden {
     return g;
   }
 
+  #skovLys() {
+    const data = new THREE.BufferGeometry();
+    data.setAttribute("position",new THREE.Float32BufferAttribute(skovLysPositioner(),3));
+    this.skovLys = new THREE.Points(data,new THREE.PointsMaterial({color:"#f8d484",size:.13,transparent:true,opacity:0,depthWrite:false}));
+    this.skovLys.frustumCulled=false;this.scene.add(this.skovLys);
+  }
+
   sætMål(sted) {
     this.mål = sted;
     this.markør.visible = !!sted;
@@ -282,6 +388,25 @@ export class ØVerden {
 
   opdater(tid, delta, tilstand, film = false) {
     this.tid = tid;
+    sætLanterneBudget(this.lanterner, this.kamera.position, this.letGrafik);
+    if(this.vind)this.vind.value=this.rolig?0:tid*.75;
+    this.skovLys.material.opacity=this.nat*.7;
+    if (!this.rolig) {
+      this.skovLys.geometry.attributes.position.array.set(skovLysPositioner(tid));
+      this.skovLys.geometry.attributes.position.needsUpdate=true;
+    }
+    if (this.båd) {
+      this.båd.position.y = this.rolig ? 0 : Math.sin(tid*.8)*.07;
+      this.båd.rotation.z = this.rolig ? 0 : Math.sin(tid*.58)*.018;
+    }
+    for (const m of this.måger || []) {
+      const a = tid*.075 + m.fase;
+      m.rod.position.set(-28 + Math.cos(a)*43, 22 + Math.sin(a*1.4)*3, 39 + Math.sin(a)*42);
+      m.rod.rotation.y = Math.PI - a;
+      m.vinger[0].rotation.z = Math.sin(tid*4 + m.fase)*.20;
+      m.vinger[1].rotation.z = -Math.sin(tid*4 + m.fase)*.20;
+    }
+    this.spejle?.forEach((o,i)=>{o.rotation.y=(tilstand.gåder?.spejle?.[i] || 0)*Math.PI/2;});
     this.nat = THREE.MathUtils.damp(this.nat, tilstand.nat ? 1 : 0, 1.2, delta);
     const n = this.nat;
     this.himmelMateriale.uniforms.nat.value = n;

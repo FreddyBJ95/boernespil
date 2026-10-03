@@ -15,14 +15,20 @@
         class="forside"><span class="mærke">VOKSENRUMMET · ET 3D-EVENTYR</span><h1>Krystal<span>jægerne</span></h1><p>En stille ø. Tre glemte segl.<br>Et lille lys, der følger dig hjem.</p><div class="menuknapper"><button id="start">Begynd rejsen</button><button id="fortsæt" class="sekundær skjult">Fortsæt eventyret</button></div><p id="indlæser" class="lille">Smeder øens verden …</p><a href="../../index.html">← Tilbage til spillene</a></div>
     </div>
     <div id="hud" class="skjult">
-      <header><a href="../../index.html" aria-label="Tilbage til spillene">←</a><div><strong>KRYSTALJÆGERNE</strong><span id="område">Lysvig</span></div><div class="topknapper"><button id="taske" title="Rejsetaske" aria-label="Rejsetaske">▣</button><button id="lyd" title="Slå lyd fra" aria-label="Slå lyd til eller fra">♫</button><button id="hjælp" title="Hjælp" aria-label="Hjælp">?</button><button id="pause" title="Pause" aria-label="Pause">Ⅱ</button></div></header>
+      <header><a href="../../index.html" aria-label="Tilbage til spillene">←</a><div><strong>KRYSTALJÆGERNE</strong><span id="område">Lysvig</span></div><div class="topknapper"><button id="taske" title="Rejsetaske" aria-label="Rejsetaske">▣</button><button id="indstillinger" title="Indstillinger" aria-label="Indstillinger">⚙</button><button id="lyd" title="Slå lyd fra" aria-label="Slå lyd til eller fra">♫</button><button id="hjælp" title="Hjælp" aria-label="Hjælp">?</button><button id="pause" title="Pause" aria-label="Pause">Ⅱ</button></div></header>
       <section class="status">
-        <div><span>Liv</span><progress id="liv" value="100" max="100"></progress><small id="livtekst">100 / 100</small></div>
-        <div><span>Energi</span><progress id="mana" value="100" max="100"></progress></div>
-        <p><b id="niveau">Niveau 1</b> · <span id="mønter">0</span> kobber · <span id="udstyr">Udstyr I</span></p>
+        <div><span>Liv</span><progress id="liv" value="100" max="100" aria-label="Dit liv"></progress><small id="livtekst">100 / 100</small></div>
+        <div><span>Energi</span><progress id="mana" value="100" max="100" aria-label="Din energi"></progress></div>
+        <p><b id="niveau">Niveau 1</b> · <span id="mønter">0</span> kobber · <span id="udstyr">Udstyr I</span></p><small id="gemtstatus" role="status">Rejsen gemmes automatisk</small>
       </section>
-      <section id="opgave" class="opgave"><span>NÆSTE MÅL</span><h2></h2><p></p><small></small><b id="afstand"></b></section>
-      <canvas id="kort" width="170" height="170" aria-label="Kort over området"></canvas>
+      <section id="opgave"
+        class="opgave"><span>NÆSTE MÅL</span><h2></h2><p></p><small></small><b id="afstand"></b></section>
+      <button id="åbnkort" aria-label="Åbn rejsekortet"
+        title="Åbn rejsekort · M"><canvas id="kort" width="170" height="170" aria-hidden="true"></canvas><span>Rejsekort · M</span></button>
+      <section id="kampmål" class="skjult"
+        aria-label="Kampens mål"><span id="fjendenavn" aria-live="polite"></span><progress id="fjendeliv" max="100" value="100" aria-label="Vogterens liv"></progress><small id="fjendehint"></small><b id="bossvarsel" role="status"></b></section>
+      <div id="vejledning"
+        class="skjult"><b></b><span></span><button id="skjulvejledning" aria-label="Skjul første rejsevejledning">×</button></div>
       <div id="besked" role="status" aria-live="polite"></div>
       <div id="prompt" class="skjult"></div>
       <nav
@@ -33,10 +39,11 @@
       <div class="touchhandling"><button id="interager">E · Brug</button><button id="angrib">Angrib</button></div>
       <p class="bundtip">WASD / pile: gå · klik / mellemrum: angrib · E: brug · Q: eliksir · Esc: pause</p>
     </div>
-    <div id="dialog" class="lag skjult">
+    <div id="dialog" class="lag skjult" role="dialog" aria-modal="true" aria-labelledby="dialogtitel"
+      aria-describedby="dialogtekst">
       <div
         class="kort"><span id="dialogmærke" class="mærke"></span><h2 id="dialogtitel"></h2><div id="dialogtekst"></div><div id="dialogknapper"></div></div>
     </div>
-    <script type="module" src="spil.js"></script>
+    <script type="module" src="../3d-faelles/start.js" data-spil="./spil.js"></script>
   </body>
 </html>

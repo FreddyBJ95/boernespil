@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Blender-modeller · visuel prøve</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #18262d; color: #eff8f4; font: 15px system-ui; }
+    canvas { display: block; width: 100vw; height: 100dvh; touch-action: none; }
+    aside { position: fixed; top: 12px; left: 12px; right: 12px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px 16px; background: #10202bed; border-radius: 12px; }
+    label { font-weight: 700; }
+    select, button { min-height: 44px; padding: 8px 12px; border-radius: 8px; background: #e7f7ef; color: #133e37; border: 0; font: inherit; }
+    p { margin: 0; line-height: 1.6; }
+    #status { width: 100%; }
+    small { position: fixed; bottom: 12px; left: 12px; right: 12px; padding: 8px; background: #10202bcc; }
+  </style>
+</head>
+<body>
+  <canvas id="verden" aria-label="Forhåndsvisning af de originale Blender-modeller"></canvas>
+  <aside>
+    <label for="valg">Blender-model</label>
+    <select id="valg">
+      <option value="det-sidste-lys/oe.glb">Det Sidste Lys · øen</option>
+      <option value="det-sidste-lys/maage.glb">Det Sidste Lys · mågen</option>
+      <option value="skrotstorm/modeller/oerken.glb">Skrotstorm · ørkenen</option>
+      <option value="skrotstorm/modeller/rotten.glb">Skrotstorm · Rustrotten</option>
+      <option value="krystaljaegerne/modeller/eventyr.glb">Krystaljægerne · modelbibliotek</option>
+      <option value="krystaljaegerne/modeller/detaljer.glb">Krystaljægerne · nye landmærker</option>
+      <option value="krystal-scene">Krystaljægerne · øens statiske scene</option>
+    </select>
+    <button id="sol">Skift lys</button>
+    <button id="reset">Overblik</button>
+    <p id="status" role="status">Indlæser …</p>
+  </aside>
+  <small>Kun visuel modelprøve. Ingen spil, gemninger eller adgang til voksenrummet. Træk for at dreje; rul for at zoome.</small>
+  <script type="module">
+    import * as THREE from "/spil/3d-faelles/three.module.js";
+    import { GLTFLoader } from "/spil/3d-faelles/GLTFLoader.js";
+    import { mergeGeometries } from "/spil/3d-faelles/BufferGeometryUtils.js";
+    import { bygØ } from "/spil/krystaljaegerne/verden.js";
+    const canvas = document.getElementById("verden"), status = document.getElementById("status");
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.4));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x82989b);
+    const hemi = new THREE.HemisphereLight(0xe5f5ed, 0x3c4934, 2.3);
+    const lys = new THREE.DirectionalLight(0xffedce, 2.8);
+    lys.position.set(-30, 70, 45);
+    scene.add(hemi, lys);
+    const kamera = new THREE.PerspectiveCamera(48, innerWidth / innerHeight, .01, 10000);
+    let model, center = new THREE.Vector3(), radius = 80, yaw = .45, pitch = .55, pointer, navne = 0, råTrekanter = 0;
+    let mørkt = false, mærke = 0, måleTid = 0, billeder = 0;
+    function størrelse() { renderer.setSize(innerWidth, innerHeight); kamera.aspect = innerWidth / innerHeight; kamera.updateProjectionMatrix(); }
+    function overblik() { yaw = .45; pitch = .55; }
+    // Samme materialebatching som spillene gør en detaljeret ø overkommelig på mobil.
+    async function hent() {
+      const valg = document.getElementById("valg").value, denne = ++mærke;
+      status.textContent = "Indlæser " + valg + " …";
+      // Scenen viser kun landskabets grafik. Ingen spillogik, spiller, lås eller gemning.
+      if (valg === "krystal-scene") {
+        const pakker = await Promise.all(["eventyr", "detaljer"].map(n => new GLTFLoader().loadAsync(`/spil/krystaljaegerne/modeller/${n}.glb`)));
+        if (denne !== mærke) return;
+        fjernModel();
+        const bibliotek = {};
+        for (const gltf of pakker) for (const del of gltf.scene.children) bibliotek[del.name] = del;
+        model = bygØ(bibliotek, 271).rod;
+        navne = 0; råTrekanter = 0;
+        model.traverse(o => { if (o.isMesh) { navne++; råTrekanter += (o.geometry.index?.count || o.geometry.attributes.position.count) / 3 * (o.isInstancedMesh ? o.count : 1); } });
+        center.set(0, 0, 0); radius = 180;
+        scene.add(model); overblik(); måleTid = 0; billeder = 0;
+        return;
+      }
+      const svar = await new GLTFLoader().loadAsync("/spil/" + valg);
+      if (denne !== mærke) return;
+      fjernModel();
+      svar.scene.updateMatrixWorld(true);
+      const kasser = new THREE.Box3().setFromObject(svar.scene);
+      center = kasser.getCenter(new THREE.Vector3());
+      radius = kasser.getSize(new THREE.Vector3()).length() * .75;
+      const grupper = new Map(); navne = 0; råTrekanter = 0;
+      svar.scene.traverse(o => {
+        if (!o.isMesh || Array.isArray(o.material)) return;
+        navne++; råTrekanter += (o.geometry.index?.count || o.geometry.attributes.position.count) / 3;
+        const liste = grupper.get(o.material) || [];
+        const g = o.geometry.clone().applyMatrix4(o.matrixWorld);
+        if (!g.index) g.setIndex(Array.from({ length: g.attributes.position.count }, (_, i) => i));
+        if (o.matrixWorld.determinant() < 0) {
+          for (let i = 0; i < g.index.count; i += 3) {
+            [g.index.array[i + 1], g.index.array[i + 2]] = [g.index.array[i + 2], g.index.array[i + 1]];
+          }
+        }
+        g.deleteAttribute("uv"); g.deleteAttribute("color"); g.computeVertexNormals();
+        liste.push(g); grupper.set(o.material, liste);
+      });
+      model = new THREE.Group();
+      for (const [materiale, liste] of grupper) {
+        const g = mergeGeometries(liste, false);
+        assertGeometri(g);
+        model.add(new THREE.Mesh(g, materiale));
+        liste.forEach(g => g.dispose());
+      }
+      scene.add(model); overblik(); måleTid = 0; billeder = 0;
+    }
+    function fjernModel() {
+      if (!model) return;
+      scene.remove(model);
+      const geometrier = new Set(), materialer = new Set();
+      model.traverse(o => { if (o.isMesh) { geometrier.add(o.geometry); (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => materialer.add(m)); } });
+      geometrier.forEach(g => g.dispose()); materialer.forEach(m => m.dispose());
+    }
+    function assertGeometri(g) { if (!g) throw new Error("Modellens geometri kan ikke samles."); }
+    canvas.addEventListener("pointerdown", e => { pointer = { id: e.pointerId, x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); });
+    canvas.addEventListener("pointermove", e => { if (pointer?.id !== e.pointerId) return; yaw -= (e.clientX - pointer.x) * .006; pitch = Math.max(.1, Math.min(1.4, pitch + (e.clientY - pointer.y) * .006)); pointer.x = e.clientX; pointer.y = e.clientY; });
+    for (const n of ["pointerup", "pointercancel", "lostpointercapture"]) canvas.addEventListener(n, () => { pointer = null; });
+    canvas.addEventListener("wheel", e => { e.preventDefault(); radius = Math.max(.8, radius * Math.exp(e.deltaY * .001)); }, { passive: false });
+    document.getElementById("valg").onchange = () => hent().catch(e => { status.textContent = "Fejl: " + e.message; });
+    document.getElementById("reset").onclick = overblik;
+    document.getElementById("sol").onclick = () => { mørkt = !mørkt; hemi.intensity = mørkt ? .8 : 2.3; lys.intensity = mørkt ? .4 : 2.8; };
+    addEventListener("resize", størrelse); størrelse();
+    await hent();
+    let før = performance.now();
+    function tegn(nu) {
+      requestAnimationFrame(tegn);
+      kamera.position.set(center.x + Math.sin(yaw) * Math.cos(pitch) * radius, center.y + Math.sin(pitch) * radius, center.z + Math.cos(yaw) * Math.cos(pitch) * radius);
+      kamera.lookAt(center); renderer.render(scene, kamera);
+      måleTid += (nu - før) / 1000; før = nu; billeder++;
+      if (måleTid >= 1 && model) { status.textContent = `${navne} Blender-masker · ${Math.round(råTrekanter).toLocaleString("da-DK")} trekanter · ${renderer.info.render.calls} tegningskald · ${Math.round(billeder / måleTid)} billeder/sek.`; måleTid = 0; billeder = 0; }
+    }
+    requestAnimationFrame(tegn);
+  </script>
+</body>
+</html>

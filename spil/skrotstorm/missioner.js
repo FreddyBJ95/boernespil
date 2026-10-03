@@ -46,9 +46,20 @@ export function opdaterOpgave(fremgang, bil, løbende, dt) {
       if (!færdig) hændelser.push({ type: "port", tekst: `Signal ${fremgang.port}/${m.porte.length} · følg næste blå port` });
     }
   } else if (m.type === "hop") {
-    if (!bil.påJord && Math.hypot(bil.x - m.mål.x, bil.z - m.mål.z) < 40 && bil.fart > 15) løbende.hopKlar = true;
-    if (løbende.hopKlar && bil.påJord && bil.senesteHop >= .55) færdig = true;
-    if (løbende.hopKlar && bil.påJord && !færdig) løbende.hopKlar = false;
+    const vedRampe = Math.hypot(bil.x - m.mål.x, bil.z - m.mål.z) < 40;
+    if (!bil.påJord && vedRampe) {
+      løbende.rampeForsøg = true;
+      // Et rigtigt tilløb går mod øst og letter over rampens høje ende.
+      if (bil.fart > 15 && bil.y > 4 && bil.x > 82 && Math.sin(bil.vinkel) > .65) løbende.hopKlar = true;
+    }
+    if (løbende.rampeForsøg && bil.påJord) {
+      færdig = løbende.hopKlar && bil.senesteHop >= .55;
+      if (!færdig) hændelser.push({ type: 'hop', tekst: 'Prøv igen: tag tilløb fra vest, brug nitro og kør lige mod øst med mindst 55 km/t.' });
+      løbende.rampeForsøg = false;
+      løbende.hopKlar = false;
+      løbende.rampeTilgang = false;
+      bil.senesteHop = 0;
+    }
   } else færdig = nær && bil.påJord;
   if (færdig) {
     const klaret = afslutMission(fremgang);

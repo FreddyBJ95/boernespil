@@ -67,14 +67,18 @@ export async function prøvVoksenverden(hent, id, sammenlignKilde = false) {
     assert.equal(head.headers.get("content-type"), svar.headers.get("content-type"), sti);
     assert.equal((await head.arrayBuffer()).byteLength, 0, sti);
   }
-  for (const fil of ["three.module.js", "GLTFLoader.js", "BufferGeometryUtils.js"]) {
+  for (const fil of ["three.module.js", "GLTFLoader.js", "BufferGeometryUtils.js", "start.js"]) {
     const svar = await hent(`/spil/3d-faelles/${fil}`);
     assert.equal(svar.status, 200, fil);
     assert.equal(svar.headers.get("content-type"), filtyper.js, fil);
     const kode = await svar.text();
     assert.ok(kode.length > 1000, `${fil}: hele biblioteket skal følge med`);
+    if (sammenlignKilde) assert.equal(kode, await Deno.readTextFile(new URL(`spil/3d-faelles/${fil}`, projekt)), fil);
     const imports = [...kode.matchAll(/^import\s[\s\S]*?from\s+['"]([^'"]+)['"];?/gm)];
-    assert.ok(imports.every((m) => m[1].startsWith("./") || m[1].startsWith("../")), `${fil}: motorens imports skal være lokale`);
+    assert.ok(
+      imports.every((m) => m[1].startsWith("./") || m[1].startsWith("../")),
+      `${fil}: motorens imports skal være lokale`,
+    );
   }
   const licens = await hent("/spil/3d-faelles/LICENSE-three.txt");
   assert.equal(licens.status, 200);
