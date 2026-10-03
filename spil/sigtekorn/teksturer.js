@@ -197,7 +197,7 @@ function bark(g, n, r) {
 
 // ---------- Fotoene fra Poly Haven ----------
 const FOTOS = "teksturer/";
-async function hentFotos() {
+async function hentFotos(navne) {
   try {
     const svar = await fetch(FOTOS + "teksturer.json");
     if (!svar.ok) throw new Error(`teksturer.json: ${svar.status}`);
@@ -208,7 +208,7 @@ async function hentFotos() {
       return t;
     });
     const fotos = {};
-    await Promise.all(Object.entries(info).map(async ([navn, i]) => {
+    await Promise.all(Object.entries(info).filter(([navn]) => !navne || navne.includes(navn)).map(async ([navn, i]) => {
       const [farve, normal, arm] = await Promise.all([hent(`${navn}_farve.webp`, true), hent(`${navn}_normal.webp`), hent(`${navn}_arm.webp`)]);
       fotos[navn] = { farve, normal, arm, meter: i.meter };
     }));
@@ -268,7 +268,8 @@ function fotoDør(img) {
 }
 
 // Alle teksturer i ét opslag (lavet én gang)
-export async function lavTeksturer() {
+// fotos: navnene på de fotos, banen bruger (fotoBrug i bane.js) — de andre hentes ikke
+export async function lavTeksturer(fotos = null) {
   const t = {};
   for (const [navn, fn, n, frø] of [["sandsten", sandsten, 512, 3], ["puds", puds, 512, 5], ["sand", sand, 512, 7], ["fliser", fliser, 512, 11],
     ["trækasse", trækasse, 256, 13], ["dør", dør, 256, 17], ["metal", metal, 256, 19], ["bark", bark, 128, 23]]) t[navn] = tekstur(lærred(n, fn, frø));
@@ -277,7 +278,7 @@ export async function lavTeksturer() {
   t.glimt = tekstur(lærred(128, glimt, 31));
   t.røg = tekstur(lærred(64, røg), true);
   t.blod = tekstur(lærred(128, blod, 37));
-  t.foto = await hentFotos();
+  t.foto = await hentFotos(fotos);
   if (t.foto) {
     t.kasseFoto = tekstur(fotoKasse(t.foto.planker.farve.image));
     t.dørFoto = tekstur(fotoDør(t.foto.doer.farve.image));

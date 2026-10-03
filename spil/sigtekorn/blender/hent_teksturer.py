@@ -1,4 +1,4 @@
-# ===== Hent teksturerne til Støvbyen fra Poly Haven (polyhaven.com — alt der er CC0, frit at bruge) =====
+# ===== Hent teksturerne til banerne fra Poly Haven (polyhaven.com — alt der er CC0, frit at bruge) =====
 # Kør med almindelig Python (skal have Pillow):  python hent_teksturer.py
 # Billederne hentes i 2k til ud/polyhaven/ og gemmes som WebP i ../teksturer/ i den størrelse, spillet bruger.
 #   farve:  farven (sRGB)      normal: fladens små buler (OpenGL-retning, som three.js bruger)
@@ -24,6 +24,10 @@ TEKSTURER = {
     # Havnen
     "beton": ("dirty_concrete", 2048, (1.0, 1.0, 1.0)),
     "blik": ("box_profile_metal_sheet", 1024, (3.5, 3.5, 3.5), True),     # gjort grå, så den kan farves (containere i alle farver)
+    # Fjeldbyen
+    "sne": ("snow_02", 2048, (1.38, 1.38, 1.4)),
+    "klippe": ("rock_face_03", 2048, (1.45, 1.45, 1.45), True),        # grå fjeldsten
+    "panel": ("weathered_plank_siding", 1024, (2.3, 2.3, 2.3), True),     # gjort grå, så husene kan males røde, gule og brune
 }
 KORT = {"farve": ("Diffuse", None), "normal": ("nor_gl", 1024), "arm": ("arm", 1024)}
 

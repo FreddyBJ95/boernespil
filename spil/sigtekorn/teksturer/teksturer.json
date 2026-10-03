@@ -88,5 +88,32 @@
    198,
    198
   ]
+ },
+ "sne": {
+  "polyhaven": "snow_02",
+  "meter": 2.0,
+  "snitfarve": [
+   229,
+   228,
+   234
+  ]
+ },
+ "klippe": {
+  "polyhaven": "rock_face_03",
+  "meter": 2.7,
+  "snitfarve": [
+   160,
+   159,
+   160
+  ]
+ },
+ "panel": {
+  "polyhaven": "weathered_plank_siding",
+  "meter": 1.57,
+  "snitfarve": [
+   147,
+   147,
+   147
+  ]
  }
 }

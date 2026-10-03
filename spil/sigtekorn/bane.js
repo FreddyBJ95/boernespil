@@ -6,14 +6,18 @@
 import * as THREE from "./three.js";
 import stoevbyen from "./baner/stoevbyen.js";
 import havnen from "./baner/havnen.js";
+import fjeldbyen from "./baner/fjeldbyen.js";
 
-const BANER = { stoevbyen, havnen };
+const BANER = { stoevbyen, havnen, fjeldbyen };
+// De fotos, en bane skal bruge: dem i banens fil og dem, alle baner bruger (kasser, døre, tønder og træer)
+export const fotoBrug = id => [...new Set(["planker", "doer", "metal", "bark", ...((BANER[id] || BANER.stoevbyen).fotos || [])])];
 
 const hash = (a, b) => { let h = Math.imul(a | 0, 374761393) + Math.imul(b | 0, 668265263); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 
 // ---------- Geometri: kasser med teksturer i verdens-meter og mørkere farve forneden (som skygge i hjørnerne) ----------
 const FLISE = { sandsten: 4, puds: 4, fliser: 4, sand: 6, mørk: 4, tag: 3, beton: 4, lagerhal: 2, pier: 3,
-  containerRød: 2, containerBlå: 2, containerGrøn: 2, containerOrange: 2, containerGul: 2, containerHvid: 2 };
+  containerRød: 2, containerBlå: 2, containerGrøn: 2, containerOrange: 2, containerGul: 2, containerHvid: 2,
+  sne: 9, klippe: 6, sten: 3, is: 5, stammer: 2, tagSort: 3, panelRød: 3, panelGul: 3, panelBrun: 3, panelHvid: 3 };
 class Bygger {
   constructor() { this.grupper = new Map(); }
   gruppe(mat) {
@@ -77,10 +81,21 @@ function lavMaterialer(t) {
   const std = (map, o = {}) => new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: o.bump ?? 1.2, roughness: o.ru ?? 0.95, metalness: o.me ?? 0, vertexColors: true, color: o.farve ?? 0xffffff });
   // Et foto: farve, buler (normal) og ruhed + skygge i krogene (arm). Gentages, så det får sin rigtige størrelse i meter
   const foto = (navn, flise, o = {}) => {
-    const f = t.foto[navn], gentag = flise / f.meter;
+    const f = t.foto[navn];
+    if (!f) return std(t.metal, { farve: o.farve ?? 0x9a9a9a, ru: 0.9 });   // fotoet hører til en anden bane (og er ikke hentet)
+    const gentag = flise / f.meter;
     for (const k of [f.farve, f.normal, f.arm]) k.repeat.set(gentag, gentag);
     return new THREE.MeshStandardMaterial({ map: f.farve, normalMap: f.normal, normalScale: new THREE.Vector2(o.nor ?? 1, o.nor ?? 1),
-      roughnessMap: f.arm, aoMap: f.arm, roughness: 1, metalness: 0, vertexColors: true, color: o.farve ?? 0xffffff });
+      roughnessMap: f.arm, aoMap: f.arm, roughness: 1, metalness: 0, vertexColors: true, color: new THREE.Color(o.farve ?? 0xffffff).multiplyScalar(o.lys ?? 1) });
+  };
+  const fjeld = () => {                                            // Fjeldbyen: sne, fjeld, træhuse i mange farver og en frossen sø
+    const is = foto("sne", FLISE.is, { farve: 0x9cc4dc, nor: 0.4 }); is.roughnessMap = null; is.roughness = 0.18;
+    return {
+      sne: foto("sne", FLISE.sne), klippe: foto("klippe", FLISE.klippe, { farve: 0xb8bcc6, nor: 1.4 }), sten: foto("klippe", FLISE.sten, { farve: 0xa0a4ac, nor: 1.4 }), is,
+      stammer: foto("bark", FLISE.stammer, { farve: 0xa07858 }), tagSort: foto("planker", FLISE.tagSort, { farve: 0x5a4c42 }),
+      panelRød: foto("panel", FLISE.panelRød, { farve: 0xc8402c, lys: 1.15 }), panelGul: foto("panel", FLISE.panelGul, { farve: 0xf0c060, lys: 1.15 }),
+      panelBrun: foto("panel", FLISE.panelBrun, { farve: 0xa47a58, lys: 1.1 }), panelHvid: foto("panel", FLISE.panelHvid, { farve: 0xffffff, lys: 1.5 }),
+    };
   };
   const stof = farve => new THREE.MeshStandardMaterial({ color: farve, roughness: 1, vertexColors: true, side: THREE.DoubleSide });
   const fælles = {
@@ -97,18 +112,22 @@ function lavMaterialer(t) {
     sandsten: foto("sandsten", FLISE.sandsten, { nor: 1.3 }), puds: foto("puds", FLISE.puds), fliser: foto("fliser", FLISE.fliser), sand: foto("sand", FLISE.sand),
     mørk: foto("sandsten", FLISE.mørk, { farve: 0x9a8a72, nor: 1.3 }), tag: foto("planker", FLISE.tag, { farve: 0xb89870 }),
     trækasse: std(t.kasseFoto, { bump: 1.2, ru: 0.85 }), dør: std(t.dørFoto, { bump: 0.8, ru: 0.7 }),
-    metal: std(t.metal, { ru: 0.55, me: 0.45 }), ...fælles,
+    metal: std(t.metal, { ru: 0.55, me: 0.45 }), ...fjeld(), ...fælles,
   };
   return {
     sandsten: std(t.sandsten), puds: std(t.puds, { bump: 0.6 }), fliser: std(t.fliser, { bump: 1 }), sand: std(t.sand, { bump: 0.5 }),
     mørk: std(t.sandsten, { farve: 0x9a8a72 }), tag: std(t.trækasse, { farve: 0xb89870, bump: 0.6 }),
     trækasse: std(t.trækasse, { bump: 1.5, ru: 0.9 }), dør: std(t.dør, { bump: 0.8, ru: 0.6, me: 0.35 }), metal: std(t.metal, { ru: 0.55, me: 0.45 }),
     ...havn((_, __, o = {}) => std(t.metal, { farve: o.farve ?? 0x9a9a9a, ru: 0.8 })), ...fælles,
+    sne: std(t.sand, { farve: 0xf4f6fa, bump: 0.3 }), klippe: std(t.sandsten, { farve: 0x9aa0a8 }), sten: std(t.sandsten, { farve: 0x8a9098 }), is: std(t.fliser, { farve: 0xb8d8ea, ru: 0.2 }),
+    stammer: std(t.bark, { farve: 0xa07858 }), tagSort: std(t.trækasse, { farve: 0x5a4c42 }), panelRød: std(t.trækasse, { farve: 0xc8402c }),
+    panelGul: std(t.trækasse, { farve: 0xf0c060 }), panelBrun: std(t.trækasse, { farve: 0xa47a58 }), panelHvid: std(t.trækasse, { farve: 0xf4f2ec }),
   };
 }
 // Materialer, kuglerne kan ramme (bestemmer gnisterne og lyden)
 const KUGLEMAT = { sandsten: "sten", puds: "sten", fliser: "sten", sand: "sand", mørk: "sten", tag: "træ", trækasse: "træ", dør: "metal", metal: "metal", vindue: "sten",
-  beton: "sten", lagerhal: "metal", pier: "træ", containerRød: "metal", containerBlå: "metal", containerGrøn: "metal", containerOrange: "metal", containerGul: "metal", containerHvid: "metal" };
+  beton: "sten", lagerhal: "metal", pier: "træ", containerRød: "metal", containerBlå: "metal", containerGrøn: "metal", containerOrange: "metal", containerGul: "metal", containerHvid: "metal",
+  sne: "sand", klippe: "sten", sten: "sten", is: "sten", stammer: "træ", tagSort: "træ", panelRød: "træ", panelGul: "træ", panelBrun: "træ", panelHvid: "træ" };
 
 // ---------- Byg en bane (id fra katalog.js) ----------
 export function lavBane(scene, verden, t, id = "stoevbyen") {
@@ -120,9 +139,12 @@ export function lavBane(scene, verden, t, id = "stoevbyen") {
   lavTønder(scene, info.tønder || [], t);
   lavLamper(scene, info.lamper || []);
   lavPalmer(scene, verden, t, info.palmer || []);
-  info.pynt?.({ scene, THREE, t });                                // det, der kun er til at se på (fx vand og et skib)
+  lavGraner(scene, verden, t, info.graner || []);
+  // det, der kun er til at se på (fx vand og et skib, eller sne der falder) — kun i browseren, ikke når banen gemmes til Blender
+  const pynt = typeof document !== "undefined" ? info.pynt?.({ scene, THREE, t, hash }) : null;
   const knuder = lavVejnet(verden, info.erFast || (() => false), info.grænse, info.ekstraKnuder || []);
-  return { id: BANER[id] ? id : "stoevbyen", navn: def.navn, knuder, erFast: info.erFast, masker, start: def.start, poster: def.poster, omveje: def.omveje || [], postVægt: def.postVægt || (() => 1), lamper: info.lamper || [], grænse: info.grænse };
+  return { id: BANER[id] ? id : "stoevbyen", navn: def.navn, knuder, erFast: info.erFast, masker, start: def.start, poster: def.poster, omveje: def.omveje || [], postVægt: def.postVægt || (() => 1), lamper: info.lamper || [], grænse: info.grænse,
+    vejr: def.vejr || null, opdater: pynt?.opdater || null };
 }
 
 // Tønder: runde, med to ringe (kun til at se på — kollisionen er en kasse)
@@ -174,6 +196,45 @@ function lavPalmer(scene, verden, t, steder) {
     scene.add(g);
     verden.tilføj(x - 0.22, 0, z - 0.22, x + 0.22, h, z + 0.22, "træ");
   }
+}
+
+// Graner: en stamme og fire lag grønne kegler med sne på. Alle graner samles i tre masker (én pr. materiale).
+// steder: [x, z, højde, kollision] — uden kollision står de bare til pynt uden for banen
+function lavGraner(scene, verden, t, steder) {
+  for (const [x, z, h = 9, kollision = true] of steder) if (kollision) verden.tilføj(x - 0.22, 0, z - 0.22, x + 0.22, h, z + 0.22, "træ");
+  if (!steder.length || typeof document === "undefined") return;    // (når banen gemmes til Blender, er kun stammerne med)
+  const f = t.foto?.bark, gentag = k => { const c = k.clone(); c.repeat.set(1, 2); return c; };
+  const bark = f ? new THREE.MeshStandardMaterial({ map: gentag(f.farve), normalMap: gentag(f.normal), roughness: 1, color: 0x8a6a52 })
+    : new THREE.MeshStandardMaterial({ map: t.bark, roughness: 1, color: 0x8a6a52 });
+  const nåle = new THREE.MeshStandardMaterial({ color: 0x2a4632, roughness: 0.95, flatShading: true });
+  const sne = new THREE.MeshStandardMaterial({ color: 0xf2f6fa, roughness: 0.9, flatShading: true, side: THREE.DoubleSide });
+  const dele = { bark: [], nåle: [], sne: [] }, m = new THREE.Matrix4();
+  const læg = (liste, geo, x, y, z) => { geo.applyMatrix4(m.makeRotationY(hash(x * 7, z * 3) * 6.3)); geo.translate(x, y, z); liste.push(geo.toNonIndexed()); };
+  for (const [x, z, h = 9, kollision = true] of steder) {
+    const r = h * 0.23, y0 = Math.max(2.1, h * 0.18), hh = (h - y0) * 0.42;   // de nederste grene er over hovedet på soldaterne
+    læg(dele.bark, new THREE.CylinderGeometry(r * 0.07, r * 0.1, y0 + 0.5, 7), x, (y0 + 0.5) / 2, z);
+    for (let i = 0; i < 4; i++) {
+      const y = y0 + i * (h - y0 - hh) / 3, rr = r * (1 - i * 0.2);
+      læg(dele.nåle, new THREE.ConeGeometry(rr, hh, 9), x, y + hh / 2, z);
+      // sne på den del af laget, man kan se (resten skjules af laget ovenover) — og på toppen af træet
+      læg(dele.sne, new THREE.CylinderGeometry(rr * 0.5 * 1.04, rr * 0.86 * 1.04, hh * 0.36, 9, 1, true), x, y + hh * 0.32, z);
+      if (i === 3) læg(dele.sne, new THREE.ConeGeometry(rr * 0.5 * 1.04, hh * 0.5, 9), x, y + hh * 0.75, z);
+    }
+  }
+  for (const [navn, mat] of [["bark", bark], ["nåle", nåle], ["sne", sne]]) {
+    const mesh = new THREE.Mesh(samlGeo(dele[navn]), mat);
+    mesh.castShadow = true; mesh.receiveShadow = navn !== "nåle"; scene.add(mesh);
+  }
+}
+// Læg mange (ikke-indekserede) former sammen til én
+function samlGeo(geoer) {
+  const ud = new THREE.BufferGeometry();
+  for (const n of ["position", "normal", "uv"]) {
+    const længde = geoer.reduce((s, g) => s + g.attributes[n].array.length, 0), a = new Float32Array(længde);
+    let i = 0; for (const g of geoer) { a.set(g.attributes[n].array, i); i += g.attributes[n].array.length; }
+    ud.setAttribute(n, new THREE.BufferAttribute(a, n === "uv" ? 2 : 3));
+  }
+  return ud;
 }
 
 // ---------- Vej-nettet: punkter for hver 3 meter på gaderne, forbundet, hvor man kan gå direkte ----------

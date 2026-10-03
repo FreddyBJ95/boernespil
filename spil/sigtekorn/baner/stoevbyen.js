@@ -40,7 +40,7 @@ const POSTER = [
 ];
 const START = {
   ræve: [[-10, 47], [-5, 50], [0, 46], [5, 50], [10, 47], [-12, 51], [12, 51], [0, 52]],
-  slanger: [[-8, -47], [-4, -51], [0, -46], [4, -51], [8, -47], [-11, -50], [11, -50], [0, -52]],
+  slanger: [[-9.5, -47], [-4, -51], [0, -46], [4, -51], [8, -47], [-11, -50], [11, -50], [0, -52]],
 };
 
 // Omveje: punkter på sidevejene, som botterne nogle gange går forbi (så ikke alle går gennem midten)
@@ -171,4 +171,4 @@ function byg({ b, solid, verden, hash }) {
 // Midtergaden (x tæt på 0) er kun en gang imellem en post — ellers står alle der og skyder på hinanden
 const postVægt = ([x]) => Math.abs(x) < 5 ? 0.3 : 1;
 
-export default { navn: "Støvbyen", start: START, poster: POSTER, omveje: OMVEJE, postVægt, byg };
+export default { navn: "Støvbyen", fotos: ["sandsten", "puds", "sand", "fliser"], start: START, poster: POSTER, omveje: OMVEJE, postVægt, byg };
