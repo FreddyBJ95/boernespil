@@ -27,7 +27,7 @@ async function prøve(handling) {
 }
 
 Deno.test("Uendelig: metadata og skjulte verdener, mens gamle formater bevares", async () => {
-  assert.equal(UDGAVE, "0.5.0");
+  assert.equal(UDGAVE, "0.5.1");
   const u = metadata({ navn: "Uden kanter", type: "uendelig", bredde: 128 });
   assert.equal(u.version, "0.2.0"); assert.equal(u.bredde, STØRRELSE); assert.equal(u.dybde, STØRRELSE);
   assert.throws(() => metadata({ navn: "Skjult", type: "guldslot", bredde: 128 }), /verdenstype/);

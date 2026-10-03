@@ -61,7 +61,7 @@ export class Rum {
     // Forlad først det gamle rum, når det nye faktisk har en plads klar.
     s.rum?.ud(s);
     const { x, y, z } = this.startsted();
-    Object.assign(s, { rum: this, x: x + 0.5, y, z: z + 0.5, yaw: 0, pitch: 0, r: s.r || 6, klumper: new Set() });
+    Object.assign(s, { rum: this, x: x + 0.5, y, z: z + 0.5, yaw: 0, pitch: 0, rid: null, r: s.r || 6, klumper: new Set() });
     this.spillere.set(s.id, s);
     const { id, navn, type, bredde, dybde, højde, frø, ildBreder } = this.meta;
     send(s, { t: "velkommen", dig: s.id, verden: { id, navn, type, bredde, dybde, højde, frø, ildBreder, stemmer: this.meta.stemmer === true, uendelig: this.meta.type === "uendelig" && this.meta.version === "0.2.0" }, spillere: [...this.spillere.values()].map(p => this.spillerInfo(p)) });
@@ -77,7 +77,7 @@ export class Rum {
     return { x, y, z };
   }
 
-  spillerInfo(s) { return { id: s.id, figur: s.figur, version: s.version, x: s.x, y: s.y, z: s.z, yaw: s.yaw, pitch: s.pitch }; }
+  spillerInfo(s) { return { id: s.id, figur: s.figur, version: s.version, x: s.x, y: s.y, z: s.z, yaw: s.yaw, pitch: s.pitch, ...(s.rid ? { rid: s.rid } : {}) }; }
   ud(s) { if (!this.spillere.delete(s.id)) return; this.taleStatus(s, false); s.rum = null; this.alle({ t: "ud", id: s.id }); }
 
   // Serveren sender kun signaler; mikrofonens lyd går direkte mellem tablets.
@@ -146,10 +146,14 @@ export class Rum {
     if (["brag", "fyrværkeri", "fyrkasse"].includes(b.t)) return this.effektBesked(s, b, nu);
     if (b.t === "rtc" || b.t === "taler") { this.stemmeBesked(s, b, nu); return; }
     if (b.t === "udsyn" && Number.isInteger(b.r)) s.r = Math.max(1, Math.min(8, b.r));
-    if (b.t === "pos" && nu - (s.sidstePos ?? -Infinity) >= 100) {
+    if (b.t === "pos") {
       if (![b.x, b.y, b.z, b.yaw, b.pitch].every(Number.isFinite) || b.x < 0 || b.x >= this.meta.bredde || b.z < 0 || b.z >= this.meta.dybde || b.y < 0 || b.y > this.meta.højde + 64 || Math.abs(b.yaw) > 1e6 || Math.abs(b.pitch) > Math.PI) return;
-      for (const k of ["x", "y", "z", "yaw", "pitch"]) s[k] = b[k];
-      s.sidstePos = nu;
+      // Sadelskift gemmes straks; hurtige beskeder må stadig ikke flytte spilleren eller udsynet.
+      s.rid = typeof b.rid === "string" && b.rid === b.rid.trim() && /^[a-z]{2,24}$/.test(b.rid) ? b.rid : null;
+      if (nu - (s.sidstePos ?? -Infinity) >= 100) {
+        for (const k of ["x", "y", "z", "yaw", "pitch"]) s[k] = b[k];
+        s.sidstePos = nu;
+      }
     }
     if (b.t === "sæt" || b.t === "tænd") {
       s.bygTider = (s.bygTider || []).filter(t => nu - t < 1000);
