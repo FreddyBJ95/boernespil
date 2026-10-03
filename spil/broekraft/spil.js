@@ -17,6 +17,7 @@ import { Kort } from "./kort.js";
 import { Tog, Ballon, vælg } from "./tog.js";
 import { Eventyr, sig, VARER } from "./eventyr.js";
 import { Smådyr } from "./smaadyr.js";
+import { Føljagt } from "./enhjoerninger.js";
 import { StenJagt, Stenring, Guldslot, STEN, læsSten } from "./sten.js";
 import { DYR, Dyr, ægIkon } from "./dyr.js";
 import { VERDENER } from "./verdener.js";
@@ -144,6 +145,7 @@ const SNEARTER = {
   slik: { farver: ["#ff5fa8", "#ffd23f", "#5fd3ff", "#8aff7a", "#c86bff", "#ffffff", "#ff8c1a"], fart: 1.6, str: 0.18, antal: 900 },
   atom: { farver: ["#8aff5a", "#c8ff7a", "#5aff3a"], fart: -0.4, str: 0.12, antal: 500, glød: true },
   tornado: { farver: ["#ff8c1a", "#ffd23f", "#ff5a1f"], fart: -0.5, str: 0.1, antal: 260, glød: true },
+  glimmer: { farver: ["#ffb3d9", "#c9a0ff", "#a8e8ff", "#fff3a0", "#ffffff"], fart: 0.25, str: 0.13, antal: 600, glød: true },   // Enhjørningeland
 };
 let sne = null;
 if (cfg.sne) {
@@ -632,6 +634,7 @@ function tryk(x, y, somHammer = false) {
     bedst.d.klap();
     const p = tilSkærm(bedst.d.pos, bedst.d.h + 0.3);
     E.tekstPop(p.x, p.y, "❤️", { s: 50 });
+    føljagt?.klappet(bedst.d);                                      // et enhjørningeføl følger med hjem
     return;
   }
   if (!hit) return;
@@ -2078,10 +2081,16 @@ const brand = cfg.brand && !ONLINE ? new Brandvæsen(verden, {
 
 // ---------- Den uendelige verden: toget, ballonen, spådamen, de magiske sten og guldslottet ----------
 let kæmpeTid = 0, svæveHop = false;                              // Atomstenen og Skystenen
-const smådyr = UENDELIG ? new Smådyr({ scene, sp, land, verden }) : null;   // sommerfugle, bier og drager i luften
+const smådyr = UENDELIG ? new Smådyr({ scene, sp, land, verden })   // sommerfugle, bier og drager i luften
+  : cfg.enhjørninger ? new Smådyr({ scene, sp, land: { årstid: () => "forår" }, verden }) : null;   // Enhjørningeland: sommerfugle
 const tog = UENDELIG ? new Tog({ scene, sp, lyd: Lyd, besked, gem: gemSnart, tilstand: gemt.tog, vedAfgang: () => eventyr?.hændelse("tog") }) : null;
 const ballon = UENDELIG ? new Ballon({ scene, verden, sp, lyd: Lyd, besked, gem: gemSnart, pos: gemt.ballon }) : null;
 const fest = () => { E.fest(window.innerWidth / 2, window.innerHeight * 0.4); };
+// Enhjørningeland: føllene, der skal hjem til stalden, og regnbuesporet, når man rider (enhjoerninger.js)
+const føljagt = cfg.enhjørninger ? new Føljagt({
+  sp, verden, dyr, nytDyr, dyrDef, stald: cfg.stald(VX, VZ), partikel, lyd: Lyd, besked, fest,
+  fyrværkeri: (x, y, z) => fællesRaket(x, y, z), rider: () => skyd.kører?.dyrDef?.id,
+}) : null;
 function guldRegn() {                                            // guldmønter, der regner ned omkring barnet
   for (let i = 0; i < 50; i++) partikel(sp.pos.x + (Math.random() - 0.5) * 4, sp.pos.y + 3 + Math.random() * 2, sp.pos.z + (Math.random() - 0.5) * 4,
     GULDMØNT[i % 3], (Math.random() - 0.5) * 2, Math.random() * 2, (Math.random() - 0.5) * 2, 1.6, 1, 1.2);
@@ -2193,7 +2202,7 @@ function tegnFrame(nu) {
     if (skyd.kører) { skyd.styr(tast, sp.yaw, dt); sp.pitch = Math.max(-1.1, Math.min(0.45, sp.pitch)); }
     else if (!tornado.styrSpiller(dt) && !nytår.styrSpiller(dt) && !tog?.styrSpiller(dt) && !ballon?.styrSpiller(dt, tast, sp.yaw)
       && !stenring?.styrSpiller() && !guldslot?.styrSpiller()) opdaterSpiller(dt);   // i en tornado, en gondol, et tog, en ballon eller på føniksen styrer de
-    tog?.opdater(dt, tid); ballon?.opdater(dt); eventyr?.opdater(dt, tid); smådyr?.opdater(dt, tid, !dagNat.nat); stenJagt?.opdater(dt); stenring?.opdater(dt); guldslot?.opdater(dt);
+    tog?.opdater(dt, tid); ballon?.opdater(dt); eventyr?.opdater(dt, tid); smådyr?.opdater(dt, tid, dagNat ? !dagNat.nat : true); føljagt?.opdater(dt); stenJagt?.opdater(dt); stenring?.opdater(dt); guldslot?.opdater(dt);
     if (kæmpeTid > 0 && (kæmpeTid -= dt) <= 0) besked("Du er lille igen 🙂", 1500);
     const iKøretøj = !!(skyd.kører || tog?.kører || ballon?.flyver);
     if (iKøretøj !== document.body.classList.contains("i-kampvogn")) document.body.classList.toggle("i-kampvogn", iKøretøj);
@@ -2561,4 +2570,4 @@ if (ONLINE) {
 
 if (ONLINE) forberedOnline();
 window.broekraftKlar = true;
-if (location.search.includes("debug")) window.bk = { sp, kamera, verden, dagNat, land, kort, tog, ballon, smådyr, givBlok, eventyr, stenring, stenJagt, guldslot, brugKraft, dyr, tast, cfg, andre, sim, get net() { return net; }, get tale() { return tale; }, get graf() { return graf; }, afspillere, skyd, fyr, tændPortal, visPortalValg, brand, tændSprængstof, atom, tornado, musBrug, nytår, steg: n => { for (let i = 0; i < n; i++) tegnFrame(sidst + 1000 / 60); sidst = performance.now(); } };
+if (location.search.includes("debug")) window.bk = { sp, kamera, verden, dagNat, land, kort, tog, ballon, smådyr, føljagt, givBlok, eventyr, stenring, stenJagt, guldslot, brugKraft, dyr, tast, cfg, andre, sim, get net() { return net; }, get tale() { return tale; }, get graf() { return graf; }, afspillere, skyd, fyr, tændPortal, visPortalValg, brand, tændSprængstof, atom, tornado, musBrug, nytår, steg: n => { for (let i = 0; i < n; i++) tegnFrame(sidst + 1000 / 60); sidst = performance.now(); } };

@@ -224,6 +224,12 @@ export const BLOKKE = [
   { navn: "Glimmerguld", tekstur: "glimmerguld", lyser: true, skjult: true, butik: true, lyd: "metal" },
   { navn: "Regnbuelys", tekstur: "regnbuelys", lyser: true, skjult: true, butik: true, lyd: "glas" },
   { navn: "Hjerteblok", tekstur: "hjerter", lyser: true, skjult: true, butik: true, lyd: "uld" },
+  // --- Enhjørningeland: lyserødt græs, pastelfarvede blade, regnbueblomster og perlemor til slottet ---
+  { navn: "Lyserødt græs", tekstur: { top: "lyserødtGræsTop", side: "lyserødtGræsSide", bund: "jord" }, lyd: "græs" },
+  { navn: "Lilla blade", tekstur: "løv:#c9a0ff", lyd: "græs" },
+  { navn: "Mintblade", tekstur: "løv:#9fe8c8", lyd: "græs" },
+  { navn: "Regnbueblomst", tekstur: "regnbueblomst", kryds: true, lyd: "græs" },
+  { navn: "Perlemor", tekstur: "perlemor", lyd: "glas" },
 ];
 
 export const ID = {};
@@ -683,6 +689,30 @@ const MØNSTRE = {
       set(x0, y0 - 2, hex("#2d7a26")); set(x0 - 1, y0, hex("#ffe27a")); set(x0 + 1, y0 + 1, hex("#ffe27a"));
     }
   },
+  // Enhjørningeland: lyserødt græs med små glimt
+  lyserødtGræsTop: (set, r) => { fyld(set, r, "#ffa8d8", 0.22); prik(set, r, ["#ff8ac8", "#ffc8e6", "#f598d0"], 26); prik(set, r, ["#ffffff"], 3); },
+  lyserødtGræsSide: (set, r) => {
+    MØNSTRE.jord(set, r);
+    const g = hex("#ffa8d8");
+    for (let x = 0; x < T; x++) {
+      const h = 3 + (r() < 0.5 ? 1 : 0) + (r() < 0.15 ? 1 : 0);
+      for (let y = 0; y < h; y++) set(x, y, lys(g, 1 + (r() - 0.5) * 0.3));
+    }
+  },
+  // En blomst med kronblade i alle regnbuens farver
+  regnbueblomst: set => {
+    alle((x, y) => set(x, y, [0, 0, 0], 0));
+    for (let y = 8; y < T; y++) { set(7, y, hex("#3f9b35")); set(8, y, hex("#2d7a26")); }
+    for (const [x, y] of [[6, 12], [5, 13], [9, 12], [10, 11]]) set(x, y, hex("#3f9b35"));
+    const f = ["#e8283c", "#f28a1e", "#f7d51d", "#4cb748", "#3a9ad9", "#9b4de0"];
+    alle((x, y) => { const d = Math.hypot(x - 7.5, y - 4.5); if (d < 4.2 && d > 1.4) set(x, y, hex(f[Math.floor((Math.atan2(y - 4.5, x - 7.5) + Math.PI) / (Math.PI * 2) * 6) % 6])); });
+    for (const [x, y] of [[7, 4], [8, 4], [7, 5], [8, 5]]) set(x, y, hex("#fff3a0"));
+  },
+  // Perlemor: hvidt med bløde pastelfarver, der skinner
+  perlemor: (set, r) => alle((x, y) => {
+    const f = ["#fff0f8", "#f0e8ff", "#e8f8ff", "#f0fff4", "#fff8e8"][Math.floor((Math.sin(x * 0.7 + y * 0.4) + Math.sin(y * 0.9 - x * 0.3) + 2) * 1.25) % 5];
+    set(x, y, lys(hex(f), 1 + (r() - 0.5) * 0.06));
+  }),
   // En is i vaffel: to kugler (jordbær og vanilje) på en sprød vaffel
   isvaffel: set => {
     alle((x, y) => set(x, y, [0, 0, 0], 0));

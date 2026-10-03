@@ -9,7 +9,7 @@ import { ID } from "./blokke.js";
 const VINGEFARVER = ["#ff7eb6", "#ffd23f", "#7ec8ff", "#c77dff", "#ff9f4a", "#ffffff", "#5fe36a"];
 const DRAGEFARVER = [["#e63946", "#ffd23f"], ["#3a86ff", "#ffffff"], ["#8338ec", "#ff9f1c"], ["#2a9d8f", "#ff5fa2"]];
 const kasse = new THREE.BoxGeometry(1, 1, 1);
-const JORD = new Set([ID.Græs, ID["Tørt græs"], ID["Mørkt græs"], ID.Sand]);   // de flyver over jorden — ikke oven på trætoppene
+const JORD = new Set([ID.Græs, ID["Tørt græs"], ID["Mørkt græs"], ID.Sand, ID["Lyserødt græs"]]);   // de flyver over jorden — ikke oven på trætoppene
 const mat = farve => new THREE.MeshLambertMaterial({ color: farve });
 
 // Et fast "tilfældigt" tal mellem 0 og 1 for et sted (så dragerne står samme sted hver gang)

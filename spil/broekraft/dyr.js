@@ -715,8 +715,43 @@ export const DYR = [
     ] },
   ] },
 ];
+// Enhjørningeland: en enhjørning i de farver, man vælger (krop, ben, manke, horn) — og evt. vinger
+function enhjørning({ krop, ben, manke, horn, mule = "#fff0f6", hale = manke, regnbue = false, vinger = null, mærke = null }) {
+  return [
+    { s: [9, 9, 17], p: [0, 16, 0], f: krop },
+    ...fireBen([3, 12, 3], 3, 6, 6, ben),
+    { s: [3, 12, 4], p: [0, 15, -10], f: hale, regnbue, rolle: "hale" },
+    { s: [4, 8, 5], p: [0, 22, 8], f: krop },
+    ...(mærke ? [-1, 1].map(s => ({ s: [0.4, 2.4, 2.4], p: [s * 4.6, 17, -3], f: mærke })) : []),
+    ...(vinger ? [-1, 1].map(s => ({ s: [10, 1.2, 9], p: [s * 9.5, 20.5, 1], f: vinger, rolle: "vinge",
+      børn: [{ s: [6, 1, 6], p: [s * 16, 21, -0.5], f: vinger }, { s: [3, 0.8, 4], p: [s * 19, 21.3, -1.5], f: "#ffffff" }] })) : []),
+    { s: [6, 7, 10], p: [0, 26, 12], f: krop, rolle: "hoved", børn: [
+      { s: [5, 4, 4], p: [0, 24, 17], f: mule },
+      { s: [1, 1, 0.4], p: [-1.2, 24, 19.1], f: "#c8a0b0" }, { s: [1, 1, 0.4], p: [1.2, 24, 19.1], f: "#c8a0b0" },
+      ...øjne(2.2, 27.5, 14.8, 1.8),
+      { s: [1.4, 7, 1.4], p: [0, 33.5, 13], f: horn, lys: true, regnbue },
+      { s: [1.5, 2.5, 1], p: [-2, 30.5, 10], f: krop }, { s: [1.5, 2.5, 1], p: [2, 30.5, 10], f: krop },
+      { s: [2.4, 10, 4], p: [0, 25, 7.5], f: manke, regnbue },
+      { s: [2.6, 3, 3], p: [0, 30, 11], f: manke, regnbue },
+    ] },
+  ];
+}
+DYR.push(
+  // en hvid enhjørning med manke og hale i alle regnbuens farver
+  { id: "regnbueenhjorning", navn: "Regnbue-enhjørning", lyd: "vrinsk", fart: 1.7, æg: ["#ffffff", "#ffd23f"],
+    dele: enhjørning({ krop: "#ffffff", ben: "#fff4fb", manke: "#ff5fa8", horn: "#ffd23f", regnbue: true }) },
+  // en lyserød enhjørning med lyseblå manke og et lille hjerte på siden
+  { id: "rosaenhjorning", navn: "Lyserød enhjørning", lyd: "vrinsk", fart: 1.6, æg: ["#ffb3d9", "#7ec8ff"],
+    dele: enhjørning({ krop: "#ffc2e2", ben: "#ffb0d8", manke: "#7ec8ff", horn: "#fff3a0", mule: "#ffd8ec", mærke: "#ff3b7a" }) },
+  // en lilla enhjørning med store hvide vinger — den kan flyve (også når man rider på den: hold ⬆)
+  { id: "pegasus", navn: "Flyvende enhjørning", lyd: "vrinsk", fart: 1.7, evne: "flyver", æg: ["#e8dcff", "#ffffff"],
+    dele: enhjørning({ krop: "#e8dcff", ben: "#dccfff", manke: "#b48aff", horn: "#ffd23f", hale: "#ffffff", mule: "#f4eeff", vinger: "#ffffff" }) },
+  // et lille enhjørningeføl — tryk på det, så følger det efter dig hjem til stalden (enhjoerninger.js)
+  { id: "enhjorningfol", navn: "Enhjørningeføl", lyd: "vrinsk", fart: 1.9, skala: 0.55, æg: ["#fff8fc", "#c9a0ff"],
+    dele: enhjørning({ krop: "#fff8fc", ben: "#fff0f8", manke: "#c9a0ff", horn: "#ffd23f", mule: "#fff0f6" }) },
+);
 // Dyr, man kan ride på: tryk på dem, så sidder man på ryggen (biler.js og spil.js)
-for (const id of ["ko", "gris", "svampeko", "rensdyr", "dalmatiner", "enhjorning", "drage", "hest", "langhals", "triceratops", "tohovedko", "foniks"]) {
+for (const id of ["ko", "gris", "svampeko", "rensdyr", "dalmatiner", "enhjorning", "drage", "hest", "langhals", "triceratops", "tohovedko", "foniks", "regnbueenhjorning", "rosaenhjorning", "pegasus"]) {
   const d = DYR.find(x => x.id === id);
   if (d) d.ride = true;
 }

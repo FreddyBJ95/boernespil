@@ -1,6 +1,6 @@
 // ===== Service Worker — gør spillene installerbare og tilgængelige offline =====
 // Bump dette tal når der ændres filer, så de gamle bliver hentet på ny.
-const CACHE = "boernespil-v54";
+const CACHE = "boernespil-v55";
 
 const SPIL = ["balloner", "byg-burger", "vask", "slange", "tegne", "piano", "fisk", "broekraft", "rulle-rasmus", "burgerloeb"];
 
@@ -11,7 +11,7 @@ const EKSTRA = [
   ...["three.js", "spil.js", "verden.js", "slange.js", "mad.js", "lyd.js"].map(f => `spil/slange/${f}`),
   ...["three.js", "spil.js", "baner.js", "bane.js", "temaer.js", "verden.js", "ting.js", "blob.js", "partikler.js", "teksturer.js", "lyd.js"].map(f => `spil/rulle-rasmus/${f}`),
   ...["three.js", "spil.js", "figurer.js", "kaemper.js", "bane.js", "lyd.js"].map(f => `spil/burgerloeb/${f}`),
-  ...["three.js", "spil.js", "blokke.js", "dyr.js", "verden.js", "verdener.js", "lyd.js", "net.js", "figurer.js", "simulering.js", "vaerktoej.js", "stemmer.js", "stemmesignal.js", "stemmeeffekt.js", "skyd.js", "kampvogn.js", "fyrvaerkeri.js", "brand.js", "atom.js", "tornado.js", "biler.js", "nytaar.js", "uendelig.js", "dagnat.js", "kort.js", "tog.js", "eventyr.js", "sten.js", "smaadyr.js"].map(f => `spil/broekraft/${f}`),
+  ...["three.js", "spil.js", "blokke.js", "dyr.js", "verden.js", "verdener.js", "lyd.js", "net.js", "figurer.js", "simulering.js", "vaerktoej.js", "stemmer.js", "stemmesignal.js", "stemmeeffekt.js", "skyd.js", "kampvogn.js", "fyrvaerkeri.js", "brand.js", "atom.js", "tornado.js", "biler.js", "nytaar.js", "uendelig.js", "dagnat.js", "kort.js", "tog.js", "eventyr.js", "sten.js", "smaadyr.js", "enhjoerninger.js"].map(f => `spil/broekraft/${f}`),
   "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",   // 3D-motoren (se spil/fisk/three.js)
 ];
 
