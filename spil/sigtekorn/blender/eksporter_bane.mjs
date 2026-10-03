@@ -47,6 +47,6 @@ for (const m of scene.children) {
 const kasser = verden.kasser.map(k => ({ min: k.min, max: k.max, mat: k.mat }));
 mkdirSync(new URL("./ud/", import.meta.url), { recursive: true });
 const fil = BANE === "stoevbyen" ? "./ud/bane.json" : `./ud/bane_${BANE}.json`;
-writeFileSync(new URL(fil, import.meta.url), JSON.stringify({ masker, kasser, lamper: resultat.lamper.map(([x, y, z, , w]) => [x, y - 0.06, z, w ?? 70]) }));
+writeFileSync(new URL(fil, import.meta.url), JSON.stringify({ masker, kasser, lamper: resultat.lamper.map(([x, y, z, , w]) => [x, y - 0.06, z, w ?? 70]), vejr: resultat.vejr }));
 console.log(`synligt areal: ${Math.round(areal)} m²`);
 console.log(masker.map(m => `${m.mat}: ${m.hjørner} hjørner, ${m.skjult.filter(s => !s).length}/${m.skjult.length} synlige`).join("\n"));

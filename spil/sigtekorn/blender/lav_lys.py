@@ -22,6 +22,10 @@ SOL_STYRKE, SOL_FARVE = 3.1, (1.0, 0.871, 0.686)    # 0xfff0d8 som lineære farv
 BANE = os.environ.get("LYS_BANE", "stoevbyen")                  # hvilken bane (Støvbyens filer hedder bare bane.json og lys.*)
 NAVN = "" if BANE == "stoevbyen" else f"_{BANE}"
 d = json.load(open(os.path.join(MAPPE, "ud", f"bane{NAVN}.json"), encoding="utf-8"))
+VEJR = d.get("vejr") or {}                                          # banens eget vejr (solen og himlen), hvis den har et
+if "sol" in VEJR: SOL = tuple(VEJR["sol"])
+if "solStyrke" in VEJR: SOL_STYRKE = VEJR["solStyrke"]
+if "solFarve" in VEJR: SOL_FARVE = tuple(((v / 255 + 0.055) / 1.055) ** 2.4 for v in ((VEJR["solFarve"] >> 16) & 255, (VEJR["solFarve"] >> 8) & 255, VEJR["solFarve"] & 255))
 tek = json.load(open(os.path.join(MAPPE, "..", "teksturer", "teksturer.json"), encoding="utf-8"))
 
 
@@ -37,6 +41,12 @@ ALBEDO = {
     "trækasse": snit["planker"], "dør": snit["doer"], "metal": snit["metal"], "vindue": hexlin(0x241a12),
     "stofRød": hexlin(0xb8402e), "stofBlå": hexlin(0x2e6a9a), "stofHvid": hexlin(0xe8dcc0), "bark": snit["bark"],
 }
+if "sne" in snit:                                                   # Fjeldbyen
+    panel = gange(snit["panel"], (1.15, 1.15, 1.15))
+    ALBEDO.update({"sne": snit["sne"], "klippe": gange(snit["klippe"], hexlin(0xb8bcc6)), "sten": gange(snit["klippe"], hexlin(0xa0a4ac)),
+                   "is": gange(snit["sne"], hexlin(0x9cc4dc)), "stammer": gange(snit["bark"], hexlin(0xa07858)), "tagSort": gange(snit["planker"], hexlin(0x5a4c42)),
+                   "panelRød": gange(panel, hexlin(0xc8402c)), "panelGul": gange(panel, hexlin(0xf0c060)), "panelBrun": gange(gange(snit["panel"], (1.1, 1.1, 1.1)), hexlin(0xa47a58)),
+                   "panelHvid": tuple(min(0.95, v * 1.5) for v in snit["panel"])})
 if "beton" in snit:                                                 # Havnen
     blik = snit["blik"]
     ALBEDO.update({"beton": snit["beton"], "lagerhal": gange(blik, hexlin(0xa0acb6)), "pier": gange(snit["planker"], hexlin(0x9a8070)),
@@ -99,11 +109,11 @@ for k in d["kasser"]:
         bpy.context.active_object.data.materials.append(bpy.data.materials["metal" if k["mat"] == "metal" else "bark"])
 
 # ---------- Himlen: lys horisont og blå top, så stærk at en flade, der vender op, får samme himmellys som før ----------
-HORISONT, ZENIT = np.array((0.95, 0.86, 0.72)), np.array((0.42, 0.58, 0.95))
+HORISONT, ZENIT = np.array(VEJR.get("horisont", (0.95, 0.86, 0.72))), np.array(VEJR.get("zenit", (0.42, 0.58, 0.95)))
 mu = np.linspace(0, 1, 2001); t = np.clip(mu / 0.6, 0, 1); t = t * t * (3 - 2 * t)
 L = HORISONT[None] * (1 - t[:, None]) + ZENIT[None] * t[:, None]
 E_op = 2 * math.pi * np.trapezoid(L * mu[:, None], mu, axis=0) if hasattr(np, "trapezoid") else 2 * math.pi * np.trapz(L * mu[:, None], mu, axis=0)
-STYRKE = 1.1 / float(np.dot(E_op, (0.2126, 0.7152, 0.0722)))
+STYRKE = VEJR.get("himmelLys", 1.1) / float(np.dot(E_op, (0.2126, 0.7152, 0.0722)))
 nt = s.world.node_tree; bg = nt.nodes["Background"]
 tk = nt.nodes.new("ShaderNodeTexCoord"); sep = nt.nodes.new("ShaderNodeSeparateXYZ"); nt.links.new(tk.outputs["Generated"], sep.inputs[0])
 mr = nt.nodes.new("ShaderNodeMapRange"); mr.interpolation_type = "SMOOTHSTEP"; mr.inputs["From Min"].default_value = 0.0; mr.inputs["From Max"].default_value = 0.6

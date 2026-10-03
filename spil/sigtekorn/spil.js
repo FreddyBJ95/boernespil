@@ -15,7 +15,7 @@ import * as THREE from "./three.js";
 import { lås } from "../laas.js";
 import { lavTeksturer } from "./teksturer.js";
 import { Kasseverden } from "./verden.js";
-import { lavBane } from "./bane.js";
+import { lavBane, fotoBrug } from "./bane.js";
 import { hentLys, himmelMiljø } from "./lys.js";
 import { deleTrin, deleTegn, ryddDele } from "./dele.js";
 import { nyAktør, bevæg, øjeHøjde, TICK, U } from "./bevaegelse.js";
@@ -86,10 +86,18 @@ const himmel = new THREE.Mesh(new THREE.SphereGeometry(500, 32, 16), new THREE.S
 himmel.renderOrder = -1; scene.add(himmel);
 
 // ---------- Banen, effekterne, hånden og skærmen ----------
-const t = await lavTeksturer();
+const t = await lavTeksturer(fotoBrug(ind.udrustning.bane));         // kun de fotos, banen bruger
 const verden = new Kasseverden();
 const bane = lavBane(scene, verden, t, ind.udrustning.bane);     // banen, man har valgt i udrustningen
 document.querySelector(".menu-kort h1 small").textContent = `${bane.navn} · Ørkenrævene mod Sandslangerne · mod bots`;
+if (bane.vejr) {                                                  // banens vejr: tågen, solen og himlens farver
+  const v = bane.vejr;
+  if (v.tåge) { scene.fog.color.set(v.tåge[0]); scene.fog.near = v.tåge[1]; scene.fog.far = v.tåge[2]; }
+  if (v.sol) { solRet.set(...v.sol).normalize(); sol.position.copy(solRet).multiplyScalar(120); }
+  if (v.solFarve) sol.color.set(v.solFarve);
+  if (v.solStyrke) sol.intensity = v.solStyrke;
+  if (v.himmel) ["top", "midt", "bund"].forEach((k, i) => himmel.material.uniforms[k].value.set(v.himmel[i]));
+}
 if (await hentLys(bane.masker, bane.id)) {                                 // lyset fra Blender: himlen og det tilbagekastede lys
   scene.remove(himmelLys);
   scene.environment = himmelMiljø(renderer, himmel);
@@ -455,6 +463,7 @@ function billede(nu) {
   const fov = zoomet ? v.d.zoom[v.kikkert - 1] : grundFov();
   if (Math.abs(kamera.fov - fov) > 0.01) { kamera.fov = fov; kamera.updateProjectionMatrix(); }
   himmel.position.copy(kamera.position);
+  bane.opdater?.(dt, kamera.position);                            // fx sneen, der falder
   // botterne, hånden og effekterne
   for (const b of bots) b.tegn(Math.min(1, alfa), dt);
   deleTegn(); projektiler.tegn(dt);
