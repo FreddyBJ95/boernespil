@@ -3,6 +3,7 @@
 // HATTE: slangen får en ny hat for hver 5. ting, den spiser. Tilføj en ny hat nederst i HATTE.
 
 import * as THREE from "./three.js";
+import { kopi } from "./modeller.js";
 
 const TAU = Math.PI * 2;
 const MAKS = 600;                                            // så lang kan slangen højst blive
@@ -86,6 +87,8 @@ export class Slange {
 
   // Hovedet: stort og rundt med kinder, næsebor, smil, googly-øjne og en tunge, der stikker ud
   bygHoved() {
+    const model = kopi("hoved", "hoved");
+    if (model) return this.hovedFraBlender(model);
     const h = new THREE.Group(), grøn = "#4fd35a";
     const kranie = del(new THREE.SphereGeometry(0.62, 28, 20), grøn); kranie.scale.set(1.05, 0.85, 1.2); h.add(kranie);
     const snude = del(new THREE.SphereGeometry(0.42, 20, 14), "#5fe06a", 0, -0.08, 0.45); snude.scale.set(1.15, 0.7, 0.9); h.add(snude);
@@ -117,13 +120,30 @@ export class Slange {
     this.scene.add(h);
   }
 
+  // Det samme hoved fra Blender: leddene hedder oeje_v/oeje_h (med pupil_* og laag_*), tunge og hatplads.
+  // Huden er hvid med skygger i filen — her får den sin grønne farve (eller regnbuens).
+  hovedFraBlender(h) {
+    const led = navn => h.getObjectByName(navn);
+    this.øjne = ["v", "h"].map(n => ({ ø: led("oeje_" + n), pupil: led("pupil_" + n), låg: led("laag_" + n) }));
+    this.tungeG = led("tunge"); this.tungeG.scale.z = 0.01;
+    this.hatPlads = led("hatplads");
+    h.scale.setScalar(1.25);                                  // et stort, sødt hoved
+    const hud = new Set();
+    h.traverse(o => { if (o.isMesh && o.material.name === "hud") hud.add(o.material); });
+    this.hoved = h; this.hovedDele = [...hud];
+    this.scene.add(h);
+  }
+
   // Tag en hat på (nr i HATTE)
   sætHat(nr) {
     if (nr === this.hatNr) return;
     this.hatNr = nr;
-    if (this.hat) { this.hatPlads.remove(this.hat); this.hat.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } }); }
+    if (this.hat) { this.hatPlads.remove(this.hat); this.hat.traverse(o => { if (o.isMesh && !o.userData.delt) { o.geometry.dispose(); o.material.dispose(); } }); }
     this.hat = new THREE.Group();
-    HATTE[nr % HATTE.length].byg(this.hat);
+    const hat = HATTE[((nr % HATTE.length) + HATTE.length) % HATTE.length];
+    const model = kopi("hatte", hat.navn);                    // hatten fra Blender, hvis den findes
+    if (model) this.hat.add(model);
+    else hat.byg(this.hat);
     this.hatPlads.add(this.hat);
     this.hatHop = 1;
   }

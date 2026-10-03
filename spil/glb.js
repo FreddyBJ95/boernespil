@@ -42,14 +42,15 @@ function byg(j, bin) {
     const start = (bv.byteOffset || 0) + (a.byteOffset || 0);
     return new THREE.BufferAttribute(new T(bin.slice(start, start + a.count * n * T.BYTES_PER_ELEMENT)), n, !!a.normalized);
   }
-  // materialerne: farven kommer fra punkterne, så her er kun ruhed, metal og glans
+  // materialerne: farven kommer fra punkterne, så her er kun ruhed, metal og glans.
+  // Spillene har ingen omgivelser, metal kan spejle, så metal dæmpes — ellers bliver guld og sølv næsten sort.
   const mater = (j.materials || []).map(m => {
     const p = m.pbrMetallicRoughness || {}, glans = m.extensions && m.extensions.KHR_materials_clearcoat;
     return new THREE.MeshStandardMaterial({
       name: m.name || "", vertexColors: true,
       color: p.baseColorFactor ? new THREE.Color().fromArray(p.baseColorFactor) : 0xffffff,
       roughness: (p.roughnessFactor !== undefined ? p.roughnessFactor : 1) * (glans ? 0.6 : 1),
-      metalness: p.metallicFactor !== undefined ? p.metallicFactor : 1,
+      metalness: Math.min(0.3, p.metallicFactor !== undefined ? p.metallicFactor : 1),
       side: m.doubleSided ? THREE.DoubleSide : THREE.FrontSide,
     });
   });

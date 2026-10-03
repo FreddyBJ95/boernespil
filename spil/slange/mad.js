@@ -4,6 +4,7 @@
 
 import * as THREE from "./three.js";
 import { GLØD } from "./verden.js";
+import { kopi } from "./modeller.js";
 
 const TAU = Math.PI * 2;
 const mat = (farve, ekstra = {}) => new THREE.MeshStandardMaterial({ color: farve, roughness: 0.45, metalness: 0, ...ekstra });
@@ -75,8 +76,8 @@ export const MADNAVNE = Object.keys(MADER);
 
 // Byg et stykke mad med en blød glød under sig
 export function lavMad(navn) {
-  const g = new THREE.Group(), model = new THREE.Group();
-  MADER[navn](model);
+  const g = new THREE.Group(), model = new THREE.Group(), blender = kopi("mad", navn);   // fra Blender, hvis den findes
+  if (blender) model.add(blender); else MADER[navn](model);
   g.add(model);
   const glød = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLØD, color: "#fff6b0", transparent: true, depthWrite: false, opacity: 0.8 }));
   glød.scale.setScalar(2.2); glød.position.y = 0.4; g.add(glød);

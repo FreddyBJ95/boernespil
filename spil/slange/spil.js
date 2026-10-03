@@ -9,6 +9,7 @@ import { byggVerden, ARENA, GLØD } from "./verden.js";
 import { Slange, HATTE } from "./slange.js";
 import { lavMad, MADNAVNE, lavKraft, KRÆFTER } from "./mad.js";
 import * as Lyd from "./lyd.js";
+import { hentModeller } from "./modeller.js";
 
 const E = window.Effekter, $ = id => document.getElementById(id);
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -22,6 +23,7 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 const scene = new THREE.Scene();
 const kamera = new THREE.PerspectiveCamera(50, 1, 0.1, 700);
+await hentModeller();                                         // hoved, mad, hatte og pynt fra Blender (modeller.js)
 const verden = byggVerden(scene, renderer);
 let temaNr = 0, tema = verden.skift(0);
 
@@ -116,6 +118,7 @@ function nyMad() {
 function fjern(o) {
   scene.remove(o);
   o.traverse(c => {
+    if (c.userData.delt) return;                                  // formerne fra Blender deles med de andre ting
     if (c.isMesh) c.geometry.dispose();
     if (c.material) { if (c.material.map && c.material.map !== GLØD) c.material.map.dispose(); c.material.dispose(); }
   });

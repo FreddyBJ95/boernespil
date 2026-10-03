@@ -1,35 +1,41 @@
-// ===== Våbnene: skade, kadence, magasin, spredning og rekylmønstre =====
+// ===== Våbnene: skud, aftrækker, spredning, rekyl, genladning og skade (selve våbnene står i katalog.js) =====
 // Som i CS rammer man præcist, når man står stille (og endnu mere præcist dukket). Løber man, spredes
 // skuddene meget, og i luften rammer man næsten ingenting. Hvert gevær har et FAST rekylmønster:
 // skuddene går op og så til siderne i samme mønster hver gang — så man kan lære at trække musen imod.
 // Kameraet følger kun 45 % af rekylen med, så kuglerne lander over sigtekornet, hvis man ikke styrer.
 
 import { U } from "./bevaegelse.js";
+import { ALLE } from "./katalog.js";
 
 const G = Math.PI / 180;
-// Stormgeværets mønster: [op, højre] i grader for hvert skud (samlet fra første skud)
-const STORM = [[0, 0], [0.55, 0.05], [1.35, 0.1], [2.35, 0.05], [3.45, -0.1], [4.55, -0.3], [5.55, -0.55], [6.4, -0.7], [7.05, -0.6], [7.5, -0.3],
-  [7.75, 0.2], [7.9, 0.8], [8.0, 1.4], [8.05, 1.9], [8.1, 2.3], [8.1, 2.5], [8.15, 2.4], [8.2, 2.1], [8.25, 1.6], [8.3, 1.0],
-  [8.35, 0.4], [8.3, -0.2], [8.3, -0.8], [8.35, -1.3], [8.4, -1.6], [8.45, -1.7], [8.5, -1.5], [8.5, -1.0], [8.55, -0.4], [8.6, 0.2]];
-const PISTOL = [[0, 0], [0.9, 0.1], [1.7, -0.15], [2.4, 0.2], [3.0, -0.1], [3.4, 0.25], [3.7, -0.2], [3.9, 0.15], [4.0, 0], [4.1, 0.2], [4.2, -0.1], [4.3, 0.1]];
-
-export const VÅBEN = {
-  gevær: { navn: "Stormgevær", tast: 1, plads: 0, auto: true, kadence: 0.1, skade: 36, panser: 0.775, rækkevidde: 0.98, magasin: 30, reserve: 90, genlad: 2.4,
-    fart: 215 * U, stå: 0.0048, duk: 0.0033, bevæg: 0.173, hop: 0.47, skudUro: 0.0078, uroTid: 0.35, spredning: 0.0006, mønster: STORM, træk: 0.75 },
-  snig: { navn: "Snigskytte", tast: 1, plads: 0, auto: false, kadence: 1.46, skade: 115, panser: 0.97, rækkevidde: 0.99, magasin: 5, reserve: 30, genlad: 3.6,
-    fart: 200 * U, kikkertFart: 100 * U, stå: 0.0011, duk: 0.0009, udenKikkert: 0.11, bevæg: 0.25, hop: 0.5, skudUro: 0.1, uroTid: 0.4, spredning: 0.0002,
-    zoom: [40, 15], træk: 1.1 },
-  pistol: { navn: "Pistol", tast: 2, plads: 1, auto: false, kadence: 0.15, skade: 30, panser: 0.47, rækkevidde: 0.85, magasin: 12, reserve: 48, genlad: 2.2,
-    fart: 240 * U, stå: 0.0055, duk: 0.0045, bevæg: 0.034, hop: 0.29, skudUro: 0.045, uroTid: 0.3, spredning: 0.002, mønster: PISTOL, træk: 0.5 },
-  kniv: { navn: "Kniv", tast: 3, plads: 2, nærkamp: true, kadence: 0.45, skade: 40, stik: 65, rækkevidde: 1.7, fart: 250 * U, træk: 0.4 },
-};
+// Alle våben (fra kataloget): id → egenskaber
+export const VÅBEN = ALLE;
 // Hvor meget hver del af kroppen tæller (som i CS: hovedet giver fire gange så meget)
 export const KROPSDEL = { hoved: 4, krop: 1, mave: 1.25, arm: 1, ben: 0.75 };
 
 // Et våben, som en spiller eller bot har: skud tilbage, reserve, og hvor "uroligt" det er lige nu
 export function nytVåben(id) {
-  const d = VÅBEN[id];
-  return { id, d, skud: d.magasin ?? 0, reserve: d.reserve ?? 0, klar: 0, genlader: 0, rekyl: 0, uro: 0, pause: 1, kikkert: 0 };
+  const d = VÅBEN[id] || VÅBEN.pistol;
+  return { id: VÅBEN[id] ? id : "pistol", d, skud: d.magasin ?? 0, reserve: d.reserve ?? 0, klar: 0, genlader: 0, rekyl: 0, uro: 0, pause: 1, kikkert: 0, kø: 0, spin: 0, holdtFør: false };
+}
+// Aftrækkeren, hvert tick: skal der gå et skud af nu? holdt = aftrækkeren er trykket ned.
+// Automatvåben skyder, så længe man holder; de andre kun, når man trykker igen (botterne trykker hver gang).
+// Salvegeværet skyder tre skud pr. tryk, og minigunnen skal snurre op, før den skyder.
+export function aftrækker(v, holdt, dt, bot = false) {
+  const d = v.d, nyt = holdt && !v.holdtFør; v.holdtFør = holdt;
+  if (d.opspin) v.spin = holdt && v.genlader <= 0 ? Math.min(d.opspin, v.spin + dt) : Math.max(0, v.spin - dt * 1.5);
+  if (v.kø > 0) {                                                   // resten af salven
+    if (v.klar > 0) return false;
+    if (!affyr(v)) { v.kø = 0; return false; }
+    v.kø--; v.klar = v.kø > 0 ? d.salveTid : d.kadence;
+    return true;
+  }
+  if (!holdt || v.klar > 0 || v.genlader > 0 || v.skud <= 0) return false;
+  if (d.opspin && v.spin < d.opspin) return false;
+  if (!d.auto && !nyt && !bot) return false;
+  if (!affyr(v)) return false;
+  if (d.salve) { v.kø = d.salve - 1; v.klar = d.salveTid; }
+  return true;
 }
 
 // Hvor upræcist er næste skud (radianer)? a = skytten (fart, jord, duk)
@@ -75,7 +81,7 @@ export function affyr(v) {
 // Efter et skud: rekylen og uroen vokser (kaldes, når retningen er regnet ud)
 export function efterSkud(v) {
   v.rekyl += 1; v.uro += v.d.skudUro || 0;
-  if (v.d.zoom && v.kikkert) v.kikkert = -v.kikkert;               // snigskytten: kikkerten går af, mens man lader
+  if (v.d.zoom && v.kikkert && v.d.kadence > 0.8) v.kikkert = -v.kikkert;   // snigskytterne: kikkerten går af, mens man lader
 }
 // Hvert tick: nedtælling, genladning, og rekylen falder til ro, når man holder pause
 export function opdaterVåben(v, dt) {
