@@ -449,12 +449,13 @@
       sti(); c.setLineDash([4, 5]); c.lineWidth = 1.5; c.strokeStyle = "rgba(255,255,255,.65)"; c.stroke(); c.setLineDash([]);
     }
     // Hovedtøjet, som på en rigtig hest: kindrem fra bag øret, bag om øjet og ned til bidet,
-    // næsebånd tværs over mulen, en ring i mundvigen og tøjler hen over halsen til sadlen
+    // næsebånd hen over næseryggen, en ring i mundvigen og tøjler hen over halsen til sadlen
     function tegnHovedtøj(c, t, p) {
       const s = SADLER[d.sadel], metal = d.sadel === "konge" ? "#ffd23f" : "#c9d1dc";
       const bid = { x: 574, y: 207 };
       rem(c, () => { c.beginPath(); c.moveTo(480, 86); c.quadraticCurveTo(468, 202, bid.x, bid.y); }, s.rem);
-      rem(c, () => { c.beginPath(); c.moveTo(570, 146); c.quadraticCurveTo(566, 190, 541, 228); }, s.rem);
+      // næsebåndet: fra under hagen, op over mulen og hen over næseryggen
+      rem(c, () => { c.beginPath(); c.moveTo(540, 227); c.quadraticCurveTo(580, 184, 593, 130); }, s.rem);
       c.lineWidth = 5; c.strokeStyle = mørkere(metal, 0.4);
       c.beginPath(); c.arc(bid.x, bid.y, 10, 0, TAU); c.stroke();
       c.lineWidth = 3.5; c.strokeStyle = metal; c.stroke();
