@@ -557,7 +557,8 @@ function tegnBillede(nu) {
     hud.sigte(unøjagtighed(v, a) + (v.d.spredning || 0), kamera.fov * G, innerHeight, !spiller.død && !zoomet && !(v.d.zoom && v.d.sigte !== "sigte"));
     hud.prik(zoomet && !kikkert && v.d.prik && hånd.sigte > 0.85);
     hud.kikkert(kikkert); hud.fart(ind.fart ? fart : null);
-    hud.granater(ind.udrustning.granater.map(g => ({ ikon: VÅBEN[`granat_${g}`].ikon, antal: våbenSæt[`granat_${g}`]?.skud ?? 0, aktiv: aktivt === `granat_${g}` })));
+    // granaterne (ingen i våbenræs og træning)
+    hud.granater(ræs() || træning() ? [] : ind.udrustning.granater.map(g => ({ ikon: VÅBEN[`granat_${g}`].ikon, antal: våbenSæt[`granat_${g}`]?.skud ?? 0, aktiv: aktivt === `granat_${g}` })));
     hud.tavle(taster.has("Tab"), kampfolk, HOLD);
   }
   kamera.getWorldDirection(frem); Lyd.lytter(kamera.position, frem, op);

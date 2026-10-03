@@ -11,7 +11,7 @@ export class Hud {
     this.el = { sigte: $("sigte"), ramt: $("ramt"), liv: $("livTal"), panser: $("panserTal"), ammo: $("ammoTal"), reserve: $("ammoReserve"), våben: $("våbenNavn"),
       holdA: $("holdA"), holdB: $("holdB"), ur: $("ur"), drab: $("drab"), retning: $("skadeRetning"), besked: $("besked"), tavle: $("tavle"), død: $("død"),
       kikkert: $("kikkert"), prik: $("prik"), fart: $("fart"), rød: $("rødKant"), granater: $("granatBoks"), blænd: $("blænd") };
-    this.blændStyrke = 0; this.blændTid = 0; this.granatTekst = "";
+    this.blændStyrke = 0; this.blændTid = 0; this.granatTekst = null;
   }
   // Sigtekornet: afstanden mellem stregerne vokser med unøjagtigheden (u i radianer), så man kan se, hvornår man rammer
   sigte(u, fov, højde, synlig) {
@@ -61,7 +61,7 @@ export class Hud {
   // Granaterne: ikonet og hvor mange der er tilbage (den, man holder, lyser)
   granater(liste) {
     const tekst = liste.map(g => `<span class="${g.antal ? "har" : ""}${g.aktiv ? " aktiv" : ""}">${g.ikon} ${g.antal}</span>`).join("");
-    if (tekst !== this.granatTekst) { this.el.granater.innerHTML = this.granatTekst = tekst; }
+    if (tekst !== this.granatTekst) { this.el.granater.innerHTML = this.granatTekst = tekst; this.el.granater.classList.toggle("skjult", !tekst); }
   }
   // Blændet: skærmen bliver hvid og falmer langsomt (styrke 0..1)
   blænd(styrke) { this.blændStyrke = Math.max(this.blændStyrke, styrke); this.blændTid = 0.6 + 3.4 * styrke; this.blændStart = this.blændTid; }
