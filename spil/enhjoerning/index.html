@@ -441,17 +441,24 @@
       }
       c.restore();
     }
-    function tegnHovedtøj(c, t, p) {                  // remme om hovedet og tøjler hen til sadlen
-      const s = SADLER[d.sadel];
-      c.strokeStyle = s.rem; c.lineWidth = 9; c.lineCap = "round";
-      c.beginPath(); c.ellipse(570, 186, 47, 38, 0.32, -2.3, 0.9); c.stroke();            // næsebånd
-      c.beginPath(); c.moveTo(486, 86); c.quadraticCurveTo(512, 140, 540, 178); c.stroke();     // kindrem
-      c.beginPath(); c.moveTo(480, 100); c.lineTo(528, 92); c.stroke();                     // pandebånd
-      c.fillStyle = d.sadel === "konge" ? "#ffd23f" : "#c0c8d4";
-      c.beginPath(); c.arc(590, 214, 8, 0, TAU); c.fill();                                  // ring ved munden
-      // tøjlerne (i hovedets koordinater, så de følger med)
-      c.lineWidth = 6;
-      c.beginPath(); c.moveTo(590, 214); c.quadraticCurveTo(480, 330 + Math.sin(t * 2) * 6, 372, 186); c.stroke();
+    // En læderrem: mørk kant, rem i sadlens farve og en lys syning midt i
+    function rem(c, sti, farve, b = 9) {
+      c.lineCap = "round"; c.lineJoin = "round";
+      sti(); c.lineWidth = b + 4; c.strokeStyle = mørkere(farve, 0.45); c.stroke();
+      sti(); c.lineWidth = b; c.strokeStyle = farve; c.stroke();
+      sti(); c.setLineDash([4, 5]); c.lineWidth = 1.5; c.strokeStyle = "rgba(255,255,255,.65)"; c.stroke(); c.setLineDash([]);
+    }
+    // Hovedtøjet, som på en rigtig hest: kindrem fra bag øret, bag om øjet og ned til bidet,
+    // næsebånd tværs over mulen, en ring i mundvigen og tøjler hen over halsen til sadlen
+    function tegnHovedtøj(c, t, p) {
+      const s = SADLER[d.sadel], metal = d.sadel === "konge" ? "#ffd23f" : "#c9d1dc";
+      const bid = { x: 574, y: 207 };
+      rem(c, () => { c.beginPath(); c.moveTo(480, 86); c.quadraticCurveTo(468, 202, bid.x, bid.y); }, s.rem);
+      rem(c, () => { c.beginPath(); c.moveTo(570, 146); c.quadraticCurveTo(566, 190, 541, 228); }, s.rem);
+      c.lineWidth = 5; c.strokeStyle = mørkere(metal, 0.4);
+      c.beginPath(); c.arc(bid.x, bid.y, 10, 0, TAU); c.stroke();
+      c.lineWidth = 3.5; c.strokeStyle = metal; c.stroke();
+      rem(c, () => { c.beginPath(); c.moveTo(bid.x, bid.y); c.quadraticCurveTo(472, 262 + Math.sin(t * 2) * 4, 386, 176); }, s.rem, 6);
     }
     function tegnHovedpynt(c, t, p) {
       if (d.hoved === "krans") {                                                      // blomsterkrans rundt om hornets fod
