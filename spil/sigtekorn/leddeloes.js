@@ -52,8 +52,8 @@ function hentTP(id) {
   if (!d?.model || d.nærkamp || d.granat) return Promise.resolve(null);
   const hent = fil => {
     if (!tpLager.has(fil)) tpLager.set(fil, new GLTFLoader().loadAsync(fil).then(g => {
-      const s = g.scene, obj = s.children.find(o => !["hænder", "munding", "greb", "forgreb"].includes(o.name));
-      return { obj, greb: s.getObjectByName("greb")?.position.clone() || new THREE.Vector3(), forgreb: s.getObjectByName("forgreb")?.position.clone() || null };
+      const s = g.scene, obj = s.children.find(o => (o.isMesh || o.children.length) && !["hænder", "roterer"].includes(o.name));
+      return { obj, roterer: s.getObjectByName("roterer"), greb: s.getObjectByName("greb")?.position.clone() || new THREE.Vector3(), forgreb: s.getObjectByName("forgreb")?.position.clone() || null };
     }));
     return tpLager.get(fil);
   };
@@ -129,6 +129,7 @@ export class Figur {
     for (const n of ["gevær", "snig", "pistol"]) this.d[n].visible = this.d[n] === vis;
     for (const m of Object.values(this.våbenModeller)) m.obj.visible = m.obj === vis;
     this.holdt = vis;
+    if (vm?.roterer) vm.roterer.rotation.z += (t.dt || 0) * 45 * (t.spin || 0);
     let håndR = null, håndL = null;
     if (id) {
       const iSigte = (x, y, z) => new THREE.Vector3(x, y, z + this.kick * 0.04).applyQuaternion(sigteQ);
@@ -219,9 +220,10 @@ export class Figur {
       hentTP(id).then(m => {
         if (!m?.obj) return;
         const obj = m.obj.clone(true); obj.position.set(0, 0, 0); obj.quaternion.identity(); obj.visible = false;
+        const roterer = m.roterer?.clone(true); if (roterer) obj.add(roterer);          // minigunnens løb, der drejer rundt
         obj.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
         this.model.add(obj);
-        this.våbenModeller[id] = { obj, greb: m.greb, forgreb: m.forgreb };
+        this.våbenModeller[id] = { obj, roterer, greb: m.greb, forgreb: m.forgreb };
         this.d[`våben_${id}`] = obj;
       });
     }

@@ -84,6 +84,10 @@ def hult_rør(navn, a, b, r, tyk, mat, seg=28):
 ØJE = {"kamp": (0, -0.01, 0.087), "jagt": (0, 0.1, 0.048), "armbroest": (0, -0.1, 0.073)}
 
 
+# Dele, der drejer rundt i spillet: (navnene begynder med, aksen de drejer om)
+ROTERER = {"minigun": (("løb", "aksel", "forklemme", "midtklemme"), (0, 0, 0.02))}
+
+
 def kurve_klinge(navn, punkter, tyk, mat):
     """En klinge set fra siden (punkter i (y, z)), trukket ud i tykkelsen"""
     bm = bmesh.new()
@@ -325,5 +329,5 @@ for navn in valgt:
     nulstil()
     M = sæt()
     dele, hd, munding, forgreb = BYG[navn](M)
-    gem(navn, dele, hd, munding, forgreb, øje=ØJE.get(navn))
+    gem(navn, dele, hd, munding, forgreb, øje=ØJE.get(navn), roterer=ROTERER.get(navn))
     prøvebillede(f"{navn}.png", (0.55, -0.35, 0.22), (0, 0.15, -0.02), (480, 300))

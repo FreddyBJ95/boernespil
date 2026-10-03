@@ -144,6 +144,7 @@ export class Hånd {
       m.g = ny; m.g.userData.munding = mund ? mund.position.clone() : new THREE.Vector3(0, 0, -0.7);
       const øje = ny.getObjectByName("oeje");                       // når man sigter, lægges dette punkt lige foran kameraet
       m.sigte = øje ? øje.position.clone().add(ny.position).negate().toArray() : null;
+      m.roterer = ny.getObjectByName("roterer");                     // minigunnens løb drejer rundt
       m.glb = true;
     }).catch(fejl => console.warn("Kunne ikke hente modellen til", id, fejl));
   }
@@ -195,6 +196,7 @@ export class Hånd {
     m.holder.rotation.set(d[0] + 0.07 * this.spark - 0.32 * dyk + 0.7 * trk + 0.02 * this.land, d[1] + this.svajX * 2, d[2] + 0.45 * dyk + this.svajX);
     if (k === "kniv") { const h = Math.sin(this.hug * Math.PI); m.holder.rotation.y += h * 0.9; m.holder.rotation.x -= h * 0.4; m.holder.position.x -= h * 0.08; }
     if (k === "granat") { const h = Math.sin(this.hug * Math.PI); m.holder.rotation.x -= h * 1.2; m.holder.position.y += h * 0.12; m.holder.position.z -= h * 0.1; }
+    if (m.roterer) m.roterer.rotation.z += dt * 45 * (s.spin || 0);
     if (this.glimtTid > 0 && (this.glimtTid -= dt) <= 0) this.glimt.visible = false;
   }
   tilpas(aspekt) { this.kamera.aspect = aspekt; this.kamera.updateProjectionMatrix(); }

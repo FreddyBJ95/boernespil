@@ -464,7 +464,7 @@ function billede(nu) {
     spillerFig.poser({ fart: Math.hypot(a.vel.x, a.vel.z), vx: c * a.vel.x - sn * a.vel.z, vz: sn * a.vel.x + c * a.vel.z, duk: a.duk, pitch: a.pitch, kravl: !!a.kravl, våben: aktivt, dt });
   }
   const fart = Math.hypot(a.vel.x, a.vel.z);
-  hånd.opdater(dt, { fart: v ? fart / v.d.fart : 0, jord: a.jord, musX, musY, duk: a.duk, skjul: kikkert || spiller.død, sigte: zoomet && !kikkert, landet: false });
+  hånd.opdater(dt, { fart: v ? fart / v.d.fart : 0, jord: a.jord, musX, musY, duk: a.duk, skjul: kikkert || spiller.død, sigte: zoomet && !kikkert, spin: v?.d.opspin ? v.spin / v.d.opspin : 0, landet: false });
   musX = musY = 0;
   effekter.opdater(dt); hud.opdater(dt);
   // skærmen
