@@ -59,11 +59,11 @@ self.addEventListener("install", e => {
   );
 });
 
-// Ryd gamle cacher
+// Ryd kun Spilkassens gamle cacher; andre projekter på samme origin beholder deres offline-filer.
 self.addEventListener("activate", e => {
   e.waitUntil(
     caches.keys()
-      .then(navne => Promise.all(navne.filter(n => n !== CACHE).map(n => caches.delete(n))))
+      .then(navne => Promise.all(navne.filter(n => n.startsWith("boernespil-v") && n !== CACHE).map(n => caches.delete(n))))
       .then(() => self.clients.claim())
   );
 });
@@ -75,8 +75,11 @@ self.addEventListener("fetch", e => {
     caches.match(e.request).then(svar => {
       if (svar) return svar;
       return fetch(e.request).then(net => {
-        const kopi = net.clone();
-        caches.open(CACHE).then(c => c.put(e.request, kopi)).catch(() => {});
+        // En kort serverfejl må ikke få Prøv igen til at vise den samme gemte fejl.
+        if (net.ok) {
+          const kopi = net.clone();
+          caches.open(CACHE).then(c => c.put(e.request, kopi)).catch(() => {});
+        }
         return net;
       }).catch(() => caches.match("index.html"));   // offline-fallback
     })

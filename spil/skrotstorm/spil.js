@@ -466,7 +466,7 @@ function ramme(nu) {
   }
   lyde.opdater(bil.fart, startet && !pauset);
   // Stillestående menuer behøver kun 20 billeder/s og bruger mindre batteri på tablets.
-  if ((!pauset && startet) || nu - sidsteTegning > 50) {
+  if (!document.hidden && ((!pauset && startet) || nu - sidsteTegning >= 50)) {
     renderer.render(scene, kamera);
     sidsteTegning = nu;
   }

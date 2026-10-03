@@ -22,7 +22,7 @@ export function brugerflade(api) {
   }
   dialog.addEventListener('keydown', e => {
     if (e.key !== 'Tab') return;
-    const alle = fokuserbare(), første = alle[0], sidste = alle.at(-1);
+    const alle = fokuserbare(), første = alle[0], sidste = alle[alle.length - 1];
     if (!første) { e.preventDefault(); return; }
     if (e.shiftKey && document.activeElement === første) { e.preventDefault(); sidste.focus(); }
     else if (!e.shiftKey && document.activeElement === sidste) { e.preventDefault(); første.focus(); }

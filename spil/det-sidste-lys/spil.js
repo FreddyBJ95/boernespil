@@ -850,7 +850,7 @@ function styring() {
   const fangTab = (lag, e) => {
     if (e.key !== "Tab") return;
     const knapper = [...lag.querySelectorAll("button:not(:disabled),a,input,select")];
-    const først = knapper[0], sidste = knapper.at(-1);
+    const først = knapper[0], sidste = knapper[knapper.length - 1];
     if (e.shiftKey && document.activeElement === først) {
       e.preventDefault();
       sidste.focus();
@@ -891,6 +891,7 @@ function gå(delta) {
   verden.kamera.rotation.set(vinkel, tilstand.kurs, 0);
 }
 
+let sidsteTegning = 0;
 function billede(nu) {
   requestAnimationFrame(billede);
   const delta = Math.min(.045, (nu - sidst) / 1000 || .016);
@@ -914,7 +915,12 @@ function billede(nu) {
     verden.kamera.lookAt(5, 13, -18);
   }
   if (tidsSum > beskedTid) $("besked").classList.add("skjult");
-  verden.opdater(tidsSum, delta, tilstand, tilstandUI === "menu" || tilstandUI === "slut");
+  // Menuscenens langsomme bevægelser behøver højst 20 billeder/s; en skjult fane tegner intet.
+  if (!document.hidden && (tilstandUI === "spil" || nu - sidsteTegning >= 50)) {
+    const tegneDelta = Math.min(.1, (nu - sidsteTegning) / 1000 || delta);
+    sidsteTegning = nu;
+    verden.opdater(tidsSum, tegneDelta, tilstand, tilstandUI === "menu" || tilstandUI === "slut");
+  }
 }
 
 // Voksenlåsen gennemføres før øen indlæses, og fejl giver en brugbar besked.
@@ -929,7 +935,7 @@ async function begynd() {
     if (!kanGå(tilstand.position.x, tilstand.position.z)) tilstand.position = { x: -25, z: 80 };
     $("start").disabled = false;
     $("start").textContent = tilstand.færdige.length ? "Fortsæt på øen" : "Gå i land";
-    $("indlæsning").textContent = "Øen er klar. Din fremgang gemmes på denne enhed.";
+    $("indlæsning").textContent = "Øen er klar · PC, tablet og telefon.";
     $("nyt").classList.toggle("skjult", !tilstand.færdige.length);
     opdaterHud();
     styring();

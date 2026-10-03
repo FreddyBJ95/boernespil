@@ -142,7 +142,7 @@ function tone(frekvens = 440, længde = .12, volumen = .06) {
   if (!s.lyd) return;
   try {
     lydkontekst ||= new (window.AudioContext || window.webkitAudioContext)();
-    if (lydkontekst.state === "suspended") lydkontekst.resume();
+    if (lydkontekst.state === "suspended") Promise.resolve(lydkontekst.resume()).catch(() => {});
     const oscillator = lydkontekst.createOscillator(), gain = lydkontekst.createGain(), nu = lydkontekst.currentTime;
     oscillator.type = "sine";
     oscillator.frequency.setValueAtTime(frekvens, nu);
@@ -1215,14 +1215,19 @@ function kameraTrin(dt) {
   sol.position.set(kamMål.x - 18, 30, kamMål.z + 15);
   sol.target.position.set(kamMål.x, 0, kamMål.z);
 }
-let sidst = performance.now();
+let sidst = performance.now(), sidsteTegning = 0;
 function loop(nu) {
   requestAnimationFrame(loop);
   const dt = Math.min(.045, (nu - sidst) / 1000);
   sidst = nu;
   if (kører && !paused) opdatér(dt);
-  kameraTrin(dt);
-  renderer.render(scene, kamera);
+  // Hold frame-tiden frisk under pause, men spar tegnekald og batteri bag dialogen.
+  if (!document.hidden && (kører && !paused || nu - sidsteTegning >= 50)) {
+    const tegneDelta = Math.min(.1, (nu - sidsteTegning) / 1000 || dt);
+    kameraTrin(tegneDelta);
+    renderer.render(scene, kamera);
+    sidsteTegning = nu;
+  }
 }
 
 // Touch bruger én finger til bevægelse og en anden til kamera eller handlinger.

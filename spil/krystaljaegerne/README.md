@@ -47,6 +47,7 @@ Fra repository root:
 
 ```
 node --test spil/krystaljaegerne/eventyr.test.mjs
+node --test spil/krystaljaegerne/ydelse.test.mjs
 node --check spil/krystaljaegerne/spil.js
 node --check spil/krystaljaegerne/verden.js
 ```
@@ -107,3 +108,5 @@ W/Space tager ikke en sluppet tast igen. Målringen og det næste automatiske an
 vejledning venter på nye skridt fra stedet, hvor spilleren åbner den. Disse konkrete tilfælde er dækket af de 30
 regressionstests. En særskilt prøve fjerner `structuredClone`, så ældre Safari fortsat kan kopiere, gemme og genoptage
 en JSON-rejse uden at dele mutable data. En fejl ved modelindlæsning sender `spil-3d-fejl` til det fælles fejlskærmslag.
+
+Start og åbne dialoger tegner højst 20 billeder/s; en skjult fane tegner intet. Den faktiske framefunktion afprøves separat for pause, skjult fane og genoptagelse uden gammel frame-tid. Aktiv bevægelse og kamp beholder hver frame.

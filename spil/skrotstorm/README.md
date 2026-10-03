@@ -87,5 +87,7 @@ Verdenen indeholder desuden fire sideværksteder med tilsvarende kollisionszoner
 
 De høje broer har nu portalrammer, undersidens kantbjælker og diagonale afstivninger. Klipper placeres uden for hele vejsegmenter, så dekorative sten aldrig står i den gennemgående kørebane. Reservedele bruger instanser til tandhjulstænderne (21 færre draw calls); pausemenuer renderer kun 20 billeder/s. Luftmodstanden er justeret, så alle tre biler kan opnå garagens farttal på motor0–3, verificeret i de faktiske fysiktrin. Forhjulenes rotationsrækkefølge holder deres akse vandret under rul og styring.
 
+En skjult browserfane tegner intet. Den eksisterende frame-tid holdes frisk under pause og skjult fane; det er dækket af en isoleret regression af den faktiske framefunktion.
+
 
 Stunt-HUD viser tilløb, nødvendig fart og tid i luften. Et kort eller forkert tilløb giver ét venligt råd efter landing og sender GPS tilbage til tilløbet. Et bestået stunt kommer mod øst over rampens høje ende; spilleren kan ikke klare det med et tilfældigt hop i nærheden. Alle tre biler gennemkører nu kampagnen fysisk i tests, både uden og med fulde forbedringer, og får 860 skrot. Garage forklarer manglende skrot og næste opgaves belønning; leveringer viser lasten i HUD og tårnbesøget viser højdefremdrift.

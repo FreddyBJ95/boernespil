@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from 'node:fs';
 import { egenskaber, kør, nyBil } from "./fysik.js";
 import { afslutMission, nyFremgang, opgrader, valider, gem } from "./fremgang.js";
 import { planlægRute, redningspunkt, rutemarkører, næsteVejpunkt } from './gps.js';
@@ -385,3 +386,26 @@ for (const [model, forbedring] of [['buggy',0],['truck',0],['rotten',3],['buggy'
   assert.equal(køreFremgang.skrot, 860);
 }
 console.log('Skrotstorm: stunt-råd gives én gang; alle tre biler klarer otte fysiske GPS-missioner før og efter fuld opgradering.');
+
+// Den rigtige framefunktion afprøves under pause uden renderer, adgang eller en spilverden.
+const rammeKilde = readFileSync(new URL('./spil.js', import.meta.url), 'utf8');
+const rammeBlok = rammeKilde.slice(rammeKilde.indexOf('function ramme(nu)'), rammeKilde.indexOf('\nrequestAnimationFrame(ramme);'));
+const tegninger = [], dokument = { hidden: false };
+const opretFrameprøve = new Function('document', 'requestAnimationFrame', 'renderer', `
+  let før = 0, sidsteTegning = 0, tid = 0, pauset = true, startet = true, beskedTid = 0;
+  const bil = { fart: 0 }, rotorer = [], delmodeller = [], målring = { rotation: {}, position: {} }, lyde = { opdater() {} }, scene = {}, kamera = {};
+  ${rammeBlok}
+  return { ramme, tid: () => før };
+`);
+const frameprøve = opretFrameprøve(dokument, () => {}, { render: () => tegninger.push(1) });
+let frameTid = 0;
+for (let i = 0; i < 60; i++) { frameTid += 1000 / 60; frameprøve.ramme(frameTid); }
+assert.ok(tegninger.length <= 20 && tegninger.length >= 10);
+const førSkjult = tegninger.length;
+dokument.hidden = true;
+for (let i = 0; i < 180; i++) { frameTid += 1000 / 60; frameprøve.ramme(frameTid); }
+assert.equal(tegninger.length, førSkjult);
+assert.equal(frameprøve.tid(), frameTid);
+dokument.hidden = false; frameTid += 1000 / 60; frameprøve.ramme(frameTid);
+assert.equal(tegninger.length, førSkjult + 1);
+console.log('Skrotstorm: pause højst 20 Hz, skjult fane uden render og frisk frame-tid bestået.');

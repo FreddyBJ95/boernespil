@@ -8,6 +8,9 @@ Broekraft Server lader 1–8 børn bygge i samme Broekraft-verden på familiens 
 - Krystaljægerne har flere landmærker, et større rejsekort og vejvisning gennem åbne grotterum.
   Tydelige våbenstyrker, autosigte, kampvarsler og holdt angreb hjælper på computer og touch.
 - Gamle gemte rejser bevares. Pause, tastaturfokus og beskeder ved manglende gemning er forbedret.
+- Let grafik bruger færre lys, og skjulte faner tegner intet. Lydfejl stopper ikke spillene.
+- Afbrudt opstart giver en enkel genstartsknap. Kortvarige serverfejl bliver ikke gemt i offline-lageret.
+- Claudes nye Fisk-, Rasmus- og Sigtekorn-modeller, baner og lysatlas er med i serverpakkerne.
 
 **Nyt i 0.5.2**
 - Spilkassens logo, maskotter og appikoner følger nu med familieserveren.

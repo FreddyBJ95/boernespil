@@ -56,6 +56,7 @@ Havets bløde bølger, himlens nat/skumring, stjerner, lysstråle og skjulte ste
 node spil/det-sidste-lys/logik.test.mjs
 node spil/det-sidste-lys/navigation.test.mjs
 node spil/det-sidste-lys/styring.test.mjs
+node --test spil/det-sidste-lys/ydelse.test.mjs
 node --check spil/det-sidste-lys/spil.js
 node --check spil/det-sidste-lys/verden.js
 node --check spil/det-sidste-lys/lyd.js
@@ -66,3 +67,5 @@ Tests går gennem det fulde forløb og kontrollerer kapitelrækkefølge, rav ude
 Navigationstesten gennemløber de 5.595 forbundne gangfelter fra kajen og bekræfter, at alle seks steder og tre ravtræer kan nås, samt at værkstedsdøren faktisk kan passeres. Havnebassinet er sænket under vandet; ved start står kameraet 1,68 m over den synlige Blender-trækaj (Y=2,05), og nærmeste kystklippe er over 15 m væk.
 
 Samme test kontrollerer alle 260 stjerners koordinater, deres radius og en faktisk Three.js-beregning af bounding sphere. Højdesamplingen holder sig strengt inden for enhedskuglen, så stjernebufferen er uden NaN. Skovlysbufferen kontrolleres også efter ti timers simulation, og alle tre fysiske stednoter kan nås fra kajen. De 35 instanser af kyststen kontrolleres for endelige matricer, en sammenhængende rute og gangafstand til hvert lys. Galleri-save testes særskilt: den gemte fil lander ved fyrfoden, men den levende position ændres ikke ved pagehide/browsertilbage.
+
+Let/automatisk mobilgrafik beholder håndlys og fyrlys, men bruger kun de to nærmeste lanternelys og ingen ekstra spotlight. Fyrkeglen og modellernes glød bevares; Flot genskaber alle lys. Start, pause og dialoger tegner højst 20 billeder/s, og en skjult fane tegner intet. Ydelsestesten kontrollerer de faktiske kvalitetsvalg, lysets sceneantal, frisk frame-tid ved genoptagelse og fuld billedfrekvens under aktiv gang.

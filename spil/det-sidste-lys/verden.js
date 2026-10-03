@@ -87,6 +87,20 @@ export function kanGå(x, z) {
   return !HUSE.some(([hx, hz, bx, bz]) => Math.abs(x - hx) < bx + .48 && Math.abs(z - hz) < bz + .48);
 }
 
+// Let grafik bruger to nære lanternelys; de lysende Blender-materialer bevares overalt.
+export function sætLanterneBudget(lanterner, position, letGrafik) {
+  let første = -1, anden = -1, nærmest = Infinity, næstnærmest = Infinity;
+  if (letGrafik) {
+    lanterner.forEach((lys, i) => {
+      const afstand = (lys.position.x - position.x) ** 2 + (lys.position.z - position.z) ** 2;
+      if (afstand < nærmest) {
+        anden = første; næstnærmest = nærmest; første = i; nærmest = afstand;
+      } else if (afstand < næstnærmest) { anden = i; næstnærmest = afstand; }
+    });
+  }
+  lanterner.forEach((lys, i) => { lys.visible = !letGrafik || i === første || i === anden; });
+}
+
 // Statiske Blender-dele samles efter materiale, mens rav og prisme bevares enkeltvis.
 function samlModel(model) {
   model.updateMatrixWorld(true);
@@ -223,6 +237,9 @@ export class ØVerden {
 
   anvendIndstillinger(valg) {
     const letGrafik = valg.kvalitet === "let" || (valg.kvalitet === "auto" && this.mobil);
+    this.letGrafik = letGrafik;
+    this.spot.visible = !letGrafik;
+    sætLanterneBudget(this.lanterner, this.kamera.position, letGrafik);
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, letGrafik ? 1.1 : this.mobil ? 1.3 : 1.75));
     this.renderer.shadowMap.enabled = !letGrafik && !this.mobil;
     this.renderer.toneMappingExposure = 1.1;
@@ -371,6 +388,7 @@ export class ØVerden {
 
   opdater(tid, delta, tilstand, film = false) {
     this.tid = tid;
+    sætLanterneBudget(this.lanterner, this.kamera.position, this.letGrafik);
     if(this.vind)this.vind.value=this.rolig?0:tid*.75;
     this.skovLys.material.opacity=this.nat*.7;
     if (!this.rolig) {
