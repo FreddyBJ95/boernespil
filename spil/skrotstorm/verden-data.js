@@ -35,10 +35,14 @@ export const KOLLISIONER = [
   { x: -280, z: 256, r: 17, y: 0 },
   { x: -185, z: -182, r: 20, y: 0 },
   { x: -115, z: -195, r: 18, y: 0 },
-  { x: -28, z: -250, r: 15, y: 0 },
+  { x: -28, z: -236, r: 10, y: 0 },
   { x: 15, z: -217, r: 22, y: 0 },
   { x: -98, z: 218, r: 13, y: 0 },
   { x: 346, z: 19, r: 10, y: 72 },
+  { x: -240, z: -90, r: 14, y: 0 },
+  { x: -60, z: -138, r: 14, y: 0 },
+  { x: -220, z: -280, r: 14, y: 0 },
+  { x: -330, z: -230, r: 14, y: 0 },
 ];
 export const DELE = [
   { x: -285, z: -176, navn: "Et tandhjul" },
@@ -155,7 +159,7 @@ export function terrænHøjde(x, z) {
 }
 
 // Find nærmeste vejstykke, inklusive højden på bjergveje og broer.
-export function nærmesteVej(x, z) {
+export function nærmesteVej(x, z, støtteGrænse = Infinity) {
   let bedst = { afstand: Infinity, y: 0, bredde: 0 };
   for (const rute of RUTER) {
     for (let i = 1; i < rute.punkter.length; i++) {
@@ -163,8 +167,9 @@ export function nærmesteVej(x, z) {
       const dx = b[0] - a[0], dz = b[2] - a[2];
       const t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[2]) * dz) / (dx * dx + dz * dz)));
       const afstand = Math.hypot(x - a[0] - dx * t, z - a[2] - dz * t);
-      if (afstand < bedst.afstand) {
-        bedst = { afstand, y: a[1] + (b[1] - a[1]) * t, bredde: rute.bredde, x: a[0] + dx * t, z: a[2] + dz * t };
+      const y = a[1] + (b[1] - a[1]) * t;
+      if (afstand < bedst.afstand && y <= støtteGrænse) {
+        bedst = { afstand, y, bredde: rute.bredde, x: a[0] + dx * t, z: a[2] + dz * t };
       }
     }
   }
@@ -174,8 +179,9 @@ export function nærmesteVej(x, z) {
 // Kun flader under bilen kan støtte den. Et højt brodæk må ikke løfte bilen fra dalen.
 // Uden højde bruges den øverste flade til kort og en udtrykkelig redning på vejen.
 export function gulv(x, z, bilhøjde = Infinity) {
-  const vej = nærmesteVej(x, z);
-  const støtteGrænse = bilhøjde - 0.8 + 0.6;
+  // Små samlinger mellem opkørsler overlapper. Vælg nærmeste støtte i bilens niveau.
+  const støtteGrænse = bilhøjde - 0.8 + 1.5;
+  const vej = nærmesteVej(x, z, støtteGrænse);
   const påVej = vej.afstand < vej.bredde / 2 + 2 && vej.y <= støtteGrænse;
   let y = påVej ? vej.y : terrænHøjde(x, z);
   for (const r of RAMPER) {

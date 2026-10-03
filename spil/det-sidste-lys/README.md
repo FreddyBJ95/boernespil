@@ -6,8 +6,10 @@ Et originalt, stille førstepersonseventyr til Voksenrummet. Ingen kamp, blod, f
 
 Åbn `spil/det-sidste-lys/index.html` via en HTTP-server. Voksenlåsen bruger den eksisterende `spil/laas.js`. Alle skrifter, modeller og biblioteker er lokale. Three.js r160 og GLTFLoader ligger i `spil/3d-faelles/`.
 
-- PC: WASD/piletaster går, muse-drag ser omkring, Q/R drejer, E undersøger, M åbner kort, J dagbog og Esc pause. Shift går hurtigere. Pointer Lock bruges ikke.
-- Tablet/telefon: fire store bevægelsesknapper til venstre, drag på landskabet for kamera, dedikeret Undersøg-knap til højre. Alle gåder, natkontrol, kort, galleri, pause og genstart kan bruges med touch alene.
+- PC: WASD/piletaster går, muse-drag ser omkring, Q/R drejer, E undersøger, F vender mod næste mål, M åbner kort, J dagbog og Esc pause. Shift går hurtigere. Pointer Lock bruges ikke.
+- Tablet/telefon: analog fingerpind til venstre, samtidig drag på landskabet for kamera og en dedikeret Undersøg-knap til højre. En halv pindbevægelse går langsommere. Fire pile kan vælges under Indstillinger. Hver hånd har sin egen pointer, og pause fjerner holdt input. Alle gåder, natkontrol, kort, galleri, pause og genstart kan bruges med touch alene.
+- Første besøg får en kort styringsvejledning, som kan lukkes og genåbnes fra Hjælp. Den forsvinder også efter det første kapitel. Målkortets minus/plus giver mere plads til øen. “Se mod målet” vender kameraet mod næste manglende genstand.
+- Indstillinger: kamerafølsomhed, reduceret bevægelse, tekststørrelse, grafik og touchstyring gemmes kun, når man ændrer dem. Reduceret bevægelse fjerner gangvuggen og det bevægelige slutkamera. Let grafik begrænser opløsning og slår skygger fra. Gamle v1-gemninger får sikre standardvalg; et nyt eventyr bevarer komfortvalgene.
 - Måne/sol skifter straks mellem skumring og nat med en blød visuel overgang. Øen har altid nok lys til at finde vej.
 - Økortet viser næste mål. Allerede besøgte steder kan bruges som hurtig tilbagevej. Nye steder skal udforskes først.
 - Gemt fremgang, valideret før brug, ligger under `det-sidste-lys-v1`. Privat Safari / afvist localStorage giver tydelig status og et stadig spilbart eventyr. Genstart kræver en konkret bekræftelse.
@@ -28,11 +30,15 @@ Verdenskoordinater er Three.js X/Z (Y er højden). Nord er negativ Z. Begynd på
 
 **Galleri:** Fyrets dialog har “Op på galleriet”. Spilleren går fysisk rundt på galleriets ring ved Y ≈ 35 og radius 3.5–4.7 omkring `(38,-44)`. Den dedikerede “Tilbage fra galleriet”-knap går ned til `(32,-35)`. Fyrets gåder kan også bruges deroppe. Gemning efter et besøg placerer spilleren sikkert ved foden.
 
-**Hjælp:** “Et lille vink” giver næste trin og den præcise løsning, når man sidder fast. Dagbogen bevarer alle fundne fortællingsnoter og gådeledetråde. Øens gyldne markør viser det aktuelle mål og retter sig mod de endnu ikke indsamlede ravtræer.
+**Hjælp:** “Et lille vink” begynder med en ledetråd, derefter kan man bede om et tydeligere vink og hele løsningen. Vinkniveau og valg på gådernes hjul gemmes; lukkes en uløst gåde, står hjulene samme sted næste gang. Et forkert svar angiver, hvor mange af de tre indstillinger der er rigtige. Dagbogen bevarer alle fundne fortællingsnoter og gådeledetråde. Øens gyldne markør, afstand og “Se mod målet” følger samme mål og vælger nærmeste endnu manglende ravtræ. Kortets tre ravprikker viser indsamlet og manglende rav; efter kapitel 6 tegnes også den blå kyststi.
+
+**Valgfrie stednoter:** Fire små minder påvirker ingen af de otte kapitler. Redningsringen ved `(-21.5,69)`, havebogen ved `(-12,31)` og skovvarden ved `(-42,-18)` kan undersøges og lægges i dagbogen. Fyrets logbog findes automatisk første gang, man går op på galleriet. Fund tælles kun én gang og bevares ved fortsættelse.
+
+**Supplerende UX-prøve:** Hold gå-pinden med én finger, drej med en anden, og slip hænderne i begge rækkefølger; den tilbageværende hånd skal fortsat virke. Åbn pause eller Indstillinger, mens en finger/tast holdes; spilleren skal stå stille, og gamle pointers må ikke flytte efter genoptagelse. Prøv større tekst i alle gåder, og skift mellem fingerpind og pile. Indstil tidevandslåsen delvist, luk den, genindlæs og fortsæt; hjulene og kapitelrækkefølgen skal være bevaret. Bekræft et nyt eventyr; fremgangen skal være nulstillet, mens tekst/kamera/lydvalget består.
 
 ## Originale Blender-kilder og optimering
 
-Kilde: `blender/tre-verdener/det-sidste-lys/byg_o.py` og `det-sidste-lys.blend`. Generatoren bygger faktisk terræn, stier, åbent værkstedsinteriør, seks øvrige bygninger, fyrtårn med lanterne/galleri/rækværk, kaj, fiskerbåd, 80+ fyrretræer, rav, ruinhvælv/kompaslinse, grottekatedral/prisme/spejle, kystklipper, bøger, tønder, kasser, bænke, skilte, lamper og marehalm. Samme modeller renderes til den originale `forside.jpg`.
+Kilde: `blender/tre-verdener/det-sidste-lys/byg_o.py` og `det-sidste-lys.blend`. Generatoren bygger faktisk terræn, stier, åbent værkstedsinteriør, seks øvrige bygninger, fyrtårn med lanterne/galleri/rækværk, kaj, fiskerbåd, 80+ fyrretræer, rav, ruinhvælv/kompaslinse, grottekatedral/prisme/spejle, kystklipper, bøger, tønder, kasser, bænke, skilte, lamper og marehalm. Den detaljerede ø har også fortøjningsreb, net, redningsring, blomsterpotter/urtehave, varder og fyrlogbog. En original måge med særskilte vinger eksporteres til `maage.glb` og genbruges i få kloner. Samme ø renderes til den originale `forside.jpg`.
 
 Kør fra repository-roden:
 
@@ -40,22 +46,23 @@ Kør fra repository-roden:
 & 'C:/Program Files/Blender Foundation/Blender 5.2/blender.exe' --background --factory-startup --threads 2 --python blender/tre-verdener/det-sidste-lys/byg_o.py
 ```
 
-GLB er ca. 2.9 MB, ca. 30.000 trekanter, 27 materialer og ingen eksterne teksturer/buffere. Browseren bager statiske meshtransformer og samler dem efter materiale; kun rav, prisme, linse og lanternen bevares som separate interaktionsdele. Blender-koordinater spejles ved eksport, så øens matematiske terrænhøjde matcher Three.js' X/Z direkte.
+Øens GLB er ca. 3.9 MB, 40.479 trekanter, 30 statiske materialebatches og ingen eksterne teksturer/buffere. Mågen er 24 KB / 184 trekanter. Browseren bager statiske meshtransformer og samler dem efter materiale; kun rav, prisme, linse, lanterne, spejle og den svajende båd bevares som særskilte dele. Mågernes geometri/materialer deles mellem kloner, og kystens 35 lyssten bruger ét instansmesh. Blender-koordinater spejles ved eksport, så øens matematiske terrænhøjde matcher Three.js' X/Z direkte. Skiltenes egne bogstaver er optimerede meshflader; plantefelter, årer, havnestige og kopper deler de eksisterende materialer.
 
-Havets bløde bølger, himlens nat/skumring, stjerner, lysstråle og skjulte sten er egen Three.js-geometri og shaders omkring den importerede Blender-verden. På mobil deaktiveres skygger og kantudjævning; DPR begrænses til 1.3. PC begrænses til 1.75. Styringen virker uden Pointer Lock på Safari.
+Havets bløde bølger, himlens nat/skumring, stjerner, lysstråle og skjulte sten er egen Three.js-geometri og shaders omkring den importerede Blender-verden. Træer/urter bevæger sig let i vinden; skovens små natlys følger rolige baner. På mobil deaktiveres skygger og kantudjævning; automatisk grafik begrænser DPR til 1.1, Flot til 1.3. PC begrænses til 1.75. Styringen virker uden Pointer Lock på Safari.
 
 ## Automatiske kontroller
 
 ```powershell
 node spil/det-sidste-lys/logik.test.mjs
 node spil/det-sidste-lys/navigation.test.mjs
+node spil/det-sidste-lys/styring.test.mjs
 node --check spil/det-sidste-lys/spil.js
 node --check spil/det-sidste-lys/verden.js
 node --check spil/det-sidste-lys/lyd.js
 ```
 
-Tests går gennem det fulde forløb og kontrollerer kapitelrækkefølge, rav uden dobbelttælling, natkrav, fyrretning, korrekte/ukorrekte gådesvar, gemning/fortsættelse, ingen delte fremgangsarrays, beskadigede eller fremmede gemninger, uendelige koordinater og afvist browserlager.
+Tests går gennem det fulde forløb og kontrollerer kapitelrækkefølge, rav uden dobbelttælling, natkrav, fyrretning, korrekte/ukorrekte gådesvar, gemning/fortsættelse, gamle gemninger, validerede komfortvalg, gemte gåder, valgfrie fund uden kapitelændring, ingen delte fremgangsarrays, beskadigede eller fremmede gemninger, uendelige koordinater og afvist browserlager. Fingerstyring testes for samtidige hænder, ejerskab, langsom/diagonal gang, dødt felt, slip i begge rækkefølger og nulstillet pauseinput.
 
 Navigationstesten gennemløber de 5.595 forbundne gangfelter fra kajen og bekræfter, at alle seks steder og tre ravtræer kan nås, samt at værkstedsdøren faktisk kan passeres. Havnebassinet er sænket under vandet; ved start står kameraet 1,68 m over den synlige Blender-trækaj (Y=2,05), og nærmeste kystklippe er over 15 m væk.
 
-Samme test kontrollerer alle 260 stjerners koordinater, deres radius og en faktisk Three.js-beregning af bounding sphere. Højdesamplingen holder sig strengt inden for enhedskuglen, så stjernebufferen er uden NaN.
+Samme test kontrollerer alle 260 stjerners koordinater, deres radius og en faktisk Three.js-beregning af bounding sphere. Højdesamplingen holder sig strengt inden for enhedskuglen, så stjernebufferen er uden NaN. Skovlysbufferen kontrolleres også efter ti timers simulation, og alle tre fysiske stednoter kan nås fra kajen. De 35 instanser af kyststen kontrolleres for endelige matricer, en sammenhængende rute og gangafstand til hvert lys. Galleri-save testes særskilt: den gemte fil lander ved fyrfoden, men den levende position ændres ikke ved pagehide/browsertilbage.

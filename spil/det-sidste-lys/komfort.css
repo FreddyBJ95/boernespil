@@ -1,0 +1,68 @@
+/* Små skærme får plads til øen, og alle betjeningsflader passer til fingre. */
+:root { --tekst-scale: 1; }
+.indstilling { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding: 17px 0; border-bottom: 1px solid #6d888344; font-size: calc(13px * var(--tekst-scale)); }
+.indstilling small { display: block; color: #abc3b7; font-size: 11px; margin-top: 6px; max-width: 330px; }
+.indstilling input[type=range] { width: 100%; min-height: 44px; accent-color: var(--guld); }
+.indstilling input[type=checkbox] { width: 24px; height: 24px; margin: 10px; accent-color: var(--guld); }
+.indstilling select { color: var(--papir); background: #0f2932; border: 1px solid #7d9b8d; border-radius: 4px; padding: 8px; font: inherit; min-height: 44px; max-width: 195px; }
+.dialog-kort p { font-size: calc(14px * var(--tekst-scale)); }
+.dialog-kort blockquote { font-size: calc(17px * var(--tekst-scale)); }
+.dialog-knapper button, .valg button, .kort-liste button { font-size: calc(13px * var(--tekst-scale)); }
+.spejl small, .spejl strong { font-size: calc(12px * var(--tekst-scale)); }
+.mål-kort #mål-tekst { font-size: calc(14px * var(--tekst-scale)); line-height: 1.55; }
+.mål-kort #kapitel { font-size: 10px; letter-spacing: .18em; color: var(--guld); margin: 0 0 8px; }
+.fold-mål { position: absolute; top: 4px; right: 4px; border: 0; min-width: 44px; min-height: 44px; padding: 3px; font-size: 20px; background: transparent; color: var(--guld); }
+.mål-kort h2 { padding-right: 32px; }
+.mål-ekstra { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: calc(12px * var(--tekst-scale)); color: var(--guld); }
+.mål-ekstra button { padding: 5px 0; border: 0; background: transparent; font-size: calc(13px * var(--tekst-scale)); min-height: 44px; }
+.mål-under { font-size: calc(12px * var(--tekst-scale)); }
+.mål-under button { min-height: 44px; font-size: calc(13px * var(--tekst-scale)); }
+.mål-kort.foldet > p, .mål-kort.foldet .mål-ekstra, .mål-kort.foldet .fremgang { display: none; }
+.mål-kort.foldet h2 { font-size: 17px; margin-bottom: 0; }
+.mål-kort.foldet { padding: 10px 14px 4px; }
+.mål-kort.foldet .mål-under { margin-top: 0; }
+.fingerpind { display: none; width: 110px; height: 110px; border-radius: 50%; border: 1px solid #acd0bf66; background: #20394477; position: fixed; z-index: 4; left: 23px; bottom: max(78px, calc(env(safe-area-inset-bottom) + 66px)); touch-action: none; user-select: none; -webkit-user-select: none; }
+#pind-håndtag { position: absolute; left: 33px; top: 33px; width: 44px; height: 44px; border-radius: 50%; border: 1px solid #dfc99899; background: #adbb9266; pointer-events: none; }
+.fingerpind small { position: absolute; bottom: -19px; left: 0; width: 100%; text-align: center; font-size: 8px; letter-spacing: .16em; color: #c8d6c4; pointer-events: none; }
+.første-guide { position: fixed; z-index: 4; left: 50%; top: 53%; transform: translate(-50%, -50%); width: min(330px, calc(100vw - 50px)); background: #142f39e8; border: 1px solid #adc5af66; border-radius: 6px; padding: 15px 17px; box-shadow: 0 8px 30px #10222a44; }
+.første-guide p { font-size: calc(13px * var(--tekst-scale)); line-height: 1.65; margin: 0 0 8px; }
+.første-guide button { width: 100%; min-height: 44px; font-size: 13px; color: var(--guld); }
+.rav-kort { font-size: 10px; color: #eed095; padding: 9px 0 0; }
+.rolig .besked, .rolig .fremgang i { transition: none; }
+.værktøj button { min-height: 44px; min-width: 44px; }
+.luk { min-width: 44px; min-height: 44px; }
+.tekstknap, .tilbage-link { min-height: 44px; display: inline-flex; align-items: center; }
+.pause-kort .tekstknap, .pause-kort .tilbage-link { display: flex; justify-content: center; }
+@media (pointer:coarse), (max-width:800px) {
+  .pind-valgt #touch { display: none; }
+  .pind-valgt .fingerpind { display: block; }
+  #touch button { width: 44px; min-height: 44px; }
+  #touch { grid-template-columns: repeat(3,44px); grid-template-rows: 44px 44px; }
+  .mål-kort { width: 270px; }
+  .mål-kort.foldet { width: 250px; }
+  .kig-hjælp { bottom: 167px; }
+}
+@media (max-width:520px) {
+  .værktøj button { min-width: 44px; width: 44px; min-height: 44px; padding: 5px; }
+  .ø-navn { font-size: 8px; letter-spacing: .05em; gap: 5px; }
+  .toplinje { left: 15px; right: 15px; }
+  .mål-kort { width: calc(100% - 40px); }
+  .mål-kort.foldet { width: calc(100% - 40px); }
+  .mål-kort #mål-tekst { font-size: calc(13px * var(--tekst-scale)); }
+  .fingerpind { left: 20px; bottom: 81px; width: 103px; height: 103px; }
+  #pind-håndtag { left: 29.5px; top: 29.5px; }
+  .dialog-kort p { font-size: calc(13px * var(--tekst-scale)); }
+  .indstilling select { max-width: 160px; }
+  .indstilling small { max-width: 230px; }
+  .første-guide { top: 51%; }
+}
+@media (max-width:350px) {
+  .ø-navn .lille-sol { display: none; }
+  .toplinje { left: 10px; right: 10px; gap: 5px; }
+}
+@media (max-height:520px) {
+  .fingerpind { width: 90px; height: 90px; bottom: 57px; }
+  #pind-håndtag { left: 23px; top: 23px; }
+  .første-guide { top: 49%; left: 52%; width: 290px; }
+  .mål-kort { width: 290px; }
+}

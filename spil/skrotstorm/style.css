@@ -725,3 +725,55 @@ p {
     font-size: 11px;
   }
 }
+/* Kort og indstillinger er store, læsbare touchflader; fokus kan altid ses. */
+button { min-width: 44px; }
+.menulink { display: flex; align-items: center; min-height: 46px; padding: 8px 4px; }
+#kort-panel { cursor: pointer; color: var(--creme); }
+#kort-panel:hover { background: #164346f0; }
+#stort-kort { display: block; width: min(100%, 430px); height: auto; margin: 8px auto; background: #133638; border: 1px solid #71bbae55; border-radius: 18px; }
+.kort-forklaring { display: flex; justify-content: space-between; gap: 12px; font-size: 11px; color: var(--turkis); }
+.biltal { display: block; color: var(--orange); font-size: 10px; margin-top: 9px; }
+.bil-statistik { display: flex; gap: 8px; justify-content: space-between; margin-bottom: 18px; padding: 13px; background: #1b4848; border-radius: 12px; font-size: 11px; }
+.bil-statistik b { display: block; color: var(--orange); font-size: 19px; }
+.opgradering .gevinst { color: var(--turkis); margin-top: 8px; }
+.valg-række { display: grid; grid-template-columns: 1fr minmax(140px, 48%); align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid #82bdb334; font-size: 14px; min-height: 62px; }
+.valg-række b { display: block; font-size: 11px; color: var(--turkis); padding-top: 4px; }
+.valg-række select { width: 100%; min-height: 46px; padding: 8px 10px; color: var(--creme); background: #1a4445; border: 1px solid #81b1a7; border-radius: 10px; font: inherit; font-size: 13px; }
+.valg-række input { min-height: 44px; width: 100%; margin: 0; accent-color: var(--turkis); cursor: pointer; }
+.valg-række input[type=checkbox] { width: 44px; justify-self: end; }
+select:focus-visible, input:focus-visible { outline: 3px solid var(--orange); outline-offset: 3px; }
+.intro-trin { display: flex; align-items: start; gap: 15px; padding: 13px 0; line-height: 1.6; font-size: 13px; }
+.intro-trin > b { display: grid; place-items: center; flex: 0 0 40px; height: 40px; border-radius: 50%; background: var(--turkis); color: var(--mørk); font-size: 20px; }
+.intro-trin strong { display: block; font-size: 16px; margin-bottom: 3px; }
+.belønning { color: var(--orange); font-size: 44px; font-weight: 900; margin: 12px 0; }
+.belønning span { font-size: 16px; }
+#touch-rat { width: 126px; height: 112px; border-radius: 55px; padding: 3px; background: #183d3ddd; touch-action: none; pointer-events: auto; }
+#rat-skive { display: block; height: 78px; font-size: 79px; line-height: .95; color: #e6ddc2; pointer-events: none; }
+#touch-rat small { display: block; font-size: 8px; letter-spacing: 3px; color: var(--turkis); }
+@media (pointer: coarse), (max-width: 760px) {
+  #bund button, .top-knapper button { min-height: 44px; }
+  #lyd { min-height: 44px; }
+  .mission small { max-height: 30px; }
+}
+@media (max-width: 480px) {
+  .valg-række { grid-template-columns: 1fr 48%; gap: 8px; font-size: 12px; }
+  .valg-række select { font-size: 11px; padding: 6px; }
+  .bil-statistik { padding: 10px; font-size: 9px; }
+  .bil-statistik b { font-size: 16px; }
+  .kort-forklaring { font-size: 9px; }
+  .hjælp-række { grid-template-columns: 75px 1fr; gap: 9px; font-size: 12px; }
+}
+@media (max-height: 520px) {
+  .lag { padding-top: 12px; padding-bottom: 12px; }
+  .menu-kort { max-height: calc(100dvh - 24px); }
+  #stort-kort { max-width: 240px; }
+  .intro-trin { padding: 7px 0; }
+}
+
+/* På smalle telefoner er bilerne brede rækker, så egenskaber kan sammenlignes. */
+@media (max-width: 430px) {
+  .biler { grid-template-columns: 1fr; gap: 8px; }
+  .bilvalg { display: grid; grid-template-columns: 1fr 95px; gap: 3px 9px; font-size: 14px; padding: 12px; }
+  .bilvalg small { grid-column: 1; font-size: 11px; margin-top: 0; }
+  .bilvalg .biltal { grid-column: 2; grid-row: 1 / span 2; align-self: center; text-align: right; font-size: 11px; line-height: 1.6; margin-top: 0; }
+}

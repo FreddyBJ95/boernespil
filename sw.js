@@ -8,11 +8,11 @@ const VOKSENSPIL = ["det-sidste-lys", "skrotstorm", "krystaljaegerne"];
 // Spil der består af flere filer end index.html
 const EKSTRA = [
   "tilslut/", "tilslut/index.html", "tilslut/tilslut.css", "tilslut/tilslut.js", "tilslut/adresse.js", "tilslut/vendor/jsQR.js",
-  ...["three.module.js", "GLTFLoader.js", "BufferGeometryUtils.js", "LICENSE-three.txt"].map(f => `spil/3d-faelles/${f}`),
-  ...["style.css", "spil.js", "verden.js", "logik.js", "lyd.js", "oe.glb", "forside.jpg"].map(f => `spil/det-sidste-lys/${f}`),
-  ...["style.css", "spil.js", "styring.js", "missioner.js", "verden-data.js", "fysik.js", "fremgang.js", "lyd.js", "forside.jpg", "ikon.svg",
+  ...["three.module.js", "GLTFLoader.js", "BufferGeometryUtils.js", "start.js", "LICENSE-three.txt"].map(f => `spil/3d-faelles/${f}`),
+  ...["style.css", "komfort.css", "spil.js", "styring.js", "verden.js", "logik.js", "lyd.js", "oe.glb", "maage.glb", "forside.jpg"].map(f => `spil/det-sidste-lys/${f}`),
+  ...["style.css", "spil.js", "styring.js", "missioner.js", "verden-data.js", "fysik.js", "fremgang.js", "lyd.js", "gps.js", "indstillinger.js", "brugerflade.js", "liv.js", "forside.jpg", "ikon.svg",
     "modeller/oerken.glb", "modeller/rotten.glb", "modeller/buggy.glb", "modeller/truck.glb"].map(f => `spil/skrotstorm/${f}`),
-  ...["style.css", "spil.js", "verden.js", "eventyr.js", "projektiler.js", "forside.jpg", "modeller/eventyr.glb"].map(f => `spil/krystaljaegerne/${f}`),
+  ...["style.css", "spil.js", "styring.js", "verden.js", "eventyr.js", "projektiler.js", "navigation.js", "kort.js", "lagring.js", "forside.jpg", "modeller/eventyr.glb", "modeller/detaljer.glb"].map(f => `spil/krystaljaegerne/${f}`),
   ...["three.js", "spil.js", "fisk.js", "staenger.js", "verden.js", "lyd.js"].map(f => `spil/fisk/${f}`),
   ...["three.js", "spil.js", "verden.js", "slange.js", "mad.js", "lyd.js", "modeller.js"].map(f => `spil/slange/${f}`),
   ...["hoved", "mad", "hatte", "pynt"].map(f => `spil/slange/modeller/${f}.glb`),

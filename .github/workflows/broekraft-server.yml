@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: '22'
       - name: Afprøv gåder, bilfysik, grotter og gemninger
-        run: node --test spil/det-sidste-lys/logik.test.mjs spil/det-sidste-lys/navigation.test.mjs spil/skrotstorm/tests.mjs spil/krystaljaegerne/eventyr.test.mjs
+        run: node --test spil/det-sidste-lys/*.test.mjs spil/skrotstorm/tests.mjs spil/krystaljaegerne/*.test.mjs
       - name: Afprøv generator, protokol og simulering
         working-directory: server
         run: deno task test

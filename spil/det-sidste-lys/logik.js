@@ -69,6 +69,64 @@ export const SVAR = Object.freeze({
   spejle: [1, 3, 2],
 });
 
+// Nye komfortvalg er valgfrie i version 1, så tidligere gemninger stadig virker.
+export function nyeIndstillinger() {
+  return { følsomhed: 1, rolig: false, tekst: 1, kvalitet: "auto", styring: "pind" };
+}
+
+export function validerIndstillinger(data) {
+  const valg = nyeIndstillinger();
+  if (!data || typeof data !== "object") return valg;
+  if (Number.isFinite(data.følsomhed) && data.følsomhed >= .4 && data.følsomhed <= 2) valg.følsomhed = data.følsomhed;
+  valg.rolig = data.rolig === true;
+  if ([1, 1.2, 1.4].includes(data.tekst)) valg.tekst = data.tekst;
+  if (["auto", "let", "flot"].includes(data.kvalitet)) valg.kvalitet = data.kvalitet;
+  if (["pind", "pile"].includes(data.styring)) valg.styring = data.styring;
+  return valg;
+}
+
+const GÅDEVALG = {
+  tide: [["Stigende", "Faldende", "Stille"], ["I", "II", "III"], ["Nord", "Øst", "Syd", "Vest"]],
+  ringe: [MÆRKER, MÆRKER, MÆRKER],
+  ledninger: [["Sol", "Bølge", "Blad"], ["Sol", "Bølge", "Blad"], ["Blad", "Bølge", "Sol"]],
+  spejle: [[0, 1, 2, 3], [0, 1, 2, 3], [0, 1, 2, 3]],
+};
+
+export const STEDNOTER = [
+  { id: "ring", navn: "En ring til alle", x: -21.5, z: 69, tekst: "På bagsiden af den slidte redningsring står Elins håndskrift: ‘Her hører alle til. Også dem, der kommer sent hjem.’ Der er nye reb i den gamle ring. Nogen har passet på øen, selv mens fyret var mørkt." },
+  { id: "have", navn: "Elins lille have", x: -12, z: 31, tekst: "Havebogen lugter af salvie. Elin har noteret: ‘Strandsenneppen blomstrer, selv efter en vinter med saltvind. Sæt en gul potte ved hver dør, så ingen skal vente i et gråt hus.’ Du ser blomsterne for første gang." },
+  { id: "varde", navn: "En sti af fælles sten", x: -42, z: -18, tekst: "Under vardens kobbermærke ligger en gammel tegning: hver familie lagde en sten, da skovstien blev anlagt. Den mindste sten har dine og Elins initialer. Øen har båret jer begge hele vejen." },
+  { id: "logbog", navn: "Fyrets logbog", tekst: "Fra galleriet genkender du alle stierne. I logbogen står én sætning gentaget år efter år: ‘Ingen båd for lille, ingen nat for lang.’ På sidste side har Elin tegnet to kopper og skrevet: ‘Når du kommer hjem.’" },
+];
+
+export function findStednote(tilstand, id) {
+  if (!STEDNOTER.some(n => n.id === id) || tilstand.fund.includes(id)) return tilstand;
+  return { ...tilstand, fund: [...tilstand.fund, id] };
+}
+
+export function nytEventyr(forrige) {
+  const næste = nyTilstand();
+  næste.indstillinger = validerIndstillinger(forrige?.indstillinger);
+  næste.lyd = forrige?.lyd !== false;
+  næste.vejledning = forrige?.vejledning === true;
+  return næste;
+}
+
+// Browserens bfcache må beholde den levende galleriposition, mens save ligger sikkert ved foden.
+export function sikkerGemmetilstand(tilstand, galleriet) {
+  return galleriet ? { ...tilstand, position: { x: 32, z: -35 } } : tilstand;
+}
+
+export function validerGåde(type, svar) {
+  return Array.isArray(svar) && svar.length === 3 && GÅDEVALG[type]?.every((valg, i) => valg.includes(svar[i]));
+}
+
+// Et besøg i dagbogen eller en pause mister ikke den indstilling, spilleren arbejdede på.
+export function gemGåde(tilstand, type, svar) {
+  if (!validerGåde(type, svar)) return tilstand;
+  return { ...tilstand, gåder: { ...tilstand.gåder, [type]: [...svar] } };
+}
+
 // Ny fremgang er fuldt spilbar, også når browseren ikke kan gemme.
 export function nyTilstand() {
   return {
@@ -82,6 +140,11 @@ export function nyTilstand() {
     besøgte: ["havn"],
     lyd: true,
     spilletid: 0,
+    indstillinger: nyeIndstillinger(),
+    gåder: {},
+    vink: {},
+    vejledning: false,
+    fund: [],
   };
 }
 
@@ -128,6 +191,16 @@ export function validerGemning(data) {
   næste.nat = data.nat === true;
   næste.retning = Number.isInteger(data.retning) && data.retning >= 0 && data.retning <= 3 ? data.retning : 0;
   næste.lyd = data.lyd !== false;
+  næste.indstillinger = validerIndstillinger(data.indstillinger);
+  næste.vejledning = data.vejledning === true;
+  if (Array.isArray(data.fund)) næste.fund = [...new Set(data.fund.filter(id => STEDNOTER.some(n => n.id === id)))];
+  for (const type of Object.keys(GÅDEVALG)) {
+    if (validerGåde(type, data.gåder?.[type])) næste.gåder[type] = [...data.gåder[type]];
+  }
+  for (const opgave of OPGAVER) {
+    const trin = data.vink?.[opgave.id];
+    if (Number.isInteger(trin) && trin >= 0 && trin <= 2) næste.vink[opgave.id] = trin;
+  }
   næste.spilletid = Number.isFinite(data.spilletid) ? Math.max(0, Math.min(data.spilletid, 360000)) : 0;
   if (
     Number.isFinite(data.position?.x) && Number.isFinite(data.position?.z) && Math.abs(data.position.x) <= 86 &&

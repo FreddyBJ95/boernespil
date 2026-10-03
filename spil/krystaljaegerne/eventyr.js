@@ -8,10 +8,31 @@ export const VÅBEN = {
 export const OPGAVER = [
   { id: "mira", navn: "En stemme i landsbyen", tekst: "Tal med Mira ved brønden.", mål: 1, xp: 20, mønter: 12 },
   { id: "krystal", navn: "Lys i lommen", tekst: "Find 8 lyskrystaller på øen.", mål: 8, xp: 65, mønter: 35 },
-  { id: "kiste", navn: "De glemte kort", tekst: "Åbn 3 skattekister i skoven og ruinerne.", mål: 3, xp: 70, mønter: 45 },
+  {
+    id: "kiste",
+    navn: "De glemte kort",
+    tekst: "Åbn 3 skattekister i skoven og ruinerne.",
+    mål: 3,
+    xp: 70,
+    mønter: 45,
+  },
   { id: "vogter", navn: "Ruinerne vågner", tekst: "Berolig 4 stenvogtere med dine våben.", mål: 4, xp: 85, mønter: 55 },
-  { id: "boss0", navn: "Mossets hemmelighed", tekst: "Find Mosvogteren på dybde 2 i Mosgrotten.", mål: 1, xp: 110, mønter: 70 },
-  { id: "boss1", navn: "Spejlenes sang", tekst: "Find Krystalhjorten på dybde 2 i Spejlgrotten.", mål: 1, xp: 145, mønter: 85 },
+  {
+    id: "boss0",
+    navn: "Mossets hemmelighed",
+    tekst: "Find Mosvogteren på dybde 2 i Mosgrotten.",
+    mål: 1,
+    xp: 110,
+    mønter: 70,
+  },
+  {
+    id: "boss1",
+    navn: "Spejlenes sang",
+    tekst: "Find Krystalhjorten på dybde 2 i Spejlgrotten.",
+    mål: 1,
+    xp: 145,
+    mønter: 85,
+  },
   {
     id: "boss2",
     navn: "Det sidste segl",
@@ -20,9 +41,27 @@ export const OPGAVER = [
     xp: 190,
     mønter: 110,
   },
-  { id: "finale", navn: "Øens hjerte", tekst: "Bring de tre segl til Stjerneporten mod nord.", mål: 1, xp: 200, mønter: 100 },
+  {
+    id: "finale",
+    navn: "Øens hjerte",
+    tekst: "Bring de tre segl til Stjerneporten mod nord.",
+    mål: 1,
+    xp: 200,
+    mønter: 100,
+  },
 ];
 export const GROTTENAVNE = ["Mosgrotten", "Spejlgrotten", "Kobberdybet"];
+export const FJENDETYPER = {
+  slim: { navn: "Mosslim", svaghed: "sværd", hint: "Sværdet spreder mossets bløde lys." },
+  stenvogter: { navn: "Stenvogter", svaghed: "magi", hint: "Magi løsner lyset i dens sten." },
+  krystaldyr: { navn: "Krystaldyr", svaghed: "bue", hint: "Buen finder sprækker mellem krystallerne." },
+};
+export const VALG = { autosigte: true, roligeEffekter: false, vejviser: true, kamera: 1 };
+
+// Rejsen består kun af JSON-data; ældre Safari kan også tage en selvstændig kopi.
+export function kopiRejse(s) {
+  return typeof structuredClone === "function" ? structuredClone(s) : JSON.parse(JSON.stringify(s));
+}
 
 // Frøet er et heltal; samme gemte besøg giver altid præcis de samme rum.
 export function tilfældig(frø) {
@@ -105,6 +144,8 @@ export function nyRejse(frø = Math.floor(Math.random() * 4294967295)) {
     besøg: [0, 0, 0],
     grotte: null,
     lyd: true,
+    valg: { ...VALG },
+    vejledning: 0,
   };
 }
 
@@ -113,20 +154,26 @@ export function læsRejse(tekst) {
   try {
     const s = typeof tekst === "string" ? JSON.parse(tekst) : tekst;
     if (!s || s.version !== VERSION || !Number.isInteger(s.frø) || s.frø < 0 || s.frø > 4294967295) return null;
-    for (const n of ["x", "z", "hp", "mana", "xp", "mønter", "udstyr", "eliksirer"]) if (!Number.isFinite(s[n])) return null;
+    for (const n of ["x", "z", "hp", "mana", "xp", "mønter", "udstyr", "eliksirer"]) {
+      if (!Number.isFinite(s[n])) return null;
+    }
     if (
-      Math.abs(s.x) > 200 || Math.abs(s.z) > 200 || s.xp < 0 || s.xp > 100000 || s.mønter < 0 || s.mønter > 100000 || s.hp < 0 ||
+      Math.abs(s.x) > 200 || Math.abs(s.z) > 200 || s.xp < 0 || s.xp > 100000 || s.mønter < 0 || s.mønter > 100000 ||
+      s.hp < 0 ||
       s.mana < 0 || s.mana > 100
     ) return null;
     if (
-      !Number.isInteger(s.udstyr) || s.udstyr < 0 || s.udstyr > 3 || !Number.isInteger(s.eliksirer) || s.eliksirer < 0 ||
+      !Number.isInteger(s.udstyr) || s.udstyr < 0 || s.udstyr > 3 || !Number.isInteger(s.eliksirer) ||
+      s.eliksirer < 0 ||
       s.eliksirer > 99 || !VÅBEN[s.våben]
     ) return null;
     // Det største lovlige liv følger niveauet. Lidt for højt liv fra ældre data kan stadig repareres.
     if (s.hp > Math.max(300, maxLiv(s))) return null;
     if (!s.opgaver || typeof s.opgaver !== "object" || Array.isArray(s.opgaver)) return null;
     for (const k of Object.keys(s.opgaver)) {
-      if (!OPGAVER.some((o) => o.id === k) || !Number.isInteger(s.opgaver[k]) || s.opgaver[k] < 0 || s.opgaver[k] > 10000) {
+      if (
+        !OPGAVER.some((o) => o.id === k) || !Number.isInteger(s.opgaver[k]) || s.opgaver[k] < 0 || s.opgaver[k] > 10000
+      ) {
         return null;
       }
     }
@@ -136,7 +183,9 @@ export function læsRejse(tekst) {
         new Set(s[k]).size !== s[k].length
       ) return null;
     }
-    if (!Array.isArray(s.besøg) || s.besøg.length !== 3 || s.besøg.some((n) => !Number.isInteger(n) || n < 0 || n > 10000)) {
+    if (
+      !Array.isArray(s.besøg) || s.besøg.length !== 3 || s.besøg.some((n) => !Number.isInteger(n) || n < 0 || n > 10000)
+    ) {
       return null;
     }
     if (
@@ -144,9 +193,18 @@ export function læsRejse(tekst) {
       (![0, 1, 2].includes(s.grotte.id) || ![1, 2].includes(s.grotte.dybde) || !Number.isInteger(s.grotte.frø) ||
         s.grotte.frø < 0 || s.grotte.frø > 4294967295)
     ) return null;
-    const kopi = structuredClone(s);
+    const kopi = kopiRejse(s);
     kopi.hp = Math.min(kopi.hp, maxLiv(kopi));
     kopi.lyd = s.lyd !== false;
+    // Nye valg er valgfrie i v1; gamle eventyr fortsætter med sikre standarder.
+    kopi.valg = { ...VALG };
+    if (s.valg && typeof s.valg === "object" && !Array.isArray(s.valg)) {
+      for (const k of ["autosigte", "roligeEffekter", "vejviser"]) {
+        if (typeof s.valg[k] === "boolean") kopi.valg[k] = s.valg[k];
+      }
+      if (Number.isFinite(s.valg.kamera)) kopi.valg.kamera = Math.max(.4, Math.min(1.8, s.valg.kamera));
+    }
+    kopi.vejledning = Number.isInteger(s.vejledning) ? Math.max(0, Math.min(4, s.vejledning)) : s.opgaver.mira ? 4 : 0;
     if (!s.grotte && (Math.abs(s.x) > 68 || Math.abs(s.z) > 68)) {
       kopi.x = 0;
       kopi.z = 5;
@@ -193,7 +251,7 @@ export function fremskridt(s, id, antal = 1) {
 // Sværdet er bredt og tæt; buen kræver sigte; magien spreder sig og bruger energi.
 export function skade(s, art) {
   const bonus = 1 + (niveau(s) - 1) * .12 + s.udstyr * .2;
-  const svaghed = { stenvogter: "magi", slim: "sværd", krystaldyr: "bue" }[art];
+  const svaghed = FJENDETYPER[art]?.svaghed;
   return Math.round(VÅBEN[s.våben].skade * bonus * (svaghed === s.våben ? 1.4 : 1));
 }
 export function sværdRammer(fra, til, retning) {

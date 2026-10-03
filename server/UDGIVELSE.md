@@ -1,5 +1,14 @@
 Broekraft Server lader 1–8 børn bygge i samme Broekraft-verden på familiens eget wifi.
 
+**Nyt i 0.5.3**
+- Det Sidste Lys har flere detaljer på øen, måger, en levende havn og fire valgfrie minder i dagbogen.
+  Fingerstyring, større tekst, trinvise vink og gådevalg kan tilpasses og gemmes.
+- Skrotstorm har en mere levende industriby, bedre bro- og vejvisere og GPS gennem det faktiske vejnet.
+  Garagen forklarer opgraderingerne, og kamera, grafik, lyd og touchstyring huskes på enheden.
+- Krystaljægerne har flere landmærker, et større rejsekort og vejvisning gennem åbne grotterum.
+  Tydelige våbenstyrker, autosigte, kampvarsler og holdt angreb hjælper på computer og touch.
+- Gamle gemte rejser bevares. Pause, tastaturfokus og beskeder ved manglende gemning er forbedret.
+
 **Nyt i 0.5.2**
 - Spilkassens logo, maskotter og appikoner følger nu med familieserveren.
 - Tre nye 3D-spil i voksenrummet: Det Sidste Lys, Skrotstorm og Krystaljægerne.

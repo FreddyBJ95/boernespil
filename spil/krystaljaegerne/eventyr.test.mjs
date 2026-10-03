@@ -9,6 +9,7 @@ import {
   fremskridt,
   givEliksirer,
   kanGå,
+  kopiRejse,
   læsRejse,
   maxLiv,
   niveau,
@@ -20,8 +21,11 @@ import {
   startGrotte,
   sværdRammer,
 } from "./eventyr.js";
-import { bygØ, frit, STEDER } from "./verden.js";
+import { bygGrotte, bygØ, frit, STEDER } from "./verden.js";
 import { opdatérFlyvere } from "./projektiler.js";
+import { fortsætSpor, friLinje, rumRute, ruteLængde, vælgMål, øRute } from "./navigation.js";
+import { forsøgGem } from "./lagring.js";
+import { guideEfterSkridt, trykTast } from "./styring.js";
 
 test("200 frø: begge dybder har sammenhængende rum og et tilgængeligt mål", () => {
   for (let frø = 0; frø < 200; frø++) {
@@ -226,7 +230,12 @@ test("et projektil i en væg eller uden levetid kan aldrig skade i samme trin", 
   for (const [liv, frit] of [[2, false], [.01, true]]) {
     const skud = [p(liv)];
     let ramt = 0, fjernet = 0;
-    opdatérFlyvere(skud, .02, { erFrit: () => frit, afbryd: () => false, fjern: () => fjernet++, ramning: () => ramt++ });
+    opdatérFlyvere(skud, .02, {
+      erFrit: () => frit,
+      afbryd: () => false,
+      fjern: () => fjernet++,
+      ramning: () => ramt++,
+    });
     assert.equal(ramt, 0);
     assert.equal(fjernet, 1);
     assert.equal(skud.length, 0);
@@ -283,4 +292,270 @@ test("gentagne grotter: højt niveau kan heles og gemmes over 300 liv", () => {
   const ældre = { ...nyRejse(1), hp: 150 };
   assert.equal(læsRejse(ældre).hp, 100, "rimeligt ældre liv repareres til det aktuelle niveau");
   assert.equal(læsRejse({ ...s, hp: 10000 }), null, "urimeligt liv afvises stadig");
+});
+test("gamle v1-rejser migreres uden tab af loot, segl, grotte eller udstyr", () => {
+  const gammel = nyRejse(991);
+  delete gammel.valg;
+  delete gammel.vejledning;
+  gammel.hentet = ["ø-krystal-0", "ø-kiste-1"];
+  gammel.beroliget = ["ø-fjende-0", "boss-0"];
+  gammel.opgaver = { mira: 1, krystal: 5, kiste: 2, boss0: 1 };
+  gammel.xp = 700;
+  gammel.udstyr = 2;
+  startGrotte(gammel, 1);
+  gammel.grotte.dybde = 2;
+  const t = læsRejse(JSON.stringify(gammel));
+  assert.ok(t);
+  for (const k of ["hentet", "beroliget", "opgaver", "grotte", "xp", "udstyr", "frø"]) {
+    assert.deepEqual(t[k], gammel[k]);
+  }
+  assert.deepEqual(t.valg, { autosigte: true, roligeEffekter: false, vejviser: true, kamera: 1 });
+  assert.equal(t.vejledning, 4);
+  t.valg = { autosigte: false, roligeEffekter: true, vejviser: false, kamera: 1.5 };
+  t.vejledning = 2;
+  assert.deepEqual(læsRejse(JSON.stringify(t)).valg, t.valg);
+  const dårlige = læsRejse({
+    ...t,
+    valg: { autosigte: "ja", roligeEffekter: 1, vejviser: null, kamera: 900 },
+    vejledning: 999,
+  });
+  assert.equal(dårlige.valg.autosigte, true);
+  assert.equal(dårlige.valg.kamera, 1.8);
+  assert.equal(dårlige.vejledning, 4);
+});
+test("Safari uden structuredClone kan gemme og fortsætte en gammel v1-rejse uden tab", () => {
+  const oprindelig = globalThis.structuredClone;
+  try {
+    globalThis.structuredClone = undefined;
+    const gammel = nyRejse(991);
+    delete gammel.valg;
+    delete gammel.vejledning;
+    gammel.opgaver = { mira: 1, krystal: 8, kiste: 3, boss0: 1 };
+    gammel.hentet = ["ø-krystal-2", "ø-kiste-0"];
+    gammel.beroliget = ["boss-0"];
+    gammel.udstyr = 2;
+    gammel.xp = 19600;
+    gammel.hp = maxLiv(gammel);
+    startGrotte(gammel, 2);
+    gammel.grotte.dybde = 2;
+    let tekst;
+    assert.equal(forsøgGem((værdi) => tekst = værdi, gammel).gemt, true);
+    const fortsæt = læsRejse(tekst), kopi = kopiRejse(fortsæt);
+    assert.ok(fortsæt);
+    for (const k of ["opgaver", "hentet", "beroliget", "udstyr", "xp", "hp", "grotte", "frø"]) {
+      assert.deepEqual(fortsæt[k], gammel[k]);
+    }
+    kopi.hentet.push("ny-skat");
+    kopi.valg.autosigte = false;
+    assert.deepEqual(fortsæt.hentet, gammel.hentet);
+    assert.equal(fortsæt.valg.autosigte, true, "Fortsæt og gemt snapshot deler ingen mutable valg");
+  } finally {
+    globalThis.structuredClone = oprindelig;
+  }
+});
+
+test("autosigte ignorerer døde og skjulte fjender og skifter roligt mellem synlige mål", () => {
+  const f = (x, z, hp = 10) => ({ hp, obj: { position: { x, z } } }),
+    bagVæg = f(0, 2),
+    synlig = f(3, 0),
+    død = f(1, 0, 0);
+  const frit = (x, z) => !(Math.abs(x) < .5 && z > .8 && z < 1.2);
+  assert.equal(vælgMål({ x: 0, z: 0 }, [bagVæg, synlig, død], 10, frit), synlig);
+  assert.equal(vælgMål({ x: 0, z: 0 }, [bagVæg, død], 10, frit), null);
+  const næsten = f(2.5, 0);
+  assert.equal(vælgMål({ x: 0, z: 0 }, [næsten, synlig], 10, frit, synlig), synlig);
+  assert.equal(vælgMål({ x: 0, z: 0 }, [synlig], 2, frit), null);
+});
+test("200 grotter: vejviseren følger kun åbne forbindelser helt frem til målet", () => {
+  for (let frø = 0; frø < 200; frø++) {
+    const g = danGrotte(frø, frø % 3, 2),
+      til = { x: g.slut.x * 8, z: g.slut.z * 8 },
+      rute = rumRute(g, { x: 0, z: 0 }, til);
+    assert.ok(rute.length > 1);
+    assert.deepEqual(rute.at(-1), til);
+    assert.ok(ruteLængde(rute) > 8);
+    for (let i = 1; i < rute.length; i++) assert.ok(friLinje(rute[i - 1], rute[i], (x, z) => kanGå(g, x, z, .42), .2));
+  }
+});
+test("øens gyldne spor går rundt om brønden og husene", () => {
+  const v = bygØ({}, 991), erFrit = (x, z) => frit(v, x, z);
+  for (const [fra, til] of [[{ x: 0, z: 5 }, { x: 0, z: -5 }], [{ x: -3, z: -6 }, { x: -11, z: -6 }]]) {
+    const r = øRute(fra, til, erFrit);
+    assert.ok(r.length > 2);
+    for (let i = 1; i < r.length; i++) assert.ok(friLinje(r[i - 1], r[i], erFrit, .15));
+  }
+});
+test("hurtige projektiler kan ikke springe over en tynd væg", () => {
+  const skud = [{ obj: { position: { x: 0, z: 0 } }, dx: 100, dz: 0, liv: 2 }];
+  let ramt = 0;
+  opdatérFlyvere(skud, .05, {
+    erFrit: (x) => !(x > 2 && x < 3),
+    afbryd: () => false,
+    fjern: () => {},
+    ramning: () => ramt++,
+  });
+  assert.equal(ramt, 0);
+  assert.equal(skud.length, 0);
+});
+test("gemt-status følger lageret, og en vedvarende fejl giver kun én advarsel", () => {
+  const s = nyRejse(991),
+    fejl = () => {
+      throw Error("Privat lager");
+    };
+  const første = forsøgGem(fejl, s, true);
+  assert.deepEqual(første, { gemt: false, visAdvarsel: true });
+  assert.deepEqual(forsøgGem(fejl, s, første.gemt), { gemt: false, visAdvarsel: false });
+  let tekst;
+  assert.deepEqual(forsøgGem((t) => tekst = t, s, false), { gemt: true, visAdvarsel: false });
+  assert.deepEqual(læsRejse(tekst), s);
+});
+
+test("ø-ruter kontrollerer også tynde forhindringer langs første, sidste og alle gridkanter", () => {
+  const eksempler = [[0, { x: 35, z: -32 }, { x: -31.964341160838472, z: 39.95526222938173 }], [1, { x: 35, z: -32 }, {
+    x: 51.749225370748256,
+    z: -11.893022059559435,
+  }]];
+  for (const [frø, fra, til] of eksempler) {
+    const v = bygØ({}, frø), erFrit = (x, z) => frit(v, x, z), rute = øRute(fra, til, erFrit);
+    assert.ok(rute.length > 2, `rute for reprofrø ${frø}`);
+    assert.deepEqual(rute[0], fra);
+    assert.deepEqual(rute.at(-1), til);
+    for (let i = 1; i < rute.length; i++) {
+      assert.ok(friLinje(rute[i - 1], rute[i], erFrit, .025), `hele delstræk ${i} er åbent`);
+    }
+  }
+  for (let frø = 0; frø < 5; frø++) {
+    const v = bygØ({}, frø), erFrit = (x, z) => frit(v, x, z);
+    for (const fra of STEDER.filter((p) => erFrit(p.x, p.z))) {
+      for (const til of v.ting.filter((p) => erFrit(p.x, p.z))) {
+        const rute = øRute(fra, til, erFrit);
+        assert.ok(rute.length, `vej til ${til.id}, frø ${frø}`);
+        for (let i = 1; i < rute.length; i++) {
+          assert.ok(friLinje(rute[i - 1], rute[i], erFrit, .1));
+        }
+      }
+    }
+  }
+});
+
+test("detaljebiblioteket har alle originale Blenderlandmærker og indlejret geometri", () => {
+  const data = fs.readFileSync(new URL("./modeller/detaljer.glb", import.meta.url));
+  assert.equal(data.readUInt32LE(0), 0x46546c67);
+  assert.equal(data.readUInt32LE(4), 2);
+  const g = JSON.parse(data.subarray(20, 20 + data.readUInt32LE(12)).toString("utf8"));
+  const navne = g.scenes[0].nodes.map((i) => g.nodes[i].name);
+  for (
+    const n of [
+      "lanterne",
+      "vejviser",
+      "bænk",
+      "markedsvogn",
+      "lejr",
+      "svampe",
+      "blomster",
+      "faldetstamme",
+      "ruintavle",
+      "statue",
+      "grottepille",
+      "lyssøjle",
+      "havn",
+    ]
+  ) assert.ok(navne.includes(n), n);
+  assert.ok(g.meshes.length >= 13);
+  assert.ok(g.buffers.every((b) => !b.uri));
+});
+
+test("øens lokale kollisionsfelter giver præcis samme plads som alle forhindringerne", () => {
+  for (let frø = 0; frø < 8; frø++) {
+    const v = bygØ({}, frø);
+    for (let i = 0; i < 5000; i++) {
+      const x = Math.sin(i * 7919.31) * 70, z = Math.cos(i * 3571.27) * 70;
+      const forventet = Math.hypot(x, z) < 68 && !v.blokering.some((b) => Math.hypot(x - b.x, z - b.z) < b.r + .42);
+      assert.equal(frit(v, x, z), forventet, `${frø}: ${x},${z}`);
+    }
+  }
+});
+
+test("en nået gridvejviser peger fremad, og afstanden følger spilleren inden celleskift", () => {
+  const gemt = [{ x: 0, z: 0 }, { x: 2, z: 0 }, { x: 4, z: 0 }, { x: 4, z: 2 }];
+  const fra = { x: 2.3, z: 0 }, frit = (x, z) => !(z > .4 && x < 3.8);
+  const spor = fortsætSpor(fra, gemt, frit);
+  assert.deepEqual(spor, [fra, { x: 4, z: 0 }, { x: 4, z: 2 }]);
+  assert.equal(Math.round(ruteLængde(spor) * 10), 37);
+  assert.equal(ruteLængde(gemt), 6, "cachen ændres ikke af spillerens små skridt");
+  for (let i = 1; i < spor.length; i++) assert.ok(friLinje(spor[i - 1], spor[i], frit, .025));
+  assert.deepEqual(fortsætSpor(fra, [], frit), []);
+});
+
+test("tilfældigt træ kan ikke låse en opgavevogter fast; gamle skatte får et frit tilgangspunkt", () => {
+  for (let frø = 0; frø < 100; frø++) {
+    const v = bygØ({}, frø);
+    assert.equal(v.fjender.filter((f) => f.art === "stenvogter").length, 4);
+    for (const f of v.fjender) assert.ok(frit(v, f.x, f.z), `frit spawn for ${f.id}, frø ${frø}`);
+  }
+  const v = bygØ({}, 4), kiste = v.ting.find((t) => t.id === "ø-kiste-2"), erFrit = (x, z) => frit(v, x, z);
+  assert.deepEqual({ x: kiste.x, z: kiste.z }, { x: 34, z: 5 }, "gammel loot flyttes ikke");
+  assert.equal(erFrit(kiste.x, kiste.z), false, "konkret kiste i træcirklen");
+  const rute = øRute({ x: 0, z: 5 }, kiste, erFrit), slut = rute.at(-1);
+  assert.ok(slut && erFrit(slut.x, slut.z));
+  assert.ok(Math.hypot(slut.x - kiste.x, slut.z - kiste.z) < 2.8);
+  for (let i = 1; i < rute.length; i++) assert.ok(friLinje(rute[i - 1], rute[i], erFrit, .05));
+});
+
+test("Fortsæt efter en bossejr genskaber en tydelig udgang og beholder seglet", () => {
+  const s = nyRejse(12);
+  startGrotte(s, 1);
+  s.grotte.dybde = 2;
+  fremskridt(s, "boss1");
+  const fortsæt = læsRejse(JSON.stringify(s));
+  const g = danGrotte(fortsæt.grotte.frø, 1, 2);
+  const v = bygGrotte({}, g, fortsæt.opgaver.boss1 >= 1);
+  const ud = v.steder.find((p) => p.id === "bossudgang");
+  assert.ok(ud);
+  assert.ok(frit(v, ud.x, ud.z));
+  assert.equal(v.fjender.some((f) => f.boss), false);
+  assert.equal(fortsæt.opgaver.boss1, 1);
+  assert.equal(bossSpor(fortsæt, 1, [], v.steder), ud);
+  const ny = bygGrotte({}, g, false);
+  assert.ok(ny.fjender.some((f) => f.boss));
+});
+
+test("holdt W og Space genstarter ikke sig selv efter en dialog, før de trykkes på ny", () => {
+  for (const tast of ["w", " "]) {
+    const taster = new Set();
+    assert.ok(trykTast(taster, tast, false));
+    assert.ok(trykTast(taster, tast, true));
+    taster.clear();
+    assert.equal(trykTast(taster, tast, true), false);
+    assert.equal(taster.size, 0);
+    assert.ok(trykTast(taster, tast, false));
+    assert.ok(taster.has(tast));
+  }
+});
+
+test("genåbnet første guide venter på en ny spillerhandling, også efter Mira og Fortsæt", () => {
+  const s = nyRejse(12);
+  fremskridt(s, "mira");
+  s.x = 34;
+  s.z = -20;
+  s.vejledning = 0;
+  const fortsæt = læsRejse(JSON.stringify(s)), start = { x: fortsæt.x, z: fortsæt.z };
+  assert.equal(guideEfterSkridt(fortsæt.vejledning, start, fortsæt), 0);
+  assert.equal(guideEfterSkridt(0, start, { x: 34.5, z: -20 }), 0);
+  assert.equal(guideEfterSkridt(0, start, { x: 36, z: -20 }), 1);
+  assert.equal(guideEfterSkridt(2, start, { x: 36, z: -20 }), 2);
+});
+
+test("den viste målrings fjende og næste angreb beholder samme mål, når nærheden bytter", () => {
+  const fra = { x: 0, z: 0 },
+    a = { hp: 30, obj: { position: { x: 5, z: 0 } } },
+    b = { hp: 30, obj: { position: { x: 6, z: 0 } } };
+  const frit = () => true;
+  const hud = vælgMål(fra, [a, b], 24, frit);
+  assert.equal(hud, a);
+  b.obj.position.x = 4.8;
+  const angreb = vælgMål(fra, [a, b], 24, frit, hud);
+  assert.equal(angreb, hud);
+  a.hp = 0;
+  assert.equal(vælgMål(fra, [a, b], 24, frit, hud), b, "et beroliget mål overføres til næste levende fjende");
 });

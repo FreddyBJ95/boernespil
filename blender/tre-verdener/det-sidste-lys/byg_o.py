@@ -48,6 +48,11 @@ løv = [materiale('Fyrregrøn_%s' % i,c) for i,c in enumerate([
   (.13,.25,.21),(.18,.31,.24),(.24,.36,.26)])]
 hav = materiale('Hav i forside',(.09,.25,.32),.27,.4)
 sejl = materiale('Natursejl',(.80,.76,.57))
+blomst = materiale('Gylden strandsennep',(.90,.63,.19))
+urte = materiale('Salvie',(.27,.40,.30))
+ler = materiale('Havnenes lerpotter',(.53,.28,.18))
+fugl = materiale('Maagens fjer',(.91,.92,.84))
+fuglespids = materiale('Maagens vingespids',(.16,.21,.23))
 
 # Terrænet deler sin matematik med spillets ganghøjde.
 def højde(x,z):
@@ -100,6 +105,17 @@ def bjælke(navn,a,b,r,mat):
   o=cylinder(navn,(a+b)/2,r,(b-a).length,mat,vertices=8)
   o.rotation_euler=(b-a).to_track_quat('Z','Y').to_euler()
   return o
+
+# Skiltets egne bogstaver eksporteres som mesh, så der ikke kræves skrifter i browseren.
+def bogstaver(navn,tekst,pos,størrelse=.22,vinkel=0):
+  bpy.ops.object.text_add(location=pos)
+  o=bpy.context.object;o.name=navn
+  o.data.body=tekst;o.data.size=størrelse;o.data.align_x='CENTER';o.data.align_y='CENTER'
+  o.data.resolution_u=3;o.data.extrude=0;o.data.bevel_depth=0
+  o.rotation_euler=(math.pi/2,0,vinkel)
+  o.data.materials.append(sejl)
+  bpy.ops.object.convert(target='MESH')
+  return bpy.context.object
 
 def jord(navn,x,z,r=.7):
   return kugle(navn,(x,z,højde(x,z)+r*.23),(r,r*.8,r*.65),random.choice(sten))
@@ -157,6 +173,7 @@ for z in [77,83]: pæl(-37,z)
 kube('Kajens trin',(-25,64,2.3),(7,2,.5),træ)
 
 def båd(x,z,rot=0):
+  gamle = set(bpy.context.scene.objects)
   v=[(-1.7,-3,0),(1.7,-3,0),(2,1.5,0),(0,4.5,0),(-2,1.5,0),
     (-1.2,-2.8,-1),(1.2,-2.8,-1),(1.4,1,-1),(0,3.5,-.7),(-1.4,1,-1)]
   f=[(0,1,2,3,4),(0,5,6,1),(1,6,7,2),(2,7,8,3),(3,8,9,4),(4,9,5,0),(5,9,8,7,6)]
@@ -165,6 +182,7 @@ def båd(x,z,rot=0):
   bjælke('Bådmast',(x,z,1),(x,z,7),.10,træ)
   mesh('Sammenrullet sejl',[(x+.1,z,6.8),(x+.1,z,2.9),(x+2.7,z,3.3)],[(0,1,2)],sejl)
   kube('Bådkahyt',(x,z-1,2),(1.5,1.4,1.7),puds,.06)
+  for o in set(bpy.context.scene.objects)-gamle: o.name='Flydebaad_'+o.name
 båd(-32,87,.25)
 
 def hus(navn,x,z,w,d,h,rotation=0,vinduer=True):
@@ -327,12 +345,18 @@ for i in range(3):
   bjælke('Spejlstativ',(x,cz+3.5,ch),(x,cz+3.5,ch+1.7),.12,jern)
 
 # Små broer, skilte, lanterner og havgræs gør rejserne mellem gåderne interessante.
-def skilt(x,z):
+def skilt(x,z,navne):
   h=højde(x,z)
   cylinder('Sti_skiltstolpe',(x,z,h+1.2),.12,2.4,træ,vertices=7)
   o=kube('Retningsskilt',(x,z,h+2.05),(1.9,.15,.4),planke,.04);o.rotation_euler.z=.2
   kube('Retningsskilt_2',(x,z,h+1.55),(1.4,.15,.35),fyrrod,.04)
-for x,z in [(-19,43),(-27,19),(-38,-10),(24,5),(40,-24),(-48,38)]: skilt(x,z)
+  for side in [0,math.pi]:
+    a=.2+side
+    bogstaver('Skiltets_destination',navne[0],(x+.09*math.sin(a),z-.09*math.cos(a),h+2.05),.20,a)
+    bogstaver('Skiltets_hjemsted',navne[1],(x,z-.09*math.cos(side),h+1.55),.18,side)
+for x,z,navne in [(-19,43,('VÆRKSTED','HAVN')),(-27,19,('RAVSKOV','LANDSBY')),
+  (-38,-10,('KOMPASRUIN','RAVSKOV')),(24,5,('FYRET','LANDSBY')),
+  (40,-24,('FYRET','HAVN')),(-48,38,('HAVNGROTTE','LANDSBY'))]: skilt(x,z,navne)
 for x,z in [(-25,66),(7,32),(-20,40),(18,10),(31,-24),(34,-38),(-39,-9)]:
   h=højde(x,z)
   cylinder('Lanternepæl',(x,z,h+1.7),.12,3.4,træ,vertices=7)
@@ -353,16 +377,110 @@ for i in range(180):
     mesh('Marehalm',v,[(0,1,2)],græs[1])
 
 # Blender bruger Z opad; glTF-eksporten omregner til Three.js' Y opad.
+def torus(navn,x,z,h,r,tyk,mat,vertikal=False):
+  bpy.ops.mesh.primitive_torus_add(major_segments=24,minor_segments=6,location=(x,z,h),major_radius=r,minor_radius=tyk)
+  o=bpy.context.object;o.name=navn;o.data.materials.append(mat)
+  if vertikal:o.rotation_euler.x=math.pi/2
+  return o
+
+# Små maritime spor kan både ses og undersøges: logbog, redningsring og Elins have.
+torus('Havnens_redningsring',-21.5,69,2.7,.58,.14,fyrhvid,True)
+for i in range(4):
+  a=i*math.pi/2
+  kube('Ringens_roede_baand',(-21.5+.57*math.cos(a),69,2.7+.57*math.sin(a)),(.21,.25,.21),fyrrod,.025)
+for x,z in [(-27,77),(-36,81)]:
+  for r in [.28,.44,.60]:torus('Tovspiral',x,z,2.12,r,.065,sand)
+for x,z in [(-36,57),(-37,57)]:
+  bjælke('Netstolpe',(x,z,højde(x,z)),(x,z,højde(x,z)+3.3),.09,træ)
+for i in range(7):
+  x=-37+i/6
+  bjælke('Net lodret',(x,57,højde(-36.5,57)+.3),(x,57,højde(-36.5,57)+2.9),.012,sand)
+for i in range(10):
+  h=højde(-36.5,57)+.3+i*.28
+  bjælke('Net vandret',(-37,57,h),(-36,57,h),.012,sand)
+for x,z in [(-11,30),(-5,30),(3,28),(11,28),(16,40),(-28,60)]:
+  h=højde(x,z)
+  cylinder('Lerpotte',(x,z,h+.3),.36,.6,ler,top=.46,vertices=10)
+  for j in range(5):
+    a=j*math.tau/5;px=x+.23*math.cos(a);pz=z+.23*math.sin(a)
+    bjælke('Blomsterstilk',(px,pz,h+.5),(px,pz,h+1),.015,urte)
+    kugle('Kystblomst',(px,pz,h+1),(.16,.16,.08),blomst,1)
+for z in [16,17,18,19]:
+  for x in [-13,-10]:
+    h=højde(x,z);kube('Havekant',(x,z,h+.12),(.14,.95,.24),planke)
+    kugle('Urtebusk',(x+1.5,z,h+.35),(.8,.35,.4),urte,1)
+for x in [-13,-12,-11,-10]:
+  h=højde(x,15.5);kube('Elins_havelaage',(x,15.5,h+.8),(.15,.12,1.6),fyrhvid,.02)
+bjælke('Havelaagens_haandliste',(-13,15.5,højde(-13,15.5)+1.1),(-10,15.5,højde(-10,15.5)+1.1),.07,planke)
+kube('Havebogen',(-12,31,højde(-12,31)+.72),(.8,.48,.1),tag,.02)
+kube('Havebogens_bord',(-12,31,højde(-12,31)+.59),(1.0,.65,.12),planke,.03)
+for x in [-12.35,-11.65]:kube('Havebordets_ben',(x,31,højde(-12,31)+.28),(.10,.5,.56),træ)
+h=højde(-11.3,29.8)
+kube('Havens_navneskilt',(-11.3,29.8,h+.95),(1.55,.13,.35),planke,.025)
+cylinder('Havens_skiltstolpe',(-11.3,29.8,h+.45),.045,.9,træ,vertices=6)
+bogstaver('Havens_navn','ELINS HAVE',(-11.3,29.89,h+.95),.17,math.pi)
+for x,z in [(-42,-18),(-18,-56),(-49,34)]:
+  for i in range(4):kugle('Stivarde',(x,z,højde(x,z)+.22+i*.32),(.55-i*.07,.42-i*.05,.23),sten[i%4],1)
+  cylinder('Vardens_kobbermærke',(x,z+.45,højde(x,z)+.5),.25,.05,kobber,vertices=12).rotation_euler.x=math.pi/2
+
+# Små samlede plantefelter giver stierne kanter, mens selve gangrummet forbliver åbent.
+for x,z in [(-24,53),(-24,45),(-25,31),(-32,11),(-41,-7),(-48,-11),(-29,-30),
+  (-20,-47),(-16,-54),(18,14),(29,5),(38,-12),(45,-21),(-43,35),(-54,43)]:
+  for i in range(5):
+    px=x+random.uniform(-1.3,1.3);pz=z+random.uniform(-1.1,1.1);h=højde(px,pz)
+    if h<1.5:continue
+    for j in range(3):
+      a=j*math.tau/3;dx=.30*math.cos(a);dz=.30*math.sin(a)
+      mesh('Stikantens_salturter',[(px-dx,pz-dz,h),(px+dx,pz+dz,h),(px+.08,pz+.04,h+.36)],[(0,1,2)],urte)
+    if i%2==0:kugle('Strandsennep_ved_stien',(px,pz,h+.39),(.13,.13,.065),blomst,1)
+
+# En lille havnestige, årer og beboernes kopper holder menneskene nærværende.
+for z in [79,80]:bjælke('Havnestigens_side',(-39.3,z,-.3),(-39.3,z,2.25),.06,jern)
+for i in range(6):bjælke('Havnestigens_trin',(-39.3,79,.15+i*.35),(-39.3,80,.15+i*.35),.055,jern)
+for x,z in [(-39,69),(-38.5,69)]:
+  h=højde(x,z)
+  bjælke('Fiskerens_aare',(x,z,h+.25),(x+.8,z+3,h+.5),.055,planke)
+  kube('Aareblad',(x+.85,z+3.1,h+.5),(.3,.85,.10),planke,.035).rotation_euler.z=-.23
+for x in [6.1,7.8]:
+  h=højde(7,23)+1.42
+  cylinder('Værkstedets_tekop',(x,21.4,h),.13,.16,sejl,top=.17,vertices=10)
+  cylinder('Koppens_te',(x,21.4,h+.085),.13,.012,mørktræ,vertices=10)
+
+# Fyrets personlige detaljer bliver læsbare i førsteperson, også fra galleriet.
+for i in range(6):
+  h=fh+1.15+i*.19
+  kube('Fyrtrappetrin',(38,-38.8+i*.18,h),(2.6,.40,.22),sten[1],.03)
+kube('Fyrmesterens_logbog',(32,-37.35,højde(32,-38)+2.42),(.7,.45,.1),tag,.02)
+for i in range(12):
+  a=i*math.tau/12
+  cylinder('Fyrets_kobberanker',(38+math.sin(a)*4.78,-44+math.cos(a)*4.78,fh+1.15),.10,.36,kobber,vertices=6)
+
+# En separat original måge har bevægelige vinger; den instanseres kun få gange i spillet.
+kugle('Maage_krop',(0,0,0),(.22,.48,.20),fugl,2)
+kugle('Maage_hoved',(0,-.40,.15),(.18,.20,.18),fugl,1)
+o=cylinder('Maage_naeb',(0,-.67,.14),.085,.26,blomst,top=.015,vertices=6);o.rotation_euler.x=math.pi/2
+for side in [-1,1]:
+  v=[(side*.12,0,.04),(side*.42,-.18,.11),(side*1.25,.05,.015),(side*.87,.30,.015),(side*.32,.22,-.01)]
+  o=mesh('Maage_vinge_'+('venstre' if side<0 else 'hoejre'),v,[(0,1,2),(0,2,3),(0,3,4)],fugl)
+  mesh('Maage_tip_'+('venstre' if side<0 else 'hoejre'),[(side*1.10,.04,.015),(side*1.34,.09,.015),(side*.87,.30,.015)],[(0,1,2)],fuglespids)
+bjælke('Maage_hale',(-.13,.35,0),(-.13,.67,.025),.04,fugl)
+bjælke('Maage_hale',( .13,.35,0),( .13,.67,.025),.04,fugl)
+
 bpy.ops.object.select_all(action='DESELECT')
 for o in bpy.context.scene.objects:
-  if o.type=='MESH': o.select_set(True)
+  if o.type=='MESH' and not o.name.startswith('Maage_'): o.select_set(True)
 bpy.ops.wm.save_as_mainfile(filepath=str(KILDE/'det-sidste-lys.blend'))
 spejl = Matrix.Diagonal((1,-1,1,1))
 for o in bpy.context.scene.objects:
   if o.type=='MESH': o.matrix_world = spejl @ o.matrix_world
 bpy.ops.export_scene.gltf(filepath=str(SPIL/'oe.glb'),export_format='GLB',use_selection=True,export_apply=True,export_materials='EXPORT')
+bpy.ops.object.select_all(action='DESELECT')
+for o in bpy.context.scene.objects:
+  if o.name.startswith('Maage_'):o.select_set(True)
+bpy.ops.export_scene.gltf(filepath=str(SPIL/'maage.glb'),export_format='GLB',use_selection=True,export_apply=True,export_materials='EXPORT')
 for o in bpy.context.scene.objects:
   if o.type=='MESH': o.matrix_world = spejl @ o.matrix_world
+  if o.name.startswith('Maage_'):o.hide_render=True
 
 # Forsidefotografiet renderes af de samme modeller, som spilleren udforsker.
 kube('Hav_til_render',(0,0,-.15),(2500,2500,.1),hav)

@@ -3,17 +3,25 @@ import { lås } from "../laas.js";
 import {
   aktivOpgave,
   fuldfør,
+  findStednote,
   gem,
+  gemGåde,
   læsGemning,
   MÆRKER,
   nyTilstand,
+  nytEventyr,
   OPGAVER,
   rigtigtSvar,
   samlRav,
+  sikkerGemmetilstand,
+  STEDNOTER,
   terrænHøjde,
+  validerIndstillinger,
+  SVAR,
 } from "./logik.js";
-import { gangHøjde, kanGå, RAVTRÆER, STEDER, ØVerden } from "./verden.js";
+import { gangHøjde, kanGå, næsteMål, RAVTRÆER, STEDER, ØVerden } from "./verden.js";
 import { ØLyd } from "./lyd.js";
+import { FingerStyring } from "./styring.js";
 
 const $ = (id) => document.getElementById(id);
 const lager = (() => {
@@ -42,7 +50,10 @@ let verden,
   gemTid = 0,
   hudTid = 0,
   beskedTid = 0;
-const taster = new Set(), touchTaster = new Set(), lyd = new ØLyd();
+const lyd = new ØLyd(), fingerStyring = new FingerStyring();
+const finger = fingerStyring.gang, taster = fingerStyring.taster;
+let visGuideManuelt = false;
+let dialogFokus = null;
 const retninger = ["Nord", "Øst", "Syd", "Vest"];
 const åbningsTekst =
   "Efter efterårsstormen er Lysø stille. Fyret, der altid viste dig hjem, er gået ud. Din søster Elin sejlede til fastlandet for at hente reservedele. På kajen venter hendes sidste brev. Find ud af, hvad hun nåede at opdage.";
@@ -56,13 +67,26 @@ const noter = [
   "Havgrottens tre spejle gav prismen tilbage. Sol → Øst. Bølge → Vest. Stjerne → Syd.",
   "Et lys er et løfte. Elin så fyret fra fastlandet. I morgen kommer hun hjem.",
 ];
+const småVink = {
+  brev: ["Elin lagde brevet et sted, hvor man altid kommer forbi, når man går i land.", "På kajen står en rød postkasse. Den gyldne ring viser stedet."],
+  nøgle: ["Ordene i brevet beskriver de tre hjul på messingæsken.", "Begynd med vandets bevægelse, fortsæt med antallet af mærker, og vælg til sidst vinden."],
+  harpiks: ["Gamle fyrretræer kan gemme varme dråber i deres bark.", "Tre træer har rav. Kortets ravprikker og den gyldne ring følger dem, du endnu mangler."],
+  linse: ["Den fundne nøgle er også en lille fortælling i tre tegn.", "Læs tegnene fra nøglens håndtag til spidsen. Den yderste ring skal have det første tegn."],
+  strøm: ["Farverne på ledningerne minder om havet, skoven og ild.", "Vælg tegnet, der hører til hver farve. Tegningen sidder på indersiden af kontrollågen."],
+  spor: ["Nogle af øens spor vågner først, når dagen slipper sit greb.", "Lad natten falde, og ret lyset mod ruinen vest for fyret."],
+  prisme: ["Spejlenes tegn fortæller dig hver sin verdensretning.", "Solen står op ét sted, bølgen trækker et andet. Læs ordene i grottens klippe."],
+  lys: ["Nu har skoven, ruinen og havet givet hver deres del.", "Vend tilbage til fyrets kontrolbord. Du kan bruge økortets besøgte steder til rejsen."],
+};
 
 // Dialogerne bygges af egne faste tekster; kun kendte valg kan ændre spillet.
 function dialog(overlinje, titel, indhold, knapper = [], tilbage = tilstandUI) {
-  if (tilstandUI !== "dialog") dialogTilbage = tilbage;
+  if (tilstandUI !== "dialog") {
+    dialogTilbage = tilbage;
+    dialogFokus = document.activeElement;
+  }
   tilstandUI = "dialog";
   taster.clear();
-  touchTaster.clear();
+  nulstilFinger();
   $("dialog-overlinje").textContent = overlinje;
   $("dialog-titel").textContent = titel;
   $("dialog-indhold").innerHTML = indhold;
@@ -75,6 +99,7 @@ function dialog(overlinje, titel, indhold, knapper = [], tilbage = tilstandUI) {
     $("dialog-knapper").append(b);
   }
   $("dialog").classList.remove("skjult");
+  $("hud").inert = true;
   $("dialog").querySelector(".dialog-kort").scrollTop = 0;
   $("luk-dialog").focus({ preventScroll: true });
   lyd.sæt(tilstand.lyd, true);
@@ -83,8 +108,10 @@ function dialog(overlinje, titel, indhold, knapper = [], tilbage = tilstandUI) {
 function lukDialog() {
   $("dialog").classList.add("skjult");
   tilstandUI = dialogTilbage;
+  $("hud").inert = tilstandUI !== "spil";
   if (tilstandUI === "spil") $("hud").classList.remove("skjult");
   lyd.sæt(tilstand.lyd, tilstandUI !== "spil");
+  if (dialogFokus?.isConnected && !dialogFokus.closest(".skjult")) dialogFokus.focus({ preventScroll: true });
 }
 
 function besked(tekst) {
@@ -94,24 +121,69 @@ function besked(tekst) {
 }
 
 function gemNu() {
-  const sikkerTilstand = galleriet ? { ...tilstand, position: { x: 32, z: -35 } } : tilstand;
+  const sikkerTilstand = sikkerGemmetilstand(tilstand, galleriet);
   const okay = gem(sikkerTilstand, lager);
   $("gemt").textContent = okay ? "Gemt på denne enhed" : "Denne browser kan ikke gemme · hold fanen åben";
   return okay;
 }
 
+// Komfortvalg anvendes uden at genstarte øen eller nulstille den gemte rejse.
+function anvendIndstillinger() {
+  const valg = tilstand.indstillinger;
+  document.documentElement.style.setProperty("--tekst-scale", valg.tekst);
+  document.body.classList.toggle("pind-valgt", valg.styring === "pind");
+  document.body.classList.toggle("rolig", valg.rolig);
+  verden?.anvendIndstillinger(valg);
+}
+
+function indstillinger() {
+  const v = tilstand.indstillinger;
+  dialog("DIT TEMPO PÅ ØEN", "Gør øen behagelig.", `<p>Valgene gemmes på denne enhed. Du kan ændre dem når som helst.</p>
+    <label class="indstilling" for="valg-følsomhed">Kamerafølsomhed <output id="følsomhed-tal">${v.følsomhed.toFixed(1)}</output><input id="valg-følsomhed" type="range" min="0.4" max="2" step="0.1" value="${v.følsomhed}"></label>
+    <label class="indstilling" for="valg-rolig"><span>Reduceret bevægelse<small>Roligt kamera, ingen gangvuggen og rolig fiskerbåd.</small></span><input id="valg-rolig" type="checkbox" ${v.rolig ? "checked" : ""}></label>
+    <label class="indstilling" for="valg-tekst">Tekststørrelse<select id="valg-tekst">${[[1,"Almindelig"],[1.2,"Større"],[1.4,"Stor"]].map(([n,t])=>`<option value="${n}" ${v.tekst===n?'selected':''}>${t}</option>`).join('')}</select></label>
+    <label class="indstilling" for="valg-kvalitet">Grafik<select id="valg-kvalitet">${[["auto","Automatisk"],["let","Let · spar batteri"],["flot","Flot"]].map(([n,t])=>`<option value="${n}" ${v.kvalitet===n?'selected':''}>${t}</option>`).join('')}</select></label>
+    <label class="indstilling" for="valg-styring">Touchbevægelse<select id="valg-styring"><option value="pind" ${v.styring==='pind'?'selected':''}>Fingerpind</option><option value="pile" ${v.styring==='pile'?'selected':''}>Fire pile</option></select></label>`, [["Tilbage",lukDialog,true]]);
+  for (const id of ["følsomhed","rolig","tekst","kvalitet","styring"]) {
+    const felt = $(`valg-${id}`);
+    felt.addEventListener("change", () => {
+      const value = id === "rolig" ? felt.checked : ["følsomhed","tekst"].includes(id) ? Number(felt.value) : felt.value;
+      tilstand.indstillinger = validerIndstillinger({ ...tilstand.indstillinger, [id]: value });
+      if (id === "følsomhed") $("følsomhed-tal").textContent = value.toFixed(1);
+      anvendIndstillinger();gemNu();
+    });
+  }
+}
+
+function nulstilFinger() {
+  fingerStyring.nulstil();
+  $("pind-håndtag").style.transform = "";
+}
+
+function pegModMål() {
+  const mål = næsteMål(tilstand);
+  if (!mål) return;
+  tilstand.kurs = Math.atan2(-(mål.x-tilstand.position.x), -(mål.z-tilstand.position.z));
+  vinkel=0;
+  besked("Du ser nu mod næste mål. Følg de lyse stier og den gyldne ring.");
+}
+
 function hjælp(fuld = false) {
   const opgave = aktivOpgave(tilstand);
+  const trin = opgave ? (tilstand.vink[opgave.id] || 0) : 0;
+  const vink = opgave ? trin < 2 ? småVink[opgave.id][trin] : opgave.hjælp : "";
   const indhold = `${
     opgave
-      ? `<p><strong>${opgave.navn}</strong></p><blockquote>${opgave.hjælp}</blockquote>`
+      ? `<p><strong>${opgave.navn}</strong></p><blockquote>${vink}</blockquote><p class="svar-besked">${trin < 2 ? 'Et vink ad gangen. Du kan bede om mere.' : 'Her er hele løsningen, når du har brug for den.'}</p>`
       : "<p>Fyret er tændt. Øen er din at udforske, og du kan besøge galleriet igen.</p>"
   }${
     fuld
-      ? `<p>Du kan gennemføre hele eventyret med touch. Gå med pilene nederst til venstre. Træk på landskabet for at se dig omkring. Den store <strong>Undersøg</strong>-knap aktiveres, når du er tæt på en genstand.</p><div class="styring"><strong>Computer</strong><span>WASD eller piletaster: gå. Træk med musen: kig. Q/R: drej.</span><strong>E / tryk</strong><span>Undersøg den nærmeste genstand.</span><strong>Sol / måne</strong><span>Skift mellem skumring og nat. Ingen ventetid.</span><strong>M / Økort</strong><span>Se stederne og gå hurtigt til dem, du allerede har besøgt.</span><strong>Esc / Ⅱ</strong><span>Pause. Fremgangen gemmes automatisk.</span></div><p>Følg de lyse stier og øens landmærker. Den gyldne ring viser dit næste mål. Der er ingen tidsgrænse, kamp eller farlige fald.</p>`
+      ? `<p>Gå med fingerpinden eller de fire pile nederst til venstre. Træk på landskabet for at kigge. <strong>Undersøg</strong>-knappen aktiveres ved en genstand.</p><div class="styring"><strong>Computer</strong><span>WASD / piletaster: gå. Musetræk: kig. Q/R: drej.</span><strong>E / tryk</strong><span>Undersøg den nærmeste genstand.</span><strong>Se mod målet</strong><span>Ret kameraet mod den næste manglende genstand.</span><strong>Sol / måne</strong><span>Skift mellem skumring og nat.</span><strong>M / Økort</strong><span>Find steder, ravtræer og hurtige tilbageveje.</span><strong>⚙ Indstillinger</strong><span>Kamera, tekst, grafik, touch og reduceret bevægelse.</span><strong>Esc / Ⅱ</strong><span>Pause. Rejsen gemmes på denne enhed.</span></div><p>Følg de lyse stier. Den gyldne ring viser næste mål. Varder, haven og havnen gemmer også små valgfrie stednoter.</p>`
       : ""
   }`;
-  dialog(fuld ? "DIT TEMPO, DIT EVENTYR" : "ET LILLE VINK", fuld ? "Sådan finder du vej." : "Næste lille skridt.", indhold, [[
+  dialog(fuld ? "DIT TEMPO, DIT EVENTYR" : "ET LILLE VINK", fuld ? "Sådan finder du vej." : "Næste lille skridt.", indhold, [
+    ...(opgave && trin < 2 ? [[trin===0 ? "Et tydeligere vink" : "Vis hele løsningen",()=>{tilstand.vink[opgave.id]=trin+1;gemNu();hjælp(fuld);}]] : []),
+    ...(fuld ? [["Vis styringsvejledning igen",()=>{visGuideManuelt=true;lukDialog();opdaterHud();}]] : []), [
     "Tilbage",
     lukDialog,
     true,
@@ -136,18 +208,19 @@ function fuldført(id, titel, tekst) {
 
 // Alle gåder bruger store knapper, og ledetrådene kan læses i dagbogen igen.
 function valgPuzzle(type, titel, introduktion, rækker, id, succesTitel, succesTekst) {
-  const svar = rækker.map((r) => r[1][0]);
+  const svar = tilstand.gåder[type] ? [...tilstand.gåder[type]] : rækker.map((r) => r[1][0]);
   const html = `<p>${introduktion}</p>${
     rækker.map(([label, muligheder], i) =>
       `<div class="puzzle-række"><label>${label}</label><div class="valg" data-række="${i}">${
-        muligheder.map((v, j) => `<button data-valg="${j}" class="${j === 0 ? "valgt" : ""}">${v}</button>`).join("")
+        muligheder.map((v, j) => `<button data-valg="${j}" class="${v === svar[i] ? "valgt" : ""}" aria-pressed="${v === svar[i]}">${v}</button>`).join("")
       }</div></div>`
     ).join("")
   }<p id="svar" class="svar-besked" role="status"></p>`;
   dialog("FYRMESTERENS EFTERLADTE SPOR", titel, html, [["Prøv indstillingen", () => {
     if (rigtigtSvar(type, svar)) fuldført(id, succesTitel, succesTekst);
     else {
-      $("svar").textContent = "Der mangler stadig én rigtig indstilling. Kig på ledetråden, og prøv igen.";
+      const antal = SVAR[type].filter((v,i)=>v===svar[i]).length;
+      $("svar").textContent = `${antal} af 3 indstillinger er på plads. Du kan læse ledetråden og prøve igen; dine valg bliver gemt.`;
       lyd.tone(174.61, 0, .07);
     }
   }, true], ["Luk", lukDialog]]);
@@ -156,7 +229,8 @@ function valgPuzzle(type, titel, introduktion, rækker, id, succesTitel, succesT
       const b = e.target.closest("button");
       if (!b) return;
       svar[i] = rækker[i][1][Number(b.dataset.valg)];
-      r.querySelectorAll("button").forEach((x) => x.classList.toggle("valgt", x === b));
+      r.querySelectorAll("button").forEach((x) => {x.classList.toggle("valgt", x === b);x.setAttribute("aria-pressed",x===b);});
+      tilstand=gemGåde(tilstand,type,svar);gemNu();
       $("svar").textContent = "";
       lyd.tone(440, 0, .035);
     })
@@ -369,6 +443,7 @@ function gåOp() {
   vinkel = -.15;
   $("ud").classList.remove("skjult");
   besked("På fyrgalleriet · gå langs rækværket, eller se ud over havet.");
+  if (!tilstand.fund.includes("logbog")) { tilstand=findStednote(tilstand,"logbog");gemNu();besked("Fyrgalleriet · en side fra fyrets logbog er nu i din dagbog."); }
 }
 
 function gåNed() {
@@ -398,13 +473,13 @@ function grotte() {
     );
     return;
   }
-  const svar = [0, 0, 0];
+  const svar = [...(tilstand.gåder.spejle || [0, 0, 0])];
   dialog(
     "HAVETS KLARE PRISME",
     "Tre spejle. Én stjerne.",
     `<p>Tre tegn er ridset i klippen: <strong>Sol mod Øst. Bølge mod Vest. Stjerne mod Syd.</strong> Drej spejlene ved at trykke på dem. Prismen vågner, når alle tre fanger samme lys.</p><div class="spejl-række">${
       ["Sol", "Bølge", "Stjerne"].map((s, i) =>
-        `<div class="spejl"><strong>${s}</strong><button data-spejl="${i}" aria-label="Drej ${s.toLowerCase()}-spejlet">↑</button><small id="spejl-${i}">Nord</small></div>`
+        `<div class="spejl"><strong>${s}</strong><button data-spejl="${i}" aria-label="Drej ${s.toLowerCase()}-spejlet">${["↑","→","↓","←"][svar[i]]}</button><small id="spejl-${i}">${retninger[svar[i]]}</small></div>`
       ).join("")
     }</div><p id="svar" class="svar-besked" role="status"></p>`,
     [["Saml spejlenes lys", () => {
@@ -422,6 +497,7 @@ function grotte() {
     b.addEventListener("click", () => {
       const i = Number(b.dataset.spejl);
       svar[i] = (svar[i] + 1) % 4;
+      tilstand=gemGåde(tilstand,"spejle",svar);gemNu();
       b.textContent = ["↑", "→", "↓", "←"][svar[i]];
       $(`spejl-${i}`).textContent = retninger[svar[i]];
       $("svar").textContent = "";
@@ -437,6 +513,7 @@ function afslut() {
   tilstand = næste;
   tilstand.nat = true;
   galleriet = false;
+  $("ud").classList.add("skjult");
   tilstand.position = { x: 32, z: -35 };
   gemNu();
   opdaterHud();
@@ -486,29 +563,39 @@ function dagbog() {
       ? `<article class="dagbog-ide"><h3>Næste: ${aktivOpgave(tilstand).navn}</h3><p>${aktivOpgave(tilstand).mål}</p></article>`
       : ""
   }`;
-  dialog("FRA EN VINDSTILLE Ø", "Din dagbog.", indhold, [["Tilbage", lukDialog, true]]);
+  const stednoter = tilstand.fund.map(id=>STEDNOTER.find(n=>n.id===id)).map(n=>`<article class="dagbog-ide"><h3>${n.navn}</h3><p>${n.tekst}</p></article>`).join("");
+  dialog("FRA EN VINDSTILLE Ø", "Din dagbog.", indhold + `<p class="svar-besked">Stednoter ${tilstand.fund.length} / ${STEDNOTER.length} · valgfrie minder fra øen</p>` + stednoter, [["Tilbage", lukDialog, true]]);
+}
+
+function læsStednote(id) {
+  const note=STEDNOTER.find(n=>n.id===id);
+  if (!note) return;
+  dialog("ET LILLE MINDE FRA LYSØ",note.navn,`<p>${note.tekst}</p>`,[[tilstand.fund.includes(id)?"Tilbage":"Gem siden i dagbogen",()=>{tilstand=findStednote(tilstand,id);gemNu();lukDialog();},true]]);
 }
 
 function kort() {
   const opgave = aktivOpgave(tilstand), mål = opgave?.sted;
+  const målpunkt = næsteMål(tilstand);
   const steder = Object.entries(STEDER);
   const px = (x) => 150 + x * 1.12, pz = (z) => 145 + z * 1.1;
+  const ravKort = opgave?.id === "harpiks" ? RAVTRÆER.map((r,i)=>`<circle cx="${px(r.x)}" cy="${pz(r.z)}" r="${r===målpunkt?6:3}" fill="${tilstand.rav.includes(i)?'#566958':r===målpunkt?'#ffcf74':'#b69565'}" stroke="${r===målpunkt?'#fff1c5':'#a89d74'}"/><text x="${px(r.x)+7}" y="${pz(r.z)-5}" fill="#ffe6ad" font-size="8">${tilstand.rav.includes(i)?'✓':i+1}</text>`).join("") : "";
+  const sporKort = tilstand.færdige.includes("spor") ? '<path d="M137 77L122 90L109 111L97 138L88 163L80 182L76 196" fill="none" stroke="#72dedb" stroke-width="2" stroke-dasharray="2 4"/>' : "";
   const svg =
     `<svg viewBox="0 0 300 290" role="img" aria-label="Økort med havn i syd, landsby i midten, skov mod nordvest, ruin mod nord, fyr mod nordøst og havgrotte mod vest"><defs><radialGradient id="øfarve"><stop stop-color="#52654f"/><stop offset="1" stop-color="#2a4949"/></radialGradient></defs><ellipse cx="150" cy="145" rx="94" ry="115" fill="url(#øfarve)" stroke="#b0b391" stroke-width="1"/><path d="M122 225L125 196L158 177L186 102M125 196L99 148L96 111L137 77M99 148L77 193" fill="none" stroke="#abb49366" stroke-width="3"/>${
       steder.map(([id, s]) =>
-        `<circle cx="${px(s.x)}" cy="${pz(s.z)}" r="${id === mål ? 9 : 6}" fill="${
-          id === mål ? "#edc27b" : "#aec9b8"
+        `<circle cx="${px(s.x)}" cy="${pz(s.z)}" r="${id === mål && målpunkt === s ? 9 : 6}" fill="${
+          id === mål && målpunkt === s ? "#edc27b" : "#aec9b8"
         }"/><text x="${px(s.x)}" y="${pz(s.z) + 19}" text-anchor="middle" fill="#e4ead6" font-size="8">${
           { havn: "Havn", værksted: "Værksted", skov: "Ravskov", ruin: "Ruin", fyr: "Fyr", grotte: "Grotte" }[id]
         }</text>`
       ).join("")
-    }<circle cx="${px(tilstand.position.x)}" cy="${
+    }${ravKort}${sporKort}<circle cx="${px(tilstand.position.x)}" cy="${
       pz(tilstand.position.z)
     }" r="4" fill="#fff" stroke="#163539" stroke-width="2"/><text x="260" y="25" fill="#d8bc82" font-size="12">N ↑</text><text x="13" y="279" fill="#abc5bd" font-size="8">● Du · gylden markering: næste mål</text></svg>`;
   dialog(
     "LYSØ · DIT HJEM I HAVET",
     "Et kort over øen.",
-    `<p>Følg de lyse stier til nye steder. Steder, du allerede har besøgt, kan du gå direkte tilbage til.</p><div class="kort-ramme">${svg}</div><div class="kort-liste">${
+    `<p>Følg de lyse stier til nye steder. Steder, du allerede har besøgt, kan du gå direkte tilbage til.</p><div class="kort-ramme">${svg}</div>${opgave?.id==='harpiks'?`<p class="rav-kort">Rav ${tilstand.rav.length}/3 · den store gyldne prik er næste ravtræ. ✓ viser indsamlet rav.</p>`:''}${sporKort?'<p class="rav-kort">Den blå kyststi lyser om natten og ender ved havgrotten.</p>':''}<div class="kort-liste">${
       steder.map(([id, s]) =>
         `<button data-rejse="${id}" ${!tilstand.besøgte.includes(id) ? "disabled" : ""}>${s.ikon} ${s.navn}<small>${
           tilstand.besøgte.includes(id) ? "Gå tilbage hertil" : "Udforsk stedet først"
@@ -553,15 +640,20 @@ function opdaterHud() {
   if (tilstand.færdige.includes("linse")) genstande.push("Linse");
   if (tilstand.færdige.includes("prisme")) genstande.push("Prisme");
   $("inventar").textContent = genstande.join(" · ") || "Ingen genstande endnu";
-  let sted = opgave ? STEDER[opgave.sted] : null;
-  if (opgave?.id === "harpiks") sted = RAVTRÆER.find((_, i) => !tilstand.rav.includes(i)) || sted;
-  verden?.sætMål(sted);
+  $("rav-status").textContent = opgave?.id === "harpiks" ? `Rav ${tilstand.rav.length} / 3` : "";
+  $("peg-mål").disabled = !opgave;
+  $("første-guide").classList.toggle("skjult", !visGuideManuelt && (tilstand.vejledning || tilstand.færdige.length > 0));
+  $("første-guide").querySelector("p").textContent = verden?.mobil
+    ? "Venstre hånd går. Træk på landskabet for at kigge. Brug Undersøg ved den røde postkasse."
+    : "Gå med WASD eller piletaster. Træk med musen for at kigge. Tryk E ved den røde postkasse. F vender dig mod målet.";
+  verden?.sætMål(næsteMål(tilstand));
 }
 
 // Interaktion er afstandsbaseret, så den også fungerer uden et præcist musesigte.
 function findInteraktion() {
   const p = tilstand.position;
   const genstande = [
+    ...STEDNOTER.filter(n=>Number.isFinite(n.x)).map(n=>({...n,handling:"Læs stednoten",gør:()=>læsStednote(n.id),radius:2.8})),
     { x: -25, z: 73, navn: "Elins brev · rød postkasse", handling: "Læs brevet", gør: læsBrev, radius: 5 },
     { x: 7, z: 24, navn: "Tidevandslås · inde i værkstedet", handling: "Undersøg låsen", gør: værksted, radius: 3.3 },
     {
@@ -597,7 +689,8 @@ function findInteraktion() {
   $("undersøg").disabled = !nærmeste;
   $("genstand").textContent = nærmeste?.navn || "Følg øens stier. Undersøg noget, når du er tæt på.";
   $("handlingsnavn").textContent = nærmeste?.handling || "Undersøg";
-  const opgave = aktivOpgave(tilstand), sted = opgave ? STEDER[opgave.sted] : null;
+  const sted = næsteMål(tilstand);
+  verden.sætMål(sted);
   if (sted) $("afstand").textContent = `${Math.round(Math.hypot(sted.x - p.x, sted.z - p.z))} m til målet`;
   else $("afstand").textContent = "Lyset er tændt";
   const nærSted =
@@ -624,11 +717,12 @@ function pause() {
   if (tilstandUI !== "spil") return;
   tilstandUI = "pause";
   taster.clear();
-  touchTaster.clear();
+  nulstilFinger();
   $("pause-status").textContent = gemNu()
     ? "Dit eventyr er gemt på denne enhed."
     : "Gemning er ikke tilgængelig i denne browser. Hold fanen åben.";
   $("pause-lag").classList.remove("skjult");
+  $("hud").inert = true;
   lyd.sæt(tilstand.lyd, true);
   $("fortsæt").focus();
 }
@@ -636,7 +730,9 @@ function pause() {
 function genoptag() {
   $("pause-lag").classList.add("skjult");
   tilstandUI = "spil";
+  $("hud").inert = false;
   lyd.sæt(tilstand.lyd);
+  $("pause").focus({ preventScroll: true });
 }
 
 function begyndForfra() {
@@ -646,7 +742,9 @@ function begyndForfra() {
     "<p>Den gemte fremgang på denne enhed bliver erstattet af et nyt eventyr. Du begynder igen ved havnen.</p>",
     [
       ["Ja, begynd forfra", () => {
-        tilstand = nyTilstand();
+        tilstand = nytEventyr(tilstand);
+        visGuideManuelt = false;
+        anvendIndstillinger();
         galleriet = false;
         vinkel = 0;
         $("ud").classList.add("skjult");
@@ -682,54 +780,76 @@ function styring() {
     if (!e.repeat && k === "e") undersøg();
     if (!e.repeat && k === "m") kort();
     if (!e.repeat && k === "j") dagbog();
-    taster.add(k);
+    if (!e.repeat && k === "f") pegModMål();
+    fingerStyring.trykTast(k, e.repeat);
   });
   window.addEventListener("keyup", (e) => taster.delete(e.key.toLowerCase()));
   window.addEventListener("blur", () => {
     taster.clear();
-    touchTaster.clear();
+    nulstilFinger();
     if (tilstandUI === "spil") pause();
   });
   document.addEventListener("visibilitychange", () => {
     if (document.hidden && tilstandUI === "spil") pause();
   });
   const canvas = verden.renderer.domElement;
-  let drag = null;
   canvas.addEventListener("contextmenu", (e) => e.preventDefault());
   canvas.addEventListener("pointerdown", (e) => {
-    if (tilstandUI !== "spil") return;
-    drag = { id: e.pointerId, x: e.clientX, y: e.clientY };
+    if (tilstandUI !== "spil" || !fingerStyring.begyndKig(e.pointerId, e.clientX, e.clientY)) return;
     canvas.setPointerCapture(e.pointerId);
   });
   canvas.addEventListener("pointermove", (e) => {
-    if (!drag || drag.id !== e.pointerId || tilstandUI !== "spil") return;
-    tilstand.kurs -= (e.clientX - drag.x) * .004;
-    vinkel = Math.max(-1.1, Math.min(1.1, vinkel - (e.clientY - drag.y) * .003));
-    drag.x = e.clientX;
-    drag.y = e.clientY;
+    if (tilstandUI !== "spil") return;
+    const bevægelse = fingerStyring.flytKig(e.pointerId, e.clientX, e.clientY);
+    if (!bevægelse) return;
+    tilstand.kurs -= bevægelse.x * .004 * tilstand.indstillinger.følsomhed;
+    vinkel = Math.max(-1.1, Math.min(1.1, vinkel - bevægelse.y * .003 * tilstand.indstillinger.følsomhed));
   });
   const slip = (e) => {
-    if (drag?.id === e.pointerId) drag = null;
+    fingerStyring.slipKig(e.pointerId);
   };
   canvas.addEventListener("pointerup", slip);
   canvas.addEventListener("pointercancel", slip);
+  canvas.addEventListener("lostpointercapture", slip);
+  const pind = $("fingerpind");
+  const flytFinger = e => {
+    const r = pind.getBoundingClientRect();
+    const radius = Math.max(18, (r.width-44)/2-2);
+    fingerStyring.flytGå(e.pointerId, e.clientX-r.left-r.width/2, e.clientY-r.top-r.height/2, radius);
+    $("pind-håndtag").style.transform = `translate(${finger.x*radius}px,${-finger.y*radius}px)`;
+  };
+  pind.addEventListener("pointerdown", e => {
+    if (tilstandUI !== "spil" || !fingerStyring.begyndGå(e.pointerId)) return;
+    e.preventDefault();
+    pind.setPointerCapture(e.pointerId);
+    flytFinger(e);
+  });
+  pind.addEventListener("pointermove", e => {
+    if (e.pointerId === finger.id && tilstandUI === "spil") flytFinger(e);
+  });
+  for (const event of ["pointerup", "pointercancel", "lostpointercapture"]) {
+    pind.addEventListener(event, e => {
+      if (fingerStyring.slipGå(e.pointerId)) $("pind-håndtag").style.transform = "";
+    });
+  }
   $("touch").querySelectorAll("button").forEach((b) => {
     b.addEventListener("pointerdown", (e) => {
       e.preventDefault();
+      if (tilstandUI !== "spil") return;
+      if (!fingerStyring.trykPil(e.pointerId, b.dataset.gå)) return;
       b.setPointerCapture(e.pointerId);
-      touchTaster.add(b.dataset.gå);
     });
     const stop = (e) => {
       e.preventDefault();
-      touchTaster.delete(b.dataset.gå);
+      fingerStyring.slipPil(e.pointerId);
     };
     b.addEventListener("pointerup", stop);
     b.addEventListener("pointercancel", stop);
     b.addEventListener("lostpointercapture", stop);
   });
-  $("dialog").addEventListener("keydown", (e) => {
+  const fangTab = (lag, e) => {
     if (e.key !== "Tab") return;
-    const knapper = [...$("dialog").querySelectorAll("button:not(:disabled),a")];
+    const knapper = [...lag.querySelectorAll("button:not(:disabled),a,input,select")];
     const først = knapper[0], sidste = knapper.at(-1);
     if (e.shiftKey && document.activeElement === først) {
       e.preventDefault();
@@ -738,19 +858,20 @@ function styring() {
       e.preventDefault();
       først.focus();
     }
-  });
+  };
+  for (const id of ["dialog", "pause-lag"]) $(id).addEventListener("keydown", e => fangTab($(id), e));
 }
 
 // Gang følger terrænet, med glidning langs vægge og et sikkert fyrgalleri.
 function gå(delta) {
-  let frem = 0, side = 0;
-  if (taster.has("w") || taster.has("arrowup") || touchTaster.has("frem")) frem++;
-  if (taster.has("s") || taster.has("arrowdown") || touchTaster.has("tilbage")) frem--;
-  if (taster.has("a") || taster.has("arrowleft") || touchTaster.has("venstre")) side--;
-  if (taster.has("d") || taster.has("arrowright") || touchTaster.has("højre")) side++;
+  let frem = finger.y, side = finger.x;
+  if (taster.has("w") || taster.has("arrowup") || fingerStyring.gårMod("frem")) frem++;
+  if (taster.has("s") || taster.has("arrowdown") || fingerStyring.gårMod("tilbage")) frem--;
+  if (taster.has("a") || taster.has("arrowleft") || fingerStyring.gårMod("venstre")) side--;
+  if (taster.has("d") || taster.has("arrowright") || fingerStyring.gårMod("højre")) side++;
   if (taster.has("q")) tilstand.kurs += delta * 1.6;
   if (taster.has("r")) tilstand.kurs -= delta * 1.6;
-  const længde = Math.hypot(frem, side) || 1, hastighed = (galleriet ? 3.5 : taster.has("shift") ? 10 : 6.5) * delta;
+  const længde = Math.max(1, Math.hypot(frem, side)), hastighed = (galleriet ? 3.5 : taster.has("shift") ? 10 : 6.5) * delta;
   const dx = (-Math.sin(tilstand.kurs) * frem + Math.cos(tilstand.kurs) * side) / længde * hastighed;
   const dz = (-Math.cos(tilstand.kurs) * frem - Math.sin(tilstand.kurs) * side) / længde * hastighed;
   const p = tilstand.position;
@@ -765,7 +886,7 @@ function gå(delta) {
     if (kanGå(p.x, p.z + dz)) p.z += dz;
   }
   const y = (galleriet ? terrænHøjde(38, -44) + 21.04 : gangHøjde(p.x, p.z)) + 1.68;
-  const gang = Math.hypot(frem, side) > 0 ? Math.sin(tidsSum * 8) * .035 : 0;
+  const gang = !tilstand.indstillinger.rolig && Math.hypot(frem, side) > 0 ? Math.sin(tidsSum * 8) * .035 : 0;
   verden.kamera.position.set(p.x, y + gang, p.z);
   verden.kamera.rotation.set(vinkel, tilstand.kurs, 0);
 }
@@ -788,7 +909,7 @@ function billede(nu) {
       if (!galleriet) gemNu();
     }
   } else if (tilstandUI === "menu" || tilstandUI === "slut") {
-    const a = tilstandUI === "menu" ? .15 + Math.sin(tidsSum * .045) * .09 : tidsSum * .055;
+    const a = tilstand.indstillinger.rolig ? .15 : tilstandUI === "menu" ? .15 + Math.sin(tidsSum * .045) * .09 : tidsSum * .055;
     verden.kamera.position.set(38 + Math.sin(a) * 115, 68, -44 + Math.cos(a) * 130);
     verden.kamera.lookAt(5, 13, -18);
   }
@@ -804,6 +925,7 @@ async function begynd() {
       $("indlæsning").textContent = `Øens huse, skov og fyr · ${procent}%`;
     });
     await verden.indlæs();
+    anvendIndstillinger();
     if (!kanGå(tilstand.position.x, tilstand.position.z)) tilstand.position = { x: -25, z: 80 };
     $("start").disabled = false;
     $("start").textContent = tilstand.færdige.length ? "Fortsæt på øen" : "Gå i land";
@@ -818,6 +940,7 @@ async function begynd() {
     $("indlæsning").textContent = "Øen kunne ikke indlæses. Prøv igen i en browser med 3D-grafik.";
     $("start").onclick = () => location.reload();
     console.error("Det Sidste Lys kunne ikke indlæses:", fejl);
+    window.dispatchEvent(new Event("spil-3d-fejl"));
   }
 }
 
@@ -842,6 +965,11 @@ $("luk-dialog").addEventListener("click", lukDialog);
 $("hjælp").addEventListener("click", () => hjælp());
 $("menu-hjælp").addEventListener("click", () => hjælp(true));
 $("pause-hjælp").addEventListener("click", () => hjælp(true));
+$("pause-valg").addEventListener("click", indstillinger);
+$("indstillinger").addEventListener("click", indstillinger);
+$("peg-mål").addEventListener("click", pegModMål);
+$("guide-luk").addEventListener("click",()=>{tilstand.vejledning=true;visGuideManuelt=false;gemNu();opdaterHud();});
+$("fold-mål").addEventListener("click",()=>{const foldet=$("mål-kort").classList.toggle("foldet");$("fold-mål").textContent=foldet?"+":"−";$("fold-mål").setAttribute("aria-expanded",!foldet);$("fold-mål").setAttribute("aria-label",foldet?"Vis hele målkortet":"Fold målkortet sammen");});
 $("kort").addEventListener("click", kort);
 $("bog").addEventListener("click", dagbog);
 $("pause").addEventListener("click", pause);
@@ -862,7 +990,6 @@ $("lyd").addEventListener("click", () => {
   opdaterHud();
 });
 window.addEventListener("pagehide", () => {
-  if (galleriet) tilstand.position = { x: 32, z: -35 };
   gemNu();
 });
 begynd();

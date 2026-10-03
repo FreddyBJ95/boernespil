@@ -5,9 +5,11 @@ import {
   bossSpor,
   danGrotte,
   drik,
+  FJENDETYPER,
   fremskridt,
   givEliksirer,
   GROTTENAVNE,
+  kopiRejse,
   læsRejse,
   maxLiv,
   niveau,
@@ -22,8 +24,18 @@ import {
 } from "./eventyr.js";
 import { animer, bygGrotte, bygØ, frit, hentModeller, kopi, STEDER } from "./verden.js";
 import { opdatérFlyvere } from "./projektiler.js";
+import { fortsætSpor, friLinje, rumRute, ruteLængde, vælgMål, øRute } from "./navigation.js";
+import { tegnRejsekort } from "./kort.js";
+import { forsøgGem } from "./lagring.js";
+import { guideEfterSkridt, trykTast } from "./styring.js";
 
 const $ = (id) => document.getElementById(id);
+// Uændret tekst genudskrives ikke; statusfelter forbliver rolige for skærmlæsere.
+function sætTekst(felt, tekst) {
+  const element = typeof felt === "string" ? $(felt) : felt;
+  const værdi = String(tekst);
+  if (element.textContent !== værdi) element.textContent = værdi;
+}
 const NØGLE = "krystaljaegerne-rejse-v1";
 const touch = matchMedia("(pointer:coarse)").matches;
 const mobil = touch || Math.min(innerWidth, innerHeight) < 700;
@@ -34,6 +46,19 @@ try {
 let s = nyRejse(), verden, modeller, helt, ven, mira, kører = false, paused = false;
 let tid = 0, gemtid = 0, hudtid = 0, angrebspause = 0, venpause = 0, helbredstid = 0, beskedtid = 0;
 let yaw = .62, zoom = touch ? 23 : 25, retning = new THREE.Vector2(0, -1), sigte = null, nær = null;
+let målFjende = null,
+  egetSpor = null,
+  rute = [],
+  ruteNøgle = "",
+  angrebHold = null,
+  fokusTilbage = null,
+  kameraYaw = yaw,
+  kameraZoom = zoom;
+let gemtRute = [];
+let guideStart = { x: 0, z: 5 };
+let lagerVirker = true;
+let sidstEnergiTip = -10;
+const skilte = [], flyvetekster = [];
 const taster = new Set(), joystick = { x: 0, y: 0 }, fjender = [], ting = [], skud = [], effekter = [];
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x789cab);
@@ -76,6 +101,41 @@ const pilGeo = new THREE.CylinderGeometry(.035, .035, .75, 5), spidsGeo = new TH
 const fællesGeometri = new Set([boldGeo, ringGeo, pilGeo, spidsGeo]), fællesMaterialer = new Set();
 const farver = { ven: 0x8cfbea, magi: 0xc197ff, bue: 0xffda95, fjende: 0xce8bf1 };
 let lydkontekst;
+const vejpil = new THREE.Group(),
+  pilmat = new THREE.MeshBasicMaterial({ color: 0xe9d09a, transparent: true, opacity: .85 });
+const pilspids = new THREE.Mesh(new THREE.ConeGeometry(.24, .6, 5), pilmat);
+pilspids.rotation.x = Math.PI / 2;
+pilspids.position.z = .6;
+vejpil.add(pilspids);
+const pilskaft = new THREE.Mesh(new THREE.BoxGeometry(.13, .06, .65), pilmat);
+pilskaft.position.z = .15;
+vejpil.add(pilskaft);
+scene.add(vejpil);
+const sporring = new THREE.Mesh(
+  ringGeo,
+  new THREE.MeshBasicMaterial({
+    color: 0xe8ce94,
+    transparent: true,
+    opacity: .75,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  }),
+);
+sporring.rotation.x = -Math.PI / 2;
+sporring.scale.setScalar(1.4);
+scene.add(sporring);
+const sigtering = new THREE.Mesh(
+  ringGeo,
+  new THREE.MeshBasicMaterial({
+    color: 0x90e8d3,
+    transparent: true,
+    opacity: .8,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  }),
+);
+sigtering.rotation.x = -Math.PI / 2;
+scene.add(sigtering);
 
 // Små, selvskabte toner giver feedback uden eksterne lydfiler.
 function tone(frekvens = 440, længde = .12, volumen = .06) {
@@ -100,14 +160,29 @@ function besked(tekst, sekunder = 4) {
   $("besked").textContent = tekst;
   $("besked").style.opacity = 1;
   beskedtid = sekunder;
+  $("hud").classList.add("har-besked");
 }
 function gem() {
-  if (!kører) return;
-  try {
-    localStorage.setItem(NØGLE, JSON.stringify(s));
-    gemt = structuredClone(s);
-  } catch {
-    besked("Browseren kan ikke gemme her. Eventyret fortsætter i denne åbne fane.", 6);
+  if (!kører) return false;
+  const resultat = forsøgGem((tekst) => localStorage.setItem(NØGLE, tekst), s, lagerVirker);
+  if ($("valggemning")) {
+    sætTekst(
+      "valggemning",
+      resultat.gemt
+        ? "Dine valg og rejsen er gemt på denne enhed."
+        : "Dine valg gælder i denne åbne fane. Browseren tillader ikke gemning her.",
+    );
+  }
+  if (resultat.gemt) {
+    gemt = kopiRejse(s);
+    sætTekst("gemtstatus", "✓ Gemt på denne enhed");
+    lagerVirker = true;
+    return true;
+  } else {
+    sætTekst("gemtstatus", "Kun i denne åbne fane");
+    if (resultat.visAdvarsel) besked("Browseren kan ikke gemme her. Eventyret fortsætter i denne åbne fane.", 6);
+    lagerVirker = false;
+    return false;
   }
 }
 function opgave(id, antal = 1) {
@@ -117,11 +192,16 @@ function opgave(id, antal = 1) {
     tone(660, .3);
     gem();
   }
+  return færdig;
 }
 
 // Et dialoglag standser tiden og nulstiller fingre/taster, så ingen går utilsigtet.
 function dialog(titel, tekst, knapper, mærke = "KRYSTALJÆGERNE") {
+  if ($("dialog").classList.contains("skjult")) fokusTilbage = document.activeElement;
   paused = true;
+  angrebHold = null;
+  dragId = null;
+  joystickId = null;
   taster.clear();
   joystick.x = 0;
   joystick.y = 0;
@@ -138,10 +218,16 @@ function dialog(titel, tekst, knapper, mærke = "KRYSTALJÆGERNE") {
     $("dialogknapper").append(b);
   }
   $("dialog").classList.remove("skjult");
+  $("dialog").querySelector(".kort").scrollTop = 0;
+  $("dialogtitel").tabIndex = -1;
+  $("dialogtitel").focus({ preventScroll: true });
 }
 function lukDialog() {
   $("dialog").classList.add("skjult");
   paused = false;
+  angrebHold = null;
+  taster.clear();
+  if (fokusTilbage?.isConnected) fokusTilbage.focus({ preventScroll: true });
 }
 function bekræftNy() {
   dialog(
@@ -160,7 +246,7 @@ function bekræftNy() {
 function hjælp() {
   dialog(
     "Et lys i det ukendte",
-    `<p>Find krystaller og skatte, og følg næste mål til venstre. De tre grotter har hver to dybder og en vogter med et segl. Bring alle segl til Stjerneporten.</p><ul><li><b>Gå:</b> WASD / pile eller venstre fingerpind. Træk på højre side for at dreje kameraet.</li><li><b>Angrib:</b> klik, mellemrum eller Angrib. Touch sigter automatisk på den nærmeste fjende.</li><li><b>Brug:</b> E eller Brug ved en kiste, krystal, port eller Mira.</li><li><b>Sværd</b> svinger bredt tæt på. <b>Bue</b> sender pile langt. <b>Magi</b> sprænger et område og bruger energi.</li><li>Gå væk fra lysringen, før en vogter slår. Din følgesvend Lumen hjælper både med lys og heling.</li><li>Eliksir: Q / Eliksir. Liv genvinder langsomt uden kamp. Opgradér hos Mira.</li></ul><p>Fremgangen gemmes automatisk på denne enhed. Et nyt grottebesøg skaber nye rum. Fortsæt bevarer din igangværende grotte.</p>`,
+    `<h3>Find vej</h3><p>Følg det gyldne spor eller åbn Rejsekort / M. I grotterne følger sporet de åbne rum. Find porten til dybde 2 og bring tre bossegl til Stjerneporten.</p><h3>Gå og brug</h3><p>WASD / pile eller venstre fingerpind. Træk på højre side for at dreje kameraet. Tryk Brug / E ved Mira, skatte og porte.</p><h3>Tre våben</h3><p><b>Sværd mod mosslim:</b> bredt og tæt.<br><b>Bue mod krystaldyr:</b> langt og præcist.<br><b>Magi mod stenvogtere:</b> et lysudbrud over et område. Bruger 14 energi.</p><h3>En rolig kamp</h3><p>Hold Angrib / mellemrum for gentagne angreb. Autosigte vælger en synlig fjende, og ringen viser hvem. Gå ud af den lyserøde ring før slaget. En krystalvifte undviges bedst sidelæns.</p><h3>Rejs videre</h3><p>Eliksir / Q heler og giver energi. Mira heler gratis og forbedrer dit udstyr. Lumen hjælper i kamp; uden kamp genvinder dit lys liv. Fortsæt bevarer også en igangværende grotte.</p>`,
     [["Tilbage til eventyret", lukDialog]],
     "HJÆLP",
   );
@@ -171,11 +257,21 @@ function inventar() {
     "Din rejsetaske",
     `<p>Niveau ${niveau(s)} · ${s.xp} erfaring<br>${s.mønter} kobber · ${s.eliksirer} eliksirer<br>Udstyr ${
       ["I", "II", "III", "IV"][s.udstyr]
-    } · ${
-      [0, 1, 2].filter((i) => s.opgaver["boss" + i]).length
-    } af 3 segl</p><p>${færdige.length} af ${OPGAVER.length} opgaver færdige.</p><ul>${
+    } · ${[0, 1, 2].filter((i) => s.opgaver["boss" + i]).length} af 3 segl</p><p>${
+      90 * niveau(s) ** 2 - s.xp
+    } erfaring til næste niveau · ${
+      maxLiv(s)
+    } maksimalt liv.</p><h3>Dine tre våben</h3><ul class="våbenoversigt"><li>⚔ Sværd · ${
+      skade({ ...s, våben: "sværd" }, "slim")
+    } lys mod mosslim · tæt og bredt</li><li>➶ Bue · ${
+      skade({ ...s, våben: "bue" }, "krystaldyr")
+    } lys mod krystaldyr · langt og præcist</li><li>✦ Magi · ${
+      skade({ ...s, våben: "magi" }, "stenvogter")
+    } lys mod stenvogtere · 14 energi og et område</li></ul><h3>Opgaver</h3><p>${færdige.length} af ${OPGAVER.length} opgaver færdige.</p><ul>${
       OPGAVER.map((o) =>
-        `<li>${(s.opgaver[o.id] || 0) >= o.mål ? "✓" : "◇"} ${o.navn} · ${Math.min(s.opgaver[o.id] || 0, o.mål)}/${o.mål}</li>`
+        `<li>${(s.opgaver[o.id] || 0) >= o.mål ? "✓" : "◇"} ${o.navn} · ${
+          Math.min(s.opgaver[o.id] || 0, o.mål)
+        }/${o.mål}</li>`
       ).join("")
     }</ul>`,
     [["Luk tasken", lukDialog]],
@@ -183,13 +279,115 @@ function inventar() {
   );
 }
 function pausemenu() {
-  gem();
-  dialog("En rolig pause", "<p>Rejsen er gemt på denne enhed.</p>", [
-    ["Fortsæt", lukDialog],
-    ["Rejsetaske", inventar],
-    ["Hjælp", hjælp],
-    ["Begynd på ny", bekræftNy],
-  ], "PAUSE");
+  const gemtNu = gem();
+  dialog(
+    "En rolig pause",
+    gemtNu
+      ? "<p>Rejsen er gemt på denne enhed.</p>"
+      : "<p>Rejsen findes kun i denne åbne fane. Browseren tillader ikke gemning lige nu.</p>",
+    [
+      ["Fortsæt", lukDialog],
+      ["Rejsetaske", inventar],
+      ["Rejsekort", rejsekort],
+      ["Indstillinger", indstillinger],
+      ["Hjælp", hjælp],
+      ["Begynd på ny", bekræftNy],
+    ],
+    "PAUSE",
+  );
+}
+
+// Kortet kan vælge et landmærke; opgaven kan altid vælges igen med ét tryk.
+function rejsekort() {
+  const mål = egetSpor || findMål();
+  const opgave = næsteOpgave(s);
+  dialog(
+    s.grotte ? `${GROTTENAVNE[s.grotte.id]} · dybde ${s.grotte.dybde}` : "Øens rejsekort",
+    `${
+      opgave
+        ? `<p class="kortmål"><b>${opgave.navn}</b><br>${opgave.tekst}<br>${
+          Math.min(s.opgaver[opgave.id] || 0, opgave.mål)
+        } / ${opgave.mål} fuldført</p>`
+        : ""
+    }<canvas id="stortkort" width="560" height="560" aria-label="Kort med din rute og øens landmærker"></canvas><p class="kortforklaring"><span>● Dig</span><span>◇ Næste spor</span><span>✦ Skatte og krystaller</span><span>● Vogtere</span></p><p>Den gyldne linje viser vejen. Vælg et sted, eller følg din næste opgave.</p>`,
+    [
+      ["Følg næste opgave", () => {
+        egetSpor = null;
+        ruteNøgle = "";
+        lukDialog();
+        hud();
+      }],
+      ...verden.steder.map((t) => [t.navn, () => {
+        egetSpor = { x: t.x, z: t.z, navn: t.navn };
+        ruteNøgle = "";
+        lukDialog();
+        hud();
+        besked(`Dit spor: ${t.navn}`);
+      }]),
+      ["Luk kortet", lukDialog],
+    ],
+    "REJSEKORT",
+  );
+  tegnRejsekort($("stortkort"), { s, verden, fjender, ting, mål, rute, tid, stort: true });
+}
+
+// Kun selve indstillingsændringen gemmes; menuen ændrer aldrig fremgangen.
+function indstillinger() {
+  const v = s.valg;
+  dialog(
+    "Gør rejsen til din",
+    `<label class="valg"><input type="checkbox" data-valg="autosigte" ${
+      v.autosigte ? "checked" : ""
+    }>Autosigte på en synlig fjende</label><label class="valg"><input type="checkbox" data-valg="vejviser" ${
+      v.vejviser ? "checked" : ""
+    }>Gyldent spor i verden</label><label class="valg"><input type="checkbox" data-valg="roligeEffekter" ${
+      v.roligeEffekter ? "checked" : ""
+    }>Rolige effekter og færre blink</label><label class="valg">Kameraets følsomhed<select id="kameravalg"><option value="0.6">Roligt</option><option value="1">Normalt</option><option value="1.5">Hurtigt</option></select></label><p id="valggemning" role="status">${
+      lagerVirker
+        ? "Dine valg og rejsen gemmes på denne enhed."
+        : "Dine valg gælder i denne åbne fane. Browseren tillader ikke gemning her."
+    }</p>`,
+    [["Vend kameraet mod nord", () => {
+      yaw = 0;
+      zoom = 23;
+      lukDialog();
+    }], ["Vis første rejsevejledning", () => {
+      s.vejledning = 0;
+      guideStart = { x: s.x, z: s.z };
+      ruteNøgle = "";
+      gem();
+      lukDialog();
+    }], ["Tilbage til eventyret", lukDialog]],
+    "INDSTILLINGER",
+  );
+  for (const c of $("dialogtekst").querySelectorAll("[data-valg]")) {
+    c.onchange = () => {
+      s.valg[c.dataset.valg] = c.checked;
+      gem();
+    };
+  }
+  const kameraValg = $("kameravalg");
+  kameraValg.value = String(v.kamera < .8 ? .6 : v.kamera > 1.2 ? 1.5 : 1);
+  kameraValg.onchange = () => {
+    s.valg.kamera = Number(kameraValg.value);
+    gem();
+  };
+}
+
+function vejledning() {
+  s.vejledning = guideEfterSkridt(s.vejledning, guideStart, s);
+  const trin = [
+    ["1 · Find Mira", "Gå mod den gyldne pil. WASD / pile eller fingerpinden til venstre."],
+    ["2 · Tal med Mira", "Gå tæt på brønden, og tryk Brug / E. Lumen følger dig."],
+    ["3 · Prøv dine våben", "Vælg Sværd, Bue eller Magi i bunden. 1 / 2 / 3 på PC."],
+    ["4 · Klar til øen", "Hold Angrib / mellemrum for at slå. Kortet viser næste krystal og sikre rum."],
+  ];
+  const vis = trin[s.vejledning];
+  $("vejledning").classList.toggle("skjult", !vis);
+  if (vis) {
+    $("vejledning").querySelector("b").textContent = vis[0];
+    $("vejledning").querySelector("span").textContent = vis[1];
+  }
 }
 
 // En label tegnes én gang som tekstur og forbliver læsbar fra alle kameravinkler.
@@ -216,7 +414,13 @@ function label(tekst, farve = "#e3f4e8", bredde = 256) {
 function ring(x, z, r, farve = 0xcf8baf) {
   const obj = new THREE.Mesh(
     ringGeo,
-    new THREE.MeshBasicMaterial({ color: farve, transparent: true, opacity: .65, side: THREE.DoubleSide, depthWrite: false }),
+    new THREE.MeshBasicMaterial({
+      color: farve,
+      transparent: true,
+      opacity: .65,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    }),
   );
   obj.rotation.x = -Math.PI / 2;
   obj.position.set(x, .05, z);
@@ -225,8 +429,22 @@ function ring(x, z, r, farve = 0xcf8baf) {
   return obj;
 }
 function blink(x, z, farve = 0x6ff5cf, r = 1.5) {
+  if (s.valg.roligeEffekter) r *= .65;
   const obj = ring(x, z, .1, farve);
   effekter.push({ obj, liv: .45, max: .45, r });
+}
+
+// Skade og automatisk loot kan aflæses ved figuren uden at skjule næste mål.
+function flyvetekst(x, z, tekst, farve = "#efdca8", liv = 1.2) {
+  if (flyvetekster.length >= 14) {
+    const gammel = flyvetekster.shift();
+    fjern(gammel.obj);
+  }
+  const obj = label(tekst, farve, 256);
+  obj.scale.set(2.6, .65, 1);
+  obj.position.set(x, 2.25, z);
+  scene.add(obj);
+  flyvetekster.push({ obj, liv, max: liv });
 }
 
 // Lokale teksturer og effekter frigives ved områdeskift; modelbiblioteket deles videre.
@@ -262,13 +480,31 @@ function nyFjende(data) {
   );
   bar.position.y = boss ? 3.7 : 2.5;
   obj.add(bar);
-  const f = { ...data, obj, hp: liv, max: liv, timer: 1.3, varsling: 0, ring: null, stun: 0, bar, kamp: false, summoned: false };
+  const f = {
+    ...data,
+    obj,
+    hp: liv,
+    max: liv,
+    timer: 1.3,
+    varsling: 0,
+    ring: null,
+    stun: 0,
+    bar,
+    kamp: false,
+    summoned: false,
+  };
   fjender.push(f);
   return f;
 }
 
 // Kun aktivitetstilstand og koordinater gemmes; geometri dannes fra det validerede frø.
 function skiftVerden() {
+  målFjende = null;
+  egetSpor = null;
+  ruteNøgle = "";
+  skilte.length = 0;
+  for (const t of flyvetekster) fjern(t.obj);
+  flyvetekster.length = 0;
   if (verden) fjern(verden.rod);
   for (const f of fjender) {
     fjern(f.obj);
@@ -282,7 +518,9 @@ function skiftVerden() {
   skud.length = 0;
   effekter.length = 0;
   if (mira) fjern(mira);
-  verden = s.grotte ? bygGrotte(modeller, danGrotte(s.grotte.frø, s.grotte.id, s.grotte.dybde)) : bygØ(modeller, s.frø);
+  verden = s.grotte
+    ? bygGrotte(modeller, danGrotte(s.grotte.frø, s.grotte.id, s.grotte.dybde), s.opgaver["boss" + s.grotte.id] >= 1)
+    : bygØ(modeller, s.frø);
   scene.add(verden.rod);
   scene.background.set(s.grotte ? 0x172439 : 0x789cab);
   scene.fog.color.copy(scene.background);
@@ -294,7 +532,13 @@ function skiftVerden() {
   }
   for (const data of verden.ting) {
     if (s.hentet.includes(data.id)) continue;
-    const obj = kopi(modeller, data.type === "kiste" ? "kiste" : "krystal", data.x, data.z, data.type === "kiste" ? 1 : .3);
+    const obj = kopi(
+      modeller,
+      data.type === "kiste" ? "kiste" : "krystal",
+      data.x,
+      data.z,
+      data.type === "kiste" ? 1 : .3,
+    );
     scene.add(obj);
     ting.push({ ...data, obj });
   }
@@ -302,6 +546,13 @@ function skiftVerden() {
     const l = label(sted.navn, sted.type === "grotte" ? "#9de8dc" : "#e3d5b4", 256);
     l.position.set(sted.x, sted.type === "portal" ? 6 : 3.1, sted.z);
     verden.rod.add(l);
+  }
+  for (const skilt of verden.mærker || []) {
+    const l = label(skilt.tekst, "#efd9a8", 384);
+    l.scale.set(4.2, .7, 1);
+    l.position.set(skilt.x, 2.8, skilt.z);
+    verden.rod.add(l);
+    skilte.push(l);
   }
   if (!s.grotte) {
     mira = kopi(modeller, "eventyrer", 2, 0, 1);
@@ -311,7 +562,9 @@ function skiftVerden() {
   helt.position.set(s.x, 0, s.z);
   ven.position.set(s.x - 1.4, 1, s.z + 1.4);
   kamMål.set(s.x, 0, s.z);
-  $("område").textContent = s.grotte ? `${GROTTENAVNE[s.grotte.id]} · dybde ${s.grotte.dybde}` : "Lysvig · krystallernes ø";
+  $("område").textContent = s.grotte
+    ? `${GROTTENAVNE[s.grotte.id]} · dybde ${s.grotte.dybde}`
+    : "Lysvig · krystallernes ø";
   hud();
   gem();
 }
@@ -321,13 +574,19 @@ function start() {
   $("hud").classList.remove("skjult");
   kører = true;
   paused = false;
-  skiftVåben(s.våben);
+  guideStart = { x: s.x, z: s.z };
+  skiftVåben(s.våben, false);
   skiftVerden();
-  besked(s.opgaver.mira ? "Velkommen tilbage. Lumen husker vejen." : "Mira venter ved brønden. Gå tæt på og tryk Brug.", 6);
+  besked(
+    s.opgaver.mira ? "Velkommen tilbage. Lumen husker vejen." : "Mira venter ved brønden. Gå tæt på og tryk Brug.",
+    6,
+  );
   tone(330, .2);
 }
-function skiftVåben(v) {
+function skiftVåben(v, afSpiller = true) {
+  const ændret = s.våben !== v || afSpiller && s.vejledning === 2;
   s.våben = v;
+  if (afSpiller && s.vejledning === 2) s.vejledning = 3;
   document.querySelectorAll("[data-våben]").forEach((b) => b.classList.toggle("valgt", b.dataset.våben === v));
   if (helt) {
     for (const o of [...helt.children]) if (o.userData.våben) helt.remove(o);
@@ -337,112 +596,127 @@ function skiftVåben(v) {
     o.userData.våben = true;
     helt.add(o);
   }
+  if (afSpiller && ændret) gem();
 }
 
 function findMål() {
+  if (s.vejledning < 2 && s.opgaver.mira) return s.grotte ? verden.steder.find((t) => t.type === "udgang") : STEDER[0];
   const mål = næsteOpgave(s);
   if (!mål) return null;
-  if (mål.id === "mira") return STEDER[0];
+  if (mål.id === "mira") return s.grotte ? verden.steder.find((t) => t.type === "udgang") : STEDER[0];
   if (mål.id === "krystal" || mål.id === "kiste") {
     return ting.filter((t) => t.type === mål.id).sort((a, b) =>
       Math.hypot(a.x - s.x, a.z - s.z) - Math.hypot(b.x - s.x, b.z - s.z)
-    )[0] || STEDER[0];
+    )[0] || (s.grotte ? verden.steder.find((t) => t.type === "udgang") : STEDER[0]);
   }
   if (mål.id === "vogter") {
-    return fjender.filter((f) => f.art === "stenvogter").sort((a, b) =>
-      Math.hypot(a.obj.position.x - s.x, a.obj.position.z - s.z) - Math.hypot(b.obj.position.x - s.x, b.obj.position.z - s.z)
-    )[0]?.obj.position || STEDER[2];
+    return fjender.filter((f) => f.hp > 0 && f.art === "stenvogter").sort((a, b) =>
+      Math.hypot(a.obj.position.x - s.x, a.obj.position.z - s.z) -
+      Math.hypot(b.obj.position.x - s.x, b.obj.position.z - s.z)
+    )[0]?.obj.position || (s.grotte ? verden.steder.find((t) => t.type === "udgang") : STEDER[2]);
   }
   if (mål.id.startsWith("boss")) {
     const id = Number(mål.id.slice(-1));
     return bossSpor(s, id, fjender, verden.steder) || STEDER[id + 1];
   }
-  return STEDER[4];
+  return s.grotte ? verden.steder.find((t) => t.type === "udgang") : STEDER[4];
+}
+
+// Sporet genberegnes ved et nyt rum eller en ny retning, ikke for hvert renderbillede.
+function opdatérSpor(mål) {
+  if (!mål) {
+    rute = [];
+    vejpil.visible = false;
+    sporring.visible = false;
+    return;
+  }
+  const trin = s.grotte ? 8 : 2,
+    n = `${s.grotte?.frø || "ø"}-${s.grotte?.dybde || 0}-${Math.floor((s.x + trin / 2) / trin)},${
+      Math.floor((s.z + trin / 2) / trin)
+    }-${Math.round(mål.x)},${Math.round(mål.z)}`;
+  if (n !== ruteNøgle) {
+    ruteNøgle = n;
+    gemtRute = s.grotte ? rumRute(verden.grotte, s, mål) : øRute(s, mål, (x, z) => frit(verden, x, z));
+  }
+  rute = fortsætSpor(s, gemtRute, (x, z) => frit(verden, x, z));
+  const næste = rute[1] || mål, dx = næste.x - s.x, dz = næste.z - s.z, d = Math.hypot(dx, dz) || 1;
+  vejpil.visible = s.valg.vejviser && Math.hypot(mål.x - s.x, mål.z - s.z) > 2.5;
+  vejpil.position.set(s.x + dx / d * 1.5, .13, s.z + dz / d * 1.5);
+  vejpil.rotation.y = Math.atan2(dx, dz);
+  sporring.visible = s.valg.vejviser;
+  sporring.position.set(mål.x, .06, mål.z);
+}
+
+function kampHud() {
+  målFjende = vælgMål(s, fjender, VÅBEN[s.våben].rækkevidde, (x, z) => frit(verden, x, z), målFjende);
+  const f = målFjende || nærFjende(9), data = f ? FJENDETYPER[f.art] : null;
+  $("kampmål").classList.toggle("skjult", !f);
+  sigtering.visible = s.valg.autosigte && !!målFjende;
+  if (målFjende) {
+    sigtering.position.set(målFjende.obj.position.x, .065, målFjende.obj.position.z);
+    sigtering.scale.setScalar(målFjende.boss ? 1.7 : .9);
+    sigtering.material.color.set(data?.svaghed === s.våben ? 0xf1d497 : 0x90e8d3);
+  }
+  if (!f) return;
+  sætTekst("fjendenavn", f.boss ? ["Mosvogteren", "Krystalhjorten", "Den gamle vogter"][f.grotte] : data.navn);
+  $("fjendeliv").max = f.max;
+  $("fjendeliv").value = f.hp;
+  sætTekst("fjendehint", `${data.svaghed === s.våben ? "✦ Stærkt valg" : "Prøv " + data.svaghed} · ${data.hint}`);
+  sætTekst(
+    "bossvarsel",
+    f.varsling > 0
+      ? (f.boss && f.art === "krystaldyr" ? "KRYSTALVIFTE · gå sidelæns" : "SLAG PÅ VEJ · ud af lysringen")
+      : f.boss
+      ? "Tre segl · en rolig hånd"
+      : "",
+  );
+  $("kampmål").classList.toggle("varsler", f.varsling > 0);
 }
 function hud() {
   const max = maxLiv(s);
   $("liv").max = max;
   $("liv").value = s.hp;
-  $("livtekst").textContent = `${Math.ceil(s.hp)} / ${max}`;
+  sætTekst("livtekst", `${Math.ceil(s.hp)} / ${max}`);
   $("mana").value = s.mana;
-  $("niveau").textContent = `Niveau ${niveau(s)}`;
-  $("mønter").textContent = Math.floor(s.mønter);
-  $("udstyr").textContent = `Udstyr ${["I", "II", "III", "IV"][s.udstyr]}`;
-  $("eliksirtekst").textContent = `Q · ${s.eliksirer} tilbage`;
-  $("lyd").textContent = s.lyd ? "♫" : "♪̸";
+  sætTekst("niveau", `Niveau ${niveau(s)}`);
+  sætTekst("mønter", Math.floor(s.mønter));
+  sætTekst("udstyr", `Udstyr ${["I", "II", "III", "IV"][s.udstyr]}`);
+  sætTekst("eliksirtekst", `Q · ${s.eliksirer} tilbage`);
+  sætTekst("lyd", s.lyd ? "♫" : "♪̸");
   const o = næsteOpgave(s);
-  $("opgave").querySelector("h2").textContent = o ? o.navn : "Øen synger igen";
-  $("opgave").querySelector("p").textContent = o ? o.tekst : "Alle segl er hjemme. Udforsk øen og nye grotter.";
-  $("opgave").querySelector("small").textContent = o
-    ? `${Math.min(s.opgaver[o.id] || 0, o.mål)} / ${o.mål} · ${s.xp} erfaring`
-    : "Eventyret fuldført";
-  const mål = findMål();
-  $("afstand").textContent = mål ? `${Math.round(Math.hypot(mål.x - s.x, mål.z - s.z))} skridt til næste spor` : "";
+  sætTekst($("opgave").querySelector("h2"), o ? o.navn : "Øen synger igen");
+  sætTekst($("opgave").querySelector("p"), o ? o.tekst : "Alle segl er hjemme. Udforsk øen og nye grotter.");
+  sætTekst(
+    $("opgave").querySelector("small"),
+    o ? `${Math.min(s.opgaver[o.id] || 0, o.mål)} / ${o.mål} · ${s.xp} erfaring` : "Eventyret fuldført",
+  );
+  const mål = egetSpor || findMål();
+  opdatérSpor(mål);
+  sætTekst(
+    "afstand",
+    mål
+      ? `${Math.round(rute.length ? ruteLængde(rute) : Math.hypot(mål.x - s.x, mål.z - s.z))} skridt · ${
+        egetSpor ? egetSpor.navn : "følg det gyldne spor"
+      }`
+      : "",
+  );
   nær =
     [...ting, ...verden.steder].filter((t) => Math.hypot(t.x - s.x, t.z - s.z) < 2.8).sort((a, b) =>
       Math.hypot(a.x - s.x, a.z - s.z) - Math.hypot(b.x - s.x, b.z - s.z)
     )[0];
   $("prompt").classList.toggle("skjult", !nær);
+  $("hud").classList.toggle("har-nær", !!nær);
   if (nær) {
-    $("prompt").textContent = `Brug / E · ${nær.navn || (nær.type === "kiste" ? "Åbn skattekisten" : "Saml lyskrystallen")}`;
+    sætTekst("prompt", `Brug / E · ${nær.navn || (nær.type === "kiste" ? "Åbn skattekisten" : "Saml lyskrystallen")}`);
   }
   tegnKort(mål);
+  kampHud();
+  vejledning();
 }
 
 // Minikortet viser rumforbindelser og mål; det drejer ikke med kameraet.
 function tegnKort(mål) {
-  const c = $("kort"), g = c.getContext("2d"), w = c.width;
-  g.clearRect(0, 0, w, w);
-  g.save();
-  g.beginPath();
-  g.arc(w / 2, w / 2, w / 2 - 2, 0, Math.PI * 2);
-  g.clip();
-  g.fillStyle = "#102837";
-  g.fillRect(0, 0, w, w);
-  const skala = s.grotte ? Math.min(3, 140 / (Math.max(...verden.grotte.rum.map((r) => Math.hypot(r.x * 8, r.z * 8))) + 12)) : 1;
-  const punkt = (x, z) => [w / 2 + x * skala, w / 2 + z * skala];
-  if (s.grotte) {
-    g.fillStyle = "#5c727e";
-    for (const r of verden.grotte.rum) {
-      const p = punkt(r.x * 8 - 3.8, r.z * 8 - 3.8);
-      g.fillRect(p[0], p[1], 7.6 * skala, 7.6 * skala);
-    }
-  } else {
-    g.fillStyle = "#426e62";
-    g.beginPath();
-    g.arc(w / 2, w / 2, 70, 0, Math.PI * 2);
-    g.fill();
-    g.strokeStyle = "#9a92704f";
-    for (const t of STEDER) {
-      g.beginPath();
-      g.moveTo(w / 2, w / 2);
-      g.lineTo(...punkt(t.x, t.z));
-      g.stroke();
-    }
-  }
-  const prik = (x, z, farve, r) => {
-    g.fillStyle = farve;
-    g.beginPath();
-    g.arc(...punkt(x, z), r, 0, Math.PI * 2);
-    g.fill();
-  };
-  for (const t of verden.steder) prik(t.x, t.z, "#baa781", 3);
-  for (const f of fjender) {
-    if (f.hp > 0) prik(f.obj.position.x, f.obj.position.z, f.boss ? "#d49bdc" : "#d38a80", f.boss ? 3 : 1.5);
-  }
-  if (mål) {
-    g.strokeStyle = "#ffe3a0";
-    g.lineWidth = 2;
-    g.beginPath();
-    g.arc(...punkt(mål.x, mål.z), 6 + Math.sin(tid * 4), 0, Math.PI * 2);
-    g.stroke();
-  }
-  prik(s.x, s.z, "#80ffdf", 3.5);
-  g.fillStyle = "#c4ddd5";
-  g.font = "10px system-ui";
-  g.textAlign = "center";
-  g.fillText("N", w / 2, 14);
-  g.restore();
+  tegnRejsekort($("kort"), { s, verden, fjender, ting, mål, rute, tid });
 }
 
 function brug() {
@@ -457,20 +731,23 @@ function brug() {
     if (t.type === "krystal") {
       s.mønter += 3;
       s.mana = Math.min(100, s.mana + 16);
-      opgave("krystal");
-      besked("Lyskrystal fundet · +3 kobber");
+      const færdig = opgave("krystal");
+      if (!færdig) besked("Lyskrystal fundet · +3 kobber");
+      flyvetekst(t.x, t.z, "+3 kobber · lysenergi", "#96eddb", 1.6);
     } else {
       s.mønter += 18;
       s.xp += 15;
-      givEliksirer(s, 1);
-      opgave("kiste");
-      besked("Skat! +18 kobber · +15 erfaring · 1 eliksir");
+      const flere = givEliksirer(s, 1);
+      const færdig = opgave("kiste");
+      if (!færdig) besked(`Skat! +18 kobber · +15 erfaring${flere ? " · 1 eliksir" : ""}`);
+      flyvetekst(t.x, t.z, "+18 kobber · +15 erfaring", "#efd3a3", 2.0);
     }
     hud();
     gem();
     return;
   }
   if (nær.type === "mira") {
+    if (s.vejledning < 2) s.vejledning = 2;
     opgave("mira");
     s.hp = maxLiv(s);
     s.mana = 100;
@@ -514,9 +791,16 @@ function brug() {
   }
   if (nær.type === "grotte") {
     const id = nær.grotte;
+    const tips = [
+      "Mossvampene lyser i mørket. Mosvogteren spreder brede ringe; sværdet er stærkt mod moslyset.",
+      "Violette krystaller spejler dit lys. Krystalhjorten sender en vifte; gå sidelæns og brug buen.",
+      "Gamle søjler holder på kobberets varme. Den gamle vogter varsler et stort slag; brug magi og hold afstand.",
+    ];
     dialog(
       GROTTENAVNE[id],
-      "<p>En ny sti af kamre venter under øen. Find porten på første dybde; vogteren og seglet er på dybde 2. Du kan altid vende tilbage ved indgangen.</p>",
+      `<p>${
+        tips[id]
+      }</p><p>Find den gyldne port på første dybde. Vogteren og seglet er på dybde 2. Kortet viser åbne rum, og du kan altid vende tilbage ved indgangen.</p>`,
       [
         ["Gå ind", () => {
           lukDialog();
@@ -571,6 +855,7 @@ function ramFjende(f, antal) {
   f.hp = Math.max(0, f.hp - antal);
   f.kamp = true;
   f.stun = .13;
+  flyvetekst(f.obj.position.x, f.obj.position.z, String(Math.round(antal)), "#aff2d9", .85);
   blink(f.obj.position.x, f.obj.position.z, 0xaef6d5, .85);
   tone(220, .07, .035);
   if (f.hp === 0) {
@@ -582,6 +867,7 @@ function ramFjende(f, antal) {
     s.beroliget.push(f.id);
     s.xp += f.boss ? 45 : 12;
     s.mønter += f.boss ? 30 : 7;
+    if (!f.boss) flyvetekst(f.obj.position.x, f.obj.position.z, "+7 kobber · +12 erfaring", "#efd3a3", 2.0);
     if (f.art === "stenvogter") opgave("vogter");
     if (f.boss) {
       opgave("boss" + f.grotte);
@@ -589,7 +875,9 @@ function ramFjende(f, antal) {
       s.hp = maxLiv(s);
       s.mana = 100;
       besked(
-        `✦ Segl fundet! ${["Mosvogteren", "Krystalhjorten", "Den gamle vogter"][f.grotte]} hviler nu. +${flere} eliksirer`,
+        `✦ Segl fundet! ${
+          ["Mosvogteren", "Krystalhjorten", "Den gamle vogter"][f.grotte]
+        } hviler nu. +${flere} eliksirer`,
         7,
       );
       const udgang = {
@@ -603,14 +891,14 @@ function ramFjende(f, antal) {
       const l = label("Seglet er dit · Brug");
       l.position.set(udgang.x, 2, udgang.z);
       verden.rod.add(l);
+      const port = kopi(modeller, "portal", udgang.x, udgang.z, .7);
+      verden.rod.add(port);
     }
     gem();
   }
 }
 function nærFjende(r = 30) {
-  return fjender.filter((f) => f.hp > 0 && Math.hypot(f.obj.position.x - s.x, f.obj.position.z - s.z) < r).sort((a, b) =>
-    Math.hypot(a.obj.position.x - s.x, a.obj.position.z - s.z) - Math.hypot(b.obj.position.x - s.x, b.obj.position.z - s.z)
-  )[0];
+  return vælgMål(s, fjender, r, (x, z) => frit(verden, x, z));
 }
 function sendSkud(x, z, dx, dz, type, dmg, art = null) {
   const hastighed = { magi: 14, bue: 26, ven: 21, fjende: 10 }[type];
@@ -644,18 +932,27 @@ function sendSkud(x, z, dx, dz, type, dmg, art = null) {
 function angrib() {
   if (!kører || paused || angrebspause > 0) return;
   const v = VÅBEN[s.våben];
+  if (s.vejledning === 3) {
+    s.vejledning = 4;
+    gem();
+  }
   if (s.mana < v.mana) {
-    besked("Mere energi om et øjeblik. Brug sværd eller bue imens.", 2);
+    angrebspause = .35;
+    if (tid - sidstEnergiTip > 3) {
+      besked("Energien lader op. Brug sværd eller bue imens.", 2);
+      sidstEnergiTip = tid;
+    }
     return;
   }
   s.mana -= v.mana;
   angrebspause = v.pause;
   let dx = retning.x, dz = retning.y;
-  const mål = nærFjende(v.rækkevidde);
-  if (sigte && !touch) {
+  const mål = vælgMål(s, fjender, v.rækkevidde, (x, z) => frit(verden, x, z), målFjende);
+  målFjende = mål;
+  if (sigte && (!s.valg.autosigte || !mål) && !touch) {
     dx = sigte.x - s.x;
     dz = sigte.z - s.z;
-  } else if (mål) {
+  } else if (mål && s.valg.autosigte) {
     dx = mål.obj.position.x - s.x;
     dz = mål.obj.position.z - s.z;
   }
@@ -667,7 +964,12 @@ function angrib() {
   if (s.våben === "sværd") {
     const r = ring(s.x + dx * .9, s.z + dz * .9, .4, 0xefd9a9);
     effekter.push({ obj: r, liv: .23, max: .23, r: 2 });
-    for (const f of fjender) if (f.hp > 0 && sværdRammer(s, f.obj.position, { x: dx, z: dz })) ramFjende(f, skade(s, f.art));
+    for (const f of fjender) {
+      if (
+        f.hp > 0 && sværdRammer(s, f.obj.position, { x: dx, z: dz }) &&
+        friLinje(s, f.obj.position, (x, z) => frit(verden, x, z))
+      ) ramFjende(f, skade(s, f.art));
+    }
     tone(240, .14);
   } else {
     sendSkud(s.x + dx * .7, s.z + dz * .7, dx, dz, s.våben, skade(s, mål?.art));
@@ -714,25 +1016,35 @@ function opdatérFjender(dt) {
     const p = f.obj.position, dx = s.x - p.x, dz = s.z - p.z, d = Math.hypot(dx, dz);
     f.obj.visible = d < 45;
     f.bar.scale.x = Math.max(.01, f.hp / f.max);
-    f.bar.quaternion.copy(kamera.quaternion);
+    f.bar.quaternion.copy(f.obj.quaternion).invert().multiply(kamera.quaternion);
     f.stun = Math.max(0, f.stun - dt);
     f.timer -= dt;
     f.obj.rotation.y = Math.atan2(-dx, -dz);
     animer(f.obj, tid + f.x, d < 18 ? 1 : 0, f.art);
     if (d > 18 && !f.boss) continue;
     if (d > 24) continue;
+    if (!friLinje(s, p, (x, z) => frit(verden, x, z))) {
+      if (f.ring) {
+        fjern(f.ring);
+        f.ring = null;
+      }
+      f.varsling = 0;
+      continue;
+    }
     helbredstid = Math.max(helbredstid, 2);
     const radius = f.boss ? (f.art === "krystaldyr" ? 8 : 5.0) : (f.art === "stenvogter" ? 2.8 : 2.2);
     if (f.varsling > 0) {
       f.varsling -= dt;
-      f.ring.material.opacity = .35 + .25 * Math.sin(tid * 20);
+      f.ring.material.opacity = s.valg.roligeEffekter ? .6 : .35 + .25 * Math.sin(tid * 20);
       f.ring.position.set(p.x, .06, p.z);
       if (f.varsling <= 0) {
         fjern(f.ring);
         f.ring = null;
         if (f.boss && f.art === "krystaldyr") {
           const vinkel = Math.atan2(dx, dz);
-          for (let j = -2; j <= 2; j++) sendSkud(p.x, p.z, Math.sin(vinkel + j * .17), Math.cos(vinkel + j * .17), "fjende", 17);
+          for (let j = -2; j <= 2; j++) {
+            sendSkud(p.x, p.z, Math.sin(vinkel + j * .17), Math.cos(vinkel + j * .17), "fjende", 17);
+          }
         } else if (d < radius + .3) {
           ramHelt(f.boss ? 22 : 9);
           if (paused) return;
@@ -779,13 +1091,18 @@ function opdatérSkud(dt) {
           p.liv = 0;
         }
       } else {
-        const f = fjender.find((f) => f.hp > 0 && Math.hypot(x - f.obj.position.x, z - f.obj.position.z) < (f.boss ? 1.2 : .75));
+        const f = fjender.find((f) =>
+          f.hp > 0 && Math.hypot(x - f.obj.position.x, z - f.obj.position.z) < (f.boss ? 1.2 : .75)
+        );
         if (f) {
           const vedSkud = { ...s, våben: p.type, udstyr: p.udstyr, xp: 90 * (p.niveau - 1) ** 2 };
           if (p.type === "magi") {
             blink(x, z, 0xba91ff, 3.2);
             for (const a of fjender) {
-              if (a.hp > 0 && Math.hypot(x - a.obj.position.x, z - a.obj.position.z) < 3.4) {
+              if (
+                a.hp > 0 && Math.hypot(x - a.obj.position.x, z - a.obj.position.z) < 3.4 &&
+                friLinje({ x, z }, a.obj.position, (x, z) => frit(verden, x, z))
+              ) {
                 ramFjende(a, skade(vedSkud, a.art));
                 a.stun = .65;
               }
@@ -803,9 +1120,12 @@ function opdatér(dt) {
   angrebspause = Math.max(0, angrebspause - dt);
   venpause -= dt;
   helbredstid = Math.max(0, helbredstid - dt);
-  let vx = (taster.has("d") || taster.has("arrowright") ? 1 : 0) - (taster.has("a") || taster.has("arrowleft") ? 1 : 0) +
+  if (angrebHold !== null || taster.has(" ")) angrib();
+  let vx = (taster.has("d") || taster.has("arrowright") ? 1 : 0) -
+    (taster.has("a") || taster.has("arrowleft") ? 1 : 0) +
     joystick.x;
-  let vz = (taster.has("w") || taster.has("arrowup") ? 1 : 0) - (taster.has("s") || taster.has("arrowdown") ? 1 : 0) + joystick.y;
+  let vz = (taster.has("w") || taster.has("arrowup") ? 1 : 0) - (taster.has("s") || taster.has("arrowdown") ? 1 : 0) +
+    joystick.y;
   const længde = Math.hypot(vx, vz);
   if (længde > 1) {
     vx /= længde;
@@ -833,6 +1153,17 @@ function opdatér(dt) {
   opdatérFjender(dt);
   if (paused) return;
   opdatérSkud(dt);
+  if (paused) return;
+  for (let i = flyvetekster.length - 1; i >= 0; i--) {
+    const t = flyvetekster[i];
+    t.liv -= dt;
+    t.obj.position.y += dt * .6;
+    t.obj.material.opacity = Math.min(1, t.liv / .35);
+    if (t.liv <= 0) {
+      fjern(t.obj);
+      flyvetekster.splice(i, 1);
+    }
+  }
   for (let i = effekter.length - 1; i >= 0; i--) {
     const e = effekter[i];
     e.liv -= dt;
@@ -845,10 +1176,12 @@ function opdatér(dt) {
   }
   for (const t of ting) {
     if (t.type === "krystal") {
-      t.obj.position.y = .25 + Math.sin(tid * 2 + t.x) * .15;
+      t.obj.position.y = .25 + (s.valg.roligeEffekter ? 0 : Math.sin(tid * 2 + t.x) * .15);
       t.obj.rotation.y += dt * .7;
     }
   }
+  for (const skilt of skilte) skilt.visible = Math.hypot(skilt.position.x - s.x, skilt.position.z - s.z) < 20;
+  sporring.material.opacity = s.valg.roligeEffekter ? .65 : .62 + Math.sin(tid * 2) * .12;
   glød.position.set(ven.position.x, 2, ven.position.z);
   hudtid += dt;
   if (hudtid > .15) {
@@ -862,7 +1195,10 @@ function opdatér(dt) {
   }
   if (beskedtid > 0) {
     beskedtid -= dt;
-    if (beskedtid <= 0) $("besked").style.opacity = 0;
+    if (beskedtid <= 0) {
+      $("besked").style.opacity = 0;
+      $("hud").classList.remove("har-besked");
+    }
   }
 }
 
@@ -870,8 +1206,10 @@ function opdatér(dt) {
 function kameraTrin(dt) {
   const mål = helt ? helt.position : new THREE.Vector3(0, 0, 0);
   kamMål.lerp(mål, 1 - Math.exp(-dt * 6));
-  const d = zoom;
-  kamPos.set(kamMål.x + Math.sin(yaw) * d, 17 + (touch ? 1 : 0), kamMål.z + Math.cos(yaw) * d);
+  kameraYaw += (yaw - kameraYaw) * (1 - Math.exp(-dt * 10));
+  kameraZoom += (zoom - kameraZoom) * (1 - Math.exp(-dt * 8));
+  const d = kameraZoom;
+  kamPos.set(kamMål.x + Math.sin(kameraYaw) * d, 17 + (touch ? 1 : 0), kamMål.z + Math.cos(kameraYaw) * d);
   kamera.position.lerp(kamPos, 1 - Math.exp(-dt * 7));
   kamera.lookAt(kamMål.x, .65, kamMål.z);
   sol.position.set(kamMål.x - 18, 30, kamMål.z + 15);
@@ -900,7 +1238,7 @@ function flytPind(e) {
   $("pind").style.transform = `translate(${dx * k}px,${dy * k}px)`;
 }
 $("joystick").addEventListener("pointerdown", (e) => {
-  if (paused) return;
+  if (paused || joystickId !== null) return;
   joystickId = e.pointerId;
   $("joystick").setPointerCapture(e.pointerId);
   flytPind(e);
@@ -910,7 +1248,8 @@ $("joystick").addEventListener("pointermove", (e) => {
   if (e.pointerId === joystickId) flytPind(e);
 });
 for (const n of ["pointerup", "pointercancel", "lostpointercapture"]) {
-  $("joystick").addEventListener(n, () => {
+  $("joystick").addEventListener(n, (e) => {
+    if (e.pointerId !== joystickId) return;
     joystickId = null;
     joystick.x = 0;
     joystick.y = 0;
@@ -919,10 +1258,13 @@ for (const n of ["pointerup", "pointercancel", "lostpointercapture"]) {
 }
 $("verden").addEventListener("pointerdown", (e) => {
   if (!kører || paused) return;
-  if (e.pointerType === "mouse") {
+  if (e.pointerType === "mouse" && e.button === 0) {
     sigteFra(e);
     angrib();
-  } else if (e.clientX > innerWidth * .35) {
+  } else if (
+    dragId === null &&
+    (e.pointerType === "mouse" && e.button === 2 || e.pointerType !== "mouse" && e.clientX > innerWidth * .35)
+  ) {
     dragId = e.pointerId;
     dragX = e.clientX;
     dragY = e.clientY;
@@ -931,19 +1273,18 @@ $("verden").addEventListener("pointerdown", (e) => {
   }
 });
 $("verden").addEventListener("pointermove", (e) => {
-  if (e.pointerType === "mouse") sigteFra(e);
-  else if (e.pointerId === dragId) {
+  if (e.pointerId === dragId) {
     const dx = e.clientX - dragX, dy = e.clientY - dragY;
     dragAfstand += Math.abs(dx) + Math.abs(dy);
-    yaw -= dx * .008;
-    zoom = Math.max(16, Math.min(32, zoom + dy * .035));
+    yaw -= dx * .008 * s.valg.kamera;
+    zoom = Math.max(16, Math.min(32, zoom + dy * .035 * s.valg.kamera));
     dragX = e.clientX;
     dragY = e.clientY;
-  }
+  } else if (e.pointerType === "mouse") sigteFra(e);
 });
-for (const n of ["pointerup", "pointercancel"]) {
-  $("verden").addEventListener(n, () => {
-    dragId = null;
+for (const n of ["pointerup", "pointercancel", "lostpointercapture"]) {
+  $("verden").addEventListener(n, (e) => {
+    if (e.pointerId === dragId) dragId = null;
   });
 }
 function sigteFra(e) {
@@ -956,20 +1297,41 @@ $("verden").addEventListener("wheel", (e) => {
 }, { passive: false });
 $("verden").addEventListener("contextmenu", (e) => e.preventDefault());
 window.addEventListener("keydown", (e) => {
+  if (paused && e.key === "Tab") {
+    const knapper = [...$("dialog").querySelectorAll("button:not(:disabled),input,select,a[href]")];
+    if (knapper.length) {
+      const først = knapper[0], sidst = knapper[knapper.length - 1];
+      if (!knapper.includes(document.activeElement)) {
+        e.preventDefault();
+        (e.shiftKey ? sidst : først).focus();
+      } else if (e.shiftKey && document.activeElement === først) {
+        e.preventDefault();
+        sidst.focus();
+      } else if (!e.shiftKey && document.activeElement === sidst) {
+        e.preventDefault();
+        først.focus();
+      }
+    }
+    return;
+  }
   if (!kører) return;
-  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)) e.preventDefault();
   if (e.key === "Escape") {
     if (paused) lukDialog();
     else pausemenu();
     return;
   }
   if (paused) return;
-  taster.add(e.key.toLowerCase());
+  // Dialogens felter beholder deres almindelige Space/pile; kun selve spillet optager bevægelsestasterne.
+  if (e.target.closest("input,select")) return;
+  if ([" ", "Enter"].includes(e.key) && e.target.closest("button,a") && e.target.id !== "angrib") return;
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)) e.preventDefault();
+  if (!trykTast(taster, e.key.toLowerCase(), e.repeat)) return;
   if (e.repeat) return;
   if (e.key === " ") angrib();
   if (e.key.toLowerCase() === "e") brug();
   if (e.key.toLowerCase() === "q") eliksir();
   if (e.key.toLowerCase() === "i") inventar();
+  if (e.key.toLowerCase() === "m") rejsekort();
   if (["1", "2", "3"].includes(e.key)) skiftVåben(["sværd", "bue", "magi"][Number(e.key) - 1]);
 });
 window.addEventListener("keyup", (e) => taster.delete(e.key.toLowerCase()));
@@ -995,11 +1357,31 @@ $("angrib").onclick = () => {
   sigte = null;
   angrib();
 };
+$("angrib").addEventListener("pointerdown", (e) => {
+  if (paused || !kører || angrebHold !== null) return;
+  e.preventDefault();
+  sigte = null;
+  angrebHold = e.pointerId;
+  $("angrib").setPointerCapture(e.pointerId);
+  angrib();
+});
+for (const n of ["pointerup", "pointercancel", "lostpointercapture"]) {
+  $("angrib").addEventListener(n, (e) => {
+    if (angrebHold === e.pointerId) angrebHold = null;
+  });
+}
 $("interager").onclick = brug;
 $("eliksir").onclick = eliksir;
 $("pause").onclick = pausemenu;
 $("hjælp").onclick = hjælp;
 $("taske").onclick = inventar;
+$("åbnkort").onclick = rejsekort;
+$("indstillinger").onclick = indstillinger;
+$("skjulvejledning").onclick = () => {
+  s.vejledning = 4;
+  $("vejledning").classList.add("skjult");
+  gem();
+};
 $("lyd").onclick = () => {
   s.lyd = !s.lyd;
   hud();
@@ -1014,8 +1396,8 @@ $("start").onclick = () => {
   }
 };
 $("fortsæt").onclick = () => {
-  s = structuredClone(gemt);
-  skiftVåben(s.våben);
+  s = kopiRejse(gemt);
+  skiftVåben(s.våben, false);
   start();
 };
 
@@ -1036,8 +1418,10 @@ try {
   helt = kopi(modeller, "eventyrer");
   ven = kopi(modeller, "følgesvend");
   scene.add(helt, ven);
-  skiftVåben("sværd");
-  $("indlæser").textContent = "Øen er klar · PC, tablet og telefon";
+  skiftVåben("sværd", false);
+  $("indlæser").textContent = gemt
+    ? `Din gemte rejse · niveau ${niveau(gemt)} · ${[0, 1, 2].filter((i) => gemt.opgaver["boss" + i]).length} af 3 segl`
+    : "Øen er klar · PC, tablet og telefon";
   $("start").disabled = false;
   $("fortsæt").disabled = false;
   if (gemt) $("fortsæt").classList.remove("skjult");
@@ -1045,4 +1429,5 @@ try {
 } catch (err) {
   console.error(err);
   $("indlæser").textContent = "Øens modeller kunne ikke hentes. Genindlæs siden, når forbindelsen er klar.";
+  window.dispatchEvent(new Event("spil-3d-fejl"));
 }

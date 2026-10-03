@@ -12,7 +12,7 @@
   </head>
   <body>
     <main id="spil" aria-label="Skrotstorm">
-      <canvas id="verden" aria-label="En 3D-ørken med din skrotbil"></canvas>
+      <canvas id="verden" tabindex="-1" aria-label="En 3D-ørken med din skrotbil"></canvas>
       <div class="vignette"></div>
       <header id="hud" class="skjult">
         <div class="brand"><span class="brand-ikon">S</span><span>SKROTSTORM<small id="område">DEN BLÅ GARAGE</small></span></div>
@@ -25,8 +25,7 @@
         </div>
         <div class="ressourcer"><span>⚙ <b id="skrot">0</b> skrot</span><span id="mission-status"></span></div>
       </header>
-      <aside id="kort-panel"
-        class="skjult"><canvas id="kort" width="220" height="220" aria-label="Kort over veje og næste mål"></canvas><span>DALENS VEJE · N ↑</span></aside>
+      <button id="kort-panel" class="skjult" aria-label="Åbn stort kort og se din opgave"><canvas id="kort" width="220" height="220" aria-hidden="true"></canvas><span>KORT · N ↑</span></button>
       <div id="fart-panel"
         class="skjult"><b id="fart">0</b><span>km/t</span><div class="nitro-måler"><i id="nitro-fyld"></i></div><small>NITRO</small></div>
       <div id="besked" role="status" aria-live="polite"></div>
@@ -35,6 +34,7 @@
       <div id="touch" class="skjult" aria-label="Touchstyring">
         <div
           class="styr"><button data-styr="venstre" aria-label="Drej til venstre">◀</button><button data-styr="højre" aria-label="Drej til højre">▶</button></div>
+        <button id="touch-rat" class="skjult" aria-label="Træk mod venstre eller højre for at styre"><span id="rat-skive">⊕</span><small>STYR</small></button>
         <div
           class="pedaler"><button data-styr="bak" aria-label="Bak">BAK</button><button data-styr="brems" aria-label="Brems">■</button><button data-styr="nitro" aria-label="Nitro boost">⚡</button><button data-styr="gas" aria-label="Kør frem">GAS ▲</button></div>
       </div>
@@ -51,9 +51,9 @@
             class="menu-links"><button id="start-hjælp">Sådan kører du</button><a href="../../index.html">← Til spilkassen</a></div>
         </section>
       </div>
-      <div id="dialog" class="lag skjult" role="dialog" aria-modal="true"></div>
+      <div id="dialog" class="lag skjult" role="dialog" aria-modal="true" aria-labelledby="dialog-titel"></div>
       <div id="lås" class="lag skjult"></div>
     </main>
-    <script type="module" src="spil.js"></script>
+    <script type="module" src="../3d-faelles/start.js" data-spil="./spil.js"></script>
   </body>
 </html>

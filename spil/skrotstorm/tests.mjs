@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { egenskaber, kør, nyBil } from "./fysik.js";
-import { afslutMission, nyFremgang, opgrader, valider } from "./fremgang.js";
+import { afslutMission, nyFremgang, opgrader, valider, gem } from "./fremgang.js";
+import { planlægRute, redningspunkt, rutemarkører, næsteVejpunkt } from './gps.js';
+import { validerValg, STANDARD, gemValg, hentValg } from './indstillinger.js';
 import { DELE, gulv, KOLLISIONER, MISSIONER, terrænHøjde } from "./verden-data.js";
 import { næsteMål, opdaterOpgave } from "./missioner.js";
 
@@ -141,7 +143,7 @@ opdaterOpgave(rejse, på(næsteMål(rejse)), løbende, 1);
 assert.equal(rejse.mission, 4);
 opdaterOpgave(rejse, på(næsteMål(rejse)), løbende, 1);
 assert.equal(rejse.mission, 4, "Bare at besøge rampen er ikke et stunt");
-opdaterOpgave(rejse, { ...på(næsteMål(rejse)), påJord: false, fart: 25 }, løbende, 1);
+opdaterOpgave(rejse, { ...på(næsteMål(rejse)), x: 95, y: 7.4, vinkel: Math.PI / 2, påJord: false, fart: 25 }, løbende, 1);
 opdaterOpgave(rejse, { ...på(næsteMål(rejse)), senesteHop: .8 }, løbende, 1);
 assert.equal(rejse.mission, 5);
 opdaterOpgave(rejse, på(næsteMål(rejse)), løbende, 1);
@@ -154,3 +156,232 @@ assert.equal(rejse.sejre, 1);
 console.log(
   "Skrotstorm: validering, økonomi, motor/hjul/nitro, kollision, underbro/brodæk/fysisk opkørsel, bjergvej, hop/landing og alle 8 missioners målregler bestået.",
 );
+
+// GPS vælger opkørsel og bevarer niveauet, både ved rutevalg og redning.
+const underbroGps = { ...nyBil(), x: 100, z: 130, y: .8 };
+const overbroGps = { ...underbroGps, y: 16.55 };
+const top = { x: 330, y: 72, z: 45 };
+const lavRute = planlægRute(underbroGps, top), højRute = planlægRute(overbroGps, top);
+assert.equal(lavRute.niveau, 0);
+assert.ok(lavRute.punkter.slice(0, 3).every(p => p.y < 3), 'GPS under broen skal først finde en lav vej');
+assert.ok(lavRute.punkter.some(p => p.x === -30 && p.z === 75), 'Bjergmålet skal nås gennem broens fysiske opkørsel');
+assert.ok(Math.abs(højRute.niveau - 15.75) < .01);
+assert.ok(højRute.længde < lavRute.længde);
+assert.equal(redningspunkt(underbroGps).y, 0);
+assert.ok(Math.abs(redningspunkt(overbroGps).y - 15.75) < .01);
+assert.ok(rutemarkører(lavRute).length <= 35);
+assert.ok(rutemarkører(højRute).every(p => Number.isFinite(p.x + p.y + p.z)));
+assert.ok(Number.isFinite(næsteVejpunkt(lavRute, underbroGps).vinkel));
+for (const mission of MISSIONER) {
+  const r = planlægRute(nyBil(), mission.mål);
+  assert.ok(Number.isFinite(r.længde) && r.længde > 0, mission.navn);
+  assert.ok(r.punkter.length >= 2, mission.navn);
+}
+
+// Valg og bilposition er valgfrie tillæg til v1. Gamle skrotbiler mister intet.
+const gammel = { ...nyFremgang(), mission: 3, skrot: 175, motor: 2, hjul: 1, bil: 'buggy' };
+assert.deepEqual(valider(gammel), gammel);
+const lavGem = valider({ ...gammel, position: { x: 100, y: .8, z: 130, vinkel: 1 } });
+assert.ok(lavGem.position.y < 1);
+const højGem = valider({ ...gammel, position: { x: 100, y: 16.55, z: 130, vinkel: 1 } });
+assert.ok(højGem.position.y > 16);
+const dårligPosition = valider({ ...gammel, position: { x: NaN, y: 1, z: 1, vinkel: 0 } });
+assert.equal(dårligPosition.position, undefined); assert.equal(dårligPosition.skrot, 175);
+assert.deepEqual(validerValg({ kamera: 'forkert', grafik: 'ultra', styring: 'teleport', følsomhed: Infinity, lydstyrke: -1 }), { ...STANDARD });
+assert.equal(validerValg({ kamera: 'udsigt', styring: 'rat', lydstyrke: 0, gps: false }).lydstyrke, 0);
+
+// Lageret skriver kun ved ændringer, og fejl rapporteres uden at stoppe spillet.
+const tidligereLager = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+const lager = new Map(); let skrivninger = 0;
+Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: {
+  getItem: n => lager.get(n) || null,
+  setItem: (n, v) => { lager.set(n, v); skrivninger++; },
+} });
+assert.equal(gem(gammel), true); assert.equal(gem(gammel), true);
+assert.equal(skrivninger, 1);
+gemValg({ ...STANDARD }); gemValg({ ...STANDARD }); assert.equal(skrivninger, 2);
+assert.deepEqual(hentValg(), { ...STANDARD });
+Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { getItem() { throw Error('lukket'); }, setItem() { throw Error('lukket'); } } });
+assert.equal(gem(gammel), false); assert.deepEqual(hentValg(), { ...STANDARD });
+if (tidligereLager) Object.defineProperty(globalThis, 'localStorage', tidligereLager); else delete globalThis.localStorage;
+console.log('Skrotstorm: GPS/niveausikker redning, alle 8 mål, v1-migrering, kameravalg/touch/grafik, ændringsgemning og lagerfejl bestået.');
+
+
+// En testfører følger hele GPS-kampagnen med gas/retning; alle x/y/z flyttes af fysikken.
+const køretur = nyBil(), køreFremgang = nyFremgang(), køreLøb = { hopKlar: false };
+function kørGpsTil(mål) {
+  const r = planlægRute(køretur, mål);
+  for (const p of r.punkter.slice(1)) {
+    let trin = 0;
+    while (Math.hypot(køretur.x - p.x, køretur.z - p.z) > 3 && trin++ < 6000) {
+      køretur.vinkel = Math.atan2(p.x - køretur.x, p.z - køretur.z);
+      kør(køretur, { gas: køretur.fart < 12 ? 1 : 0, drej: 0, bremse: false, nitro: false }, køreFremgang, 1 / 60);
+      opdaterOpgave(køreFremgang, køretur, køreLøb, 1 / 60);
+    }
+    assert.ok(trin < 6000, 'GPS-vejpunktet er kørbart: ' + JSON.stringify(p));
+  }
+}
+for (let mission = 0; mission < 8; mission++) {
+  let forsøg = 0;
+  while (køreFremgang.mission === mission && forsøg++ < 10) {
+    if (mission === 4) {
+      kørGpsTil({ x: 28, y: 0, z: -29 });
+      køretur.vinkel = Math.PI / 2;
+      for (let i = 0; i < 420 && køreFremgang.mission === 4; i++) {
+        kør(køretur, { gas: 1, drej: 0, bremse: false, nitro: true }, køreFremgang, 1 / 60);
+        opdaterOpgave(køreFremgang, køretur, køreLøb, 1 / 60);
+      }
+    } else kørGpsTil(næsteMål(køreFremgang));
+  }
+  assert.equal(køreFremgang.mission, mission + 1, 'Den fysiske GPS-kørsel klarer opgave ' + (mission + 1));
+}
+assert.equal(køreFremgang.skrot, 860);
+assert.equal(køreFremgang.sejre, 1);
+console.log('Skrotstorm: alle 8 GPS-missioner er gennemkørt fysisk inklusive ræs, bro, bjerg, hop og slutlevering.');
+
+
+import * as THREE from '../3d-faelles/three.module.js';
+import { skabLiv } from './liv.js';
+
+// Depotbilen bevæger sig kun under spil, venter på spilleren og skubber blødt fri.
+const depotScene = new THREE.Scene(), depotLiv = skabLiv(THREE, depotScene, new THREE.Group());
+const depotModel = depotScene.children[0], depotStart = depotModel.position.clone();
+const fjernBil = { ...nyBil(), x: 400, z: 350 };
+depotLiv.opdater(2, fjernBil, false);
+assert.ok(depotModel.position.distanceTo(depotStart) < .001, 'Pause stopper depotbilen');
+depotLiv.opdater(2, fjernBil, true);
+depotLiv.opdater(0, fjernBil, true);
+assert.ok(depotModel.position.distanceTo(depotStart) > 10, 'Industribyens depotbil kører faktisk');
+const nærDepot = { ...nyBil(), x: depotModel.position.x + 5, y: depotModel.position.y + .8, z: depotModel.position.z };
+const førVent = depotModel.position.clone();
+depotLiv.opdater(2, nærDepot, true); depotLiv.opdater(0, nærDepot, true);
+assert.equal(depotLiv.venter, true);
+assert.ok(depotModel.position.distanceTo(førVent) < .001, 'Depotbilen giver plads til spilleren');
+const kontaktDepot = { ...nærDepot, x: depotModel.position.x, z: depotModel.position.z, fart: 10 };
+depotLiv.opdater(0, kontaktDepot, true);
+assert.ok(Math.hypot(kontaktDepot.x - depotModel.position.x, kontaktDepot.z - depotModel.position.z) >= 3.3);
+assert.ok(kontaktDepot.fart < 10);
+console.log('Skrotstorm: depotbilens pause, bevægelse, venten og sikre kontakt bestået.');
+
+
+// Flere omgange i depotbyen må hverken hoppe visuelt ved knuder eller ramme bygningszoner.
+let sidsteDepot = depotModel.position.clone();
+for (let i = 0; i < 24000; i++) {
+  depotLiv.opdater(1 / 60, fjernBil, true);
+  const p = depotModel.position;
+  assert.ok(Number.isFinite(p.x + p.y + p.z + depotModel.rotation.y));
+  assert.ok(p.distanceTo(sidsteDepot) < .7, 'Depotbilens vejknuder skal være bløde');
+  for (const k of KOLLISIONER) if (k.y === 0) assert.ok(Math.hypot(p.x - k.x, p.z - k.z) > k.r + 2, 'Depotbilen kører uden om bygninger');
+  sidsteDepot.copy(p);
+}
+console.log('Skrotstorm: 400 sekunders depotkørsel er uden ugyldige tal, bygningskontakt eller spring ved vejknuder.');
+
+
+import { styring } from './styring.js';
+
+// Browserens inputflade simuleres med de samme pointer-/tastaturhændelser som i Safari.
+const tidligereVindue = Object.getOwnPropertyDescriptor(globalThis, 'window');
+const tidligereDokument = Object.getOwnPropertyDescriptor(globalThis, 'document');
+function inputFlade(navn) {
+  const hændelser = new Map(), klasser = new Set();
+  return {
+    dataset: { styr: navn }, style: {},
+    classList: { add: n => klasser.add(n), remove: n => klasser.delete(n) },
+    addEventListener(type, fn) { if (!hændelser.has(type)) hændelser.set(type, []); hændelser.get(type).push(fn); },
+    setPointerCapture() {}, focus() {},
+    getBoundingClientRect: () => ({ left: 0, width: 126 }),
+    send(type, data = {}) { for (const fn of hændelser.get(type) || []) fn({ preventDefault() {}, ...data }); },
+  };
+}
+const tastaturFlade = inputFlade(), gasFlade = inputFlade('gas'), pilFlade = inputFlade('venstre');
+const ratFlade = inputFlade(), ratSkive = inputFlade();
+Object.defineProperty(globalThis, 'window', { configurable: true, value: tastaturFlade });
+Object.defineProperty(globalThis, 'document', { configurable: true, value: {
+  querySelectorAll: () => [gasFlade, pilFlade],
+  getElementById: id => id === 'touch-rat' ? ratFlade : ratSkive,
+  activeElement: { closest: () => null },
+} });
+const prøveStyring = styring(); prøveStyring.sætAktiv(true);
+gasFlade.send('pointerdown', { pointerId: 1 }); pilFlade.send('pointerdown', { pointerId: 2 });
+assert.equal(prøveStyring.hent().gas, 1); assert.equal(prøveStyring.hent().drej, -1);
+pilFlade.send('pointerup', { pointerId: 2 });
+assert.equal(prøveStyring.hent().gas, 1); assert.equal(prøveStyring.hent().drej, 0);
+gasFlade.send('pointercancel', { pointerId: 1 }); assert.equal(prøveStyring.hent().gas, 0);
+ratFlade.send('pointerdown', { pointerId: 3, clientX: 63 }); ratFlade.send('pointermove', { pointerId: 3, clientX: 100 });
+gasFlade.send('pointerdown', { pointerId: 4 });
+assert.ok(prøveStyring.hent().drej > .7); assert.equal(prøveStyring.hent().gas, 1);
+prøveStyring.sætAktiv(false);
+assert.equal(prøveStyring.hent().gas, 0); assert.equal(prøveStyring.hent().drej, 0);
+ratFlade.send('pointermove', { pointerId: 3, clientX: 0 });
+tastaturFlade.send('keydown', { key: 'W', repeat: true });
+prøveStyring.sætAktiv(true);
+tastaturFlade.send('keydown', { key: 'W', repeat: true });
+assert.equal(prøveStyring.hent().gas, 0, 'En tast holdt under pause må ikke starte bilen');
+tastaturFlade.send('keydown', { key: 'W', repeat: false }); assert.equal(prøveStyring.hent().gas, 1);
+tastaturFlade.send('keyup', { key: 'W' }); assert.equal(prøveStyring.hent().gas, 0);
+tastaturFlade.send('keydown', { key: 'Shift', repeat: false }); assert.equal(prøveStyring.hent().nitro, true);
+tastaturFlade.send('blur'); assert.equal(prøveStyring.hent().nitro, false);
+document.activeElement.closest = () => ({});
+tastaturFlade.send('keydown', { key: 'Tab', repeat: false });
+tastaturFlade.send('keydown', { key: ' ', repeat: false });
+assert.equal(prøveStyring.hent().bremse, false, 'Space skal aktivere en Tab-fokuseret UI-knap');
+tastaturFlade.send('pointerdown');
+tastaturFlade.send('keydown', { key: ' ', repeat: false });
+assert.equal(prøveStyring.hent().bremse, true, 'Space er håndbremse efter normal mouse/touch-kørsel');
+tastaturFlade.send('keyup', { key: ' ' });
+if (tidligereVindue) Object.defineProperty(globalThis, 'window', tidligereVindue); else delete globalThis.window;
+if (tidligereDokument) Object.defineProperty(globalThis, 'document', tidligereDokument); else delete globalThis.document;
+console.log('Skrotstorm: multitouch/rat, pointercancel, pause-rydning, holdte taster, Shift og blur bestået.');
+
+
+// Motoren prøves isoleret på et lige vejstykke. Hastighedstilstanden bevares; positionen holdes i samme underlag.
+for (const model of ['rotten', 'buggy', 'truck']) {
+  for (let motor = 0; motor <= 3; motor++) {
+    const f = { ...nyFremgang(), bil: model, motor }, b = { ...nyBil(), x: -340, z: 30, vinkel: Math.PI };
+    for (let i = 0; i < 2700; i++) {
+      b.x = -340; b.z = 30;
+      kør(b, { gas: 1, drej: 0, bremse: false, nitro: false }, f, 1 / 60);
+    }
+    assert.ok(Math.abs(b.fart - egenskaber(f).topfart) < .05, model + ' motor' + motor + ': garagens fart er opnåelig');
+  }
+}
+console.log('Skrotstorm: alle tre biler når garagens farttal på hvert af de fire motorniveauer.');
+
+
+// Forkert retning og et for kort hop forklares én gang efter landing og giver ingen belønning.
+const stuntFejl = { ...nyFremgang(), mission: 4 }, stuntTilstand = { hopKlar: false };
+const stuntLuft = { ...nyBil(), x: 95, z: -29, y: 7.4, påJord: false, fart: 25, vinkel: -Math.PI / 2 };
+opdaterOpgave(stuntFejl, stuntLuft, stuntTilstand, 1 / 60);
+const stuntLand = { ...stuntLuft, påJord: true, y: .8, senesteHop: .8 };
+assert.equal(opdaterOpgave(stuntFejl, stuntLand, stuntTilstand, 1 / 60)[0].type, 'hop');
+assert.equal(stuntFejl.mission, 4);
+assert.equal(opdaterOpgave(stuntFejl, stuntLand, stuntTilstand, 1 / 60).length, 0);
+stuntLuft.vinkel = Math.PI / 2;
+opdaterOpgave(stuntFejl, stuntLuft, stuntTilstand, 1 / 60);
+stuntLand.senesteHop = .35;
+assert.equal(opdaterOpgave(stuntFejl, stuntLand, stuntTilstand, 1 / 60)[0].type, 'hop');
+assert.equal(stuntFejl.skrot, 0);
+assert.equal(stuntTilstand.rampeTilgang, false);
+
+// Hver karrosserivariant kan gennemføre samme GPS-kampagne, også med alle opgraderinger.
+for (const [model, forbedring] of [['buggy',0],['truck',0],['rotten',3],['buggy',3],['truck',3]]) {
+  Object.assign(køretur, nyBil());
+  Object.assign(køreFremgang, nyFremgang(), { bil: model, motor: forbedring, hjul: forbedring, nitro: forbedring });
+  Object.assign(køreLøb, { hopKlar: false, rampeForsøg: false, rampeTilgang: false });
+  for (let mission = 0; mission < 8; mission++) {
+    let forsøg = 0;
+    while (køreFremgang.mission === mission && forsøg++ < 10) {
+      if (mission === 4) {
+        kørGpsTil({ x: 28, y: 0, z: -29 });
+        køretur.vinkel = Math.PI / 2;
+        for (let i = 0; i < 420 && køreFremgang.mission === 4; i++) {
+          kør(køretur, { gas: 1, drej: 0, bremse: false, nitro: true }, køreFremgang, 1 / 60);
+          opdaterOpgave(køreFremgang, køretur, køreLøb, 1 / 60);
+        }
+      } else kørGpsTil(næsteMål(køreFremgang));
+    }
+    assert.equal(køreFremgang.mission, mission + 1, model + ' niveau' + forbedring + ' kan klare opgave' + (mission + 1));
+  }
+  assert.equal(køreFremgang.skrot, 860);
+}
+console.log('Skrotstorm: stunt-råd gives én gang; alle tre biler klarer otte fysiske GPS-missioner før og efter fuld opgradering.');

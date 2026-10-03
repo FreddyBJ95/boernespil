@@ -122,6 +122,7 @@
       <div class="voksen-spil" id="voksenSpil" hidden>
         <img class="voksen-ven" src="billeder/spilkassen/kasseven-taenker.webp" alt="" width="389" height="420">
         <h2>Voksenspil</h2>
+        <p class="voksen-intro">Tre verdener at udforske på PC, tablet eller telefon. Gemte rejser ligger på den enhed, du spiller på.</p>
         <div class="voksen-liste">
         <a class="voksen-kort" href="spil/sigtekorn/">
           <img src="billeder/sigtekorn.jpg" alt="" width="800" height="450">
@@ -129,15 +130,15 @@
         </a>
         <a class="voksen-kort" href="spil/det-sidste-lys/">
           <img src="spil/det-sidste-lys/forside.jpg" alt="" width="800" height="450" loading="lazy">
-          <span class="voksen-tekst"><b>✦ Det Sidste Lys</b><span>Et stille mysterium på en ø. Udforsk landsbyen, find de skjulte spor, og tænd fyrtårnets lys.</span></span>
+          <span class="voksen-tekst"><b>✦ Det Sidste Lys</b><span>Et stille mysterium på en ø. Udforsk landsbyen, find de skjulte spor, og tænd fyrtårnets lys.</span><span class="voksen-fakta"><small>PC · tablet · telefon</small><small>8 kapitler · gemt rejse</small></span></span>
         </a>
         <a class="voksen-kort" href="spil/skrotstorm/">
           <img src="spil/skrotstorm/forside.jpg" alt="" width="800" height="450" loading="lazy">
-          <span class="voksen-tekst"><b>⚙ Skrotstorm</b><span>Byg din skrotbil, opgrader garagen, og tag ud på løb, leveringer og stunts i en stor ørkenverden.</span></span>
+          <span class="voksen-tekst"><b>⚙ Skrotstorm</b><span>Byg din skrotbil, opgrader garagen, og tag ud på løb, leveringer og stunts i en stor ørkenverden.</span><span class="voksen-fakta"><small>PC · tablet · telefon</small><small>8 opgaver · fri kørsel</small></span></span>
         </a>
         <a class="voksen-kort" href="spil/krystaljaegerne/">
           <img src="spil/krystaljaegerne/forside.jpg" alt="" width="800" height="450" loading="lazy">
-          <span class="voksen-tekst"><b>◇ Krystaljægerne</b><span>Et fantasyeventyr med magi, skatte og en lille følgesvend. Udforsk grotter og væk verdens krystaller.</span></span>
+          <span class="voksen-tekst"><b>◇ Krystaljægerne</b><span>Et fantasyeventyr med magi, skatte og en lille følgesvend. Udforsk grotter og væk verdens krystaller.</span><span class="voksen-fakta"><small>PC · tablet · telefon</small><small>8 opgaver · nye grotter</small></span></span>
         </a>
         </div>
       </div>
@@ -228,16 +229,40 @@
   <script type="module">
     import { lås } from "./spil/laas.js";
     const rum = document.getElementById("voksenrum"), låsRod = document.getElementById("voksenLås"), spil = document.getElementById("voksenSpil");
-    const skjul = () => { rum.hidden = true; låsRod.classList.add("skjult"); };
+    const åbnKnap = document.getElementById("voksenKnap"), lukKnap = document.getElementById("voksenLuk");
+    const baggrund = [...document.body.children].filter(el => el !== rum && !["SCRIPT", "STYLE"].includes(el.tagName));
+    let tidligereOverflow = "";
+    // Hold tastaturfokus i voksenrummet og giv det tilbage, når vinduet lukkes.
+    const skjul = () => {
+      rum.hidden = true; låsRod.classList.add("skjult");
+      baggrund.forEach(el => { el.inert = false; });
+      document.body.style.overflow = tidligereOverflow;
+      åbnKnap.focus({ preventScroll: true });
+    };
     // Luk: står låsen åben, lukkes den via sin egen tilbage-knap (så den holder op med at lytte på tastaturet)
     const luk = () => { const tilbage = !låsRod.classList.contains("skjult") && låsRod.querySelector(".lås-hjem"); if (tilbage) tilbage.click(); else skjul(); };
-    document.getElementById("voksenKnap").addEventListener("click", async () => {
+    åbnKnap.addEventListener("click", async () => {
+      if (!rum.hidden) return;
+      tidligereOverflow = document.body.style.overflow;
       rum.hidden = false; spil.hidden = true;
+      document.body.style.overflow = "hidden";
+      baggrund.forEach(el => { el.inert = true; });
+      lukKnap.focus({ preventScroll: true });
       await lås(låsRod, skjul);
+      if (rum.hidden) return;
       spil.hidden = false;
+      spil.querySelector("a").focus({ preventScroll: true });
     });
-    document.getElementById("voksenLuk").addEventListener("click", luk);
+    lukKnap.addEventListener("click", luk);
     rum.addEventListener("click", e => { if (e.target === rum) luk(); });
+    rum.addEventListener("keydown", e => {
+      if (e.key !== "Tab") return;
+      const knapper = [...rum.querySelectorAll("button:not(:disabled), a[href]")].filter(el => el.getClientRects().length);
+      const første = knapper[0], sidste = knapper.at(-1);
+      if (!første) return;
+      if (e.shiftKey && document.activeElement === første) { e.preventDefault(); sidste.focus(); }
+      else if (!e.shiftKey && document.activeElement === sidste) { e.preventDefault(); første.focus(); }
+    });
     addEventListener("keydown", e => { if (e.key === "Escape" && !rum.hidden) luk(); });
   </script>
 
