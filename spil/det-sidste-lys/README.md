@@ -57,3 +57,5 @@ node --check spil/det-sidste-lys/lyd.js
 Tests går gennem det fulde forløb og kontrollerer kapitelrækkefølge, rav uden dobbelttælling, natkrav, fyrretning, korrekte/ukorrekte gådesvar, gemning/fortsættelse, ingen delte fremgangsarrays, beskadigede eller fremmede gemninger, uendelige koordinater og afvist browserlager.
 
 Navigationstesten gennemløber de 5.595 forbundne gangfelter fra kajen og bekræfter, at alle seks steder og tre ravtræer kan nås, samt at værkstedsdøren faktisk kan passeres. Havnebassinet er sænket under vandet; ved start står kameraet 1,68 m over den synlige Blender-trækaj (Y=2,05), og nærmeste kystklippe er over 15 m væk.
+
+Samme test kontrollerer alle 260 stjerners koordinater, deres radius og en faktisk Three.js-beregning af bounding sphere. Højdesamplingen holder sig strengt inden for enhedskuglen, så stjernebufferen er uden NaN.

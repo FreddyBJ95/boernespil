@@ -22,6 +22,16 @@ const HUSE = [
   [38, -44, 4.9, 4.9],
 ];
 
+// Stjernerne holder sig inden for enhedskuglens højde, så alle koordinater er endelige.
+export function stjernePositioner(antal = 260) {
+  const punkter = [];
+  for (let i = 0; i < antal; i++) {
+    const a = i * 2.399, y = .12 + (i % 47) / 55, r = Math.sqrt(1 - y * y);
+    punkter.push(Math.cos(a) * r * 480, y * 480, Math.sin(a) * r * 480);
+  }
+  return punkter;
+}
+
 // Højde og kollisionsgrænser beskytter spilleren mod bygninger og det dybe hav.
 export function gangHøjde(x, z) {
   if (x > 2 && x < 12 && z > 18.5 && z < 27.5) return terrænHøjde(7, 23) + .26;
@@ -142,11 +152,7 @@ export class ØVerden {
         `varying vec3 p;uniform float nat;void main(){float h=clamp(normalize(p).y,0.,1.);vec3 dag=mix(vec3(.64,.64,.53),vec3(.19,.35,.46),pow(h,.6));vec3 aften=mix(vec3(.15,.24,.29),vec3(.025,.055,.11),pow(h,.45));gl_FragColor=vec4(mix(dag,aften,nat),1.);}`,
     });
     this.scene.add(new THREE.Mesh(geometri, this.himmelMateriale));
-    const stjernePos = [];
-    for (let i = 0; i < 260; i++) {
-      const a = i * 2.399, y = .15 + (i % 47) / 53, r = Math.sqrt(1 - y * y);
-      stjernePos.push(Math.cos(a) * r * 480, y * 480, Math.sin(a) * r * 480);
-    }
+    const stjernePos = stjernePositioner();
     const data = new THREE.BufferGeometry();
     data.setAttribute("position", new THREE.Float32BufferAttribute(stjernePos, 3));
     this.stjerner = new THREE.Points(
