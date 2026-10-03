@@ -1,13 +1,16 @@
 // ===== Botterne: soldater, der går rundt i byen, ser og hører fjenderne og skyder med samme våben som dig =====
 // En bot ser kun det, den har frit udsyn til (inden for 150°), og hører skud og løbende fodtrin.
+// Uden fjender i syne går den hen til en "post" (et godt sted at holde øje fra) og holder den et stykke tid;
+// holdkammeraterne fordeler sig, så hele byen bliver brugt. Bliver den hårdt ramt, søger den dækning.
 // Den reagerer efter en kort tid, sigter med en fejl, der bliver mindre, jo længere den sigter,
 // stopper op for at skyde præcist (ligesom man selv skal) og skyder i salver. De svære botter styrer rekylen.
 
 import * as THREE from "./three.js";
 import { nyAktør, bevæg, øjeHøjde, KROP, U } from "./bevaegelse.js";
 import { nytVåben, affyr, efterSkud, opdaterVåben, skudRetning, genlad, VÅBEN } from "./vaaben.js";
-import { findVej, nærmesteKnude, STEDER, START } from "./bane.js";
+import { findVej, nærmesteKnude, POSTER, START } from "./bane.js";
 import { ramKasse } from "./verden.js";
+import { nyRagdoll } from "./ragdoll.js";
 import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
 import { clone as klonSkelet } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/utils/SkeletonUtils.js";
 
@@ -105,6 +108,12 @@ export class Bot {
     this.spawn();
   }
   spawn() {
+    if (this.ragdoll) {                                                // den gamle krop ligger der stadig som lig — tag en ny
+      const piler = this.model.children.filter(o => o.isSprite);
+      this.model = byggSoldatGLB(this.hold); this.s.scene.add(this.model);
+      for (const p of piler) { this.model.add(p); p.visible = true; }
+      this.ragdoll = null;
+    }
     const [x, z] = START[this.hold][Math.floor(Math.random() * START[this.hold].length)];
     this.a = nyAktør(x + (Math.random() - 0.5) * 2, 0.01, z + (Math.random() - 0.5) * 2, this.hold === "ræve" ? 0 : Math.PI);
     this.liv = 100; this.panser = 100; this.død = false; this.dødTid = 0;
@@ -114,12 +123,18 @@ export class Bot {
     this.mål = null; this.setFørst = 0; this.sidstSet = null; this.sidstSetTid = -99; this.vej = []; this.vejMål = null;
     this.tænkTid = Math.random() * 0.12; this.salve = 0; this.salvePause = 0; this.fejlYaw = 0; this.fejlPitch = 0;
     this.fastTid = 0; this.fastPos = this.a.pos.clone(); this.lytte = null; this.strafe = 0; this.strafeTid = 0; this.dukker = false;
+    this.post = null; this.holder = false; this.holdTil = 0; this.holdDuk = false; this.flygt = null; this.sidstHørt = -9; this.fase0 = Math.random() * 6;
     this.model.visible = true; this.model.rotation.set(0, 0, 0); this.fald = 0; this.fase = 0; this.trinTid = 0;
   }
   // En lyd i nærheden (et skud eller fodtrin) — er der ingen fjende i syne, går botten hen og kigger
+  // (højst hvert andet sekund, ikke for langt væk — og ikke altid: en bot, der holder en post, bliver ofte, hvor den er)
   hør(pos, fra) {
-    if (this.død || this.mål || !fra || fra.hold === this.hold) return;
-    this.lytte = { x: pos.x, y: pos.y, z: pos.z, tid: this.s.nu() };
+    if (this.død || this.mål || this.flygt || !fra || fra.hold === this.hold) return;
+    const nu = this.s.nu(), d = Math.hypot(pos.x - this.a.pos.x, pos.z - this.a.pos.z);
+    if (nu - this.sidstHørt < 2 || d > 26) return;
+    this.sidstHørt = nu;
+    if (Math.random() > (this.holder ? 0.35 : 0.6) * (1 - d / 45)) return;
+    this.lytte = { x: pos.x, y: pos.y, z: pos.z, tid: nu };
   }
   // Kan botten se fjenden? (fri sigtelinje til hovedet eller brystet)
   kanSe(f, nu) {
@@ -145,7 +160,16 @@ export class Bot {
     if ((this.tænkTid -= dt) <= 0) { this.tænkTid = 0.1; this.tænk(nu); }
     let frem = 0, side = 0, duk = false, hop = false, gå = false;
     const sv = this.sv;
-    if (this.mål) {
+    if (this.flygt && (nu > this.flygt.til || (!this.vej.length && this.flygt.fremme && nu > this.flygt.fremme + 1.2))) {   // færdig med at gemme sig: kig efter fjenden igen
+      this.sidstSet = this.flygt.fra; this.sidstSetTid = nu; this.flygt = null; this.vej = []; this.vejMål = null;
+    }
+    if (this.flygt) {
+      // ---- søg dækning: løb om bag noget, genlad og vent lidt ----
+      const p = this.følgVej();
+      if (p) [frem, hop] = this.gåMod(p, dt);
+      else { if (!this.flygt.fremme) this.flygt.fremme = nu; duk = true; }
+      if (this.våben.skud < this.våben.d.magasin) genlad(this.våben);
+    } else if (this.mål) {
       // ---- kamp: sigt og skyd ----
       const f = this.mål, øje = this.øje();
       const del = this.hovedSigte ? øjeHøjde(f.a) - 0.04 : f.a.h * 0.6;
@@ -167,18 +191,12 @@ export class Bot {
       duk = this.dukker;
       if (this.våben.skud <= 0) genlad(this.våben);
     } else {
-      // ---- gå efter vej-nettet (mod det, den har hørt, det sidste sted, den så fjenden, eller et sted i byen) ----
+      // ---- gå efter vej-nettet (mod det, den har hørt, det sidste sted, den så fjenden, eller en post) — eller hold posten ----
       const p = this.næstePunkt(nu);
-      if (p) {
-        const dx = p.x - this.a.pos.x, dz = p.z - this.a.pos.z;
-        const ønskYaw = Math.atan2(-dx, -dz);
-        this.drejMod(ønskYaw, 0, dt);
-        frem = Math.abs(vinkel(ønskYaw - this.a.yaw)) < 1.2 ? 1 : 0.2;
-        // sidder den fast? så hop — og find en ny vej, hvis det ikke hjælper
-        if ((this.fastTid += dt) > 0.9) {
-          if (this.a.pos.distanceTo(this.fastPos) < 0.5) { hop = true; if (this.fastTid > 2.2) { this.vej = []; this.vejMål = null; this.fastTid = 0; } }
-          else { this.fastTid = 0; this.fastPos.copy(this.a.pos); }
-        }
+      if (p) [frem, hop] = this.gåMod(p, dt);
+      else if (this.holder && this.post) {                             // hold øje: kig mod det sted, fjenden kan komme fra
+        const [, , kx, kz] = this.post, yaw = Math.atan2(-(kx - this.a.pos.x), -(kz - this.a.pos.z)) + Math.sin(nu * 0.6 + this.fase0) * 0.3;
+        this.drejMod(yaw, 0, dt); duk = this.holdDuk;
       }
       if (this.våben.skud < this.våben.d.magasin * 0.4) genlad(this.våben);
     }
@@ -193,22 +211,101 @@ export class Bot {
     this.a.yaw += Math.max(-maks, Math.min(maks, d * Math.min(1, dt * 14)));
     this.a.pitch += Math.max(-maks, Math.min(maks, (pitch - this.a.pitch) * Math.min(1, dt * 14)));
   }
-  // Hvor skal botten gå hen nu? Svarer med det næste punkt på vejen
-  næstePunkt(nu) {
-    const { knuder } = this.s;
-    let mål = null;
-    if (this.sidstSet && nu - this.sidstSetTid < 7) mål = this.sidstSet;
-    else if (this.lytte && nu - this.lytte.tid < 6) mål = this.lytte;
-    if (mål && (!this.vejMål || Math.hypot(this.vejMål.x - mål.x, this.vejMål.z - mål.z) > 3)) this.lavVej(mål);
-    if (!this.vej.length) {
-      if (mål) { this.sidstSet = null; this.lytte = null; }
-      const steder = Object.values(STEDER), [x, z] = steder[Math.floor(Math.random() * steder.length)];
-      this.lavVej({ x: x + (Math.random() - 0.5) * 10, y: 0, z: z + (Math.random() - 0.5) * 10 });
-      if (!this.vej.length) return null;
+  // Gå mod et punkt — og hop, hvis den sidder fast (og find en ny vej, hvis det ikke hjælper). Svarer med [frem, hop]
+  gåMod(p, dt) {
+    const dx = p.x - this.a.pos.x, dz = p.z - this.a.pos.z, ønskYaw = Math.atan2(-dx, -dz);
+    this.drejMod(ønskYaw, 0, dt);
+    let hop = false;
+    if ((this.fastTid += dt) > 0.9) {
+      if (this.a.pos.distanceTo(this.fastPos) < 0.5) { hop = true; if (this.fastTid > 2.2) { this.vej = []; this.vejMål = null; this.fastTid = 0; } }
+      else { this.fastTid = 0; this.fastPos.copy(this.a.pos); }
     }
+    return [Math.abs(vinkel(ønskYaw - this.a.yaw)) < 1.2 ? 1 : 0.2, hop];
+  }
+  // Det næste punkt på den vej, botten er i gang med (eller null, når den er fremme)
+  følgVej() {
+    const { knuder } = this.s;
+    if (!this.vej.length) return null;
     const k = knuder[this.vej[0]];
     if (Math.hypot(k.x - this.a.pos.x, k.z - this.a.pos.z) < 0.9) { this.vej.shift(); this.fastTid = 0; this.fastPos.copy(this.a.pos); }
     return this.vej.length ? knuder[this.vej[0]] : null;
+  }
+  // Hvor skal botten gå hen nu? Undersøg det, den har set eller hørt — eller gå til en post og hold den
+  næstePunkt(nu) {
+    let mål = null;
+    if (this.sidstSet && nu - this.sidstSetTid < 7) mål = this.sidstSet;
+    else if (this.lytte && nu - this.lytte.tid < 6) mål = this.lytte;
+    if (mål) {
+      this.holder = false;
+      if (!this.vejMål || Math.hypot(this.vejMål.x - mål.x, this.vejMål.z - mål.z) > 3) this.lavVej(mål);
+      const p = this.følgVej();
+      if (!p) { this.sidstSet = null; this.lytte = null; this.post = null; }
+      return p;
+    }
+    if (this.holder) {
+      if (nu < this.holdTil) return null;
+      this.holder = false; this.post = null;
+    }
+    for (let forsøg = 0; !this.post && forsøg < 4; forsøg++) {      // (kan botten ikke finde vej derhen, prøver den en anden post)
+      this.post = this.vælgPost(); this.vejTilPost(this.post);
+      if (!this.vej.length && Math.hypot(this.post[0] - this.a.pos.x, this.post[1] - this.a.pos.z) > 3) this.post = null;
+    }
+    if (!this.post) return null;
+    const p = this.følgVej();
+    if (!p) {                                                         // fremme ved posten: hold den 4–13 sekunder
+      this.holder = true; this.holdTil = nu + 4 + Math.random() * 9; this.holdDuk = Math.random() < 0.3;
+    }
+    return p;
+  }
+  // Vælg en post: helst 8–55 meter væk, ikke den samme som sidst, og hvor der ikke allerede er holdkammerater
+  vælgPost() {
+    const venner = this.s.kampfolk().filter(f => f !== this && f.hold === this.hold && !f.død);
+    let sum = 0;
+    const vægte = POSTER.map(p => {
+      const d = Math.hypot(p[0] - this.a.pos.x, p[1] - this.a.pos.z);
+      let w = d < 8 ? 0.15 : 1;
+      const [fx, fz] = START[this.hold === "ræve" ? "slanger" : "ræve"][0];
+      if (Math.hypot(p[0] - fx, p[1] - fz) < 18) w *= 0.25;             // ikke helt hen til fjendernes start
+      if (Math.abs(p[0]) < 5) w *= 0.3;                                // midtergaden: kun en gang imellem
+      if (p === this.sidstePost) w *= 0.1;
+      for (const v of venner) {
+        const vd = v.post ? Math.hypot(v.post[0] - p[0], v.post[1] - p[1]) : Math.hypot(v.a.pos.x - p[0], v.a.pos.z - p[1]);
+        if (vd < 12) w *= 0.3;
+      }
+      sum += w; return w;
+    });
+    let r = Math.random() * sum;
+    for (let i = 0; i < POSTER.length; i++) if ((r -= vægte[i]) <= 0) return (this.sidstePost = POSTER[i]);
+    return (this.sidstePost = POSTER[0]);
+  }
+  // Hårdt ramt: løb om bag noget, som skytten ikke kan se igennem (et punkt på vej-nettet 3–11 meter væk)
+  søgDækning(fra, nu) {
+    const { knuder, verden } = this.s, øje = new THREE.Vector3(fra.a.pos.x, fra.a.pos.y + øjeHøjde(fra.a), fra.a.pos.z);
+    let bedst = -1, bd = Infinity;
+    for (let i = 0; i < knuder.length; i++) {
+      const k = knuder[i], d = Math.hypot(k.x - this.a.pos.x, k.z - this.a.pos.z);
+      if (d < 3 || d > 11 || d >= bd || Math.abs(k.y - this.a.pos.y) > 1.2) continue;
+      const r = new THREE.Vector3(k.x, k.y + 1.3, k.z).sub(øje), l = r.length(); r.divideScalar(l);
+      if (verden.stråle(øje, r, l)) { bd = d; bedst = i; }
+    }
+    if (bedst < 0) return;
+    const fraKnude = nærmesteKnude(knuder, this.a.pos.x, this.a.pos.y, this.a.pos.z);
+    this.vej = (fraKnude >= 0 && findVej(knuder, fraKnude, bedst)) || []; this.vejMål = null;
+    if (!this.vej.length) return;
+    this.flygt = { til: nu + 3.5 + Math.random() * 2, fremme: 0, fra: fra.a.pos.clone() };
+    this.mål = null; this.holder = false;
+  }
+  // Vejen til en post. Ligger posten ude i siden og langt væk, går botten tit ad sidevejen (den lange vej til A
+  // eller tunnelerne til B) i stedet for den korteste vej gennem midten
+  vejTilPost(post) {
+    const { knuder } = this.s, [px, pz] = post, p = this.a.pos;
+    if (Math.abs(px) > 15 && Math.abs(pz - p.z) > 30 && Math.random() < 0.65) {
+      const via = { x: px > 0 ? 44 : -44, y: 0, z: Math.max(-20, Math.min(44, (p.z + pz) / 2)) };
+      const a = nærmesteKnude(knuder, p.x, p.y, p.z), b = nærmesteKnude(knuder, via.x, 0, via.z), c = nærmesteKnude(knuder, px, 0, pz);
+      const v1 = findVej(knuder, a, b), v2 = v1 && findVej(knuder, b, c);
+      if (v1 && v2) { this.vej = v1.concat(v2.slice(1)); this.vejMål = { x: px, z: pz }; return; }
+    }
+    this.lavVej({ x: px, y: 0, z: pz });
   }
   lavVej(mål) {
     const { knuder } = this.s;
@@ -223,13 +320,14 @@ export class Bot {
     if (this.mål && !this.kanSe(this.mål, nu)) {                 // fjenden forsvandt bag noget: husk, hvor den var
       this.sidstSet = this.mål.a.pos.clone(); this.sidstSetTid = nu; this.mål = null; this.vej = []; this.vejMål = null;
     }
-    if (!this.mål) {
+    if (!this.mål && !this.flygt) {
       let bedst = null, bd = Infinity;
       for (const f of fjender) { const d = f.a.pos.distanceTo(this.a.pos); if (d < bd && this.kanSe(f, nu)) { bd = d; bedst = f; } }
       if (bedst) {
         this.mål = bedst; this.sidstSet = null; this.lytte = null;
-        this.setFørst = nu + this.sv.reaktion * (0.8 + Math.random() * 0.45);
-        const fejl = this.sv.fejl * G * (0.6 + Math.random() * 0.8), v = Math.random() * Math.PI * 2;
+        const langt = Math.max(0, bd - 25) / 40;                          // langt væk: det tager længere tid at opdage og sigte
+        this.setFørst = nu + this.sv.reaktion * (0.8 + Math.random() * 0.45) * (1 + langt);
+        const fejl = this.sv.fejl * G * (0.6 + Math.random() * 0.8) * (1 + langt * 0.6), v = Math.random() * Math.PI * 2;
         this.fejlYaw = Math.cos(v) * fejl; this.fejlPitch = Math.sin(v) * fejl * 0.6;
         this.hovedSigte = Math.random() < this.sv.hoved;
         this.dukker = bd > 18 && Math.random() < this.sv.strafe * 0.5;
@@ -249,20 +347,28 @@ export class Bot {
     this.s.skyd(this, this.øje(), ret, v);
     this.salve++;
     const [min, maks] = this.sv.salve;
-    if (!v.d.auto || this.salve >= min + Math.floor(Math.random() * (maks - min + 1))) { this.salve = 0; this.salvePause = v.d.auto ? 0.22 + Math.random() * 0.3 : 0.25 + Math.random() * 0.35; }
+    if (!v.d.auto || this.salve >= min + Math.floor(Math.random() * (maks - min + 1))) {
+      this.salve = 0; this.salvePause = v.d.auto ? 0.22 + Math.random() * 0.3 : 0.25 + Math.random() * 0.35;
+      // langt væk (og ikke snigskytte): skyd en salve og gå i dækning igen i stedet for at stå midt på gaden
+      const m = this.mål;
+      if (m && !v.d.zoom && m.a.pos.distanceTo(this.a.pos) > 35 && Math.random() < 0.45) this.søgDækning(m, this.s.nu());
+    }
   }
   // Ramt: mist liv — og vend dig mod den, der skød
-  ramt(skade, fra) {
+  // skud: { r: kuglens retning, del: kropsdelen, kraft } — bruges til, hvordan kroppen falder
+  ramt(skade, fra, skud = null) {
     this.liv -= skade.liv; this.panser = Math.max(0, this.panser - skade.panser);
     if (!this.mål && fra && !fra.død) { this.sidstSet = fra.a.pos.clone(); this.sidstSetTid = this.s.nu(); this.vej = []; this.vejMål = null;
       this.drejMod(Math.atan2(-(fra.a.pos.x - this.a.pos.x), -(fra.a.pos.z - this.a.pos.z)), 0, 0.15); }
-    if (this.liv <= 0) { this.død = true; this.dødTid = this.s.nu(); this.fald = 0; this.dødsfald++; return true; }
+    if (this.liv <= 0) { this.død = true; this.dødTid = this.s.nu(); this.fald = 0; this.dødsfald++; this.dødSkud = skud; return true; }
+    if (fra && !this.flygt && this.liv < 55 && Math.random() < 0.55) this.søgDækning(fra, this.s.nu());
     return false;
   }
 
   // ---------- Hvert billede: flyt modellen og lad den gå, sigte og falde ----------
   tegn(alfa, dt) {
     const a = this.a, u = this.model.userData;
+    if (this.ragdoll) return;                                          // kroppen falder nu af sig selv (ragdoll.js)
     this.model.position.lerpVectors(a.forrige, a.pos, alfa);
     this.model.rotation.y = a.yaw;
     const fart = Math.hypot(a.vel.x, a.vel.z);
@@ -281,6 +387,7 @@ export class Bot {
 // Soldaten fra Blender: vælg animationen efter fart og dukning — og drej brystet med sigtet
 Bot.prototype.tegnGLB = function (u, fart, dt) {
   const a = this.a;
+  if (this.død) { this.bliverRagdoll(u); return; }
   const navn = this.død ? "død" : a.duk > 0.5 ? (fart > 0.4 ? "dukgå" : "duk") : fart > 3.6 ? "løb" : fart > 0.4 ? "gå" : "stå";
   if (navn !== u.nu) {
     const ny = u.handlinger[navn], gammel = u.handlinger[u.nu];
@@ -292,5 +399,36 @@ Bot.prototype.tegnGLB = function (u, fart, dt) {
   u.mixer.update(dt);
   if (u.bryst && !this.død) u.bryst.quaternion.multiply(qPitch.setFromAxisAngle(xAkse, -a.pitch));   // sigt op og ned
 };
+// Soldaten dør: animationen stopper, og kroppen falder med fysik. Våbnet tabes — og et hovedskud kan skyde hjelmen af
+const opad = new THREE.Vector3(0, 1, 0);
+Bot.prototype.bliverRagdoll = function (u) {
+  const a = this.a, skud = this.dødSkud, fart = new THREE.Vector3(a.vel.x, Math.max(-2, a.vel.y), a.vel.z);
+  u.mixer.update(0); u.mixer.stopAllAction();
+  for (const o of this.model.children) if (o.isSprite) o.visible = false;
+  this.ragdoll = nyRagdoll(this.model, this.s.scene, this.s.verden, fart, skud, p => this.s.fald?.(p));
+  const våben = this.model.getObjectByName("våben")?.children.find(o => o.isMesh || o.isGroup);
+  if (våben) this.ragdoll.slip(våben, fart.clone().addScaledVector(skud?.r || opad, 1.5).add(new THREE.Vector3((Math.random() - 0.5) * 2, 1.2, (Math.random() - 0.5) * 2)));
+  if (skud?.del === "hoved") {
+    const hat = ["hjelm", "kasket"].map(n => this.model.getObjectByName(n)).find(o => o?.visible);
+    const løs = hat && løsriv(hat, this.s.scene);
+    if (løs) this.ragdoll.slip(løs, fart.clone().addScaledVector(skud.r, 4).add(new THREE.Vector3(0, 2.5, 0)));
+    const briller = this.model.getObjectByName("briller");
+    if (løs && briller?.visible) { const b = løsriv(briller, this.s.scene); if (b) this.ragdoll.slip(b, fart.clone().addScaledVector(skud.r, 3.5).add(new THREE.Vector3(0, 2.2, 0))); }
+  }
+};
+// En hjelm (bøjet med skelettet, men kun af hovedet) laves om til en almindelig ting på samme sted
+function løsriv(sm, scene) {
+  const mesh = sm.isSkinnedMesh ? sm : sm.children?.find(o => o.isSkinnedMesh);
+  if (!mesh) return null;
+  const i = mesh.skeleton.bones.findIndex(b => b.name === "hoved");
+  if (i < 0) return null;
+  mesh.updateWorldMatrix(true, false); mesh.skeleton.bones[i].updateWorldMatrix(true, false);
+  const m = new THREE.Matrix4().multiplyMatrices(mesh.matrixWorld, mesh.bindMatrixInverse).multiply(mesh.skeleton.bones[i].matrixWorld)
+    .multiply(mesh.skeleton.boneInverses[i]).multiply(mesh.bindMatrix);
+  const ny = new THREE.Mesh(mesh.geometry, mesh.material); ny.castShadow = true; ny.frustumCulled = false;
+  ny.matrixAutoUpdate = false; ny.matrix.copy(m); scene.add(ny); ny.updateMatrixWorld(true);
+  sm.visible = false;
+  return ny;
+}
 // En vinkel mellem −π og π
 export function vinkel(v) { return ((v + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; }

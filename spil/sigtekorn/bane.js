@@ -27,6 +27,19 @@ const ÅBNE = [
 // Lamper under tunneltagene: deres lys er bagt ind i lysbilledet (blender/lav_lys.py), her tegnes kun selve lampen
 export const LAMPER = [[-44, 6], [-44, 18], [-44, 30], [-34, 12]];
 export const LAMPE_Y = 2.72;
+// Poster: gode steder at holde øje fra — [x, z, og det sted man kigger hen imod]. Botterne fordeler sig mellem dem,
+// holder dem et stykke tid og går så videre, så hele byen bliver brugt (ikke kun midtergaden)
+export const POSTER = [
+  // A-pladsen og vejene derhen
+  [36, -38, 44, -24], [40.5, -33.5, 23, -25], [27, -43, 44, -27], [43.5, -24.5, 44, 4], [31, -24, 20, -24],
+  [44, 6, 44, 40], [44, 30, 44, -12], [36, 44.5, 20, 44], [21.5, 44, 40, 44],
+  [20, -12.5, 5, -11], [20, -25.5, 20, -9], [19, -43.5, 19, -30],
+  // midten
+  [0, 8, 0, -30], [0, -17, 0, 25], [2.4, 16.4, 0, -22], [-2, -31.5, 0, -8], [2, 36, 0, 0],
+  // B-pladsen, tunnelerne og B kort
+  [-36, -36.5, -44, -23], [-26.5, -27.5, -43, -41], [-40.5, -40.5, -27, -30], [-44, -16, -44, 22], [-44, 22, -44, -10],
+  [-30, 44, -46, 44], [-20, 12, -4, 12], [-22, -11.5, -6, -11], [-22, -21.5, -22, -9], [-16, -44, -16, -30],
+];
 export const STEDER = { A: [36, -34], B: [-36, -36], midt: [0, 0], nord: [0, -47], syd: [0, 47] };
 export const START = {
   ræve: [[-10, 47], [-5, 50], [0, 46], [5, 50], [10, 47], [-12, 51], [12, 51], [0, 52]],
@@ -208,7 +221,8 @@ export function lavBane(scene, verden, t) {
 
   // ---- trækasser og tønder (dækning) ----
   const kasse = (x, y, z, s = 1.4) => solid(x - s / 2, y, z - s / 2, x + s / 2, y + s, z + s / 2, "trækasse", { prFlade: true });
-  for (const [x, y, z, s] of [[0, 0, -6, 1.4], [2.4, 0, 18, 1.2], [-2.6, 0, -18, 1.2], [33.6, 1, -35.2, 1.4], [33.6, 2.4, -35.2, 1.0], [38.6, 1, -31.2, 1.4],
+  for (const [x, y, z, s] of [[-1.0, 0, 22.2, 1.4], [0.45, 0, 22.5, 1.4], [-0.35, 1.4, 22.35, 1.0],   // kassestakken midt i midtergaden (bryder den lange sigtelinje)
+    [0, 0, -6, 1.4], [2.4, 0, 18, 1.2], [-2.6, 0, -18, 1.2], [33.6, 1, -35.2, 1.4], [33.6, 2.4, -35.2, 1.0], [38.6, 1, -31.2, 1.4],
     [31.6, 1, -29.4, 1.2], [25.6, 0, -41.4, 1.4], [45.2, 0, 44.6, 1.4], [41.6, 0, 20.6, 1.4], [12.6, 0, -12.9, 1.2], [-37.3, 1, -37.3, 1.4],
     [-37.3, 2.4, -37.3, 1.0], [-32.3, 1, -40.3, 1.4], [-26.3, 0, -29.3, 1.4], [-46.4, 0, 24.6, 1.2], [-5.3, 0, 46.7, 1.4], [8.7, 0, 50.7, 1.4],
     [-7.3, 0, -47.3, 1.4], [19, 0, -10.5, 1.2], [-20.5, 0, -11, 1.2], [44.6, 0, -8, 1.4], [-44.6, 0, -18, 1.2]]) kasse(x, y, z, s);
@@ -311,12 +325,17 @@ function lavVejnet(verden, erFast) {
     if (y < -0.5 || y > 1.05 || !verden.fri(x, y + 0.01, z, B, 1.8)) continue;
     knuder.push({ x, y, z, nab: [] });
   }
+  // ekstra punkter for foden og toppen af trapperne op til A og B (ellers passer gitteret ikke med trinene)
+  for (const [x, z] of [[39, -25.5], [39, -29.5], [27.5, -33], [31.5, -33], [-27.5, -35], [-31.5, -35], [-39, -27.5], [-39, -31.5]]) {
+    const y = verden.gulv(x, 1.2, z);
+    if (verden.fri(x, y + 0.01, z, B, 1.8)) knuder.push({ x, y, z, nab: [] });
+  }
   const kanGå = (a, c) => {                                         // gå i små skridt: ingen trin over 0,45 m, og der skal være plads
     const l = Math.hypot(c.x - a.x, c.z - a.z), n = Math.ceil(l / 0.35);
     let y = a.y;
     for (let i = 1; i <= n; i++) {
       const x = a.x + (c.x - a.x) * i / n, z = a.z + (c.z - a.z) * i / n, g = verden.gulv(x, y + 0.46, z);
-      if (Math.abs(g - y) > 0.46 || !verden.fri(x, g + 0.01, z, B * 0.9, 1.75)) return false;
+      if (Math.abs(g - y) > 0.46 || !verden.fri(x, g + 0.46, z, B * 0.9, 1.3)) return false;   // (trin under 0,46 m kan man træde op på)
       y = g;
     }
     return Math.abs(y - c.y) < 0.05;

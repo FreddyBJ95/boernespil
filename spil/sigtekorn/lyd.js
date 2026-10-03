@@ -82,6 +82,13 @@ export function trin(pos = null, styrke = 1) {
   støjStød(kæde(pos, 0.35 * styrke), ctx.currentTime, 0.1, "bandpass", 500 + Math.random() * 400, 1.2, 0.6, 0.08);
 }
 export function landing(pos = null) { if (!ctx) return; støjStød(kæde(pos, 0.5), ctx.currentTime, 0.15, "lowpass", 400, 1, 0.8, 0.12); }
+// En krop, der falder om: et dumpt bump i jorden og lidt rasl af udstyret
+export function fald(pos) {
+  if (!ctx) return;
+  const t = ctx.currentTime, m = kæde(pos, 0.8);
+  støjStød(m, t, 0.22, "lowpass", 260, 0.8, 0.9, 0.2); tone(m, t, 95, 45, 0.16, "sine", 0.45);
+  støjStød(m, t + 0.06, 0.14, "bandpass", 2400, 2, 0.12, 0.12);
+}
 // Man ramte nogen: et lille "tik" — og et klart "ting" ved hovedskud
 export function ramt(hoved) {
   if (!ctx) return;

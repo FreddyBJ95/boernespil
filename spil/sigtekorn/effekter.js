@@ -1,9 +1,10 @@
-// ===== Effekterne i verdenen: skudhuller, støv og gnister, lysspor og mundingsglimtets lys =====
+// ===== Effekterne i verdenen: skudhuller, blod, støv og gnister, lysspor og mundingsglimtets lys =====
 
 import * as THREE from "./three.js";
 
-const HULLER = 160, STØV = 700, GNIST = 400, SPOR = 32;
-const FARVE = { sten: [0xd8c4a0, 0xb8a07a], sand: [0xd8b880, 0xc8a46a], træ: [0x9a6a3a, 0x6e4a26], metal: [0xa0a4a8, 0x70747a], krop: [0xc8b89a, 0x8a7a60] };
+const HULLER = 160, PLETTER = 60, STØV = 700, GNIST = 400, SPOR = 32;
+const FARVE = { sten: [0xd8c4a0, 0xb8a07a], sand: [0xd8b880, 0xc8a46a], træ: [0x9a6a3a, 0x6e4a26], metal: [0xa0a4a8, 0x70747a], krop: [0x7a0c0c, 0x420404] };
+const NED = new THREE.Vector3(0, -1, 0);
 
 export class Effekter {
   constructor(scene, t) {
@@ -13,6 +14,11 @@ export class Effekter {
     const hulGeo = new THREE.PlaneGeometry(0.09, 0.09);
     this.huller = Array.from({ length: HULLER }, () => { const m = new THREE.Mesh(hulGeo, hulMat); m.visible = false; scene.add(m); return m; });
     this.hulNr = 0;
+    // blodpletter på mure og jord (blanke, som om de er våde)
+    const pletMat = new THREE.MeshStandardMaterial({ map: t.blod, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -6, roughness: 0.35 });
+    const pletGeo = new THREE.PlaneGeometry(1, 1);
+    this.pletter = Array.from({ length: PLETTER }, () => { const m = new THREE.Mesh(pletGeo, pletMat); m.visible = false; scene.add(m); return m; });
+    this.pletNr = 0;
     // støv (bløde skyer) og gnister (små og lysende)
     this.støv = lavPartikler(scene, STØV, t.røg, 0.42, THREE.NormalBlending, 0.75);
     this.gnist = lavPartikler(scene, GNIST, t.røg, 0.07, THREE.AdditiveBlending, 1);
@@ -35,6 +41,23 @@ export class Effekter {
     m.rotateZ(Math.random() * 6.3); m.scale.setScalar(0.7 + Math.random() * 0.6);
     m.visible = true;
   }
+  // Blod: en lille rød sky, en plet på muren bag den, der blev ramt (hvis den er tæt på), og nogle gange dråber på jorden
+  blod(p, r, verden, mængde = 1) {
+    const ca = new THREE.Color(FARVE.krop[0]), cb = new THREE.Color(FARVE.krop[1]);
+    for (let i = 0; i < 5 * mængde; i++) sendUd(this.støv, p, [r.x * 0.8, r.y * 0.8, r.z * 0.8], ca.clone().lerp(cb, Math.random()), 1 + Math.random() * 1.6, 0.25 + Math.random() * 0.3, -4, 1.4);
+    const fra = p.clone().addScaledVector(r, 0.3), væg = verden.stråle(fra, r, 2.4);
+    if (væg) this.plet(fra.addScaledVector(r, væg.t), væg.normal, (0.35 + Math.random() * 0.35) * Math.min(1.3, mængde) * (1 - væg.t / 4));
+    if (Math.random() < 0.55) { const g = verden.stråle(p, NED, 2.2); if (g) this.plet(p.clone().addScaledVector(NED, g.t), g.normal, 0.18 + Math.random() * 0.22); }
+  }
+  plet(p, n, str) {
+    const m = this.pletter[this.pletNr++ % PLETTER];
+    m.position.set(p.x + n[0] * 0.005, p.y + n[1] * 0.005, p.z + n[2] * 0.005);
+    m.lookAt(m.position.x + n[0], m.position.y + n[1], m.position.z + n[2]);
+    m.rotateZ(Math.random() * 6.3); m.scale.setScalar(str);
+    m.visible = true;
+  }
+  // Ny kamp: væk med huller og pletter
+  ryd() { for (const m of [...this.huller, ...this.pletter]) m.visible = false; }
   // Støv og gnister, der passer til det, kuglen ramte
   nedslag(p, n, mat = "sten", mængde = 1) {
     const [a, b] = FARVE[mat] || FARVE.sten, ca = new THREE.Color(a), cb = new THREE.Color(b);

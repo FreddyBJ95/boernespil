@@ -161,6 +161,21 @@ function røg(g, n) {
   gr.addColorStop(0, "rgba(255,255,255,0.9)"); gr.addColorStop(0.5, "rgba(255,255,255,0.35)"); gr.addColorStop(1, "rgba(255,255,255,0)");
   g.fillStyle = gr; g.fillRect(0, 0, n, n);
 }
+// Blod: en mørkerød plet med sprøjt og små dråber ud til siden (gennemsigtig omkring)
+function blod(g, n, r) {
+  g.clearRect(0, 0, n, n);
+  const plet = (x, y, rad, a) => {
+    const gr = g.createRadialGradient(x, y, 0, x, y, rad);
+    gr.addColorStop(0, `rgba(95,6,6,${a})`); gr.addColorStop(0.7, `rgba(75,4,4,${a * 0.9})`); gr.addColorStop(1, "rgba(60,0,0,0)");
+    g.fillStyle = gr; g.beginPath(); g.arc(x, y, rad, 0, 7); g.fill();
+  };
+  for (let i = 0; i < 9; i++) plet(n / 2 + (r() - 0.5) * n * 0.22, n / 2 + (r() - 0.5) * n * 0.22, n * (0.07 + r() * 0.1), 0.95);
+  for (let i = 0; i < 26; i++) {                                    // sprøjt: dråber i stråler ud fra midten
+    const v = r() * Math.PI * 2, d = n * (0.18 + r() * 0.3), rad = n * (0.008 + r() * 0.025);
+    plet(n / 2 + Math.cos(v) * d, n / 2 + Math.sin(v) * d, rad, 0.9);
+    if (r() < 0.4) { g.strokeStyle = "rgba(80,5,5,0.7)"; g.lineWidth = rad * 0.8; g.beginPath(); g.moveTo(n / 2 + Math.cos(v) * d * 0.5, n / 2 + Math.sin(v) * d * 0.5); g.lineTo(n / 2 + Math.cos(v) * d, n / 2 + Math.sin(v) * d); g.stroke(); }
+  }
+}
 // Palmeblad: et langt blad med en midterribbe (gennemsigtigt omkring)
 function palmeblad(g, n, r) {
   g.clearRect(0, 0, n, n);
@@ -261,6 +276,7 @@ export async function lavTeksturer() {
   t.skudhul = tekstur(lærred(64, skudhul), true);
   t.glimt = tekstur(lærred(128, glimt, 31));
   t.røg = tekstur(lærred(64, røg), true);
+  t.blod = tekstur(lærred(128, blod, 37));
   t.foto = await hentFotos();
   if (t.foto) {
     t.kasseFoto = tekstur(fotoKasse(t.foto.planker.farve.image));

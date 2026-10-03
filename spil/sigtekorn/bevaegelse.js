@@ -34,10 +34,16 @@ export const øjeHøjde = a => KROP.øje - (KROP.øje - KROP.dukØje) * a.duk;
 // Ét tick. ind = { frem, side: -1..1, hop, gå, duk } · maxFart: våbnets fart (m/s) · verden: Kasseverden
 export function bevæg(a, ind, dt, verden, maxFart) {
   a.forrige.copy(a.pos);
-  // dukke sig og rejse sig igen (kun hvis der er plads over hovedet)
+  // dukke sig og rejse sig igen. På jorden rejser man sig opad (kun hvis der er plads over hovedet).
+  // I luften trækker man benene op, mens hovedet bliver, hvor det er — så kommer man højere op (crouch-jump som i CS)
+  const førH = a.h;
   if (ind.duk) a.duk = Math.min(1, a.duk + dt / 0.2);
-  else if (a.duk > 0 && verden.fri(a.pos.x, a.pos.y, a.pos.z, a.b, KROP.høj)) a.duk = Math.max(0, a.duk - dt / 0.2);
+  else if (a.duk > 0) {
+    const ny = Math.max(0, a.duk - dt / 0.2), nyH = KROP.høj - (KROP.høj - KROP.dukHøj) * ny;
+    if (a.jord ? verden.fri(a.pos.x, a.pos.y, a.pos.z, a.b, KROP.høj) : verden.fri(a.pos.x, a.pos.y - (nyH - førH), a.pos.z, a.b, nyH)) a.duk = ny;
+  }
   a.h = KROP.høj - (KROP.høj - KROP.dukHøj) * a.duk;
+  if (!a.jord && a.h !== førH) { a.pos.y += førH - a.h; a.forrige.y += førH - a.h; }
 
   // den vej, man gerne vil (frem/tilbage og til siden ud fra, hvor man kigger)
   const fx = -Math.sin(a.yaw), fz = -Math.cos(a.yaw), hx = Math.cos(a.yaw), hz = -Math.sin(a.yaw);

@@ -7,6 +7,7 @@
 //  haand.js       våbnet i hånden                 effekter.js skudhuller, støv og lysspor
 //  lyd.js         lydene                           hud.js     skærmen og statistikken     ../laas.js  koden
 //  lys.js         lyset, der er bagt i Blender     teksturer.js  fotos og tegnede teksturer
+//  ragdoll.js     kroppene, der falder med fysik, når nogen dør
 
 import * as THREE from "./three.js";
 import { lås } from "../laas.js";
@@ -14,6 +15,7 @@ import { lavTeksturer } from "./teksturer.js";
 import { Kasseverden } from "./verden.js";
 import { lavBane, START } from "./bane.js";
 import { hentLys, himmelMiljø } from "./lys.js";
+import { ragdollTrin, ragdollTegn, ryddRagdolls } from "./ragdoll.js";
 import { nyAktør, bevæg, øjeHøjde, TICK, U } from "./bevaegelse.js";
 import { VÅBEN, nytVåben, affyr, efterSkud, opdaterVåben, skudRetning, synligRekyl, retningsvektor, genlad, unøjagtighed, skade } from "./vaaben.js";
 import { Hånd } from "./haand.js";
@@ -33,7 +35,7 @@ await lås($("lås"));
 
 // ---------- Indstillinger (gemmes på computeren) ----------
 const INDST = "sigtekorn-indstillinger";
-const ind = Object.assign({ sværhed: "normal", hold: 5, primær: "gevær", følsomhed: 2.0, synsfelt: 90, lydstyrke: 0.8, fart: false },
+const ind = Object.assign({ sværhed: "normal", hold: 5, primær: "gevær", følsomhed: 2.0, synsfelt: 90, lydstyrke: 0.8, fart: false, fuldskærm: true },
   (() => { try { return JSON.parse(localStorage.getItem(INDST) || "{}"); } catch (_) { return {}; } })());
 const gemIndst = () => { try { localStorage.setItem(INDST, JSON.stringify(ind)); } catch (_) {} };
 Lyd.sætLydstyrke(ind.lydstyrke);
@@ -116,6 +118,7 @@ let bots = [], kampfolk = [], point = { ræve: 0, slanger: 0 }, tid = 0, kampSlu
 const botSpil = {
   scene, verden, knuder: bane.knuder, kampfolk: () => kampfolk, nu: () => tid, sværhed: () => SVÆRHED[ind.sværhed],
   skyd: (bot, o, ret, v) => skyd(bot, o, ret, v),
+  fald: pos => Lyd.fald(pos),                                      // en krop rammer jorden
   trin: bot => {                                                   // en bot løber: man kan høre den — og det kan de andre botter også
     if (bot.a.pos.distanceTo(spiller.a.pos) < 30) Lyd.trin(bot.a.pos, 1.2);
     for (const b of bots) if (b !== bot && b.a.pos.distanceTo(bot.a.pos) < 14) b.hør(bot.a.pos, bot);
@@ -125,6 +128,7 @@ const botSpil = {
 const pilTekstur = (() => { const c = document.createElement("canvas"); c.width = c.height = 64; const g = c.getContext("2d"); g.fillStyle = "#7dff6a"; g.strokeStyle = "#0a2a0a"; g.lineWidth = 4; g.beginPath(); g.moveTo(10, 14); g.lineTo(54, 14); g.lineTo(32, 50); g.closePath(); g.fill(); g.stroke(); return new THREE.CanvasTexture(c); })();
 function lavBots() {
   for (const b of bots) scene.remove(b.model);
+  ryddRagdolls(); effekter.ryd();
   const navne = [...NAVNE].sort(() => Math.random() - 0.5);
   bots = [];
   for (let i = 0; i < ind.hold - 1; i++) bots.push(new Bot(botSpil, "ræve", navne.pop()));
@@ -137,6 +141,7 @@ function lavBots() {
 }
 
 // ---------- Skud (fælles for spilleren og botterne) ----------
+const KRAFT = { gevær: 4.2, snig: 8, pistol: 3, kniv: 2 };       // hvor hårdt kuglen skubber kroppen, når den dræber (m/s)
 const tmpR = new THREE.Vector3(), tmpS = new THREE.Vector3(), tmpM = new THREE.Vector3();
 function skyd(skytte, o, ret, v) {
   const r = retningsvektor(ret.yaw, ret.pitch, tmpR.clone());
@@ -154,7 +159,8 @@ function skyd(skytte, o, ret, v) {
   if (ramt) {
     const s = skade(v, ramt.del, ramt.k, maks), hoved = ramt.del === "hoved";
     effekter.nedslag(slut, [-r.x, -r.y, -r.z], "krop", hoved ? 1.2 : 0.6);
-    const dræbt = ramt.k === spiller ? spillerRamt(s, skytte) : ramt.k.ramt(s, skytte);
+    effekter.blod(slut, r, verden, hoved ? 1.4 : 1);
+    const dræbt = ramt.k === spiller ? spillerRamt(s, skytte) : ramt.k.ramt(s, skytte, { r: r.clone(), del: ramt.del, kraft: KRAFT[v.id] * (hoved ? 1.25 : 1) });
     if (skytte === spiller) { hud.ramt(hoved, dræbt); Lyd.ramt(hoved); stat.træf++; }
     if (dræbt) drab(skytte, ramt.k, v, hoved);
   } else if (væg) {
@@ -202,7 +208,8 @@ function knivHug(stik) {
   if (!bedst) { const væg = verden.stråle(o, r, v.d.rækkevidde); if (væg) effekter.nedslag(o.clone().addScaledVector(r, væg.t), væg.normal, væg.kasse.mat, 0.5); return; }
   const s = skade(v, bedst.del, bedst.k, bedst.t, stik);
   hud.ramt(false, false); Lyd.ramt(false);
-  if (bedst.k.ramt(s, spiller)) { hud.ramt(false, true); drab(spiller, bedst.k, v, false); }
+  effekter.blod(o.clone().addScaledVector(r, bedst.t), r, verden, 0.8);
+  if (bedst.k.ramt(s, spiller, { r, del: bedst.del, kraft: KRAFT.kniv })) { hud.ramt(false, true); drab(spiller, bedst.k, v, false); }
 }
 
 // ---------- Input: tastatur og mus ----------
@@ -210,7 +217,7 @@ const taster = new Set();
 let skydHoldt = false, skydLåst = false, hjulHop = 0, musX = 0, musY = 0;
 addEventListener("keydown", e => {
   if (!iGang || pause) return;
-  if (["Tab", "Space"].includes(e.code)) e.preventDefault();
+  if (["Tab", "Space"].includes(e.code) || e.ctrlKey) e.preventDefault();   // Ctrl er duk: ingen Ctrl+S, Ctrl+D osv. midt i kampen
   if (e.repeat) return;
   taster.add(e.code);
   if (e.code === "KeyR" && !spiller.død) { const v = vb(); if (genlad(v)) { hånd.genladStart(v.d.genlad); Lyd.genlad(v.d.genlad); hud.kikkert(false); } }
@@ -256,7 +263,7 @@ function tick(dt) {
     opdaterVåben(v, dt);
     const maks = (v.kikkert > 0 && v.d.kikkertFart) || v.d.fart;
     const frem = (taster.has("KeyW") ? 1 : 0) - (taster.has("KeyS") ? 1 : 0), side = (taster.has("KeyD") ? 1 : 0) - (taster.has("KeyA") ? 1 : 0);
-    const gå = taster.has("ShiftLeft") || taster.has("ShiftRight"), duk = taster.has("KeyC");
+    const gå = taster.has("ShiftLeft") || taster.has("ShiftRight"), duk = taster.has("KeyC") || taster.has("ControlLeft") || taster.has("ControlRight");
     const hop = taster.has("Space") || hjulHop > 0; if (hjulHop > 0) hjulHop--;
     const før = spiller.a.pos.clone();
     bevæg(spiller.a, { frem, side, hop, gå, duk }, dt, verden, maks);
@@ -276,6 +283,7 @@ function tick(dt) {
     b.tick(dt);
     if (b.død && tid - b.dødTid > 3) b.spawn();
   }
+  ragdollTrin(dt);                                                 // de døde kroppe falder og bliver liggende
   if (kampSlut <= 0) slutKamp();
 }
 function spillerSkyder() {
@@ -317,6 +325,7 @@ function billede(nu) {
   himmel.position.copy(kamera.position);
   // botterne, hånden og effekterne
   for (const b of bots) b.tegn(Math.min(1, alfa), dt);
+  ragdollTegn();
   const fart = Math.hypot(a.vel.x, a.vel.z);
   hånd.opdater(dt, { fart: v ? fart / v.d.fart : 0, jord: a.jord, musX, musY, duk: a.duk, skjul: kikkert || spiller.død, landet: false });
   musX = musY = 0;
@@ -361,6 +370,10 @@ function slutKamp() {
 // Fang musen — med rå bevægelse (uden Windows’ museacceleration), hvis browseren kan, så sigtet er præcist
 function lås_mus() {
   Lyd.start();
+  // fuld skærm, og browseren må ikke bruge tasterne selv (ellers lukker Ctrl+W fanen, når man dukker og går frem)
+  if (ind.fuldskærm && !document.fullscreenElement) document.documentElement.requestFullscreen?.({ navigationUI: "hide" })
+    .then(() => navigator.keyboard?.lock?.(["ControlLeft", "ControlRight", "KeyW", "KeyA", "KeyS", "KeyD", "KeyQ", "KeyR", "KeyC", "Space", "Tab", "Digit1", "Digit2", "Digit3"]))
+    .catch(() => {});
   const fejl = () => hud.besked("Musen kunne ikke fanges — åbn spillet i Chrome eller Edge", 4000);
   const igen = () => { try { lærred.requestPointerLock()?.catch?.(fejl); } catch (_) { fejl(); } };
   try { lærred.requestPointerLock({ unadjustedMovement: true })?.catch?.(igen); } catch (_) { igen(); }
@@ -370,6 +383,8 @@ document.addEventListener("pointerlockchange", () => {
   if (låst) { pause = false; sidst = performance.now(); akk = 0; $("menu").classList.add("skjult"); $("klik").classList.add("skjult"); }
   else if (iGang) { pause = true; skydHoldt = false; taster.clear(); visMenu(); }
 });
+// Lukker man fanen midt i en kamp (fx Ctrl+W uden fuld skærm), spørger browseren først
+addEventListener("beforeunload", e => { if (iGang) { e.preventDefault(); e.returnValue = ""; } });
 $("start").addEventListener("click", () => { gemIndst(); $("slut").classList.add("skjult"); startKamp(); lås_mus(); });
 $("fortsæt").addEventListener("click", () => { gemIndst(); lås_mus(); });
 $("igen").addEventListener("click", () => { $("slut").classList.add("skjult"); startKamp(); lås_mus(); });
@@ -394,6 +409,7 @@ knapper("valgSværhed", Object.entries(SVÆRHED).map(([k, v]) => [k, v.navn]), "
 knapper("valgHold", [1, 2, 3, 4, 5].map(n => [n, `${n} mod ${n}`]), "hold");
 knapper("valgVåben", [["gevær", "Stormgevær"], ["snig", "Snigskytte"]], "primær");
 knapper("valgFart", [[false, "Nej"], [true, "Ja (u/s)"]], "fart");
+knapper("valgFuld", [[true, "Ja"], [false, "Nej"]], "fuldskærm");
 skyder("følsomhed", "følsomhed", v => v.toFixed(2));
 skyder("synsfelt", "synsfelt", v => `${v}°`);
 skyder("lydstyrke", "lydstyrke", v => `${Math.round(v * 100)} %`);
