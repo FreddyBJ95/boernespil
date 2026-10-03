@@ -7,7 +7,7 @@
 //  haand.js       våbnet i hånden                 effekter.js skudhuller, støv og lysspor
 //  lyd.js         lydene                           hud.js     skærmen og statistikken     ../laas.js  koden
 //  lys.js         lyset, der er bagt i Blender     teksturer.js  fotos og tegnede teksturer
-//  ragdoll.js     kroppene, der falder med fysik, når nogen dør
+//  leddeloes.js   de leddeløse soldater          dele.js     hoveder, arme og ben, der flyver af
 
 import * as THREE from "./three.js";
 import { lås } from "../laas.js";
@@ -15,7 +15,7 @@ import { lavTeksturer } from "./teksturer.js";
 import { Kasseverden } from "./verden.js";
 import { lavBane, START } from "./bane.js";
 import { hentLys, himmelMiljø } from "./lys.js";
-import { ragdollTrin, ragdollTegn, ryddRagdolls } from "./ragdoll.js";
+import { deleTrin, deleTegn, ryddDele } from "./dele.js";
 import { nyAktør, bevæg, øjeHøjde, TICK, U } from "./bevaegelse.js";
 import { VÅBEN, nytVåben, affyr, efterSkud, opdaterVåben, skudRetning, synligRekyl, retningsvektor, genlad, unøjagtighed, skade } from "./vaaben.js";
 import { Hånd } from "./haand.js";
@@ -85,7 +85,7 @@ if (await hentLys(bane.masker)) {                                 // lyset fra B
   scene.environment = himmelMiljø(renderer, himmel);
   scene.add(new THREE.AmbientLight(0xe6dccb, 0.2));               // lidt lys overalt, så selv de mørkeste kroge ikke er helt sorte
 }
-await hentSoldat();                                               // soldaten fra Blender (ellers klodssoldaten)
+await hentSoldat();                                               // de leddeløse soldater fra Blender (ellers klodssoldaten)
 const effekter = new Effekter(scene, t);
 const hånd = new Hånd(t);
 hånd.lavMiljø(renderer);
@@ -114,11 +114,15 @@ function genopstå() {
 }
 
 // ---------- Botterne ----------
+let sidsteDelLyd = -1;
 let bots = [], kampfolk = [], point = { ræve: 0, slanger: 0 }, tid = 0, kampSlut = KAMPTID, iGang = false, pause = true;
 const botSpil = {
   scene, verden, knuder: bane.knuder, kampfolk: () => kampfolk, nu: () => tid, sværhed: () => SVÆRHED[ind.sværhed],
   skyd: (bot, o, ret, v) => skyd(bot, o, ret, v),
-  fald: pos => Lyd.fald(pos),                                      // en krop rammer jorden
+  delLyd: (pos, fart) => {                                         // en løs del rammer jorden (ikke for mange lyde på én gang)
+    if (fart < 1.2 || tid - sidsteDelLyd < 0.04 || pos.distanceTo(kamera.position) > 40) return;
+    sidsteDelLyd = tid; Lyd.dunk(pos, Math.min(1, fart / 6));
+  },
   trin: bot => {                                                   // en bot løber: man kan høre den — og det kan de andre botter også
     if (bot.a.pos.distanceTo(spiller.a.pos) < 30) Lyd.trin(bot.a.pos, 1.2);
     for (const b of bots) if (b !== bot && b.a.pos.distanceTo(bot.a.pos) < 14) b.hør(bot.a.pos, bot);
@@ -128,7 +132,7 @@ const botSpil = {
 const pilTekstur = (() => { const c = document.createElement("canvas"); c.width = c.height = 64; const g = c.getContext("2d"); g.fillStyle = "#7dff6a"; g.strokeStyle = "#0a2a0a"; g.lineWidth = 4; g.beginPath(); g.moveTo(10, 14); g.lineTo(54, 14); g.lineTo(32, 50); g.closePath(); g.fill(); g.stroke(); return new THREE.CanvasTexture(c); })();
 function lavBots() {
   for (const b of bots) scene.remove(b.model);
-  ryddRagdolls(); effekter.ryd();
+  ryddDele(); effekter.ryd();
   const navne = [...NAVNE].sort(() => Math.random() - 0.5);
   bots = [];
   for (let i = 0; i < ind.hold - 1; i++) bots.push(new Bot(botSpil, "ræve", navne.pop()));
@@ -149,8 +153,8 @@ function skyd(skytte, o, ret, v) {
   let maks = væg ? væg.t : 300, ramt = null;
   for (const k of kampfolk) {
     if (k === skytte || k.død || k.hold === skytte.hold) continue;
-    const h = træfKrop(k.a, o, r, maks);
-    if (h) { maks = h.t; ramt = { k, del: h.del }; }
+    const h = k.erSpiller ? træfKrop(k.a, o, r, maks) : k.træf(o, r, maks);
+    if (h) { maks = h.t; ramt = { k, del: h.del, lem: h.lem }; }
   }
   const slut = tmpS.copy(o).addScaledVector(r, maks).clone();
   // lysspor fra mundingen (spilleren: fra våbnet i hånden)
@@ -158,9 +162,8 @@ function skyd(skytte, o, ret, v) {
   else effekter.sporFra(o.clone().addScaledVector(r, 0.7).add(new THREE.Vector3(0, -0.15, 0)), slut);
   if (ramt) {
     const s = skade(v, ramt.del, ramt.k, maks), hoved = ramt.del === "hoved";
-    effekter.nedslag(slut, [-r.x, -r.y, -r.z], "krop", hoved ? 1.2 : 0.6);
     effekter.blod(slut, r, verden, hoved ? 1.4 : 1);
-    const dræbt = ramt.k === spiller ? spillerRamt(s, skytte) : ramt.k.ramt(s, skytte, { r: r.clone(), del: ramt.del, kraft: KRAFT[v.id] * (hoved ? 1.25 : 1) });
+    const dræbt = ramt.k === spiller ? spillerRamt(s, skytte) : ramt.k.ramt(s, skytte, { r: r.clone(), del: ramt.del, lem: ramt.lem, kraft: KRAFT[v.id] * (hoved ? 1.25 : 1) });
     if (skytte === spiller) { hud.ramt(hoved, dræbt); Lyd.ramt(hoved); stat.træf++; }
     if (dræbt) drab(skytte, ramt.k, v, hoved);
   } else if (væg) {
@@ -201,7 +204,7 @@ function knivHug(stik) {
   let bedst = null;
   for (const k of kampfolk) {
     if (k === spiller || k.død || k.hold === spiller.hold) continue;
-    const h = træfKrop(k.a, o, r, v.d.rækkevidde);
+    const h = k.træf(o, r, v.d.rækkevidde);
     if (h && (!bedst || h.t < bedst.t)) bedst = { k, ...h };
   }
   hånd.skud(); Lyd.kniv();
@@ -209,7 +212,7 @@ function knivHug(stik) {
   const s = skade(v, bedst.del, bedst.k, bedst.t, stik);
   hud.ramt(false, false); Lyd.ramt(false);
   effekter.blod(o.clone().addScaledVector(r, bedst.t), r, verden, 0.8);
-  if (bedst.k.ramt(s, spiller, { r, del: bedst.del, kraft: KRAFT.kniv })) { hud.ramt(false, true); drab(spiller, bedst.k, v, false); }
+  if (bedst.k.ramt(s, spiller, { r, del: bedst.del, lem: bedst.lem, kraft: KRAFT.kniv })) { hud.ramt(false, true); drab(spiller, bedst.k, v, false); }
 }
 
 // ---------- Input: tastatur og mus ----------
@@ -283,7 +286,7 @@ function tick(dt) {
     b.tick(dt);
     if (b.død && tid - b.dødTid > 3) b.spawn();
   }
-  ragdollTrin(dt);                                                 // de døde kroppe falder og bliver liggende
+  deleTrin(dt);                                                    // hoveder, arme og ben, der er skudt af, falder og bliver liggende
   if (kampSlut <= 0) slutKamp();
 }
 function spillerSkyder() {
@@ -325,7 +328,7 @@ function billede(nu) {
   himmel.position.copy(kamera.position);
   // botterne, hånden og effekterne
   for (const b of bots) b.tegn(Math.min(1, alfa), dt);
-  ragdollTegn();
+  deleTegn();
   const fart = Math.hypot(a.vel.x, a.vel.z);
   hånd.opdater(dt, { fart: v ? fart / v.d.fart : 0, jord: a.jord, musX, musY, duk: a.duk, skjul: kikkert || spiller.død, landet: false });
   musX = musY = 0;

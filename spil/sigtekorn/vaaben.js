@@ -24,7 +24,7 @@ export const VÅBEN = {
   kniv: { navn: "Kniv", tast: 3, plads: 2, nærkamp: true, kadence: 0.45, skade: 40, stik: 65, rækkevidde: 1.7, fart: 250 * U, træk: 0.4 },
 };
 // Hvor meget hver del af kroppen tæller (som i CS: hovedet giver fire gange så meget)
-export const KROPSDEL = { hoved: 4, krop: 1, mave: 1.25, ben: 0.75 };
+export const KROPSDEL = { hoved: 4, krop: 1, mave: 1.25, arm: 1, ben: 0.75 };
 
 // Et våben, som en spiller eller bot har: skud tilbage, reserve, og hvor "uroligt" det er lige nu
 export function nytVåben(id) {

@@ -2,6 +2,7 @@
 // En bot ser kun det, den har frit udsyn til (inden for 150°), og hører skud og løbende fodtrin.
 // Uden fjender i syne går den hen til en "post" (et godt sted at holde øje fra) og holder den et stykke tid;
 // holdkammeraterne fordeler sig, så hele byen bliver brugt. Bliver den hårdt ramt, søger den dækning.
+// Mister den en arm, kan den kun bruge pistol (og uden arme kan den ikke skyde). Mister den et ben, kravler den.
 // Den reagerer efter en kort tid, sigter med en fejl, der bliver mindre, jo længere den sigter,
 // stopper op for at skyde præcist (ligesom man selv skal) og skyder i salver. De svære botter styrer rekylen.
 
@@ -10,37 +11,10 @@ import { nyAktør, bevæg, øjeHøjde, KROP, U } from "./bevaegelse.js";
 import { nytVåben, affyr, efterSkud, opdaterVåben, skudRetning, genlad, VÅBEN } from "./vaaben.js";
 import { findVej, nærmesteKnude, POSTER, START } from "./bane.js";
 import { ramKasse } from "./verden.js";
-import { nyRagdoll } from "./ragdoll.js";
-import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
-import { clone as klonSkelet } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/utils/SkeletonUtils.js";
+import { Figur, hentLeddeløs, harLeddeløs } from "./leddeloes.js";
 
-// ---------- Soldaten fra Blender (blender/lav_soldat.py): krop, udstyr, skelet og animationer ----------
-let soldat = null;
-export function hentSoldat() {
-  return new Promise(klar => new GLTFLoader().load("modeller/soldat.glb", g => { soldat = g; klar(true); }, undefined, e => { console.warn("Ingen soldat-model", e); klar(false); }));
-}
-const HOLDFARVER = {
-  ræve: { uniform: 0xb89b6e, vest: 0x7e6644, kasket: 0xc8b08a, tørklæde: 0x9a3a2a, vis: ["kasket", "tørklæde"], skjul: ["hjelm", "briller"] },
-  slanger: { uniform: 0x5b6a3e, vest: 0x363d26, hjelm: 0x4a5530, vis: ["hjelm", "briller"], skjul: ["kasket", "tørklæde"] },
-};
-function byggSoldatGLB(hold) {
-  const f = HOLDFARVER[hold], g = new THREE.Group(), krop = klonSkelet(soldat.scene);
-  krop.traverse(o => {
-    if (o.isMesh) {
-      o.castShadow = true; o.frustumCulled = false;
-      o.material = o.material.clone();
-      if (f[o.material.name] !== undefined) o.material.color.set(f[o.material.name]);
-    }
-  });
-  for (const n of f.skjul) { const o = krop.getObjectByName(n); if (o) o.visible = false; }
-  g.add(krop);
-  const mixer = new THREE.AnimationMixer(krop), handlinger = {};
-  for (const c of soldat.animations) handlinger[c.name] = mixer.clipAction(c);
-  if (handlinger.død) { handlinger.død.setLoop(THREE.LoopOnce, 1); handlinger.død.clampWhenFinished = true; }
-  g.userData = { glb: true, mixer, handlinger, bryst: krop.getObjectByName("bryst"), nu: null };
-  return g;
-}
-const qPitch = new THREE.Quaternion(), xAkse = new THREE.Vector3(1, 0, 0);
+// Soldaterne er leddeløse (leddeloes.js): hovedet, armene og benene kan skydes af hver for sig
+export { hentLeddeløs as hentSoldat };
 
 const G = Math.PI / 180;
 export const NAVNE = ["Grus", "Kaktus", "Sandorm", "Gekko", "Skorpion", "Mirage", "Kamel", "Sahara", "Oase", "Klit", "Støvsky", "Ørkenvind", "Palme", "Fata Morgana"];
@@ -103,17 +77,14 @@ export class Bot {
   // s: { scene, verden, knuder, kampfolk(), skyd(skytte, o, r), lyd, nu(), sværhed }
   constructor(s, hold, navn) {
     this.s = s; this.hold = hold; this.navn = navn; this.erSpiller = false;
-    this.model = soldat ? byggSoldatGLB(hold) : byggSoldat(hold); s.scene.add(this.model);
+    this.fig = harLeddeløs() ? new Figur(hold) : null;
+    this.model = this.fig ? this.fig.model : byggSoldat(hold); s.scene.add(this.model);
     this.drab = 0; this.dødsfald = 0; this.hoveder = 0;
     this.spawn();
   }
   spawn() {
-    if (this.ragdoll) {                                                // den gamle krop ligger der stadig som lig — tag en ny
-      const piler = this.model.children.filter(o => o.isSprite);
-      this.model = byggSoldatGLB(this.hold); this.s.scene.add(this.model);
-      for (const p of piler) { this.model.add(p); p.visible = true; }
-      this.ragdoll = null;
-    }
+    this.fig?.nulstil();
+    for (const o of this.model.children) if (o.isSprite) o.visible = true;
     const [x, z] = START[this.hold][Math.floor(Math.random() * START[this.hold].length)];
     this.a = nyAktør(x + (Math.random() - 0.5) * 2, 0.01, z + (Math.random() - 0.5) * 2, this.hold === "ræve" ? 0 : Math.PI);
     this.liv = 100; this.panser = 100; this.død = false; this.dødTid = 0;
@@ -151,12 +122,14 @@ export class Bot {
     return false;
   }
   øje() { return new THREE.Vector3(this.a.pos.x, this.a.pos.y + øjeHøjde(this.a), this.a.pos.z); }
+  // Rammer strålen botten? Svarer med { t, del, lem } (lem: "armR", "benL", "hoved" … — den del, der kan flyve af)
+  træf(o, r, maks) { return this.fig ? this.fig.træf(o, r, maks) : træfKrop(this.a, o, r, maks); }
 
   // ---------- Ét tick ----------
   tick(dt) {
     const nu = this.s.nu();
     if (this.død) { this.fald = Math.min(1, this.fald + dt * 2.5); return; }
-    opdaterVåben(this.våben, dt);
+    if (this.våben) opdaterVåben(this.våben, dt);
     if ((this.tænkTid -= dt) <= 0) { this.tænkTid = 0.1; this.tænk(nu); }
     let frem = 0, side = 0, duk = false, hop = false, gå = false;
     const sv = this.sv;
@@ -168,8 +141,8 @@ export class Bot {
       const p = this.følgVej();
       if (p) [frem, hop] = this.gåMod(p, dt);
       else { if (!this.flygt.fremme) this.flygt.fremme = nu; duk = true; }
-      if (this.våben.skud < this.våben.d.magasin) genlad(this.våben);
-    } else if (this.mål) {
+      if (this.våben && this.våben.skud < this.våben.d.magasin) genlad(this.våben);
+    } else if (this.mål && this.våben) {
       // ---- kamp: sigt og skyd ----
       const f = this.mål, øje = this.øje();
       const del = this.hovedSigte ? øjeHøjde(f.a) - 0.04 : f.a.h * 0.6;
@@ -198,13 +171,13 @@ export class Bot {
         const [, , kx, kz] = this.post, yaw = Math.atan2(-(kx - this.a.pos.x), -(kz - this.a.pos.z)) + Math.sin(nu * 0.6 + this.fase0) * 0.3;
         this.drejMod(yaw, 0, dt); duk = this.holdDuk;
       }
-      if (this.våben.skud < this.våben.d.magasin * 0.4) genlad(this.våben);
+      if (this.våben && this.våben.skud < this.våben.d.magasin * 0.4) genlad(this.våben);
     }
-    const maks = (this.våben.kikkert && this.våben.d.kikkertFart) || this.våben.d.fart;
+    const maks = this.våben ? (this.våben.kikkert && this.våben.d.kikkertFart) || this.våben.d.fart : 6.2;
     bevæg(this.a, { frem, side, hop, gå, duk }, dt, this.s.verden, maks);
     // fodtrin, som de andre kan høre
     const fart = Math.hypot(this.a.vel.x, this.a.vel.z);
-    if (this.a.jord && fart > this.våben.d.fart * 0.6 && (this.trinTid -= dt * fart) <= 0) { this.trinTid = 1.9; this.s.trin(this); }
+    if (this.a.jord && !this.a.kravl && fart > maks * 0.6 && (this.trinTid -= dt * fart) <= 0) { this.trinTid = 1.9; this.s.trin(this); }
   }
   drejMod(yaw, pitch, dt) {
     const d = vinkel(yaw - this.a.yaw), maks = this.sv.drej * dt;
@@ -320,7 +293,7 @@ export class Bot {
     if (this.mål && !this.kanSe(this.mål, nu)) {                 // fjenden forsvandt bag noget: husk, hvor den var
       this.sidstSet = this.mål.a.pos.clone(); this.sidstSetTid = nu; this.mål = null; this.vej = []; this.vejMål = null;
     }
-    if (!this.mål && !this.flygt) {
+    if (!this.mål && !this.flygt && this.våben) {
       let bedst = null, bd = Infinity;
       for (const f of fjender) { const d = f.a.pos.distanceTo(this.a.pos); if (d < bd && this.kanSe(f, nu)) { bd = d; bedst = f; } }
       if (bedst) {
@@ -344,7 +317,7 @@ export class Bot {
     const yaw = this.a.yaw + højre * G * this.sv.rekylStyr, pitch = this.a.pitch - op * G * this.sv.rekylStyr;
     const ret = skudRetning(v, this.a, yaw, pitch);
     efterSkud(v);
-    this.s.skyd(this, this.øje(), ret, v);
+    this.s.skyd(this, this.øje(), ret, v); this.fig?.skyd();
     this.salve++;
     const [min, maks] = this.sv.salve;
     if (!v.d.auto || this.salve >= min + Math.floor(Math.random() * (maks - min + 1))) {
@@ -355,24 +328,48 @@ export class Bot {
     }
   }
   // Ramt: mist liv — og vend dig mod den, der skød
-  // skud: { r: kuglens retning, del: kropsdelen, kraft } — bruges til, hvordan kroppen falder
+  // skud: { r: kuglens retning, del: kropsdelen, lem: den del, der kan flyve af, kraft }
   ramt(skade, fra, skud = null) {
     this.liv -= skade.liv; this.panser = Math.max(0, this.panser - skade.panser);
+    if (this.fig && skud?.lem === "hoved") this.liv = 0;                                  // hovedet flyver af
     if (!this.mål && fra && !fra.død) { this.sidstSet = fra.a.pos.clone(); this.sidstSetTid = this.s.nu(); this.vej = []; this.vejMål = null;
       this.drejMod(Math.atan2(-(fra.a.pos.x - this.a.pos.x), -(fra.a.pos.z - this.a.pos.z)), 0, 0.15); }
-    if (this.liv <= 0) { this.død = true; this.dødTid = this.s.nu(); this.fald = 0; this.dødsfald++; this.dødSkud = skud; return true; }
+    if (this.liv <= 0) {
+      this.død = true; this.dødTid = this.s.nu(); this.fald = 0; this.dødsfald++;
+      for (const o of this.model.children) if (o.isSprite) o.visible = false;
+      this.fig?.falder(skud, this.s.scene, this.s.verden, this.fart(), this.s.delLyd);
+      return true;
+    }
+    if (this.fig && skud?.lem) this.mistLem(skud.lem, skud);
     if (fra && !this.flygt && this.liv < 55 && Math.random() < 0.55) this.søgDækning(fra, this.s.nu());
     return false;
+  }
+  fart() { return new THREE.Vector3(this.a.vel.x, Math.max(-2, this.a.vel.y), this.a.vel.z); }
+  // En arm eller et ben flyver af. Uden en arm taber den våbnet og trækker pistolen med den anden hånd
+  // (uden arme kan den ikke skyde). Uden et ben kravler den
+  mistLem(lem, skud) {
+    const { scene, verden, delLyd } = this.s, fart = this.fart();
+    if (lem.startsWith("arm") && this.våben) {
+      this.fig.tabVåben(this.våben.id, scene, verden, fart, delLyd);
+      this.fig.skydAf(lem, skud, scene, verden, fart, delLyd);
+      this.våben = this.fig.harArm() ? nytVåben("pistol") : null;
+      if (!this.våben) this.mål = null;
+    } else this.fig.skydAf(lem, skud, scene, verden, fart, delLyd);
+    if (lem.startsWith("ben")) { this.a.kravl = true; this.dukker = false; }
   }
 
   // ---------- Hvert billede: flyt modellen og lad den gå, sigte og falde ----------
   tegn(alfa, dt) {
     const a = this.a, u = this.model.userData;
-    if (this.ragdoll) return;                                          // kroppen falder nu af sig selv (ragdoll.js)
     this.model.position.lerpVectors(a.forrige, a.pos, alfa);
     this.model.rotation.y = a.yaw;
     const fart = Math.hypot(a.vel.x, a.vel.z);
-    if (u.glb) { this.tegnGLB(u, fart, dt); return; }
+    if (this.fig) {
+      if (this.død) return;                                              // delene ligger på jorden (dele.js)
+      const c = Math.cos(a.yaw), s = Math.sin(a.yaw);                    // farten set fra soldaten selv (x til højre, z bagud)
+      this.fig.poser({ fart, vx: c * a.vel.x - s * a.vel.z, vz: s * a.vel.x + c * a.vel.z, duk: a.duk, pitch: a.pitch, kravl: !!a.kravl, våben: this.våben?.id ?? null, dt });
+      return;
+    }
     this.fase += dt * fart * 2.4;
     const sving = Math.sin(this.fase) * Math.min(1, fart / 4) * 0.7;
     u.ben[0].rotation.x = sving; u.ben[1].rotation.x = -sving;
@@ -383,52 +380,6 @@ export class Bot {
     if (this.død) { this.model.rotation.x = this.fald * 1.45; this.model.position.y -= this.fald * 0.15; }
     else this.model.rotation.x = 0;
   }
-}
-// Soldaten fra Blender: vælg animationen efter fart og dukning — og drej brystet med sigtet
-Bot.prototype.tegnGLB = function (u, fart, dt) {
-  const a = this.a;
-  if (this.død) { this.bliverRagdoll(u); return; }
-  const navn = this.død ? "død" : a.duk > 0.5 ? (fart > 0.4 ? "dukgå" : "duk") : fart > 3.6 ? "løb" : fart > 0.4 ? "gå" : "stå";
-  if (navn !== u.nu) {
-    const ny = u.handlinger[navn], gammel = u.handlinger[u.nu];
-    if (ny) { ny.reset(); ny.play(); if (gammel) ny.crossFadeFrom(gammel, navn === "død" ? 0.08 : 0.18, false); }
-    u.nu = navn;
-  }
-  const h = u.handlinger[navn];
-  if (h && (navn === "løb" || navn === "gå" || navn === "dukgå")) h.timeScale = Math.max(0.6, fart / (navn === "løb" ? 5.4 : navn === "gå" ? 2.4 : 1.6));
-  u.mixer.update(dt);
-  if (u.bryst && !this.død) u.bryst.quaternion.multiply(qPitch.setFromAxisAngle(xAkse, -a.pitch));   // sigt op og ned
-};
-// Soldaten dør: animationen stopper, og kroppen falder med fysik. Våbnet tabes — og et hovedskud kan skyde hjelmen af
-const opad = new THREE.Vector3(0, 1, 0);
-Bot.prototype.bliverRagdoll = function (u) {
-  const a = this.a, skud = this.dødSkud, fart = new THREE.Vector3(a.vel.x, Math.max(-2, a.vel.y), a.vel.z);
-  u.mixer.update(0); u.mixer.stopAllAction();
-  for (const o of this.model.children) if (o.isSprite) o.visible = false;
-  this.ragdoll = nyRagdoll(this.model, this.s.scene, this.s.verden, fart, skud, p => this.s.fald?.(p));
-  const våben = this.model.getObjectByName("våben")?.children.find(o => o.isMesh || o.isGroup);
-  if (våben) this.ragdoll.slip(våben, fart.clone().addScaledVector(skud?.r || opad, 1.5).add(new THREE.Vector3((Math.random() - 0.5) * 2, 1.2, (Math.random() - 0.5) * 2)));
-  if (skud?.del === "hoved") {
-    const hat = ["hjelm", "kasket"].map(n => this.model.getObjectByName(n)).find(o => o?.visible);
-    const løs = hat && løsriv(hat, this.s.scene);
-    if (løs) this.ragdoll.slip(løs, fart.clone().addScaledVector(skud.r, 4).add(new THREE.Vector3(0, 2.5, 0)));
-    const briller = this.model.getObjectByName("briller");
-    if (løs && briller?.visible) { const b = løsriv(briller, this.s.scene); if (b) this.ragdoll.slip(b, fart.clone().addScaledVector(skud.r, 3.5).add(new THREE.Vector3(0, 2.2, 0))); }
-  }
-};
-// En hjelm (bøjet med skelettet, men kun af hovedet) laves om til en almindelig ting på samme sted
-function løsriv(sm, scene) {
-  const mesh = sm.isSkinnedMesh ? sm : sm.children?.find(o => o.isSkinnedMesh);
-  if (!mesh) return null;
-  const i = mesh.skeleton.bones.findIndex(b => b.name === "hoved");
-  if (i < 0) return null;
-  mesh.updateWorldMatrix(true, false); mesh.skeleton.bones[i].updateWorldMatrix(true, false);
-  const m = new THREE.Matrix4().multiplyMatrices(mesh.matrixWorld, mesh.bindMatrixInverse).multiply(mesh.skeleton.bones[i].matrixWorld)
-    .multiply(mesh.skeleton.boneInverses[i]).multiply(mesh.bindMatrix);
-  const ny = new THREE.Mesh(mesh.geometry, mesh.material); ny.castShadow = true; ny.frustumCulled = false;
-  ny.matrixAutoUpdate = false; ny.matrix.copy(m); scene.add(ny); ny.updateMatrixWorld(true);
-  sm.visible = false;
-  return ny;
 }
 // En vinkel mellem −π og π
 export function vinkel(v) { return ((v + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; }
