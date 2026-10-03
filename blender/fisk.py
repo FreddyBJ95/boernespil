@@ -417,9 +417,9 @@ def samlet(rod, opskrifter, afstand, pr_række):
     """Som række(), men opskrifter må også give et ekstra led tilbage (fx hvalens hale)"""
     led = []
     for navn, lav in opskrifter.items():
+        l = tom(navn, (0, 0, 0), rod)          # leddet først, så det får navnet (en del med samme navn får .001)
         res = lav()
         dele, ekstra = (res if isinstance(res, tuple) else (res, None))
-        l = tom(navn, (0, 0, 0), rod)
         for d in dele: sæt_forælder(d, l)
         if ekstra: sæt_forælder(ekstra, l)
         led.append(l)

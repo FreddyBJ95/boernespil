@@ -582,8 +582,8 @@ def række(rod, opskrifter, afstand=1.6, pr_række=6):
     """Byg hver ting i sit eget led (ved 0,0,0) og læg dem på række til skyggebagning og prøvebillede"""
     led = []
     for i, (navn, lav) in enumerate(opskrifter.items()):
+        l = tom(navn, (0, 0, 0), rod)          # leddet først, så det får navnet (en del med samme navn får .001)
         dele = lav()
-        l = tom(navn, (0, 0, 0), rod)
         for d in dele: sæt_forælder(d, l)
         led.append(l)
     for i, l in enumerate(led):
