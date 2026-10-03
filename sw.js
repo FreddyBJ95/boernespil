@@ -1,6 +1,6 @@
 // ===== Service Worker — gør spillene installerbare og tilgængelige offline =====
 // Bump dette tal når der ændres filer, så de gamle bliver hentet på ny.
-const CACHE = "boernespil-v63";
+const CACHE = "boernespil-v64";
 
 const SPIL = ["balloner", "byg-burger", "enhjoerning", "vask", "slange", "tegne", "piano", "fisk", "broekraft", "rulle-rasmus", "burgerloeb"];
 const VOKSENSPIL = ["det-sidste-lys", "skrotstorm", "krystaljaegerne"];
@@ -13,7 +13,8 @@ const EKSTRA = [
   ...["style.css", "spil.js", "styring.js", "missioner.js", "verden-data.js", "fysik.js", "fremgang.js", "lyd.js", "forside.jpg", "ikon.svg",
     "modeller/oerken.glb", "modeller/rotten.glb", "modeller/buggy.glb", "modeller/truck.glb"].map(f => `spil/skrotstorm/${f}`),
   ...["style.css", "spil.js", "verden.js", "eventyr.js", "projektiler.js", "forside.jpg", "modeller/eventyr.glb"].map(f => `spil/krystaljaegerne/${f}`),
-  ...["three.js", "spil.js", "fisk.js", "staenger.js", "verden.js", "lyd.js"].map(f => `spil/fisk/${f}`),
+  ...["three.js", "spil.js", "fisk.js", "staenger.js", "verden.js", "lyd.js", "modeller.js"].map(f => `spil/fisk/${f}`),
+  ...["soe", "hav", "grej"].map(f => `spil/fisk/modeller/${f}.glb`),
   ...["three.js", "spil.js", "verden.js", "slange.js", "mad.js", "lyd.js", "modeller.js"].map(f => `spil/slange/${f}`),
   ...["hoved", "mad", "hatte", "pynt"].map(f => `spil/slange/modeller/${f}.glb`),
   ...["three.js", "spil.js", "baner.js", "bane.js", "temaer.js", "verden.js", "ting.js", "blob.js", "partikler.js", "teksturer.js", "lyd.js"].map(f => `spil/rulle-rasmus/${f}`),

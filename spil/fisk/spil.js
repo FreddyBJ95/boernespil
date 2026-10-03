@@ -8,6 +8,7 @@ import { FISKE, byggFisk, animerFisk, rydOp } from "./fisk.js";
 import { STÆNGER, byggStang } from "./staenger.js";
 import { byggVerden } from "./verden.js";
 import * as Lyd from "./lyd.js";
+import { hentModeller } from "./modeller.js";
 
 const E = window.Effekter;
 const $ = id => document.getElementById(id);
@@ -49,6 +50,7 @@ const scene = new THREE.Scene();
 const kamera = new THREE.PerspectiveCamera(60, 1, 0.05, 900);
 kamera.rotation.order = "YXZ";
 scene.add(kamera);
+await hentModeller(["grej", BANE === "hav" ? "hav" : "soe"]);   // omgivelserne fra Blender (modeller.js)
 const verden = byggVerden(scene, renderer, { bane: BANE, fiskeHer, lyd: (navn, ...x) => Lyd[navn]?.(...x) });
 kamera.position.copy(verden.kamera.pos);
 kamera.rotation.x = verden.kamera.rx;
@@ -160,7 +162,7 @@ const sejlKnap = $("sejlKnap"), beskedEl = $("besked"), kampbarEl = $("kampbar")
 talEl.textContent = gemt.total || 0;
 
 const BESKED = {
-  start: "", klar: "Tryk for at kaste! 🎣", kast: "Svup! 🎣", vent: "Hold fingeren nede for at spole ind 🌀",
+  start: "", klar: "Tryk for at kaste! 🎣", kast: "Ud i vandet 🎣", vent: "Hold fingeren nede for at spole ind 🌀",
   bid: "Fisk på! 🐟", kamp: "Hold nede og spol! Den kæmper! 💪", land: "Den kommer op! 🌊", vis: "", spand: "",
   sejl: "Brrrum! Vi sejler ud til et nyt sted… 🚤",
 };
