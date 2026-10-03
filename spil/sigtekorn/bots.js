@@ -259,7 +259,7 @@ export class Bot {
       let w = d < 8 ? 0.15 : 1;
       const [fx, fz] = this.s.bane.start[this.hold === "ræve" ? "slanger" : "ræve"][0];
       if (Math.hypot(p[0] - fx, p[1] - fz) < 18) w *= 0.25;             // ikke helt hen til fjendernes start
-      if (Math.abs(p[0]) < 5) w *= 0.3;                                // midtergaden: kun en gang imellem
+      w *= this.s.bane.postVægt(p);                                    // banen kan gøre nogle poster mere eller mindre populære
       if (p === this.sidstePost) w *= 0.1;
       for (const v of venner) {
         const vd = v.post ? Math.hypot(v.post[0] - p[0], v.post[1] - p[1]) : Math.hypot(v.a.pos.x - p[0], v.a.pos.z - p[1]);

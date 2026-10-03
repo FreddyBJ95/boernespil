@@ -168,4 +168,7 @@ function byg({ b, solid, verden, hash }) {
   };
 }
 
-export default { navn: "Støvbyen", start: START, poster: POSTER, omveje: OMVEJE, byg };
+// Midtergaden (x tæt på 0) er kun en gang imellem en post — ellers står alle der og skyder på hinanden
+const postVægt = ([x]) => Math.abs(x) < 5 ? 0.3 : 1;
+
+export default { navn: "Støvbyen", start: START, poster: POSTER, omveje: OMVEJE, postVægt, byg };

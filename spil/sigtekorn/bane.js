@@ -122,7 +122,7 @@ export function lavBane(scene, verden, t, id = "stoevbyen") {
   lavPalmer(scene, verden, t, info.palmer || []);
   info.pynt?.({ scene, THREE, t });                                // det, der kun er til at se på (fx vand og et skib)
   const knuder = lavVejnet(verden, info.erFast || (() => false), info.grænse, info.ekstraKnuder || []);
-  return { id: BANER[id] ? id : "stoevbyen", navn: def.navn, knuder, erFast: info.erFast, masker, start: def.start, poster: def.poster, omveje: def.omveje || [], lamper: info.lamper || [], grænse: info.grænse };
+  return { id: BANER[id] ? id : "stoevbyen", navn: def.navn, knuder, erFast: info.erFast, masker, start: def.start, poster: def.poster, omveje: def.omveje || [], postVægt: def.postVægt || (() => 1), lamper: info.lamper || [], grænse: info.grænse };
 }
 
 // Tønder: runde, med to ringe (kun til at se på — kollisionen er en kasse)
