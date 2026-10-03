@@ -2089,7 +2089,7 @@ const fest = () => { E.fest(window.innerWidth / 2, window.innerHeight * 0.4); };
 // Enhjørningeland: føllene, der skal hjem til stalden, og regnbuesporet, når man rider (enhjoerninger.js)
 const føljagt = cfg.enhjørninger ? new Føljagt({
   sp, verden, dyr, nytDyr, dyrDef, stald: cfg.stald(VX, VZ), partikel, lyd: Lyd, besked, fest,
-  fyrværkeri: (x, y, z) => fællesRaket(x, y, z), rider: () => skyd.kører?.dyrDef?.id,
+  fyrværkeri: (x, y, z) => fællesRaket(x, y, z), rider: () => skyd.kører?.dyrDef?.id, andre: () => andre.values(),
 }) : null;
 function guldRegn() {                                            // guldmønter, der regner ned omkring barnet
   for (let i = 0; i < 50; i++) partikel(sp.pos.x + (Math.random() - 0.5) * 4, sp.pos.y + 3 + Math.random() * 2, sp.pos.z + (Math.random() - 0.5) * 4,
@@ -2372,7 +2372,7 @@ async function forbindOnline() {
     if (f) { besked(`${figurIkon(f.figur)} er gået 👋`); f.fjern(); andre.delete(e.detail.id); opdaterStatus(); }
   });
   net.addEventListener("pos", e => {
-    for (const p of e.detail.liste) if (p.id !== minId) (andre.get(p.id) || nyFigur(p)).sæt(p.x, p.y, p.z, p.yaw);
+    for (const p of e.detail.liste) if (p.id !== minId) { const f = andre.get(p.id) || nyFigur(p); f.sæt(p.x, p.y, p.z, p.yaw); f.sætRid(p.rid); }
   });
   net.addEventListener("bum", e => { sidsteBum = { ...e.detail, tid: performance.now() }; bragEffekt(e.detail.x, e.detail.y, e.detail.z); });
   net.addEventListener("emoji", e => visEmoji(e.detail.id, e.detail.e));
@@ -2411,6 +2411,7 @@ function nyFigur(p) {
   const f = new Figur(p.id, p.figur, scene);
   andre.set(p.id, f);
   if (Number.isFinite(p.x)) f.sæt(p.x, p.y, p.z, p.yaw || 0);
+  f.sætRid(p.rid);
   return f;
 }
 function blokFraServer({ x, y, z, id }) {
@@ -2434,7 +2435,7 @@ function visEmoji(id, e) {
 function opdaterOnline(dt) {
   for (const f of andre.values()) f.opdater(dt);
   if (!iGang || !net) return;
-  net.pos(sp.pos.x, sp.pos.y, sp.pos.z, sp.yaw, sp.pitch);
+  net.pos(sp.pos.x, sp.pos.y, sp.pos.z, sp.yaw, sp.pitch, skyd.kører?.dyrDef?.ride ? skyd.kører.dyrDef.id : null);   // rid: de andre ser dyret
   sendKø(dt);
   if (!dyrLavet && verden.hentet(Math.floor(sp.pos.x), Math.floor(sp.pos.z)) && !ventPåJord) { dyrLavet = true; lavStartDyr(sp.pos.x, sp.pos.z); }
 }

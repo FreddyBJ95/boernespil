@@ -22,5 +22,5 @@ Filer der tilhører Claude må ikke ændres, bortset fra de små, præcist beskr
 - Nye blokke tilføjes altid **nederst** i `BLOKKE` i `spil/broekraft/blokke.js`, så gemte verdener passer.
 
 ## Aktuel opgave
-Se `OVERDRAGELSE-CODEX-ENHJORNING.md` (server-v0.5.1 med den nye verden Enhjørningeland). Opgave A–E er færdige,
-og server-v0.5.0 er udgivet.
+Se `OVERDRAGELSE-CODEX-ENHJORNING.md` (opgave F: server-v0.5.1 med Enhjørningeland, og man skal kunne se, når de
+andre rider). Opgave A–E er færdige, og server-v0.5.0 er udgivet.
