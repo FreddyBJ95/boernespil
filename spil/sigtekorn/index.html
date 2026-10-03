@@ -39,6 +39,7 @@
   .knapper button.valgt { background: #c8963e; color: #1a140c; border-color: #e8b860; }
   .stor { font-size: 19px; padding: 12px 24px; background: #c8963e; color: #1a140c; border-color: #e8b860; }
   .stor.anden { background: #2a2116; color: #f3e7cf; border-color: #6a5434; }
+  .stor:disabled { opacity: 0.6; cursor: wait; }
   input[type=range] { width: 100%; accent-color: #c8963e; }
   .række { display: flex; align-items: center; gap: 12px; } .række output { min-width: 48px; text-align: right; font-variant-numeric: tabular-nums; }
   .hjælp { color: #b8a684; font-size: 13.5px; line-height: 1.6; margin: 14px 0 0; }
@@ -163,7 +164,7 @@
       <label>Du kan miste arme og ben</label><div class="knapper" id="valgLemmer"></div>
     </div>
     <div class="menu-bund">
-      <button class="stor" id="start">▶ Start kamp</button>
+      <button class="stor" id="start" disabled>Henter banen…</button>
       <button class="stor anden skjult" id="fortsæt">Fortsæt</button>
       <a href="../../">← Tilbage til spillene</a>
     </div>

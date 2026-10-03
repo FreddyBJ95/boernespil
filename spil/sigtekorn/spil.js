@@ -1,9 +1,9 @@
 // ===== Sigtekorn: et 3D-skydespil til de voksne, i stil med Counter-Strike =====
-// Holdkamp mod bots i ørkenbyen Støvbyen. Fysikken kører med fast tick (128 i sekundet), så bevægelser
+// Holdkamp, våbenræs og træning mod bots på tre baner: Støvbyen, Havnen og Fjeldbyen. Fysikken kører med fast tick (128 i sekundet), så bevægelser
 // og skud føles ens hver gang — og man kan blive god til det: stå stille, når du skyder, modstyr,
 // træk musen imod rekylen, og sigt efter hovedet.
 //  bevaegelse.js  bevægelsen (Source-fysik)     vaaben.js  våbnene, spredning og rekyl
-//  bane.js        Støvbyen og vej-nettet          bots.js    botterne
+//  bane.js        byggeklodserne og vej-nettet    bots.js    botterne        baner/  de enkelte baner
 //  haand.js       våbnet i hånden                 effekter.js skudhuller, støv og lysspor
 //  lyd.js         lydene                           hud.js     skærmen og statistikken     ../laas.js  koden
 //  lys.js         lyset, der er bagt i Blender     teksturer.js  fotos og tegnede teksturer
@@ -632,7 +632,7 @@ $("fortsæt").addEventListener("click", () => { gemIndst(); lås_mus(); });
 $("igen").addEventListener("click", () => { $("slut").classList.add("skjult"); startKamp(); lås_mus(); });
 $("tilMenu").addEventListener("click", () => { $("slut").classList.add("skjult"); $("fortsæt").classList.add("skjult"); $("start").textContent = "▶ Start kamp"; visMenu(); });
 $("klik").addEventListener("click", lås_mus);
-
+$("start").disabled = false; $("start").textContent = "▶ Start kamp";      // banen og modellerne er hentet: klar
 // ---------- Menuen ----------
 function knapper(id, valg, nøgle, efter) {
   const rod = $(id); rod.innerHTML = "";
