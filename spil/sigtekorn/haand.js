@@ -99,12 +99,15 @@ function granat() {
   g.userData = { munding: new THREE.Vector3(0, 0, -0.1), venstre: null, højre: [0.0, -0.06, 0.03] };
   return g;
 }
-const BYG = { gevær: stormgevær, snig: snigskytte, pistol, kniv, granat };
-const GLB_PLADS = { gevær: [0.15, -0.18, -0.4], snig: [0.15, -0.19, -0.42], pistol: [0.085, -0.1, -0.44], kniv: [0.16, -0.16, -0.36], granat: [0.17, -0.17, -0.38] };
+const BYG = { gevær: stormgevær, snig: snigskytte, pistol, kniv, granat, ingen: () => Object.assign(new THREE.Group(), { userData: { munding: new THREE.Vector3(), venstre: null, højre: null } }) };
+const GLB_PLADS = { gevær: [0.15, -0.18, -0.4], snig: [0.15, -0.19, -0.42], pistol: [0.085, -0.1, -0.44], kniv: [0.16, -0.16, -0.36], granat: [0.17, -0.17, -0.38], ingen: [0, 0, 0] };
 const GLB_DREJ = { gevær: [0, 0.07, -0.05], snig: [0, 0.06, -0.04], pistol: [0.02, 0.06, -0.04], kniv: [0.35, 0.2, -0.35], granat: [0, 0, 0] };   // lidt skråt, så man ser våbnets højre side
-const PLADS = { gevær: [0.2, -0.22, -0.52], snig: [0.19, -0.2, -0.5], pistol: [0.17, -0.18, -0.42], kniv: [0.2, -0.19, -0.38], granat: [0.18, -0.2, -0.4] };
-const SIGTE = [0, -0.083, -0.3];                                    // våbnet midt foran øjet, når man sigter (kampgevær, jagtgevær, armbrøst)
+const PLADS = { gevær: [0.2, -0.22, -0.52], snig: [0.19, -0.2, -0.5], pistol: [0.17, -0.18, -0.42], kniv: [0.2, -0.19, -0.38], granat: [0.18, -0.2, -0.4], ingen: [0, 0, 0] };
+const SIGTE = [0, -0.083, -0.3];                                    // våbnet midt foran øjet, når man sigter (hvis modellen ikke har punktet "oeje")
 const SPARK = { snig: 1.6, pistol: 0.8, hagl: 1.8, tung: 0.6, special: 0.9 };
+// Grebet i klassens første model (stormgeværet, snigskytten, pistolen, kniven): de andre modeller flyttes, så deres
+// greb (punktet "greb" i filen) sidder samme sted — så ligger alle våben ens i hånden
+const REF_GREB = { gevær: [0.011, -0.072, 0.033], snig: [0, -0.06, 0.06], pistol: [0, -0.06, 0.035], kniv: [0, 0, 0.06] };
 const filer = new Map();                                            // hver fil hentes kun én gang
 
 export class Hånd {
@@ -123,21 +126,25 @@ export class Hånd {
   forbered(ids) {
     for (const id of ids) {
       if (this.modeller[id]) continue;
-      const k = id.startsWith("granat_") ? "granat" : grundklasse(id), g = BYG[k](), holder = new THREE.Group();
+      const k = id.startsWith("granat_") ? "granat" : id === "ingen" ? "ingen" : grundklasse(id), g = BYG[k](), holder = new THREE.Group();
       holder.add(g); hænder(holder, g.userData.venstre, g.userData.højre);
       holder.visible = false; this.rod.add(holder);
       const m = this.modeller[id] = { holder, g, klasse: k };
-      if (k !== "granat") this.hentModel(id, m);
+      if (k !== "granat" && k !== "ingen") this.hentModel(id, m);
     }
   }
   hentModel(id, m) {
     const egen = `modeller/${VÅBEN[id].model}.glb`, reserve = `modeller/${KLASSEFIL[klasse(id)] || "gevaer"}.glb`;
     const hent = fil => { if (!filer.has(fil)) filer.set(fil, new GLTFLoader().loadAsync(fil)); return filer.get(fil); };
     hent(egen).catch(() => hent(reserve)).then(gltf => {
-      const ny = gltf.scene.clone(true), mund = ny.getObjectByName("munding");
+      const ny = gltf.scene.clone(true), mund = ny.getObjectByName("munding"), greb = ny.getObjectByName("greb"), ref = REF_GREB[m.klasse];
+      if (greb && ref) ny.position.set(ref[0] - greb.position.x, ref[1] - greb.position.y, ref[2] - greb.position.z);
       ny.traverse(o => { if (o.isMesh) { o.material.envMapIntensity = 0.7; o.frustumCulled = false; } });
       m.holder.clear(); m.holder.add(ny);
       m.g = ny; m.g.userData.munding = mund ? mund.position.clone() : new THREE.Vector3(0, 0, -0.7);
+      const øje = ny.getObjectByName("oeje");                       // når man sigter, lægges dette punkt lige foran kameraet
+      m.sigte = øje ? øje.position.clone().add(ny.position).negate().toArray() : null;
+      m.roterer = ny.getObjectByName("roterer");                     // minigunnens løb drejer rundt
       m.glb = true;
     }).catch(fejl => console.warn("Kunne ikke hente modellen til", id, fejl));
   }
@@ -173,7 +180,7 @@ export class Hånd {
     const id = this.aktiv; if (!id) return;
     const m = this.modeller[id], k = m.klasse, p0 = (m.glb && GLB_PLADS[k]) || PLADS[k];
     this.sigte += ((s.sigte ? 1 : 0) - this.sigte) * Math.min(1, dt * 12);
-    const p = p0.map((v, i) => v + (SIGTE[i] - v) * this.sigte);
+    const mål = m.sigte || SIGTE, p = p0.map((v, i) => v + (mål[i] - v) * this.sigte);
     this.træk = Math.max(0, this.træk - dt / (this.trækTid || 0.5));
     this.spark *= Math.exp(-dt * 16);
     this.hug = Math.max(0, this.hug - dt * 3.2);
@@ -189,6 +196,7 @@ export class Hånd {
     m.holder.rotation.set(d[0] + 0.07 * this.spark - 0.32 * dyk + 0.7 * trk + 0.02 * this.land, d[1] + this.svajX * 2, d[2] + 0.45 * dyk + this.svajX);
     if (k === "kniv") { const h = Math.sin(this.hug * Math.PI); m.holder.rotation.y += h * 0.9; m.holder.rotation.x -= h * 0.4; m.holder.position.x -= h * 0.08; }
     if (k === "granat") { const h = Math.sin(this.hug * Math.PI); m.holder.rotation.x -= h * 1.2; m.holder.position.y += h * 0.12; m.holder.position.z -= h * 0.1; }
+    if (m.roterer) m.roterer.rotation.z += dt * 45 * (s.spin || 0);
     if (this.glimtTid > 0 && (this.glimtTid -= dt) <= 0) this.glimt.visible = false;
   }
   tilpas(aspekt) { this.kamera.aspect = aspekt; this.kamera.updateProjectionMatrix(); }

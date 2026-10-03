@@ -309,6 +309,7 @@ export function byggVerden(scene, renderer, bane, tema) {
       scene.remove(luft.punkter);
       luft.punkter.geometry.dispose(); luft.punkter.material.dispose();
       gruppe.traverse(o => {
+        if (o.userData.delt) return;                       // formerne fra Blender deles mellem banerne
         if (o.geometry) o.geometry.dispose();
         if (o.material && !o.isSprite) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.dispose());
       });

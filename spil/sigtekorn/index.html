@@ -58,7 +58,7 @@
   #ramt::after { transform: rotate(-45deg); }
   #ramt.vis { opacity: 1; } #ramt.hoved::before, #ramt.hoved::after { background: #ff4a3a; } #ramt.dræbt { transform: scale(1.4); }
   .boks { position: absolute; display: flex; gap: 22px; align-items: baseline; padding: 8px 16px; background: rgba(12, 10, 7, 0.45); border-radius: 12px; }
-  #livBoks { left: 18px; bottom: 16px; font-size: 32px; font-weight: 800; } #livBoks span.lavt b { color: #ff5a4a; }
+  #livBoks { left: 18px; bottom: 16px; font-size: 32px; font-weight: 800; } #livBoks.lavt span:first-child b { color: #ff5a4a; }
   #livBoks small { font-size: 17px; color: #d8c8a8; margin-right: 6px; }
   #ammoBoks { right: 18px; bottom: 16px; font-size: 34px; font-weight: 800; gap: 10px; }
   #ammoBoks #våbenNavn { font-size: 15px; color: #d8c8a8; font-weight: 600; margin-right: 8px; } #ammoBoks #ammoReserve { font-size: 19px; color: #d8c8a8; }
@@ -74,6 +74,7 @@
   @keyframes fade { to { opacity: 0; } }
   #rødKant { position: absolute; inset: 0; background: radial-gradient(circle, transparent 55%, rgba(200, 20, 10, 0.45)); opacity: 0; }
   #rødKant.vis { animation: rød 0.6s forwards; } @keyframes rød { 0% { opacity: 1; } 100% { opacity: 0; } }
+  #prik { position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: #ff2a2a; box-shadow: 0 0 5px 1px rgba(255, 40, 40, 0.75); }
   #kikkert { position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, transparent 0, transparent calc(44vh - 1px), #000 44vh); }
   #kikkert::before, #kikkert::after { content: ""; position: absolute; background: #000; }
   #kikkert::before { left: 0; right: 0; top: 50%; height: 1px; } #kikkert::after { top: 0; bottom: 0; left: 50%; width: 1px; }
@@ -110,6 +111,12 @@
   .vælger-kort h2 { margin: 0 0 14px; color: var(--sand); font-size: 26px; }
   .vælger-gitter { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-bottom: 16px; }
   /* granaterne på skærmen og blændingen */
+  /* liv og skjold som bjælker (som i Fortnite) */
+  #livBoks .bjælker { display: flex; flex-direction: column; gap: 4px; width: 150px; align-self: center; }
+  #livBoks .bjælker i { display: block; height: 9px; border-radius: 5px; background: rgba(0, 0, 0, 0.5); overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.2); }
+  #livBoks .bjælker b { display: block; height: 100%; width: 100%; transition: width 0.2s; }
+  #livBoks .skjold b { background: linear-gradient(90deg, #2a7aff, #6ab8ff); } #livBoks .helbred b { background: linear-gradient(90deg, #3ac43a, #8af06a); }
+  #livBoks.lavt .helbred b { background: linear-gradient(90deg, #d8382a, #ff7a5a); }
   #granatBoks { right: 18px; bottom: 74px; font-size: 18px; gap: 12px; } #granatBoks span { opacity: 0.45; } #granatBoks span.har { opacity: 1; } #granatBoks span.aktiv { color: #ffd27a; }
   #blænd { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 12; }
 </style>
@@ -120,6 +127,7 @@
 <div id="hud" class="skjult">
   <div id="rødKant"></div>
   <div id="kikkert" class="skjult"></div>
+  <div id="prik" class="skjult"></div>
   <div id="sigte"><i class="t"></i><i class="b"></i><i class="v"></i><i class="h"></i></div>
   <div id="ramt"></div>
   <div id="skadeRetning"></div>
@@ -127,7 +135,8 @@
   <div id="drab"></div>
   <div id="besked"></div>
   <div id="fart"></div>
-  <div id="livBoks" class="boks"><span><small>✚</small><b id="livTal">100</b></span><span><small>⛨</small><b id="panserTal">100</b></span></div>
+  <div id="livBoks" class="boks"><span><small>✚</small><b id="livTal">100</b></span><span><small>⛨</small><b id="panserTal">100</b></span>
+    <div class="bjælker"><i class="skjold"><b id="panserBjælke"></b></i><i class="helbred"><b id="livBjælke"></b></i></div></div>
   <div id="granatBoks" class="boks"></div>
   <div id="ammoBoks" class="boks"><span id="våbenNavn">Stormgevær</span><b id="ammoTal">30</b><span id="ammoReserve">/ 90</span></div>
   <div id="død" class="skjult"></div>
@@ -150,6 +159,7 @@
       <label>Lydstyrke</label><div class="række"><input type="range" id="lydstyrke" min="0" max="1" step="0.05"><output id="lydstyrkeTal"></output></div>
       <label>Vis fart</label><div class="knapper" id="valgFart"></div>
       <label>Fuld skærm</label><div class="knapper" id="valgFuld"></div>
+      <label>Du kan miste arme og ben</label><div class="knapper" id="valgLemmer"></div>
     </div>
     <div class="menu-bund">
       <button class="stor" id="start">▶ Start kamp</button>

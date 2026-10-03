@@ -94,5 +94,7 @@ bag(hænder, "hænder", 512)
 
 # mundingen (hvor glimtet skal sidde) — et tomt punkt, som spillet finder
 m = bpy.data.objects.new("munding", None); bpy.context.collection.objects.link(m); m.location = (0, 0.69, 0.006)
-eksportér([gevær, hænder, m], "gevaer.glb")
+g = bpy.data.objects.new("greb", None); bpy.context.collection.objects.link(g); g.location = (0.011, -0.033, -0.072)       # højre hånd (botterne)
+f = bpy.data.objects.new("forgreb", None); bpy.context.collection.objects.link(f); f.location = (0, 0.335, -0.035)      # venstre hånd
+eksportér([gevær, hænder, m, g, f], "gevaer.glb")
 prøvebillede("gevaer.png", (0.55, -0.35, 0.22), (0, 0.18, -0.02))

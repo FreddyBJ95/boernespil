@@ -6,6 +6,7 @@
 
 import * as THREE from "./three.js";
 import { byggFisk, animerFisk, rydOp } from "./fisk.js";
+import { kopi, mange, tone } from "./modeller.js";
 
 const std = (farve, x = {}) => new THREE.MeshStandardMaterial({ color: farve, roughness: 0.8, ...x });
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -280,8 +281,10 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.92, 0.98, 1.0), smoothstep(${B.s
   });
 
   // ---------- spanden til fangsten og en grejkasse ----------
-  const spand = new THREE.Group();
+  const spand = new THREE.Group(), spandModel = kopi("grej", "spand");   // fra Blender, hvis den findes
   const rød = std("#e63946", { roughness: 0.4, side: THREE.DoubleSide });
+  if (spandModel) spand.add(spandModel);
+  else {
   spand.add(new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.23, 0.42, 24, 1, true), rød));
   spand.add(mesh(new THREE.CircleGeometry(0.23, 24).rotateX(-Math.PI / 2), rød, 0, -0.21, 0));
   const kant = mesh(new THREE.TorusGeometry(0.3, 0.018, 8, 28), std("#ffffff"), 0, 0.21, 0);
@@ -289,6 +292,7 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.92, 0.98, 1.0), smoothstep(${B.s
   spand.add(mesh(new THREE.CircleGeometry(0.28, 24).rotateX(-Math.PI / 2), std("#4cc3f0", { roughness: 0.1 }), 0, 0.12, 0));
   const hank = mesh(new THREE.TorusGeometry(0.3, 0.012, 6, 20, Math.PI), std("#9aa3ad", { metalness: 0.7, roughness: 0.3 }), 0, 0.21, 0);
   hank.rotation.set(-0.5, 0.4, 0); spand.add(hank);
+  }
   spand.scale.setScalar(0.8);
   const spandPos = V(-0.95, 0.98, 2.3);
   const iSpanden = [];
@@ -298,10 +302,13 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.92, 0.98, 1.0), smoothstep(${B.s
     spand.add(h); iSpanden.push(h);
     if (iSpanden.length > 7) spand.remove(iSpanden.shift());
   }
-  const kasse = new THREE.Group();
+  const kasse = new THREE.Group(), kasseModel = kopi("grej", "grejkasse");
+  if (kasseModel) kasse.add(kasseModel);
+  else {
   kasse.add(new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.26, 0.32), std("#2a9d8f", { roughness: 0.5 })));
   kasse.add(mesh(new THREE.BoxGeometry(0.57, 0.05, 0.34), std("#23867a", { roughness: 0.5 }), 0, 0.15, 0));
   kasse.add(mesh(new THREE.TorusGeometry(0.08, 0.015, 6, 12, Math.PI), std("#26262e"), 0, 0.17, 0));
+  }
 
   // ---------- og så selve stedet ----------
   let kamera, båd = null;
@@ -348,6 +355,16 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.92, 0.98, 1.0), smoothstep(${B.s
     const stammeGeo = new THREE.CylinderGeometry(0.12, 0.18, 1, 6); stammeGeo.translate(0, 0.5, 0);
     const træMat = new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.9 });
     const N = 140;
+    const granListe = [], løvListe = [];                     // træerne fra Blender: grantræer og løvtræer
+    for (let i = 0; i < N; i++) {
+      const a = (i / N) * Math.PI * 2 + rnd(-0.02, 0.02), r = rnd(90, 135), h = rnd(7, 15);
+      (Math.random() < 0.6 ? granListe : løvListe).push([SØ.x + Math.cos(a) * r, SØ.z + Math.sin(a) * r, h, i]);
+    }
+    const stil = liste => (o, k) => { const [x, z, h] = liste[k]; o.position.set(x, 0.4, z); o.rotation.y = rnd(0, 6); o.scale.setScalar(h / 10); };
+    const skov = [mange("soe", "gran", granListe.length, (o, k) => { stil(granListe)(o, k); return ["#2f7d3a", "#3b8f40", "#276b34", "#4f9d3a"][granListe[k][3] % 4]; }),
+                  mange("soe", "løvtræ", løvListe.length, (o, k) => { stil(løvListe)(o, k); return ["#5bb04a", "#77c24d", "#4aa048", "#8fcf52"][løvListe[k][3] % 4]; })];
+    if (skov[0] && skov[1]) scene.add(...skov);
+    else {
     const graner = new THREE.InstancedMesh(granGeo, træMat, N * 2);
     const kroner = new THREE.InstancedMesh(kroneGeo, træMat, N);
     const stammer = new THREE.InstancedMesh(stammeGeo, std("#6b4a2b"), N);
@@ -371,6 +388,7 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.92, 0.98, 1.0), smoothstep(${B.s
     }
     graner.count = ng; kroner.count = nk;
     for (const m of [graner, kroner, stammer]) { m.frustumCulled = false; scene.add(m); }
+    }
 
     // åkander (og én, som frøen sidder på)
     const åkGeo = new THREE.CylinderGeometry(0.75, 0.75, 0.05, 20, 1, false, 0.4, Math.PI * 2 - 0.8);
@@ -378,7 +396,9 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.92, 0.98, 1.0), smoothstep(${B.s
     const bladGeo = new THREE.ConeGeometry(0.1, 0.28, 5); bladGeo.translate(0, 0.14, 0);
     const åer = [];
     const åkande = (x, z, blomst, str) => {
-      const å = new THREE.Group();
+      const å = new THREE.Group(), blad = kopi("soe", "åkande");
+      if (blad) { å.add(blad); if (blomst) å.add(kopi("soe", "åkandeblomst")); }
+      else {
       å.add(new THREE.Mesh(åkGeo, åkMat));
       if (blomst) {
         for (let j = 0; j < 7; j++) {
@@ -387,6 +407,7 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.92, 0.98, 1.0), smoothstep(${B.s
           å.add(b);
         }
         å.add(mesh(new THREE.SphereGeometry(0.07, 10, 8), midtMat, 0, 0.08, 0));
+      }
       }
       å.position.set(x, 0, z); å.rotation.y = rnd(0, 6); å.scale.setScalar(str);
       scene.add(å); åer.push(å);
@@ -398,7 +419,12 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.92, 0.98, 1.0), smoothstep(${B.s
 
     // siv
     const sivGeo = new THREE.ConeGeometry(0.05, 1, 4); sivGeo.translate(0, 0.5, 0);
-    const NS = 160, siv = new THREE.InstancedMesh(sivGeo, new THREE.MeshStandardMaterial({ roughness: 0.8 }), NS);
+    const sivModel = mange("soe", "siv", 48, (o, i) => {        // klynger af siv og dunhammere fra Blender
+      const [cx, cz] = [[-4.5, 0.5], [-6.5, -3], [5, 1], [7.5, -2.5], [-12, -8], [13, -10], [-20, -16], [22, -18]][i % 8];
+      o.position.set(cx + rnd(-1.2, 1.2), -0.3, cz + rnd(-1.2, 1.2)); o.rotation.y = rnd(0, 6.3); o.scale.setScalar(rnd(0.8, 1.25));
+    });
+    if (sivModel) scene.add(sivModel);
+    const NS = sivModel ? 0 : 160, siv = new THREE.InstancedMesh(sivGeo, new THREE.MeshStandardMaterial({ roughness: 0.8 }), NS);
     const kolber = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.07, 0.07, 0.35, 6), std("#6b3f1f"), NS);
     const klynger = [[-4.5, 0.5], [-6.5, -3], [5, 1], [7.5, -2.5], [-12, -8], [13, -10], [-20, -16], [22, -18]];
     let nkol = 0;
@@ -412,9 +438,12 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.92, 0.98, 1.0), smoothstep(${B.s
       }
     }
     kolber.count = nkol;
-    for (const m of [siv, kolber]) { m.frustumCulled = false; scene.add(m); }
+    if (!sivModel) for (const m of [siv, kolber]) { m.frustumCulled = false; scene.add(m); }
 
-    // brygge
+    // brygge (fra Blender, ellers af kasser)
+    const brygge = kopi("soe", "brygge");
+    if (brygge) scene.add(brygge);
+    else {
     const plankeGeo = new THREE.BoxGeometry(2.6, 0.08, 0.3);
     const træFarver = ["#a47148", "#b5835a", "#9a6840", "#ad7a50"].map(f => std(f, { roughness: 0.85 }));
     for (let i = 0, z = 1.66; z < 16; z += 0.33, i++) {
@@ -425,18 +454,22 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.92, 0.98, 1.0), smoothstep(${B.s
     for (const x of [-1.05, 1.05]) scene.add(mesh(new THREE.BoxGeometry(0.16, 0.2, 14.5), træFarver[2], x, 0.46, 8.8));
     const pælGeo = new THREE.CylinderGeometry(0.12, 0.13, 3.4, 8), pælMat = std("#7a5433", { roughness: 0.9 });
     for (const z of [1.62, 5, 8.5, 12]) for (const x of [-1.25, 1.25]) scene.add(mesh(pælGeo, pælMat, x, -0.75, z));
+    }
 
     spand.position.set(-0.95, 0.81, 2.3); scene.add(spand);
     kasse.position.set(0.85, 0.77, 2.6); kasse.rotation.y = 0.3; scene.add(kasse);
 
     // and der svømmer rundt (tryk på den!)
-    const and = new THREE.Group();
+    const and = new THREE.Group(), andModel = kopi("soe", "and");
     const gul = std("#ffd23f", { roughness: 0.4 }), orange = std("#ff8c1a", { roughness: 0.4 }), sort = std("#111111");
+    if (andModel) and.add(andModel);
+    else {
     const krop = mesh(new THREE.SphereGeometry(0.35, 18, 14), gul, 0, 0.12, 0); krop.scale.set(1.3, 0.85, 1); and.add(krop);
     const hale = mesh(new THREE.ConeGeometry(0.12, 0.25, 8), gul, -0.42, 0.28, 0); hale.rotation.z = 0.9; and.add(hale);
     and.add(mesh(new THREE.SphereGeometry(0.22, 16, 12), gul, 0.3, 0.46, 0));
     const næb = mesh(new THREE.SphereGeometry(1, 12, 8), orange, 0.5, 0.42, 0); næb.scale.set(0.16, 0.05, 0.11); and.add(næb);
     for (const s of [1, -1]) and.add(mesh(new THREE.SphereGeometry(0.035, 8, 6), sort, 0.42, 0.52, s * 0.13));
+    }
     and.scale.setScalar(1.4);
     and.userData.hop = 0;
     scene.add(and);
@@ -485,6 +518,9 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.92, 0.98, 1.0), smoothstep(${B.s
 
   function byggFrø() {
     const g = new THREE.Group(), grøn = std("#4caf50", { roughness: 0.5 }), lys = std("#c5e8b0", { roughness: 0.5 }), sort = std("#111111");
+    const model = kopi("soe", "frø");
+    if (model) g.add(model);
+    else {
     const krop = mesh(new THREE.SphereGeometry(1, 20, 14), grøn, 0, 0.18, 0); krop.scale.set(0.3, 0.2, 0.26); g.add(krop);
     const mave = mesh(new THREE.SphereGeometry(1, 16, 10), lys, 0.08, 0.14, 0); mave.scale.set(0.24, 0.14, 0.2); g.add(mave);
     const hoved = mesh(new THREE.SphereGeometry(1, 18, 12), grøn, 0.2, 0.3, 0); hoved.scale.set(0.2, 0.15, 0.22); g.add(hoved);
@@ -497,6 +533,7 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.92, 0.98, 1.0), smoothstep(${B.s
     }
     const smil = mesh(new THREE.TorusGeometry(0.1, 0.012, 6, 14, Math.PI), std("#2a4a1a"), 0.36, 0.28, 0);
     smil.rotation.set(0, Math.PI / 2, Math.PI); g.add(smil);
+    }
     const hals = mesh(new THREE.SphereGeometry(1, 14, 10), std("#f4ffd6", { transparent: true, opacity: 0.9 }), 0.3, 0.2, 0);
     hals.scale.setScalar(0.001); g.add(hals);
     g.scale.setScalar(1.3);
@@ -556,10 +593,13 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.92, 0.98, 1.0), smoothstep(${B.s
     });
 
     // en bøje med en måge på (tryk på mågen!)
-    const bøje = new THREE.Group();
+    const bøje = new THREE.Group(), bøjeModel = kopi("hav", "bøje");
+    if (bøjeModel) bøje.add(bøjeModel);
+    else {
     bøje.add(mesh(new THREE.CylinderGeometry(0.45, 0.6, 0.9, 14), std("#e63946", { roughness: 0.5 }), 0, 0.2, 0));
     bøje.add(mesh(new THREE.CylinderGeometry(0.46, 0.46, 0.22, 14), std("#ffffff", { roughness: 0.5 }), 0, 0.45, 0));
     bøje.add(mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.9, 6), std("#555b66", { metalness: 0.6 }), 0, 1.0, 0));
+    }
     const lygte = mesh(new THREE.SphereGeometry(0.12, 12, 8), new THREE.MeshStandardMaterial({ color: "#ffe066", emissive: "#ffcc00", emissiveIntensity: 1 }), 0, 1.5, 0);
     bøje.add(lygte);
     const sidder = byggMåge(true);
@@ -661,15 +701,19 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.92, 0.98, 1.0), smoothstep(${B.s
 
   function ø(x, z, r, palmer) {
     const g = new THREE.Group(); g.position.set(x, 0, z);
+    const model = kopi("hav", "ø");
+    if (model) { model.scale.setScalar(r); g.add(model); }
+    else {
     const sand = mesh(new THREE.IcosahedronGeometry(1, 2), std("#f0d9a0", { flatShading: true }), 0, -r * 0.05, 0);
     sand.scale.set(r, r * 0.16, r * 0.85); g.add(sand);
     const græs = mesh(new THREE.IcosahedronGeometry(1, 1), std("#5cb84a", { flatShading: true }), r * 0.05, r * 0.02, 0);
     græs.scale.set(r * 0.62, r * 0.2, r * 0.5); g.add(græs);
+    }
     for (let i = 0; i < palmer; i++) {
       const a = rnd(0, Math.PI * 2), d = rnd(0, r * 0.4);
       g.add(palme(Math.cos(a) * d, r * 0.13, Math.sin(a) * d * 0.8, rnd(5, 8) * (r / 22) ** 0.5));
     }
-    for (let i = 0; i < 5; i++) {                        // sten ved vandkanten
+    if (!model) for (let i = 0; i < 5; i++) {                        // sten ved vandkanten
       const a = rnd(0, Math.PI * 2), sten = mesh(new THREE.IcosahedronGeometry(1, 0), std("#8d949c", { flatShading: true }), Math.cos(a) * r * 0.95, 0, Math.sin(a) * r * 0.8);
       sten.scale.setScalar(rnd(0.8, 2.2)); sten.rotation.set(rnd(0, 3), rnd(0, 3), 0); g.add(sten);
     }
@@ -680,6 +724,8 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.92, 0.98, 1.0), smoothstep(${B.s
 
   function palme(x, y, z, h) {
     const p = new THREE.Group(); p.position.set(x, y, z); p.rotation.y = rnd(0, Math.PI * 2);
+    const model = kopi("hav", "palme");
+    if (model) { model.scale.setScalar(h / 5); p.add(model); return p; }
     const stammeMat = std("#9b7443", { flatShading: true }), bladMat = std("#3f9d3a", { flatShading: true, side: THREE.DoubleSide });
     const bøj = rnd(0.25, 0.55);
     let tx = 0, ty = 0;
@@ -701,15 +747,16 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.92, 0.98, 1.0), smoothstep(${B.s
 
   function fyrtårn(g, r) {
     const f = new THREE.Group(); f.position.set(-r * 0.2, r * 0.14, 0); g.add(f);
-    const H = 16, N = 8;
-    for (let i = 0; i < N; i++) {                        // røde og hvide striber
+    const H = 16, N = 8, model = kopi("hav", "fyrtårn");
+    if (model) f.add(model);
+    else for (let i = 0; i < N; i++) {                        // røde og hvide striber
       const r0 = 2 - (i / N) * 0.7, r1 = 2 - ((i + 1) / N) * 0.7;
       f.add(mesh(new THREE.CylinderGeometry(r1, r0, H / N, 16), std(i % 2 ? "#ffffff" : "#e63946", { roughness: 0.6 }), 0, H / N * (i + 0.5), 0));
     }
-    f.add(mesh(new THREE.CylinderGeometry(1.9, 1.9, 0.3, 16), std("#26262e"), 0, H + 0.15, 0));
+    if (!model) f.add(mesh(new THREE.CylinderGeometry(1.9, 1.9, 0.3, 16), std("#26262e"), 0, H + 0.15, 0));
     f.add(mesh(new THREE.CylinderGeometry(1.1, 1.1, 1.7, 12), new THREE.MeshStandardMaterial({ color: "#fff3a0", emissive: "#ffd84d", emissiveIntensity: 1.2 }), 0, H + 1.15, 0));
-    f.add(mesh(new THREE.ConeGeometry(1.45, 1.5, 12), std("#e63946", { roughness: 0.5 }), 0, H + 2.75, 0));
-    f.add(mesh(new THREE.SphereGeometry(0.25, 8, 6), std("#26262e"), 0, H + 3.6, 0));
+    if (!model) f.add(mesh(new THREE.ConeGeometry(1.45, 1.5, 12), std("#e63946", { roughness: 0.5 }), 0, H + 2.75, 0));
+    if (!model) f.add(mesh(new THREE.SphereGeometry(0.25, 8, 6), std("#26262e"), 0, H + 3.6, 0));
     // lyskeglen, der drejer rundt
     const kegle = new THREE.ConeGeometry(3.2, 46, 20, 1, true); kegle.translate(0, -23, 0); kegle.rotateZ(Math.PI / 2);
     const lys = new THREE.Group(); lys.position.set(0, H + 1.15, 0); f.add(lys);
@@ -718,6 +765,8 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.92, 0.98, 1.0), smoothstep(${B.s
   }
 
   function sejlbåd(farve) {
+    const model = kopi("hav", "sejlbåd");
+    if (model) { const g = new THREE.Group(); g.add(tone(model, farve)); return g; }
     const g = new THREE.Group(), hvid = std("#ffffff", { roughness: 0.5 });
     const skrog = mesh(new THREE.SphereGeometry(1, 16, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), hvid); skrog.scale.set(2.6, 0.8, 0.95); g.add(skrog);
     const dæk = mesh(new THREE.CircleGeometry(1, 16).rotateX(-Math.PI / 2), std("#b5835a")); dæk.scale.set(2.6, 1, 0.95); g.add(dæk);
@@ -749,6 +798,8 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.92, 0.98, 1.0), smoothstep(${B.s
   }
 
   function byggDelfin() {
+    const model = kopi("hav", "delfin");
+    if (model) { const g = new THREE.Group(); g.add(model); return g; }
     const g = new THREE.Group(), hud = std("#6f8fae", { roughness: 0.35 }), mave = std("#dfe8f0", { roughness: 0.4 });
     const krop = mesh(new THREE.SphereGeometry(1, 20, 12), hud); krop.scale.set(1.25, 0.36, 0.36); g.add(krop);
     const bug = mesh(new THREE.SphereGeometry(1, 16, 10), mave, 0.1, -0.1, 0); bug.scale.set(1.0, 0.24, 0.3); g.add(bug);
@@ -760,6 +811,8 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.92, 0.98, 1.0), smoothstep(${B.s
   }
 
   function byggHval() {
+    const model = kopi("hav", "hval");
+    if (model) { const g = new THREE.Group(); g.add(model); g.scale.setScalar(1.5); return { g, hale: model.getObjectByName("hale") }; }
     const g = new THREE.Group(), hud = std("#2f4f75", { roughness: 0.5 }), mave = std("#dbe6f0", { roughness: 0.5 });
     const krop = mesh(new THREE.SphereGeometry(1, 26, 16), hud); krop.scale.set(6, 1.8, 2.2); g.add(krop);
     const bug = mesh(new THREE.SphereGeometry(1, 20, 12), mave, 0.5, -0.6, 0); bug.scale.set(5, 1.2, 1.8); g.add(bug);
@@ -777,7 +830,17 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.92, 0.98, 1.0), smoothstep(${B.s
 
   // Båden: blå med en træ-kant, bænke, årer, redningskrans, en lille vimpel — og spanden
   function byggBåd() {
-    const b = new THREE.Group();
+    const b = new THREE.Group(), model = kopi("hav", "båd");
+    if (model) {                                         // båden fra Blender — vimplen, spanden og grejkassen kommer herfra
+      b.add(model);
+      const vf = new THREE.Shape(); vf.moveTo(0, 0); vf.lineTo(0, 0.26); vf.lineTo(0.5, 0.13); vf.closePath();
+      const vimpel = mesh(new THREE.ShapeGeometry(vf), std("#e63946", { side: THREE.DoubleSide }), 0, 0.6, -2.42);
+      b.add(vimpel);
+      opd.push(t => { vimpel.rotation.y = 0.35 + Math.sin(t * 7) * 0.25; });
+      spand.position.set(-0.5, 0.31, -1.45); b.add(spand);
+      kasse.position.set(0.42, 0.52, -0.95); kasse.rotation.y = 0.2; kasse.scale.setScalar(0.85); b.add(kasse);
+      return b;
+    }
     const pkt = [[-0.72, -2.0], [-0.86, -1.2], [-0.9, 0], [-0.8, 1.2], [-0.5, 2.0], [0, 2.65], [0.5, 2.0], [0.8, 1.2], [0.9, 0], [0.86, -1.2], [0.72, -2.0]];
     const omrids = new THREE.CatmullRomCurve3(pkt.map(([x, y]) => V(x, y, 0)), true).getPoints(56).slice(0, -1).map(p => new THREE.Vector2(p.x, p.y));
     const indre = omrids.map(p => new THREE.Vector2(p.x * 0.88, p.y * 0.94 - 0.02));

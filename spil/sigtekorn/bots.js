@@ -9,7 +9,7 @@
 import * as THREE from "./three.js";
 import { nyAktør, bevæg, øjeHøjde, KROP, U } from "./bevaegelse.js";
 import { nytVåben, aftrækker, efterSkud, opdaterVåben, skudRetning, genlad, VÅBEN } from "./vaaben.js";
-import { findVej, nærmesteKnude, POSTER, START } from "./bane.js";
+import { findVej, nærmesteKnude } from "./bane.js";
 import { ramKasse } from "./verden.js";
 import { Figur, hentLeddeløs, harLeddeløs } from "./leddeloes.js";
 
@@ -26,8 +26,7 @@ function lodtrækning(liste) {
   for (const [id, w] of liste) if ((r -= w) <= 0) return id;
   return liste[0][0];
 }
-// Den model, figuren holder (de leddeløse har et gevær, en snigskytte og en pistol)
-const tpModel = id => { const k = VÅBEN[id]?.klasse; return !k || k === "kniv" ? null : k === "snig" ? "snig" : k === "pistol" ? "pistol" : "gevær"; };
+
 export const NAVNE = ["Grus", "Kaktus", "Sandorm", "Gekko", "Skorpion", "Mirage", "Kamel", "Sahara", "Oase", "Klit", "Støvsky", "Ørkenvind", "Palme", "Fata Morgana"];
 export const SVÆRHED = {
   let: { navn: "Let", reaktion: 0.8, drej: 3.5, fejl: 8, sigteTid: 0.9, rekylStyr: 0.15, hoved: 0.05, salve: [2, 4], strafe: 0 },
@@ -96,14 +95,15 @@ export class Bot {
   spawn() {
     this.fig?.nulstil();
     for (const o of this.model.children) if (o.isSprite) o.visible = true;
-    const [x, z] = START[this.hold][Math.floor(Math.random() * START[this.hold].length)];
+    const start = this.s.bane.start[this.hold], [x, z] = start[Math.floor(Math.random() * start.length)];
     this.a = nyAktør(x + (Math.random() - 0.5) * 2, 0.01, z + (Math.random() - 0.5) * 2, this.hold === "ræve" ? 0 : Math.PI);
     this.liv = 100; this.panser = 100; this.død = false; this.dødTid = 0;
     const sv = this.s.sværhed(); this.sv = sv;
     this.sekundær = lodtrækning(BOTPISTOL);
     this.våben = nytVåben(Math.random() < (sv === SVÆRHED.let ? 0.2 : 0.06) ? this.sekundær : lodtrækning(BOTVÅBEN));
     if (this.våben.d.zoom) this.våben.kikkert = 1;                     // botter med kikkert har den altid på
-    this.blindTil = 0;
+    this.blindTil = 0; this.næsteKast = 0;
+    this.granater = Math.random() < 0.65 ? [lodtrækning([["he", 5], ["blænd", 3], ["røg", 2]])] : [];
     this.mål = null; this.setFørst = 0; this.sidstSet = null; this.sidstSetTid = -99; this.vej = []; this.vejMål = null;
     this.tænkTid = Math.random() * 0.12; this.salve = 0; this.salvePause = 0; this.fejlYaw = 0; this.fejlPitch = 0;
     this.fastTid = 0; this.fastPos = this.a.pos.clone(); this.lytte = null; this.strafe = 0; this.strafeTid = 0; this.dukker = false;
@@ -119,6 +119,7 @@ export class Bot {
     this.sidstHørt = nu;
     if (Math.random() > (this.holder ? 0.35 : 0.6) * (1 - d / 45)) return;
     this.lytte = { x: pos.x, y: pos.y, z: pos.z, tid: nu };
+    if (this.granater.length && nu > this.næsteKast && d > 8 && d < 22 && Math.random() < 0.3 && this.fig?.harArm() !== false) this.kast(pos, nu);   // en granat efter lyden
   }
   // Kan botten se fjenden? (fri sigtelinje til hovedet eller brystet)
   kanSe(f, nu) {
@@ -252,12 +253,13 @@ export class Bot {
   vælgPost() {
     const venner = this.s.kampfolk().filter(f => f !== this && f.hold === this.hold && !f.død);
     let sum = 0;
+    const POSTER = this.s.bane.poster;
     const vægte = POSTER.map(p => {
       const d = Math.hypot(p[0] - this.a.pos.x, p[1] - this.a.pos.z);
       let w = d < 8 ? 0.15 : 1;
-      const [fx, fz] = START[this.hold === "ræve" ? "slanger" : "ræve"][0];
+      const [fx, fz] = this.s.bane.start[this.hold === "ræve" ? "slanger" : "ræve"][0];
       if (Math.hypot(p[0] - fx, p[1] - fz) < 18) w *= 0.25;             // ikke helt hen til fjendernes start
-      if (Math.abs(p[0]) < 5) w *= 0.3;                                // midtergaden: kun en gang imellem
+      w *= this.s.bane.postVægt(p);                                    // banen kan gøre nogle poster mere eller mindre populære
       if (p === this.sidstePost) w *= 0.1;
       for (const v of venner) {
         const vd = v.post ? Math.hypot(v.post[0] - p[0], v.post[1] - p[1]) : Math.hypot(v.a.pos.x - p[0], v.a.pos.z - p[1]);
@@ -286,12 +288,13 @@ export class Bot {
     this.flygt = { til: nu + 3.5 + Math.random() * 2, fremme: 0, fra: fra.a.pos.clone() };
     this.mål = null; this.holder = false;
   }
-  // Vejen til en post. Ligger posten ude i siden og langt væk, går botten tit ad sidevejen (den lange vej til A
-  // eller tunnelerne til B) i stedet for den korteste vej gennem midten
+  // Vejen til en post. Ofte går botten forbi en "omvej" (et punkt på en sidevej, som banen har valgt), så ikke
+  // alle går den korteste vej gennem midten — men kun hvis omvejen ikke er alt for lang
   vejTilPost(post) {
-    const { knuder } = this.s, [px, pz] = post, p = this.a.pos;
-    if (Math.abs(px) > 15 && Math.abs(pz - p.z) > 30 && Math.random() < 0.65) {
-      const via = { x: px > 0 ? 44 : -44, y: 0, z: Math.max(-20, Math.min(44, (p.z + pz) / 2)) };
+    const { knuder } = this.s, [px, pz] = post, p = this.a.pos, lige = Math.hypot(px - p.x, pz - p.z);
+    const muligt = this.s.bane.omveje.filter(([vx, vz]) => Math.hypot(vx - p.x, vz - p.z) + Math.hypot(px - vx, pz - vz) < lige * 1.45 + 12 && Math.hypot(vx - p.x, vz - p.z) > 8);
+    if (lige > 25 && muligt.length && Math.random() < 0.6) {
+      const [vx, vz] = muligt[Math.floor(Math.random() * muligt.length)], via = { x: vx, y: 0, z: vz };
       const a = nærmesteKnude(knuder, p.x, p.y, p.z), b = nærmesteKnude(knuder, via.x, 0, via.z), c = nærmesteKnude(knuder, px, 0, pz);
       const v1 = findVej(knuder, a, b), v2 = v1 && findVej(knuder, b, c);
       if (v1 && v2) { this.vej = v1.concat(v2.slice(1)); this.vejMål = { x: px, z: pz }; return; }
@@ -304,12 +307,24 @@ export class Bot {
     this.vej = (fra >= 0 && til >= 0 && findVej(knuder, fra, til)) || [];
     this.vejMål = { x: mål.x, z: mål.z };
   }
+  // Kast en granat derhen, hvor fjenden sidst blev set (en bue, der lander der)
+  kast(mål, nu) {
+    const type = this.granater.pop(), o = this.øje(), dx = mål.x - o.x, dz = mål.z - o.z, d = Math.hypot(dx, dz);
+    const v = Math.min(18, Math.sqrt(11 * d / Math.sin(2 * 0.62))), c = Math.cos(0.62) * v / d;
+    this.s.kast(this, type, o.add(new THREE.Vector3(dx / d * 0.4, 0, dz / d * 0.4)), new THREE.Vector3(dx * c, Math.sin(0.62) * v, dz * c));
+    this.næsteKast = nu + 6;
+  }
   // ---------- Tænk (10 gange i sekundet): hvem kan den se? ----------
   tænk(nu) {
     const fjender = this.s.kampfolk().filter(f => f.hold !== this.hold && !f.død);
     if (this.mål && (this.mål.død || !fjender.includes(this.mål))) this.mål = null;
     if (this.mål && !this.kanSe(this.mål, nu)) {                 // fjenden forsvandt bag noget: husk, hvor den var
       this.sidstSet = this.mål.a.pos.clone(); this.sidstSetTid = nu; this.mål = null; this.vej = []; this.vejMål = null;
+    }
+    // en fjende forsvandt lige bag et hjørne i nærheden: måske en granat efter den
+    if (!this.mål && this.granater.length && this.sidstSet && nu - this.sidstSetTid < 4 && nu > this.næsteKast && this.fig?.harArm() !== false) {
+      const d = Math.hypot(this.sidstSet.x - this.a.pos.x, this.sidstSet.z - this.a.pos.z);
+      if (d > 7 && d < 24 && Math.random() < 0.14) this.kast(this.sidstSet, nu);
     }
     if (!this.mål && !this.flygt && this.våben) {
       let bedst = null, bd = Infinity;
@@ -368,7 +383,7 @@ export class Bot {
   mistLem(lem, skud) {
     const { scene, verden, delLyd } = this.s, fart = this.fart();
     if (lem.startsWith("arm") && this.våben) {
-      this.fig.tabVåben(tpModel(this.våben.id), scene, verden, fart, delLyd);
+      this.fig.tabVåben(null, scene, verden, fart, delLyd);
       this.fig.skydAf(lem, skud, scene, verden, fart, delLyd);
       this.våben = this.fig.harArm() ? nytVåben(this.sekundær || "pistol") : null;
       if (!this.våben) this.mål = null;
@@ -385,7 +400,7 @@ export class Bot {
     if (this.fig) {
       if (this.død) return;                                              // delene ligger på jorden (dele.js)
       const c = Math.cos(a.yaw), s = Math.sin(a.yaw);                    // farten set fra soldaten selv (x til højre, z bagud)
-      this.fig.poser({ fart, vx: c * a.vel.x - s * a.vel.z, vz: s * a.vel.x + c * a.vel.z, duk: a.duk, pitch: a.pitch, kravl: !!a.kravl, våben: tpModel(this.våben?.id), dt });
+      this.fig.poser({ fart, vx: c * a.vel.x - s * a.vel.z, vz: s * a.vel.x + c * a.vel.z, duk: a.duk, pitch: a.pitch, kravl: !!a.kravl, våben: this.våben?.id ?? null, spin: this.våben?.d.opspin ? this.våben.spin / this.våben.d.opspin : 0, dt });
       return;
     }
     this.fase += dt * fart * 2.4;

@@ -5,6 +5,7 @@
 import * as THREE from "./three.js";
 import { stjerneGeo } from "./verden.js";
 import * as T from "./teksturer.js";
+import { kopi, form } from "./modeller.js";
 
 // En stribe, der ligger oven på banen og følger dens form (målstreg, fartfelter)
 function strimmel(bane, i0, i1, hb, løft, M = 8) {
@@ -32,7 +33,9 @@ function strimmel(bane, i0, i1, hb, løft, M = 8) {
 const std = (f, x = {}) => new THREE.MeshStandardMaterial({ color: f, roughness: 0.35, ...x });
 function lavFrugt(slags) {
   const g = new THREE.Group(), blad = std("#3fa535", { roughness: 0.6, side: THREE.DoubleSide }), stilk = std("#6b4a2a", { roughness: 0.8 });
-  if (slags === "æble") {
+  const model = kopi(slags);                              // frugten fra Blender, hvis den findes
+  if (model) g.add(model);
+  else if (slags === "æble") {
     const k = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 16), new THREE.MeshPhysicalMaterial({ color: "#e8192f", roughness: 0.25, clearcoat: 1 }));
     k.scale.set(1, 0.92, 1); g.add(k);
     const s = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.16, 6), stilk); s.position.y = 0.3; g.add(s);
@@ -229,11 +232,13 @@ export function byggTing(gruppe, bane, tema, fx) {
   målstreg.material.map.repeat.set(mp.w / 4, 0.25);
   målstreg.receiveShadow = true;
   gruppe.add(målstreg);
-  const antalB = 46, balGeo = new THREE.SphereGeometry(0.34, 20, 14);
+  const antalB = 46, blenderBallon = form("ballon"), balGeo = blenderBallon || new THREE.SphereGeometry(0.34, 20, 14);
   const bp = balGeo.attributes.position;
-  for (let i = 0; i < bp.count; i++) { const y = bp.getY(i); if (y < 0) { const k = 1 + y * 0.6; bp.setX(i, bp.getX(i) * k); bp.setZ(i, bp.getZ(i) * k); } bp.setY(i, y * 1.15); }
-  balGeo.computeVertexNormals();
-  const balloner = new THREE.InstancedMesh(balGeo, new THREE.MeshPhysicalMaterial({ roughness: 0.25, clearcoat: 1, clearcoatRoughness: 0.05 }), antalB);
+  if (!blenderBallon) {                                   // ballonen fra Blender har allerede sin form og en knude
+    for (let i = 0; i < bp.count; i++) { const y = bp.getY(i); if (y < 0) { const k = 1 + y * 0.6; bp.setX(i, bp.getX(i) * k); bp.setZ(i, bp.getZ(i) * k); } bp.setY(i, y * 1.15); }
+    balGeo.computeVertexNormals();
+  }
+  const balloner = new THREE.InstancedMesh(balGeo, new THREE.MeshPhysicalMaterial({ roughness: 0.25, clearcoat: 1, clearcoatRoughness: 0.05, vertexColors: !!blenderBallon }), antalB);
   const bue = new THREE.Group();
   bue.position.set(mp.x, mp.y + mp.rende, mp.z);
   bue.rotation.y = Math.atan2(mp.fx, mp.fz);

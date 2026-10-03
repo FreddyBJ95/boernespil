@@ -5,7 +5,7 @@
 //   skade, kadence (sekunder mellem skud), auto, magasin, reserve, genlad (sekunder), fart (enheder/s)
 //   stå/duk/bevæg/hop: hvor upræcist man skyder (radianer), skudUro/uroTid: uro efter hvert skud
 //   mønster: [op, højre] i grader pr. skud (det faste rekylmønster) — eller lavMønster(...)
-//   særlige: salve (skud pr. salve), hagl (antal hagl), spredning, zoom ([synsfelt, ...]), sigte ("kikkert"/"sigte"),
+//   særlige: salve (skud pr. salve), hagl (antal hagl), spredning, zoom ([synsfelt, ...]), sigte ("kikkert"/"sigte"), prik (rødpunkt, når man sigter),
 //            opspin (sekunder før minigunnen skyder), projektil ("raket"/"pil"), lydløs, panser (hvor meget går gennem vest)
 //   model: GLB-filen i modeller/ (den samme bruges i hånden og hos botterne)
 
@@ -36,7 +36,7 @@ const PISTOL = [[0, 0], [0.9, 0.1], [1.7, -0.15], [2.4, 0.2], [3.0, -0.1], [3.4,
 export const PRIMÆR = {
   storm: { navn: "Stormgevær", klasse: "gevær", sjælden: "sjælden", tekst: "Hård og pålidelig. Lær rekylmønsteret, så rammer du alt.",
     auto: true, kadence: 0.1, skade: 36, panser: 0.775, rækkevidde: 0.98, magasin: 30, reserve: 90, genlad: 2.4, fart: 215,
-    stå: 0.0048, duk: 0.0033, bevæg: 0.173, hop: 0.47, skudUro: 0.0078, uroTid: 0.35, spredning: 0.0006, mønster: STORM, træk: 0.75, model: "storm" },
+    stå: 0.0048, duk: 0.0033, bevæg: 0.173, hop: 0.47, skudUro: 0.0078, uroTid: 0.35, spredning: 0.0006, mønster: STORM, træk: 0.75, model: "gevaer" },
   taktisk: { navn: "Taktisk gevær", klasse: "gevær", sjælden: "sjælden", tekst: "Lydpotte og lav rekyl. Lidt mindre skade end stormgeværet.",
     auto: true, kadence: 0.09, skade: 33, panser: 0.7, rækkevidde: 0.97, magasin: 25, reserve: 75, genlad: 3.0, fart: 225, lydløs: true,
     stå: 0.0042, duk: 0.003, bevæg: 0.16, hop: 0.45, skudUro: 0.0065, uroTid: 0.33, spredning: 0.0005, mønster: lavMønster(25, 0.62, 12, 1.3, 0.55, 2), træk: 0.7, model: "taktisk" },
@@ -44,7 +44,7 @@ export const PRIMÆR = {
     auto: false, salve: 3, salveTid: 0.065, kadence: 0.36, skade: 31, panser: 0.7, rækkevidde: 0.96, magasin: 27, reserve: 81, genlad: 2.6, fart: 220,
     stå: 0.0036, duk: 0.0026, bevæg: 0.15, hop: 0.45, skudUro: 0.005, uroTid: 0.3, spredning: 0.0005, mønster: lavMønster(27, 0.5, 9, 0.6, 0.9, 3), træk: 0.7, model: "salve" },
   kamp: { navn: "Kampgevær", klasse: "gevær", sjælden: "episk", tekst: "Halvautomatisk med sigte. Stor skade — skyd roligt, ét skud ad gangen.",
-    auto: false, kadence: 0.24, skade: 52, panser: 0.82, rækkevidde: 0.98, magasin: 20, reserve: 60, genlad: 2.8, fart: 210, zoom: [55], sigte: "sigte",
+    auto: false, kadence: 0.24, skade: 52, panser: 0.82, rækkevidde: 0.98, magasin: 20, reserve: 60, genlad: 2.8, fart: 210, zoom: [55], sigte: "sigte", prik: true,
     stå: 0.003, duk: 0.0022, bevæg: 0.2, hop: 0.5, skudUro: 0.012, uroTid: 0.32, spredning: 0.0003, mønster: lavMønster(20, 1.1, 8, 0.5, 0.7, 4), træk: 0.8, model: "kamp" },
   mp: { navn: "Maskinpistol", klasse: "mp", sjælden: "almindelig", tekst: "Hurtig og let. Bedst tæt på — og man kan løbe og skyde.",
     auto: true, kadence: 0.075, skade: 26, panser: 0.6, rækkevidde: 0.85, magasin: 30, reserve: 120, genlad: 2.2, fart: 240,
@@ -77,7 +77,7 @@ export const PRIMÆR = {
     auto: false, projektil: "raket", kadence: 1.0, skade: 140, radius: 4.5, panser: 0.9, magasin: 1, reserve: 6, genlad: 3.2, fart: 190,
     stå: 0.002, duk: 0.002, bevæg: 0.04, hop: 0.1, skudUro: 0.02, uroTid: 0.4, træk: 1.1, model: "raket" },
   armbrøst: { navn: "Armbrøst", klasse: "special", sjælden: "episk", tekst: "Lydløse pile, der falder lidt. Et hovedskud er altid et drab.",
-    auto: false, projektil: "pil", kadence: 0.5, skade: 95, panser: 0.95, magasin: 1, reserve: 20, genlad: 1.3, fart: 225, lydløs: true, zoom: [60], sigte: "sigte",
+    auto: false, projektil: "pil", kadence: 0.5, skade: 95, panser: 0.95, magasin: 1, reserve: 20, genlad: 1.3, fart: 225, lydløs: true, zoom: [60], sigte: "sigte", prik: true,
     stå: 0.0012, duk: 0.001, bevæg: 0.12, hop: 0.3, skudUro: 0.02, uroTid: 0.4, træk: 0.8, model: "armbroest" },
 };
 
@@ -115,7 +115,8 @@ export const GRANATER = {
 
 // ---------- Baner (flere kommer) ----------
 export const BANER = {
-  stoevbyen: { navn: "Støvbyen", tekst: "En ørkenby med to pladser, tunneler og en lang midtergade." },
+  stoevbyen: { navn: "Støvbyen", sjælden: "sjælden", tekst: "En ørkenby med to pladser, tunneler og en lang midtergade." },
+  havnen: { navn: "Havnen", sjælden: "episk", tekst: "Containere i alle farver, en stor kran, en lagerhal og et skib ved kajen." },
 };
 
 // Standard-udrustningen
@@ -126,6 +127,8 @@ export const ALLE = {};
 for (const gruppe of [PRIMÆR, SEKUNDÆR, KNIVE]) for (const [id, d] of Object.entries(gruppe)) {
   ALLE[id] = { ...d, fart: d.fart * U, kikkertFart: d.kikkertFart ? d.kikkertFart * U : undefined };
 }
+// Uden arme kan man ingenting holde
+ALLE.ingen = { navn: "Ingen arme", klasse: "ingen", sjælden: "almindelig", kadence: 99, magasin: 0, reserve: 0, fart: 230 * U, træk: 0.3, stå: 0, duk: 0, bevæg: 0, hop: 0 };
 // Granaterne er også "våben" i hånden (plads 4): venstre klik kaster langt, højre klik kaster kort
 for (const [id, g] of Object.entries(GRANATER)) ALLE[`granat_${id}`] = { navn: g.navn, klasse: "granat", granat: id, sjælden: g.sjælden, ikon: g.ikon,
   kadence: 0.6, magasin: g.antal, reserve: 0, fart: 245 * U, træk: 0.45, stå: 0, duk: 0, bevæg: 0, hop: 0, model: g.model };

@@ -178,6 +178,14 @@ def cylinder(navn, c, r, h, farve, mat="blød", rot=(0, 0, 0), seg=32, rund=0.0)
     return o
 
 
+def fin(profil, n=4):
+    """Læg n ekstra punkter ind mellem hvert punkt i en profil (så farverne kan skifte midt på en væg)"""
+    ud = []
+    for (r0, y0), (r1, y1) in zip(profil, profil[1:]):
+        ud += [(r0 + (r1 - r0) * k / (n + 1), y0 + (y1 - y0) * k / (n + 1)) for k in range(n + 1)]
+    return ud + [profil[-1]]
+
+
 def drej(navn, profil, farve, mat="blød", seg=32, c=(0, 0, 0)):
     """En drejet form (som på en drejebænk) om spillets lodrette akse.
     profil = [(radius, højde), …] nedefra og op i spillets mål; radius 0 lukker formen i den ende"""
@@ -237,8 +245,13 @@ def plade(navn, punkter, tyk, farve, mat="blød", ringe=4, plan="xy", c=(0, 0, 0
     return o
 
 
-def kasse(navn, c, str_, farve, mat="blød", rund=0.0, rot=(0, 0, 0)):
+def kasse(navn, c, str_, farve, mat="blød", rund=0.0, rot=(0, 0, 0), deling=(0, 0, 0)):
+    """En kasse. str_ = størrelse i Blenders akser (x, dybde, op). deling = ekstra snit langs hver akse (til træårer o.l.)"""
     bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for akse, snit in enumerate(deling):
+        if snit:
+            kanter = [e for e in bm.edges if abs(e.verts[0].co[akse] - e.verts[1].co[akse]) > 0.5]
+            bmesh.ops.subdivide_edges(bm, edges=kanter, cuts=snit, use_grid_fill=True)
     bmesh.ops.scale(bm, vec=Vector(str_), verts=bm.verts)
     bmesh.ops.rotate(bm, cent=(0, 0, 0), matrix=Euler(rot).to_matrix(), verts=bm.verts)
     o = _ny(navn, bm, farve, mat, c)

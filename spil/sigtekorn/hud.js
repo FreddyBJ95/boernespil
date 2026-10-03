@@ -10,7 +10,7 @@ export class Hud {
     this.ramtTid = 0; this.skader = []; this.drab = [];
     this.el = { sigte: $("sigte"), ramt: $("ramt"), liv: $("livTal"), panser: $("panserTal"), ammo: $("ammoTal"), reserve: $("ammoReserve"), våben: $("våbenNavn"),
       holdA: $("holdA"), holdB: $("holdB"), ur: $("ur"), drab: $("drab"), retning: $("skadeRetning"), besked: $("besked"), tavle: $("tavle"), død: $("død"),
-      kikkert: $("kikkert"), fart: $("fart"), rød: $("rødKant"), granater: $("granatBoks"), blænd: $("blænd") };
+      kikkert: $("kikkert"), prik: $("prik"), fart: $("fart"), rød: $("rødKant"), granater: $("granatBoks"), blænd: $("blænd") };
     this.blændStyrke = 0; this.blændTid = 0; this.granatTekst = "";
   }
   // Sigtekornet: afstanden mellem stregerne vokser med unøjagtigheden (u i radianer), så man kan se, hvornår man rammer
@@ -19,12 +19,17 @@ export class Hud {
     this.el.sigte.style.setProperty("--hul", `${px.toFixed(1)}px`);
     this.el.sigte.style.display = synlig ? "" : "none";
   }
-  liv(liv, panser) { this.el.liv.textContent = Math.max(0, liv); this.el.panser.textContent = Math.max(0, panser); this.el.liv.parentElement.classList.toggle("lavt", liv <= 25); }
+  liv(liv, panser) {
+    this.el.liv.textContent = Math.max(0, liv); this.el.panser.textContent = Math.max(0, panser);
+    $("livBoks").classList.toggle("lavt", liv <= 25);
+    $("livBjælke").style.width = `${Math.max(0, Math.min(100, liv))}%`; $("panserBjælke").style.width = `${Math.max(0, Math.min(100, panser))}%`;
+  }
   ammo(v) {
     this.el.våben.textContent = v.d.navn; this.el.våben.style.color = SJÆLDEN[v.d.sjælden]?.farve || "";
-    this.el.ammo.textContent = v.d.nærkamp ? "" : v.genlader > 0 ? "…" : v.d.granat ? `${v.d.ikon} ${v.skud}` : v.skud;
-    this.el.reserve.textContent = v.d.nærkamp || v.d.granat ? "" : v.d.opspin && v.spin < v.d.opspin && v.spin > 0 ? "snurrer…" : `/ ${v.reserve}`;
-    this.el.ammo.classList.toggle("lavt", !v.d.nærkamp && v.skud <= Math.ceil(v.d.magasin * 0.2));
+    const intet = v.d.nærkamp || v.d.klasse === "ingen";
+    this.el.ammo.textContent = intet ? "" : v.genlader > 0 ? "…" : v.d.granat ? `${v.d.ikon} ${v.skud}` : v.skud;
+    this.el.reserve.textContent = intet || v.d.granat ? "" : v.d.opspin && v.spin < v.d.opspin && v.spin > 0 ? "snurrer…" : `/ ${v.reserve}`;
+    this.el.ammo.classList.toggle("lavt", !intet && v.skud <= Math.ceil(v.d.magasin * 0.2));
   }
   stilling(a, b, sekunder) {
     this.el.holdA.textContent = a; this.el.holdB.textContent = b;
@@ -61,6 +66,7 @@ export class Hud {
   // Blændet: skærmen bliver hvid og falmer langsomt (styrke 0..1)
   blænd(styrke) { this.blændStyrke = Math.max(this.blændStyrke, styrke); this.blændTid = 0.6 + 3.4 * styrke; this.blændStart = this.blændTid; }
   kikkert(til) { this.el.kikkert.classList.toggle("skjult", !til); }
+  prik(til) { this.el.prik.classList.toggle("skjult", !til); }       // rødpunktet midt i rødpunktsigtet
   fart(v) { this.el.fart.textContent = v == null ? "" : `${Math.round(v / 0.0254)} u/s`; }
   // Pointtavlen (hold Tab): navn, drab, dødsfald og hovedskud
   tavle(vis, kampfolk, holdNavne) {

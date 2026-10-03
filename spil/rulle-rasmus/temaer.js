@@ -6,6 +6,7 @@
 
 import * as THREE from "./three.js";
 import * as T from "./teksturer.js";
+import { læg, kopi } from "./modeller.js";
 
 const std = (farve, x = {}) => new THREE.MeshStandardMaterial({ color: farve, roughness: 0.75, ...x });
 const fys = (farve, x = {}) => new THREE.MeshPhysicalMaterial({ color: farve, roughness: 0.35, clearcoat: 0.6, ...x });
@@ -45,6 +46,7 @@ const G = {
 // En lille ø i vandet under pynten
 function ø(S, x, bund, z, r, mat, kant, str = 1) {
   const rr = (2.4 + r() * 1.6) * str;
+  if (læg(S, "ø", [x, bund, z], [0, r() * 6, 0], [rr, str, rr])) return;   // øen fra Blender
   S.put(G.cyl, kant, [x, bund - 0.3, z], [0, r() * 6, 0], [rr * 1.12, 0.9, rr * 1.12]);
   S.put(knold(3, 0.1, 16), mat, [x, bund + 0.1, z], [0, r() * 6, 0], [rr, 0.45 * str, rr]);
 }
@@ -62,6 +64,11 @@ function eng() {
   function træ(S, x, bund, z, top, r) {
     ø(S, x, bund, z, r, grønø, sand);
     const h = top - bund + 1 + r() * 4;
+    if (læg(S, "stamme", [x, bund, z], [0, r() * 6, 0], [0.45, h, 0.45])) {         // stamme, gren og krone fra Blender
+      læg(S, "stamme", [x + 0.25, bund + h * 0.55, z], [0, 0, -0.7], [0.18, 2.4, 0.18]);
+      læg(S, "løvkrone", [x, bund + h, z], [0, r() * 6, 0], 0.85 + r() * 0.35);
+      return;
+    }
     S.put(G.cylLav, bark, [x, bund + h / 2, z], [0, 0, 0], [0.45, h, 0.45]);
     S.put(G.cylLav, bark, [x + 0.8, bund + h * 0.7, z], [0, 0, -0.7], [0.18, 2.4, 0.18]);
     const n = 5 + Math.floor(r() * 3);
@@ -73,6 +80,10 @@ function eng() {
   function svamp(S, x, bund, z, top, r) {
     ø(S, x, bund, z, r, grønø, sand, 0.8);
     const h = top - bund - 1.5 + r() * 3, rr = 2 + r() * 1;
+    if (læg(S, "svampestok", [x, bund, z], [0, r() * 6, 0], [0.6, h, 0.6])) {
+      læg(S, "svampehat", [x, bund + h - 0.15, z], [0, r() * 6, 0], rr);
+      return;
+    }
     S.put(G.cyl, stilk, [x, bund + h / 2, z], [0, 0, (r() - 0.5) * 0.15], [0.6, h, 0.6]);
     S.put(G.halvkugle, hat, [x, bund + h - 0.2, z], [0, 0, 0], [rr, rr * 0.62, rr]);
     for (let k = 0; k < 9; k++) {
@@ -88,6 +99,7 @@ function eng() {
     S.put(G.kugle, grøn, [x + 0.7, bund + h * 0.45, z], [0, 0, 0.6], [0.9, 0.12, 0.45]);
     S.put(G.kugle, grøn, [x - 0.7, bund + h * 0.3, z], [0, 0, -0.6], [0.9, 0.12, 0.45]);
     const hoved = new THREE.Matrix4().compose(new THREE.Vector3(x, bund + h, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0.5, r() * 6, 0)), new THREE.Vector3(1, 1, 1));
+    if (læg(S, "blomsterhoved", [0, 0, 0], [0, 0, 0], 1, hoved, k.color.getStyle())) return;
     for (let i = 0; i < 9; i++) {
       const a = i / 9 * Math.PI * 2;
       S.put(G.kugle, k, [Math.cos(a) * 0.95, 0, Math.sin(a) * 0.95], [0, -a, 0], [0.7, 0.14, 0.42], hoved);
@@ -109,7 +121,8 @@ function eng() {
     }
   }
   function pude() {                                      // en blød, rød svamp midt på banen
-    const g = new THREE.Group();
+    const g = new THREE.Group(), m = kopi("pude_eng");
+    if (m) { g.add(m); return g; }
     const st = new THREE.Mesh(G.cyl, stilk); st.scale.set(0.32, 0.6, 0.32); st.position.y = 0.3;
     const h = new THREE.Mesh(G.halvkugle, hat); h.scale.set(0.8, 0.55, 0.8); h.position.y = 0.5;
     g.add(st, h);
@@ -151,6 +164,11 @@ function slik() {
 
   function slikkepind(S, x, bund, z, top, r) {
     const h = top - bund + 2 + r() * 4, rr = 1.8 + r() * 1.2;
+    if (læg(S, "slikpind", [x, bund, z], [0, 0, 0], [0.18, h, 0.18])) {
+      læg(S, "slikskive" + (1 + Math.floor(r() * 3)), [x, bund + h + rr * 0.8, z], [0, r() * 6, 0], [rr, rr, 1]);
+      gummiø(S, x, bund, z, r);
+      return;
+    }
     S.put(G.cylLav, pind, [x, bund + h / 2, z], [0, 0, 0], [0.18, h, 0.18]);
     S.put(G.cyl, pindeMat[Math.floor(r() * 3)], [x, bund + h + rr * 0.8, z], [Math.PI / 2, 0, r() * 6], [rr, 0.45, rr]);
     gummiø(S, x, bund, z, r);
@@ -168,6 +186,15 @@ function slik() {
   }
   function isvaffel(S, x, bund, z, top, r) {
     const h = (top - bund) * 0.75 + r() * 2, rr = 1.4 + r() * 0.5;
+    if (læg(S, "isvaffel", [x, bund + h / 2, z], [0, r() * 6, 0], [rr, h, rr])) {
+      let y = bund + h;
+      for (let k = 0; k < 2 + Math.floor(r() * 2); k++) {
+        læg(S, "iskugle", [x, y + rr * 0.55, z], [0, r() * 6, 0], [rr * 1.08, rr * 1.05, rr * 1.08], null, is[Math.floor(r() * 4)].color.getStyle());
+        y += rr * 1.3;
+      }
+      læg(S, "kirsebær", [x, y + 0.1, z], [0, r() * 6, 0], 0.4);
+      return;
+    }
     S.put(G.kegle, vaffel, [x, bund + h / 2, z], [Math.PI, 0, 0], [rr, h, rr]);
     let y = bund + h;
     for (let k = 0; k < 2 + Math.floor(r() * 2); k++) {
@@ -194,7 +221,9 @@ function slik() {
     }
   }
   function pude() {                                      // en gummidråbe med sukker på
-    const g = new THREE.Group(), m = new THREE.Mesh(G.halvkugle, gummi[Math.floor(Math.random() * gummi.length)]);
+    const g = new THREE.Group(), farve = gummi[Math.floor(Math.random() * gummi.length)], b = kopi("pude_slik", farve.color.getStyle());
+    if (b) { g.add(b); return g; }
+    const m = new THREE.Mesh(G.halvkugle, farve);
     m.scale.set(0.75, 1.0, 0.75);
     g.add(m);
     return g;
@@ -228,6 +257,7 @@ function isTema() {
   function granTræ(S, x, bund, z, top, r) {
     flage(S, x, bund, z, r);
     const h = top - bund + 2 + r() * 5, lag = 5;
+    if (læg(S, "grantræ", [x, bund, z], [0, r() * 6, 0], [1, h / 10, 1])) return;     // grantræet med sne fra Blender
     S.put(G.cylLav, stamme, [x, bund + h * 0.25, z], [0, 0, 0], [0.35, h * 0.5, 0.35]);
     for (let k = 0; k < lag; k++) {
       const t = k / lag, y = bund + h * (0.3 + t * 0.62), rr = 2.6 * (1 - t * 0.75), hh = 2.8 - t * 0.8;
@@ -248,6 +278,7 @@ function isTema() {
   }
   function snemand(S, x, bund, z, top, r) {             // snemanden står på en svævende isklump
     const y = top - 3 - r() * 3;
+    if (læg(S, "snemand", [x, y, z], [0, r() * 6.28, 0], 1)) return;              // snemanden og isklumpen fra Blender
     S.put(knold(4, 0.12, 14), isflage, [x, y - 0.7, z], [0, r() * 6, 0], [2.4, 1.2, 2.4]);
     S.put(G.kegle, isflage, [x, y - 2.4, z], [Math.PI, 0, 0], [2.2, 3.2, 2.2]);
     const a = r() * 6.28, m = new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, a, 0)), new THREE.Vector3(1, 1, 1));
@@ -279,7 +310,9 @@ function isTema() {
     }
   }
   function pude() {                                      // en stor snebold
-    const g = new THREE.Group(), m = new THREE.Mesh(knold(9, 0.06, 16), sne);
+    const g = new THREE.Group(), b = kopi("pude_is");
+    if (b) { g.add(b); return g; }
+    const m = new THREE.Mesh(knold(9, 0.06, 16), sne);
     m.scale.setScalar(0.7); m.position.y = 0.6;
     g.add(m);
     return g;
@@ -318,9 +351,11 @@ function jungle() {
     let px = 0, py = 0;
     for (let k = 0; k < n; k++) {                         // stammen i led, der bøjer lidt
       const t = (k + 0.5) / n, nx = bøj * t * t, ny = h * t;
-      S.put(G.cylLav, stamme, [nx, ny, 0], [0, 0, -bøj * 2 * t / h], [0.42 - t * 0.12, h / n * 1.05, 0.42 - t * 0.12], m);
+      if (!læg(S, "palmeled", [nx, ny - h / n * 0.5, 0], [0, 0, -bøj * 2 * t / h], [0.4 - t * 0.12, h / n * 1.05, 0.4 - t * 0.12], m))
+        S.put(G.cylLav, stamme, [nx, ny, 0], [0, 0, -bøj * 2 * t / h], [0.42 - t * 0.12, h / n * 1.05, 0.42 - t * 0.12], m);
       px = nx; py = ny;
     }
+    if (læg(S, "palmekrone", [px, py + 0.4, 0], [0, r() * 6, 0], 0.9 + r() * 0.2, m)) return;   // blade og kokosnødder fra Blender
     for (let k = 0; k < 8; k++) {                         // palmeblade
       const v = k / 8 * Math.PI * 2 + r() * 0.3;
       const bm = new THREE.Matrix4().compose(new THREE.Vector3(px, py + 0.4, 0), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, v, 0)), new THREE.Vector3(1, 1, 1)).premultiply(m);
@@ -350,7 +385,8 @@ function jungle() {
     }
   }
   function pude() {                                      // en mosgroet træstub
-    const g = new THREE.Group();
+    const g = new THREE.Group(), b = kopi("pude_jungle");
+    if (b) { g.add(b); return g; }
     const s = new THREE.Mesh(G.cyl, stamme); s.scale.set(0.6, 0.8, 0.6); s.position.y = 0.4;
     const t = new THREE.Mesh(G.halvkugle, mos); t.scale.set(0.62, 0.2, 0.62); t.position.y = 0.8;
     g.add(s, t);
@@ -393,7 +429,8 @@ function regnbue() {
     }
   }
   function pude() {                                      // en blød skypude
-    const g = new THREE.Group();
+    const g = new THREE.Group(), b = kopi("pude_regnbue");
+    if (b) { g.add(b); return g; }
     for (let k = 0; k < 5; k++) {
       const m = new THREE.Mesh(knold(k + 20, 0.08, 14), skyMat);
       m.scale.setScalar(0.38 + (k === 0 ? 0.15 : 0));

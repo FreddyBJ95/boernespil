@@ -8,12 +8,13 @@ import * as THREE from "./three.js";
 // Samme kontrolsum som blender/eksporter_bane.mjs
 const kontrolsum = p => { let s = 0; for (let i = 0; i < p.length; i++) s += p[i] * ((i % 7) + 1); return Math.round(s); };
 
-export async function hentLys(masker) {
+export async function hentLys(masker, bane = "stoevbyen") {
   try {
+    const fil = bane === "stoevbyen" ? "modeller/lys" : `modeller/lys_${bane}`;      // (Støvbyens filer hedder bare lys.*)
     const [info, bin, billede] = await Promise.all([
-      fetch("modeller/lys.json").then(r => r.json()),
-      fetch("modeller/lys.bin").then(r => r.arrayBuffer()),
-      new THREE.TextureLoader().loadAsync("modeller/lys.webp"),
+      fetch(`${fil}.json`).then(r => r.json()),
+      fetch(`${fil}.bin`).then(r => r.arrayBuffer()),
+      new THREE.TextureLoader().loadAsync(`${fil}.webp`),
     ]);
     const uv = new Uint16Array(bin), efterNavn = new Map(masker.map(m => [m.name, m])), sæt = [];
     let start = 0;

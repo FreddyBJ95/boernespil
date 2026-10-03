@@ -17,6 +17,7 @@ import { Blob, SKINS, R } from "./blob.js";
 import { Partikler, Brikker } from "./partikler.js";
 import * as T from "./teksturer.js";
 import * as Lyd from "./lyd.js";
+import { hentModeller } from "./modeller.js";
 
 const E = window.Effekter;
 const $ = id => document.getElementById(id);
@@ -704,6 +705,7 @@ opdaterStyreKnap();
 lavSkins();
 lavBaner();
 lavSværhed();
+await hentModeller();                                          // pynt, frugt og puder fra Blender (modeller.js)
 indlæs(URL_P.get("bane") || gemt.bane);
 størrelse();
 requestAnimationFrame(t => { sidst = t; løkke(t); });

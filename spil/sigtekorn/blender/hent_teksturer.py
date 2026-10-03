@@ -21,6 +21,9 @@ TEKSTURER = {
     "planker": ("weathered_planks", 1024, (1.6, 1.42, 1.2)),
     "metal": ("green_metal_rust", 1024, (1.0, 1.0, 1.0)),
     "bark": ("palm_tree_bark", 1024, (0.9, 0.85, 0.78)),
+    # Havnen
+    "beton": ("dirty_concrete", 2048, (1.0, 1.0, 1.0)),
+    "blik": ("box_profile_metal_sheet", 1024, (3.5, 3.5, 3.5), True),     # gjort grå, så den kan farves (containere i alle farver)
 }
 KORT = {"farve": ("Diffuse", None), "normal": ("nor_gl", 1024), "arm": ("arm", 1024)}
 
@@ -33,7 +36,7 @@ def hent(url, fil):
 
 os.makedirs(KILDE, exist_ok=True); os.makedirs(MÅL, exist_ok=True)
 info = {}
-for navn, (ph, str_farve, gang) in TEKSTURER.items():
+for navn, (ph, str_farve, gang, *gråt) in TEKSTURER.items():
     req = urllib.request.Request(f"https://api.polyhaven.com/files/{ph}", headers={"User-Agent": "Spilkassen-boernespil/1.0"})
     filer = json.load(urllib.request.urlopen(req))
     req = urllib.request.Request(f"https://api.polyhaven.com/info/{ph}", headers={"User-Agent": "Spilkassen-boernespil/1.0"})
@@ -44,6 +47,7 @@ for navn, (ph, str_farve, gang) in TEKSTURER.items():
         im = Image.open(kilde).convert("RGB")
         s = str_ or str_farve
         if im.width != s: im = im.resize((s, s), Image.LANCZOS)
+        if kort == "farve" and gråt: im = Image.merge("RGB", [im.convert("L")] * 3)
         if kort == "farve" and gang != (1.0, 1.0, 1.0):
             im = Image.merge("RGB", [b.point(lambda v, f=f: min(255, round(v * f))) for b, f in zip(im.split(), gang)])
         im.save(os.path.join(MÅL, f"{navn}_{kort}.webp"), "WEBP", quality=88 if kort == "normal" else 84, method=6)

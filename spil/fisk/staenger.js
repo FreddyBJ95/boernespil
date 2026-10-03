@@ -7,6 +7,7 @@
 //  kast:     hvor langt den kaster (18 er normalt) · held: gange chancen for sjældne fisk (1 er normalt)
 
 import * as THREE from "./three.js";
+import { kopi, tone } from "./modeller.js";
 
 export const STÆNGER = [
   { id: "spinne", navn: "Spinnestang", farver: ["#1d4ed8", "#2563eb"], håndtag: "#c8a27a", rulle: "#cbd5e1", line: "#fde047",
@@ -55,6 +56,13 @@ export function byggStang(def) {
   // Spinnehjul under stangen, med håndsving der drejer når man spoler
   const hjul = new THREE.Group(), hm = std(def.rulle || "#cbd5e1", { metalness: 0.6, roughness: 0.3 });
   hjul.position.set(0, 0.02, -0.035);
+  const model = kopi("grej", "rulle");                                                       // hjulet fra Blender
+  if (model) {
+    tone(model, def.rulle || "#cbd5e1", "rulle"); tone(model, def.line || "#fde047", "line");
+    hjul.add(model); hjul.scale.setScalar(1.3); g.add(hjul);
+    const w = segmenter.map((_, i) => Math.pow((i + 1) / N, 1.6)), sum = w.reduce((a, b) => a + b, 0);
+    return { gruppe: g, segmenter, vægt: w.map(x => x / sum), spids, sving: model.getObjectByName("sving") };
+  }
   hjul.add(mesh(new THREE.BoxGeometry(0.014, 0.05, 0.06), hm, 0, 0, -0.02));
   hjul.add(mesh(new THREE.SphereGeometry(0.045, 16, 12), hm, 0, -0.01, -0.08));
   hjul.add(mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.012, 20), hm, 0, 0.035, -0.08));

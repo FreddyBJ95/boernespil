@@ -6,16 +6,18 @@ import { register } from "node:module";
 import { writeFileSync, mkdirSync } from "node:fs";
 register("./krog.mjs", import.meta.url);
 
-const { lavBane, LAMPER, LAMPE_Y } = await import("../bane.js");
+const { lavBane } = await import("../bane.js");
+const BANE = process.env.BANE || "stoevbyen";
 const { Kasseverden } = await import("../verden.js");
 const { Scene } = { Scene: class { constructor() { this.children = []; } add(...b) { this.children.push(...b); } } };
 
 const scene = new Scene(), verden = new Kasseverden();
-lavBane(scene, verden, {});
+const resultat = lavBane(scene, verden, {}, BANE);
+const [MIN_X, MIN_Z, MAX_X, MAX_Z] = resultat.grænse;
 
 // Er et punkt inde i en af kollisionskasserne? (så er fladen skjult — fx to huse, der står op ad hinanden)
 const inde = (x, y, z) => verden.kasser.some(k => x > k.min[0] && x < k.max[0] && y > k.min[1] && y < k.max[1] && z > k.min[2] && z < k.max[2]);
-const MIN = -58, MAX = 58;
+
 
 const masker = [];
 let areal = 0;
@@ -32,7 +34,7 @@ for (const m of scene.children) {
     for (let i = 0; i <= su && !set; i++) for (let j = 0; j <= sv && !set; j++) {
       const u = (i + 0.5) / (su + 1), v = (j + 0.5) / (sv + 1), pkt = [0, 1, 2].map(e => (a[e] * (1 - u) + b[e] * u) * (1 - v) + (d[e] * (1 - u) + c[e] * u) * v);
       const x = pkt[0] + nx * 0.02, y = pkt[1] + ny * 0.02, z = pkt[2] + nz * 0.02;
-      if (!(x < MIN || x > MAX || z < MIN || z > MAX || y < -0.01) && !inde(x, y, z)) set = true;
+      if (!(x < MIN_X || x > MAX_X || z < MIN_Z || z > MAX_Z || y < -0.01) && !inde(x, y, z)) set = true;
     }
     if (ny > 0.9 && a[1] > 5.5) set = false;                       // tagene kan ingen se (øjnene er højst 5 m oppe, husene er mindst 6,5 m)
     skjult.push(set ? 0 : 1);
@@ -44,6 +46,7 @@ for (const m of scene.children) {
 
 const kasser = verden.kasser.map(k => ({ min: k.min, max: k.max, mat: k.mat }));
 mkdirSync(new URL("./ud/", import.meta.url), { recursive: true });
-writeFileSync(new URL("./ud/bane.json", import.meta.url), JSON.stringify({ masker, kasser, lamper: LAMPER.map(([x, z]) => [x, LAMPE_Y - 0.06, z]) }));
+const fil = BANE === "stoevbyen" ? "./ud/bane.json" : `./ud/bane_${BANE}.json`;
+writeFileSync(new URL(fil, import.meta.url), JSON.stringify({ masker, kasser, lamper: resultat.lamper.map(([x, y, z, , w]) => [x, y - 0.06, z, w ?? 70]) }));
 console.log(`synligt areal: ${Math.round(areal)} m²`);
 console.log(masker.map(m => `${m.mat}: ${m.hjørner} hjørner, ${m.skjult.filter(s => !s).length}/${m.skjult.length} synlige`).join("\n"));

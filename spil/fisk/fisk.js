@@ -783,6 +783,7 @@ export function animerFisk(f, t, fart = 1) {
 // Frigør grafikhukommelse når en fisk (eller stang) ikke skal bruges mere
 export function rydOp(o) {
   o.traverse(c => {
+    if (c.userData.delt) return;                              // formerne fra Blender deles med andre ting
     if (c.geometry) c.geometry.dispose();
     if (c.material) [].concat(c.material).forEach(m => m.dispose());
   });
