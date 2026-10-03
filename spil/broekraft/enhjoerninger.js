@@ -22,7 +22,8 @@ const STIL = `
 
 export class Føljagt {
   // s: { sp, verden, dyr, nytDyr(def, x, y, z), dyrDef(id), stald: [x, z], partikel, lyd, besked(tekst, ms), fest(),
-  //      fyrværkeri(x, y, z), rider() → id på det dyr, man rider på (eller undefined) }
+  //      fyrværkeri(x, y, z), rider() → id på det dyr, man rider på (eller undefined),
+//      andre() → de andre spilleres figurer, når man spiller sammen (figur.rid = det dyr, de rider på) }
   constructor(s) {
     this.s = s;
     this.føl = []; this.hjemme = 0; this.igenTid = 0; this.sporTid = 0; this.glimtTid = 0; this.udsat = false;
@@ -92,12 +93,11 @@ export class Føljagt {
       this.s.besked("🦄 Åh, føllene er løbet ud at lege igen! Kan du finde dem?", 4000);
       this.udsæt();
     }
-    // regnbuesporet bag den enhjørning, man rider på
-    if (ENHJØRNINGER.has(this.s.rider?.()) && (this.sporTid -= dt) <= 0) {
+    // regnbuesporet bag den enhjørning, man rider på — og bag de andre, der rider sammen med en
+    if ((this.sporTid -= dt) <= 0) {
       this.sporTid = 0.04;
-      const c = REGNBUE[Math.floor(Math.random() * REGNBUE.length)], bag = new THREE.Vector3(Math.sin(sp.yaw), 0, Math.cos(sp.yaw));
-      this.s.partikel(sp.pos.x + bag.x * 0.9 + (Math.random() - 0.5) * 0.5, sp.pos.y + 0.4 + Math.random() * 0.6, sp.pos.z + bag.z * 0.9 + (Math.random() - 0.5) * 0.5,
-        c, (Math.random() - 0.5) * 0.6, 0.4 + Math.random() * 0.6, (Math.random() - 0.5) * 0.6, 1.4, 0.05, 0.8);
+      if (ENHJØRNINGER.has(this.s.rider?.())) this.spor(sp.pos, sp.yaw);
+      for (const f of this.s.andre?.() || []) if (ENHJØRNINGER.has(f.rid?.def.id)) this.spor(f.pos, f.yaw - Math.PI);
     }
     // enhjørningernes horn glimter af og til
     if ((this.glimtTid -= dt) <= 0) {
@@ -109,6 +109,12 @@ export class Føljagt {
           (Math.random() - 0.5) * 0.8, 0.6 + Math.random() * 0.6, (Math.random() - 0.5) * 0.8, 0.8, 0.05, 0.5);
       }
     }
+  }
+  // Et regnbuefarvet glimt bag en rytter (pos = rytterens fødder, yaw = den vej, rytteren kigger)
+  spor(pos, yaw) {
+    const c = REGNBUE[Math.floor(Math.random() * REGNBUE.length)], bx = Math.sin(yaw), bz = Math.cos(yaw);
+    this.s.partikel(pos.x + bx * 0.9 + (Math.random() - 0.5) * 0.5, pos.y + 0.4 + Math.random() * 0.6, pos.z + bz * 0.9 + (Math.random() - 0.5) * 0.5,
+      c, (Math.random() - 0.5) * 0.6, 0.4 + Math.random() * 0.6, (Math.random() - 0.5) * 0.6, 1.4, 0.05, 0.8);
   }
   // Alle føllene er hjemme: hjerter, fyrværkeri over stalden og en stor glæde
   alleHjemme() {

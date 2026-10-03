@@ -76,6 +76,18 @@ export class Figur {
     if (this.ny) { this.pos.copy(this.mål); this.yaw = this.målYaw; this.ny = false; }
   }
 
+  // Sammen: rider den anden spiller på et dyr? Så står dyret under figuren (id fra serverens "pos", ellers null)
+  sætRid(id) {
+    const def = id ? DYR.find(d => d.id === id && d.ride) : null;
+    if ((def?.id ?? null) === (this.rid?.def.id ?? null)) return;
+    if (this.rid) { this.scene.remove(this.rid.model); this.rid.model.traverse(c => c.material?.dispose()); this.rid = null; }
+    if (!def) return;
+    const model = byggDyr(def), h = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3()).y;
+    if (h < 1.3) model.scale.multiplyScalar(1.3 / h);                  // små dyr bliver større, ligesom når man selv rider
+    this.scene.add(model);
+    this.rid = { def, model, ryg: Math.max(h, 1.3) * 0.56 };          // ryggen sidder lidt over halvvejs oppe
+  }
+
   visEmoji(e) {
     if (this.emoji) { this.scene.remove(this.emoji); this.emoji.material.map.dispose(); this.emoji.material.dispose(); }
     this.emoji = boble(e, "#ffffff");
@@ -109,7 +121,17 @@ export class Figur {
     this.model.scale.setScalar(k);
     this.model.position.copy(this.pos);
     this.model.rotation.set(0, this.yaw, 0);
-    const top = this.pos.y + this.højde * k;
+    if (this.rid) {                                                    // dyret under figuren: spillerens fødder er 0,6 over dyrets
+      const r = this.rid.model, ru = r.userData, y = this.pos.y - 0.6;
+      r.position.set(this.pos.x, y, this.pos.z); r.rotation.set(0, this.yaw, 0);
+      for (const b of ru.ben) b.rotation.x = Math.sin(this.fase * 0.45 + b.userData.fase) * 0.8 * Math.min(1, fart / 3);
+      for (const w of ru.vinge) w.rotation.z = w.userData.side * ((iLuften ? Math.sin(this.t * 18) * 0.7 : Math.sin(this.t * 3) * 0.1) - 0.1);
+      for (const h of ru.hale) h.rotation.y = Math.sin(this.t * 6) * 0.35;
+      for (const m of ru.regnbue) m.color.setHSL((this.t * 0.2) % 1, 0.75, 0.72);
+      for (const b of u.ben) b.rotation.x = 0;                         // figuren sidder stille på ryggen
+      this.model.position.y = y + this.rid.ryg;
+    }
+    const top = this.model.position.y + this.højde * k;
     this.mærke.position.set(this.pos.x, top + 0.55 + Math.sin(this.t * 2.5) * 0.06, this.pos.z);
     this.tale += ((this.taler ? 1 : 0) - this.tale) * Math.min(1, dt * 10);
     this.mærke.scale.setScalar(0.55 * (1 + this.tale * Math.abs(Math.sin(this.t * 11)) * 0.18));
@@ -136,6 +158,7 @@ export class Figur {
   }
 
   fjern() {
+    this.sætRid(null);
     this.scene.remove(this.model, this.mærke);
     if (this.emoji) this.scene.remove(this.emoji);
     this.fjernBølger();
