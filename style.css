@@ -313,7 +313,7 @@ button.voksne-link { margin: 8px 0 0 6px; font: inherit; font-size: 15px; font-w
   animation: frem .25s ease-out;
 }
 .voksen-boks {
-  position: relative; width: min(560px, 100%); max-height: calc(100dvh - 32px); overflow: auto;
+  position: relative; width: min(900px, 100%); max-height: calc(100dvh - 32px); overflow: auto;
   padding: 28px 24px 22px; border-radius: 24px; color: #f1eaff; text-align: center;
   background: linear-gradient(160deg, #2b1f55, #160f33); border: 1px solid rgba(255,255,255,0.22);
   box-shadow: 0 30px 80px rgba(0,0,0,0.6);
@@ -345,6 +345,9 @@ button.voksne-link { margin: 8px 0 0 6px; font: inherit; font-size: 15px; font-w
 /* voksenspillene */
 .voksen-ven { width: 92px; height: auto; margin: -6px auto 0; display: block; }
 .voksen-spil h2 { margin: 4px 0 16px; font-size: 26px; font-weight: 900; }
+/* Fire voksenverdener i to kolonner; på en lille skærm ligger kortene under hinanden. */
+.voksen-liste { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 640px) { .voksen-liste { grid-template-columns: 1fr; } }
 .voksen-kort {
   display: block; overflow: hidden; border-radius: 18px; text-align: left; text-decoration: none; color: #fff;
   background: #0d0822; border: 1px solid rgba(255,255,255,0.25); box-shadow: 0 14px 30px rgba(0,0,0,0.45);

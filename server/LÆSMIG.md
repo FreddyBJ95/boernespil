@@ -167,8 +167,10 @@ Kun Linux: `deno task byg Linux-x64 Linux-ARM64`. Linux-pakker får `installer.s
 Release-workflowet laver zip-filer til Windows/Mac og `.tar.gz` til Linux. Installation, opdatering og
 HTTPS afprøves på både x64 og ARM64 Ubuntu, før pakkerne kan udgives. Begge baggrundsberegninger,
 `generator-worker.js` og `uendelig-worker.js`, medtages i de kompilerede programmer.
-Et tag som `server-v0.5.1` bygger pakkerne og udgiver dem på GitHub Releases.
-Server 0.5.1 medtager Enhjørningeland, de fem nye blokke og visning af andre spilleres ridedyr.
+Et tag som `server-v0.5.2` bygger pakkerne og udgiver dem på GitHub Releases.
+Server 0.5.2 medtager Spilkassens billeder og ikoner samt voksenrummets tre nye 3D-spil:
+Det Sidste Lys, Skrotstorm og Krystaljægerne. De har både tastatur- og touchstyring.
+Enhjørningeland, de fem nye blokke og visning af andre spilleres ridedyr fra 0.5.1 er også med.
 Den uendelige verden og fælles effekter fra 0.5.0 er også med. Ejeren fletter grenen og godkender
 den samlede spilversion, før release-tagget oprettes; der pushes aldrig direkte til `main`.
 

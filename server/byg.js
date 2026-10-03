@@ -7,7 +7,11 @@ const mål = [
   ["aarch64-unknown-linux-gnu", "Linux-ARM64", ""],
 ];
 if (Deno.args.some(navn => !mål.some(m => m[1] === navn))) throw new Error("Ukendt platform. Vælg " + mål.map(m => m[1]).join(", "));
-const filer = ["../spil", "../tilslut", "../index.html", "../style.css", "../effekter.js", "../manifest.json", "../sw.js", "../icon-192.png", "../icon-512.png", "kontrol", "sammen", "vendor", "test-klient.html", "test-klient.js", "generator-worker.js", "uendelig-worker.js"];
+const filer = [
+  "../spil", "../tilslut", "../billeder", "../index.html", "../style.css", "../effekter.js", "../manifest.json", "../sw.js",
+  "../icon-192.png", "../icon-512.png", "../favicon.png", "../apple-touch-icon.png", "../icon-maskable-512.png",
+  "kontrol", "sammen", "vendor", "test-klient.html", "test-klient.js", "generator-worker.js", "uendelig-worker.js",
+];
 for (const [target, navn, endelse] of mål) {
   if (Deno.args.length && !Deno.args.includes(navn)) continue;
   await Deno.mkdir(`dist/${navn}`, { recursive: true });

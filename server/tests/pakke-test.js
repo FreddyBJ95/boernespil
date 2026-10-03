@@ -3,12 +3,15 @@ import { forbind } from "../../spil/broekraft/net.js";
 import { ID } from "../../spil/broekraft/blokke.js";
 import { MIDT } from "../../spil/broekraft/uendelig.js";
 import { UDGAVE } from "../verdener.js";
+import { VOKSENVERDENER, prøvVoksenverden } from "./tre-verdener-filer.js";
+import { prøvOffentligeFiler, prøvPrivateFiler } from "./offentlige-filer.js";
 
 // Køres mod en færdig pakke med en tom, isoleret datamappe, ikke familiens server.
 const base = Deno.args[0];
 if (!base || !/^http:\/\/127\.0\.0\.1:\d+$/.test(base)) throw new Error("Angiv den lokale testservers HTTP-adresse");
 const klienter = [], verdener = [], status = async () => await (await fetch(base + "/api/status")).json();
 const { token, version } = await status(); assert.equal(version, UDGAVE);
+for (const id of VOKSENVERDENER) await prøvVoksenverden((sti, options) => fetch(base + sti, options), id);
 async function handling(navn, data) {
   const svar = await fetch(base + "/api/" + navn, { method: "POST", headers: { origin: base, "x-broekraft-token": token }, body: JSON.stringify(data) });
   const b = await svar.json(); assert.ok(svar.ok, b.fejl); return b;
@@ -92,6 +95,10 @@ async function deltEffekt(afsender, modtager, position) {
   } finally { afsender.removeEventListener("effekt", lyt); }
 }
 try {
+  // Den kompilerede server skal medtage filernes bytes, ikke kun kende deres adresser.
+  const hent = (sti, init) => fetch(base + sti, init);
+  await prøvOffentligeFiler(hent);
+  await prøvPrivateFiler(hent);
   const finite = await opret("maane"), måne = await åbn(finite);
   assert.equal(måne.info.verden.bredde, 128);
   const måneVen = await åbn(finite), hjem = måne.info.spillere.find(p => p.id === måne.info.dig);
@@ -144,7 +151,7 @@ try {
   ny.luk(); ven.luk(); await handling("stop", { id }); await handling("start", { id });
   const efterBrag = await åbn(id), sprængt = await flyt(efterBrag);
   assert.equal(sprængt.data[indeks], 0, "Serverens store brag skal overleve genstart");
-  console.log("Færdig pakke: begge workers, WebSocket, Enhjørningeland og nye blokke, delt ridning, delte effekter, almindeligt og stort brag, højt hjem, fjern bygning og gemning efter genstart består.");
+  console.log("Færdig pakke: Spilkassens billeder, appikoner, Sigtekorns modeller/teksturer/lys, GET/HEAD og filafskærmning, begge workers, WebSocket, Enhjørningeland og nye blokke, delt ridning, delte effekter, almindeligt og stort brag, højt hjem, fjern bygning og gemning efter genstart består.");
 } finally {
   for (const f of klienter) f.luk();
   for (const id of verdener) await handling("stop", { id });

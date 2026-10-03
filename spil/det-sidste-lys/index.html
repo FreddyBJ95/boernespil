@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="da">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#142c32">
+    <meta name="description"
+      content="En stille ø, et gammelt fyr og otte gåder. Udforsk Det Sidste Lys på computer, tablet eller telefon.">
+    <title>Det Sidste Lys · Børnespil / Voksenrummet</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <div id="verden"></div>
+    <div id="vignet"></div>
+    <div id="lås" class="lås-lag skjult"></div>
+    <main id="menu" class="menu-lag">
+      <img class="forside" src="forside.jpg" alt="Et gammelt fyr, kystens huse og en fyrreskov på en stille ø">
+      <div class="menu-mørke"></div>
+      <div class="menu-indhold">
+        <p class="overlinje">EN Ø. ET LØFTE. ET LYS.</p>
+        <h1>Det sidste<br><em>lys.</em></h1>
+        <p
+          class="indledning">Du vender hjem til øen, hvor fyret er gået ud.<br>Elin har efterladt et brev. Havet venter på et svar.</p>
+        <div class="menu-handlinger">
+          <button id="start" class="primær" disabled>Øen vågner …</button>
+          <button id="nyt" class="sekundær skjult">Begynd forfra</button>
+        </div>
+        <p id="indlæsning" class="menu-status" role="status">Forbereder den originale 3D-ø …</p>
+        <p
+          class="menu-note">Et roligt eventyr med otte kapitler · 15–25 minutter<br>Gemt fremgang · Computer, tablet og telefon</p>
+        <div
+          class="menu-links"><button id="menu-hjælp" class="tekstknap">Sådan spiller du</button><a href="../../index.html">← Tilbage til spillene</a></div>
+      </div>
+      <span class="menu-signatur">VELKOMMEN TIL LYSØ</span>
+    </main>
+
+    <div id="hud" class="skjult">
+      <header class="toplinje">
+        <div
+          class="ø-navn"><span class="lille-sol">✳</span><span>DET SIDSTE LYS<small id="sted-navn">Den stille havn</small></span></div>
+        <div class="kompas"><span id="kurs">N</span><i>│</i><span id="vejr">Skumring</span></div>
+        <nav class="værktøj" aria-label="Spillets knapper">
+          <button id="tid" title="Skift mellem skumring og nat" aria-label="Skift dag og nat">☾</button>
+          <button id="lyd" title="Slå lyd til eller fra" aria-label="Slå lyd fra">♪</button>
+          <button id="pause" title="Pause" aria-label="Pause">Ⅱ</button>
+        </nav>
+      </header>
+      <aside class="mål-kort">
+        <p id="kapitel">KAPITEL 01 / 08</p>
+        <h2 id="mål-titel">Et brev på kajen</h2>
+        <p id="mål-tekst">Find Elins brev.</p>
+        <div class="mål-under"><span id="afstand"></span><button id="hjælp">Et lille vink ↗</button></div>
+        <div class="fremgang"><i id="fremgang"></i></div>
+      </aside>
+      <div class="sigte" aria-hidden="true"></div>
+      <div id="besked" class="besked skjult" role="status"></div>
+      <button id="ud" class="ud-knap skjult">↓ Tilbage fra galleriet</button>
+      <div class="bundlinje">
+        <div
+          class="samling"><span id="inventar">Ingen genstande endnu</span><small id="gemt">Fremgangen gemmes automatisk</small></div>
+        <div class="bund-knapper"><button id="kort">⌖ Økort</button><button id="bog">▤ Dagbog</button></div>
+      </div>
+      <div id="interaktion"
+        class="interaktion"><small id="genstand">Gå tæt på noget for at undersøge det.</small><button id="undersøg" disabled><span class="tast">E</span><span id="handlingsnavn">Undersøg</span><span class="pil">↗</span></button></div>
+      <div id="touch" class="touch-kontrol" aria-label="Bevægelse på touchskærm">
+      <button data-gå="frem" aria-label="Gå frem">▲</button><button data-gå="venstre" aria-label="Gå til venstre">◀</button><button data-gå="tilbage" aria-label="Gå tilbage">▼</button><button data-gå="højre" aria-label="Gå til højre">▶</button>
+    </div>
+      <span class="kig-hjælp">Træk på landskabet for at kigge</span>
+      <div id="flyt-guide" class="flyt-guide">W A S D / piletaster · Træk for at kigge · E undersøg · M kort</div>
+    </div>
+
+    <div id="dialog" class="dialog-lag skjult" role="dialog" aria-modal="true" aria-labelledby="dialog-titel">
+      <section
+        class="dialog-kort"><button id="luk-dialog" class="luk" aria-label="Luk">×</button><p id="dialog-overlinje" class="overlinje"></p><h2 id="dialog-titel"></h2><div id="dialog-indhold"></div><div id="dialog-knapper" class="dialog-knapper"></div></section>
+    </div>
+    <div id="pause-lag" class="dialog-lag skjult" role="dialog" aria-modal="true" aria-labelledby="pause-titel">
+      <section
+        class="dialog-kort pause-kort"><p class="overlinje">HAVET KAN GODT VENTE</p><h2 id="pause-titel">Et øjebliks ro.</h2><p id="pause-status">Dit eventyr er gemt på denne enhed.</p><button id="fortsæt" class="primær">Tilbage til øen</button><button id="pause-hjælp" class="sekundær">Hjælp og styring</button><button id="pause-nyt" class="tekstknap">Begynd forfra</button><a class="tilbage-link" href="../../index.html">← Tilbage til spillene</a></section>
+    </div>
+    <script type="module" src="spil.js"></script>
+  </body>
+</html>

@@ -54,7 +54,7 @@ if [ "$klar" != true ]; then cat "$testmappe/server.log"; exit 1; fi
 curl --fail --silent --max-time 5 http://127.0.0.1:8080/certifikat/broekraft.crt > "$testmappe/rod.der"
 openssl x509 -inform DER -in "$testmappe/rod.der" -out "$testmappe/rod.pem"
 curl --fail --silent --max-time 5 --cacert "$testmappe/rod.pem" https://127.0.0.1:8443/spil/broekraft/net.js > /dev/null
-deno run --allow-net server/tests/pakke-test.js http://127.0.0.1:8080
+deno run --allow-net --allow-read=spil server/tests/pakke-test.js http://127.0.0.1:8080
 kill -TERM "$serverpid"
 wait "$serverpid"
 serverpid=''
