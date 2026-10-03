@@ -109,11 +109,16 @@ class Forbindelse extends EventTarget {
     return this.forespørg({ t: "vælg", verden }, "velkommen");
   }
   udsyn(r) { this.radius = Math.max(1, Math.min(8, Math.round(r) || 6)); this.send({ t: "udsyn", r: this.radius }); }
-  pos(x, y, z, yaw, pitch) {
-    this.position = { x, y, z, yaw, pitch };
+  // Af- og påstigning deles straks; almindelig bevægelse samles stadig hver 100 ms.
+  pos(x, y, z, yaw, pitch, rid = null) {
+    const skiftetRid = (this.position?.rid ?? null) !== rid;
+    this.position = { x, y, z, yaw, pitch, ...(rid !== null ? { rid } : {}) };
     if (!this.klar) return;
     const nu = performance.now();
-    if (nu - this.sidstePos >= 100) { this.sidstePos = nu; this.send({ t: "pos", ...this.position }); }
+    if (skiftetRid || nu - this.sidstePos >= 100) {
+      clearTimeout(this.posTimer); this.posTimer = null;
+      this.sidstePos = nu; this.send({ t: "pos", ...this.position });
+    }
     else if (!this.posTimer) this.posTimer = setTimeout(() => {
       this.posTimer = null;
       if (this.klar) { this.sidstePos = performance.now(); this.send({ t: "pos", ...this.position }); }

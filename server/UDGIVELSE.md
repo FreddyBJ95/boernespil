@@ -3,6 +3,7 @@ Broekraft Server lader 1–8 børn bygge i samme Broekraft-verden på familiens 
 **Nyt i 0.5.1**
 - 🦄 Ny verden: Enhjørningeland
 - Lyserødt græs, lilla blade, mintblade, regnbueblomster og perlemor kan nu bruges, når I spiller sammen.
+- 🐴 Man kan se, når de andre rider
 
 **Nyt i 0.5.0**
 - 🌍 Flere verdener: Underverdenen, Brandmandsbyen, Piratøen, Havbunden, Slikland, Skyøerne,

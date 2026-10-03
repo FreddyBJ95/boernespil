@@ -168,9 +168,9 @@ Release-workflowet laver zip-filer til Windows/Mac og `.tar.gz` til Linux. Insta
 HTTPS afprøves på både x64 og ARM64 Ubuntu, før pakkerne kan udgives. Begge baggrundsberegninger,
 `generator-worker.js` og `uendelig-worker.js`, medtages i de kompilerede programmer.
 Et tag som `server-v0.5.1` bygger pakkerne og udgiver dem på GitHub Releases.
-Server 0.5.1 medtager Enhjørningeland og de fem nye blokke. Den uendelige verden og fælles effekter
-fra 0.5.0 er også med. Ejeren fletter grenen og godkender den samlede spilversion, før release-tagget
-oprettes; der pushes aldrig direkte til `main`.
+Server 0.5.1 medtager Enhjørningeland, de fem nye blokke og visning af andre spilleres ridedyr.
+Den uendelige verden og fælles effekter fra 0.5.0 er også med. Ejeren fletter grenen og godkender
+den samlede spilversion, før release-tagget oprettes; der pushes aldrig direkte til `main`.
 
 Certifikater laves med **node-forge 1.4.0**, som ligger i `server/vendor/node-forge` (BSD-3-Clause).
 RSA-nøgler skabes med WebCrypto. Certifikatbiblioteket indlæses som CommonJS og medtages i de kompilerede

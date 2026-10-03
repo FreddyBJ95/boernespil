@@ -17,7 +17,7 @@ pr. forbindelse ud over grænserne nedenfor. En brudt forbindelse fjernes automa
 | verdener | – | Liste over startede verdener |
 | vælg | verden | Verdens-id; ny tilslutning nulstiller klumper |
 | udsyn | r | Heltal; begrænses til 1–8, standard 6 |
-| pos | x,y,z,yaw,pitch | Føddernes position; højst 10/s, endelige tal inden for verdenen (flyvning op til højde+64) |
+| pos | x,y,z,yaw,pitch,rid? | Føddernes position; højst 10 flytninger/s, endelige tal inden for verdenen (flyvning op til højde+64); valgfrit ridedyr |
 | sæt | x,y,z,id | Heltalskoordinater, kendt id, 0 fjerner; højst 20/s sammen med tænd |
 | tænd | x,y,z | Tænd TNT med 2,2 sekunders lunte |
 | emoji | e | Kun ❤️ 😂 👍 🎉 😮 👋; højst 2/s |
@@ -25,16 +25,24 @@ pr. forbindelse ud over grænserne nedenfor. En brudt forbindelse fjernes automa
 Bundsten kan hverken sættes eller fjernes. Blokke kan ikke placeres i en spillers kasse
 (halvbredde 0,3, højde 1,7). Serveren bestemmer blokændringer, simulering og eksplosioner.
 
+Fra server 0.5.1 kan `pos` indeholde `rid`: dyrets id som 2–24 små ASCII-bogstaver (`a–z`), fx
+`"pegasus"` eller `"ko"`. Et manglende eller ugyldigt felt rydder ridedyret i en ellers gyldig position;
+ugyldige koordinater afviser hele positionen. Serveren behøver ikke at kende dyrelisten.
+Tabletten sender straks en position, når `rid` skifter, og gemmer det til genforbindelse. Serveren
+gemmer ridedyret også inden for de 100 ms mellem flytninger, men position, retning og udsyn flyttes
+fortsat højst 10 gange/s. Udsendelsen af spillerlisten og landstrømningen følger den sædvanlige 10/s-takt.
+Et verdensskift nulstiller ridedyret. Feltet gælder både endelige og uendelige verdener.
+
 ## Server → klient
 
 | t | Felter |
 |---|---|
 | verdener | liste: [{id,navn,type,bredde,dybde,uendelig,spillere,maks}] |
-| velkommen | dig, verden: {id,navn,type,bredde,dybde,højde,frø,ildBreder,stemmer,uendelig}, spillere: [{id,figur,x,y,z,yaw,pitch}] |
+| velkommen | dig, verden: {id,navn,type,bredde,dybde,højde,frø,ildBreder,stemmer,uendelig}, spillere: [{id,figur,x,y,z,yaw,pitch,rid?}] |
 | fuld | – |
 | ind | id,figur |
 | ud | id |
-| pos | liste: [{id,figur,x,y,z,yaw,pitch}], op til 10/s |
+| pos | liste: [{id,figur,x,y,z,yaw,pitch,rid?}], op til 10/s |
 | blok | x,y,z,id, kun til spillere med den berørte klump |
 | glem | cx,cz |
 | bum | x,y,z (eksplosionens centrum), slags? (`mini`, `atom` eller `kæmpe`) |
@@ -43,6 +51,9 @@ Bundsten kan hverken sættes eller fjernes. Blokke kan ikke placeres i en spille
 
 Maksimum gælder pr. verden. Afvist verdensskift bevarer den gamle tilslutning.
 Der er ingen navne eller chat i protokollen. Dyrene simuleres lokalt på hver tablet.
+`rid` medtages kun, når det er sat. Tabletterne tegner et lokalt ridedyr under spilleren og viser
+kun dyr med `ride: true`; ukendte dyr ignoreres. Gamle 0.1.0-klienter og klienter uden `rid`
+kan fortsat spille som før; protokolversionen ændres ikke.
 
 ## Fælles brag, fyrværkeri og flyvende effekter
 

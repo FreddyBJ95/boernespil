@@ -56,12 +56,24 @@ async function enhjørningeland() {
     const hosBegge = [hændelse(a, "blok", matcher), hændelse(ven, "blok", matcher)];
     a.sæt(blok.x, blok.y, blok.z, blok.id); await Promise.all(hosBegge);
   }
+
+  // Ridning deles gennem net.pos og er også synlig for et barn, der kommer ind senere.
+  const dig = a.info.dig, hjem = a.info.spillere.find(p => p.id === dig);
+  const ridning = hændelse(ven, "pos", b => b.liste.some(p => p.id === dig && p.rid === "pegasus"));
+  a.pos(hjem.x, hjem.y, hjem.z, 0, 0, "pegasus"); await ridning;
+  const tredje = await åbn(id);
+  assert.equal(tredje.info.spillere.find(p => p.id === dig).rid, "pegasus", "Velkomsten skal vise dem, der allerede rider");
+  const ståetAf = hændelse(ven, "pos", b => b.liste.some(p => p.id === dig && !Object.hasOwn(p, "rid")));
+  a.pos(hjem.x, hjem.y, hjem.z, 0, 0, null); await ståetAf;
+  tredje.luk();
   a.luk(); ven.luk(); await handling("stop", { id }); await handling("start", { id });
   let gemt;
   const ny = await åbn(id, k => { gemt = k; });
   for (const blok of bygning) {
     const indeks = (blok.x & 15) + (blok.z & 15) * 16 + blok.y * 256;
     assert.equal(gemt.data[indeks], blok.id, "Alle nye blokke skal overleve gemning og indlæsning");
+    const fjernet = hændelse(ny, "blok", b => b.x === blok.x && b.y === blok.y && b.z === blok.z && b.id === 0);
+    ny.sæt(blok.x, blok.y, blok.z, 0); await fjernet;
   }
   ny.luk(); await handling("stop", { id });
 }
@@ -132,7 +144,7 @@ try {
   ny.luk(); ven.luk(); await handling("stop", { id }); await handling("start", { id });
   const efterBrag = await åbn(id), sprængt = await flyt(efterBrag);
   assert.equal(sprængt.data[indeks], 0, "Serverens store brag skal overleve genstart");
-  console.log("Færdig pakke: begge workers, WebSocket, Enhjørningeland og nye blokke, delte effekter, almindeligt og stort brag, højt hjem, fjern bygning og gemning efter genstart består.");
+  console.log("Færdig pakke: begge workers, WebSocket, Enhjørningeland og nye blokke, delt ridning, delte effekter, almindeligt og stort brag, højt hjem, fjern bygning og gemning efter genstart består.");
 } finally {
   for (const f of klienter) f.luk();
   for (const id of verdener) await handling("stop", { id });
