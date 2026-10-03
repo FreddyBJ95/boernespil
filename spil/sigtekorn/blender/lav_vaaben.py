@@ -6,37 +6,7 @@ import sys, os, math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from faelles import *
 from faelles import _obj
-
-
-def hænder(højre_greb, venstre=None, højre_ærme=((0.06, -0.11, -0.13), (0.19, -0.42, -0.29)), venstre_ærme=None):
-    """Handsker og ærmer: højre hånd om grebet (punktet er grebets midte) og evt. venstre hånd foran"""
-    HANDSKE = farvet("handske", (0.03, 0.03, 0.032), ru=0.7, støj=0.25, skala=120)
-    ÆRME = farvet("ærme", (0.42, 0.33, 0.2), ru=0.95, støj=0.2, skala=60)
-    x, y, z = højre_greb
-    hd = [kasse("højre håndflade", x - 0.02, y - 0.032, z - 0.042, x + 0.018, y + 0.026, z + 0.038, HANDSKE, 0.012)]
-    for i, dz in enumerate((-0.02, 0.0, 0.02)):
-        hd.append(rør(f"finger{i}", (x + 0.016, y + 0.03, z + dz), (x - 0.03, y + 0.042, z + dz - 0.004), 0.0092, HANDSKE, 14, 0.003))
-    hd.append(rør("tommel", (x - 0.03, y - 0.02, z + 0.04), (x - 0.03, y + 0.02, z + 0.052), 0.0092, HANDSKE, 14, 0.003))
-    hd.append(rør("højre håndled", (x + 0.01, y - 0.03, z - 0.02), (x + 0.045, y - 0.1, z - 0.06), 0.026, HANDSKE, 18, 0.004, 0.03))
-    a, b = højre_ærme
-    hd.append(rør("højre ærme", a, b, 0.04, ÆRME, 20, 0.004, 0.05))
-    if venstre:
-        vx, vy, vz = venstre
-        hd.append(kasse("venstre håndflade", vx - 0.024, vy - 0.035, vz - 0.016, vx + 0.024, vy + 0.035, vz + 0.016, HANDSKE, 0.011))
-        for i, dy in enumerate((-0.025, -0.008, 0.009, 0.026)):
-            hd.append(rør(f"vfinger{i}", (vx - 0.012, vy + dy, vz - 0.006), (vx - 0.03, vy + dy + 0.004, vz + 0.05), 0.0085, HANDSKE, 14, 0.003))
-        hd.append(rør("vtommel", (vx + 0.016, vy - 0.02, vz), (vx + 0.028, vy + 0.015, vz + 0.042), 0.009, HANDSKE, 14, 0.003))
-        a, b = venstre_ærme or ((vx - 0.04, vy - 0.07, vz - 0.05), (vx - 0.24, vy - 0.36, vz - 0.22))
-        hd.append(rør("venstre ærme", a, b, 0.04, ÆRME, 20, 0.004, 0.05))
-    o = saml("hænder", hd); bag(o, "hænder", 512)
-    return o
-
-
-def gem(navn, dele, hd, munding):
-    v = saml(navn, dele); bag(v, navn, 1024)
-    m = bpy.data.objects.new("munding", None); bpy.context.collection.objects.link(m); m.location = munding
-    eksportér([v, hd, m], f"{navn}.glb")
-    return v
+from vaabendele import hænder, gem
 
 
 # ---------------- Pistolen ----------------
@@ -91,7 +61,7 @@ d.append(løft("greb", [[(-w, y0, z), (w, y0, z), (w, y1, z), (-w, y1, z)] for (
     [(-0.01, 0.017, -0.06, -0.01), (-0.07, 0.017, -0.075, -0.03), (-0.12, 0.016, -0.09, -0.05)]], OLIVEN, 0.008))
 d.append(kasse("aftrækker", -0.0025, -0.012, -0.03, 0.0025, -0.004, -0.008, STÅL, 0.001))
 hd = hænder((0.0, -0.06, -0.06), (0.0, 0.3, -0.045))
-gem("snig", d, hd, (0, 0.9, 0.03))
+gem("snig", d, hd, (0, 0.9, 0.03), (0, 0.3, -0.035))
 
 # ---------------- Kniven ----------------
 nulstil()

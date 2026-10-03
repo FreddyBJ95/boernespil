@@ -140,6 +140,7 @@ const botSpil = {
   scene, verden, knuder: bane.knuder, kampfolk: () => kampfolk, nu: () => tid, sværhed: () => SVÆRHED[ind.sværhed],
   skyd: (bot, o, ret, v) => skyd(bot, o, ret, v),
   røgBlokerer: (a, b) => projektiler.røgBlokerer(a, b),
+  kast: (bot, type, o, fart) => projektiler.granat(type, bot, o, fart),  // botterne kaster også granater
   delLyd: (pos, fart) => {                                         // en løs del rammer jorden (ikke for mange lyde på én gang)
     if (fart < 1.2 || tid - sidsteDelLyd < 0.04 || pos.distanceTo(kamera.position) > 40) return;
     sidsteDelLyd = tid; Lyd.dunk(pos, Math.min(1, fart / 6));

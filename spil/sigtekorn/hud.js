@@ -19,7 +19,11 @@ export class Hud {
     this.el.sigte.style.setProperty("--hul", `${px.toFixed(1)}px`);
     this.el.sigte.style.display = synlig ? "" : "none";
   }
-  liv(liv, panser) { this.el.liv.textContent = Math.max(0, liv); this.el.panser.textContent = Math.max(0, panser); this.el.liv.parentElement.classList.toggle("lavt", liv <= 25); }
+  liv(liv, panser) {
+    this.el.liv.textContent = Math.max(0, liv); this.el.panser.textContent = Math.max(0, panser);
+    $("livBoks").classList.toggle("lavt", liv <= 25);
+    $("livBjælke").style.width = `${Math.max(0, Math.min(100, liv))}%`; $("panserBjælke").style.width = `${Math.max(0, Math.min(100, panser))}%`;
+  }
   ammo(v) {
     this.el.våben.textContent = v.d.navn; this.el.våben.style.color = SJÆLDEN[v.d.sjælden]?.farve || "";
     this.el.ammo.textContent = v.d.nærkamp ? "" : v.genlader > 0 ? "…" : v.d.granat ? `${v.d.ikon} ${v.skud}` : v.skud;

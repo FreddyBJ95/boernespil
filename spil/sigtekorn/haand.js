@@ -105,6 +105,9 @@ const GLB_DREJ = { gevær: [0, 0.07, -0.05], snig: [0, 0.06, -0.04], pistol: [0.
 const PLADS = { gevær: [0.2, -0.22, -0.52], snig: [0.19, -0.2, -0.5], pistol: [0.17, -0.18, -0.42], kniv: [0.2, -0.19, -0.38], granat: [0.18, -0.2, -0.4] };
 const SIGTE = [0, -0.083, -0.3];                                    // våbnet midt foran øjet, når man sigter (kampgevær, jagtgevær, armbrøst)
 const SPARK = { snig: 1.6, pistol: 0.8, hagl: 1.8, tung: 0.6, special: 0.9 };
+// Grebet i klassens første model (stormgeværet, snigskytten, pistolen, kniven): de andre modeller flyttes, så deres
+// greb (punktet "greb" i filen) sidder samme sted — så ligger alle våben ens i hånden
+const REF_GREB = { gevær: [0.011, -0.072, 0.033], snig: [0, -0.06, 0.06], pistol: [0, -0.06, 0.035], kniv: [0, 0, 0.06] };
 const filer = new Map();                                            // hver fil hentes kun én gang
 
 export class Hånd {
@@ -134,7 +137,8 @@ export class Hånd {
     const egen = `modeller/${VÅBEN[id].model}.glb`, reserve = `modeller/${KLASSEFIL[klasse(id)] || "gevaer"}.glb`;
     const hent = fil => { if (!filer.has(fil)) filer.set(fil, new GLTFLoader().loadAsync(fil)); return filer.get(fil); };
     hent(egen).catch(() => hent(reserve)).then(gltf => {
-      const ny = gltf.scene.clone(true), mund = ny.getObjectByName("munding");
+      const ny = gltf.scene.clone(true), mund = ny.getObjectByName("munding"), greb = ny.getObjectByName("greb"), ref = REF_GREB[m.klasse];
+      if (greb && ref) ny.position.set(ref[0] - greb.position.x, ref[1] - greb.position.y, ref[2] - greb.position.z);
       ny.traverse(o => { if (o.isMesh) { o.material.envMapIntensity = 0.7; o.frustumCulled = false; } });
       m.holder.clear(); m.holder.add(ny);
       m.g = ny; m.g.userData.munding = mund ? mund.position.clone() : new THREE.Vector3(0, 0, -0.7);

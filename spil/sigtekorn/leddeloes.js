@@ -9,6 +9,7 @@ import * as THREE from "./three.js";
 import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
 import { ramKasse } from "./verden.js";
 import { løsDel } from "./dele.js";
+import { VÅBEN } from "./vaaben.js";
 
 let proto = null;
 export function hentLeddeløs() {
@@ -40,8 +41,25 @@ function holdMat(hold, m, hud) {
 const OVERARM = 0.30, UNDERARM = 0.27, LÅR = 0.42, SKINNEBEN = 0.40, ANKEL = 0.08;
 const LEMMER = { armR: ["overarmR", "underarmR"], armL: ["overarmL", "underarmL"], benR: ["lårR", "skinnebenR"], benL: ["lårL", "skinnebenL"], hoved: ["hoved"] };
 const DEL_LEM = { overarmR: "armR", underarmR: "armR", overarmL: "armL", underarmL: "armL", lårR: "benR", skinnebenR: "benR", lårL: "benL", skinnebenL: "benL" };
-// hvor venstre hånd tager fat foran på geværerne (i våbnets koordinater)
+// hvor venstre hånd tager fat foran på de enkle geværer (i våbnets koordinater)
 const FORGREB = { gevær: new THREE.Vector3(0, 0.07, -0.35), snig: new THREE.Vector3(0, 0.045, -0.26) };
+// De rigtige våben fra Blender (de samme som i hånden): hentes, når en soldat første gang skal bruge dem.
+// Punkterne "greb" og "forgreb" i filen siger, hvor hænderne skal sidde. Indtil da bruges de enkle modeller
+const KLASSEFIL = { gevær: "gevaer", mp: "gevaer", hagl: "gevaer", tung: "gevaer", special: "gevaer", snig: "snig", pistol: "pistol" };
+const tpLager = new Map();
+function hentTP(id) {
+  const d = VÅBEN[id];
+  if (!d?.model || d.nærkamp || d.granat) return Promise.resolve(null);
+  const hent = fil => {
+    if (!tpLager.has(fil)) tpLager.set(fil, new GLTFLoader().loadAsync(fil).then(g => {
+      const s = g.scene, obj = s.children.find(o => !["hænder", "munding", "greb", "forgreb"].includes(o.name));
+      return { obj, greb: s.getObjectByName("greb")?.position.clone() || new THREE.Vector3(), forgreb: s.getObjectByName("forgreb")?.position.clone() || null };
+    }));
+    return tpLager.get(fil);
+  };
+  return hent(`modeller/${d.model}.glb`).catch(() => hent(`modeller/${KLASSEFIL[d.klasse] || "gevaer"}.glb`)).catch(() => null);
+}
+const enkel = id => { const k = VÅBEN[id]?.klasse; return !k || k === "kniv" ? null : k === "snig" ? "snig" : k === "pistol" ? "pistol" : "gevær"; };
 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _d = new THREE.Vector3(), _e = new THREE.Vector3();
 const _q = new THREE.Quaternion(), _m = new THREE.Matrix4(), _eu = new THREE.Euler();
@@ -71,6 +89,7 @@ export class Figur {
       this.kasser.push({ n, o, k: { min: k.min.toArray(), max: k.max.toArray() }, inv: new THREE.Matrix4() });
     }
     this.fase = Math.random() * 6; this.kick = 0; this.kb = 0;
+    this.våbenModeller = {}; this.henter = new Set(); this.holdt = null;
     this.nulstil();
   }
   // Hel igen: alle dele kommer tilbage
@@ -105,17 +124,26 @@ export class Figur {
     // ---- våbnet og armene ----
     const sigteQ = new THREE.Quaternion().setFromEuler(_eu.set(t.pitch + this.kick * 0.12, 0, 0));
     const skR = iKrop(new THREE.Vector3(0.31, 0.47, 0)), skL = iKrop(new THREE.Vector3(-0.31, 0.47, 0));
-    const id = t.våben && this.harArm() ? t.våben : null;
-    for (const n of ["gevær", "snig", "pistol"]) this.d[n].visible = n === id;
+    const vid = t.våben && this.harArm() ? t.våben : null, id = enkel(vid), vm = vid ? this.våbenTil(vid) : null;
+    const vis = vm ? vm.obj : id ? this.d[id] : null;
+    for (const n of ["gevær", "snig", "pistol"]) this.d[n].visible = this.d[n] === vis;
+    for (const m of Object.values(this.våbenModeller)) m.obj.visible = m.obj === vis;
+    this.holdt = vis;
     let håndR = null, håndL = null;
     if (id) {
       const iSigte = (x, y, z) => new THREE.Vector3(x, y, z + this.kick * 0.04).applyQuaternion(sigteQ);
       let greb;
-      if (id !== "pistol") { greb = iSigte(0.12, -0.04, -0.3).add(bryst); håndR = greb; håndL = FORGREB[id].clone().applyQuaternion(sigteQ).add(greb); }
-      else if (!M.armR && !M.armL) { greb = iSigte(0.03, 0.05, -0.48).add(bryst); håndR = greb; håndL = iSigte(-0.04, -0.03, 0.03).add(greb); }
-      else if (!M.armR) { greb = iSigte(-0.07, 0.02, -0.5).add(skR); håndR = greb; }
-      else { greb = iSigte(0.07, 0.02, -0.5).add(skL); håndL = greb; }
-      this.sæt(id, greb, sigteQ);
+      if (id !== "pistol") greb = iSigte(0.12, -0.04, -0.3).add(bryst);
+      else if (!M.armR && !M.armL) greb = iSigte(0.03, 0.05, -0.48).add(bryst);
+      else if (!M.armR) greb = iSigte(-0.07, 0.02, -0.5).add(skR);
+      else greb = iSigte(0.07, 0.02, -0.5).add(skL);
+      // våbnet placeres, så dets greb sidder i hånden — og venstre hånd tager fat i forgrebet
+      const midt = vm ? greb.clone().sub(vm.greb.clone().applyQuaternion(sigteQ)) : greb;
+      const forgreb = vm ? (vm.forgreb && midt.clone().add(vm.forgreb.clone().applyQuaternion(sigteQ))) : FORGREB[id] && FORGREB[id].clone().applyQuaternion(sigteQ).add(greb);
+      if (id !== "pistol") { håndR = greb; håndL = forgreb || iSigte(-0.04, -0.03, 0.03).add(greb); }
+      else if (!M.armR && !M.armL) { håndR = greb; håndL = iSigte(-0.04, -0.03, 0.03).add(greb); }
+      else if (!M.armR) håndR = greb; else håndL = greb;
+      vis.position.copy(midt); vis.quaternion.copy(sigteQ);
     }
     // arme uden våben: hænger ned (eller skubber fra, når den kravler)
     const fri = (sk, side) => kb > 0.5 ? new THREE.Vector3(side * 0.28, 0.05, hofte.z - 0.8 - Math.cos(ψ + (side > 0 ? 0 : Math.PI)) * 0.15)
@@ -183,9 +211,25 @@ export class Figur {
       løsDel(o, scene, verden, grundfart.clone().addScaledVector(r, kraft).add(new THREE.Vector3((Math.random() - 0.5) * 1.5, 1.8 + Math.random(), (Math.random() - 0.5) * 1.5)), tilfældigSpin(7), lyd);
     }
   }
+  // Den rigtige model til et våben (hentes første gang; indtil den er klar, svarer den null)
+  våbenTil(id) {
+    if (this.våbenModeller[id]) return this.våbenModeller[id];
+    if (!this.henter.has(id)) {
+      this.henter.add(id);
+      hentTP(id).then(m => {
+        if (!m?.obj) return;
+        const obj = m.obj.clone(true); obj.position.set(0, 0, 0); obj.quaternion.identity(); obj.visible = false;
+        obj.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+        this.model.add(obj);
+        this.våbenModeller[id] = { obj, greb: m.greb, forgreb: m.forgreb };
+        this.d[`våben_${id}`] = obj;
+      });
+    }
+    return null;
+  }
   // Våbnet i hånden falder til jorden
-  tabVåben(id, scene, verden, grundfart, lyd) {
-    const o = this.d[id]; if (!o?.visible) return;
+  tabVåben(_, scene, verden, grundfart, lyd) {
+    const o = this.holdt; if (!o?.visible) return;
     løsDel(o, scene, verden, grundfart.clone().add(new THREE.Vector3((Math.random() - 0.5), 1, (Math.random() - 0.5))), tilfældigSpin(3), lyd);
   }
   // ---------- Død: soldaten falder fra hinanden — den ramte del flyver, resten falder sammen ----------

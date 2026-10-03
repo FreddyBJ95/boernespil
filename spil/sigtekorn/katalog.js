@@ -36,7 +36,7 @@ const PISTOL = [[0, 0], [0.9, 0.1], [1.7, -0.15], [2.4, 0.2], [3.0, -0.1], [3.4,
 export const PRIMÆR = {
   storm: { navn: "Stormgevær", klasse: "gevær", sjælden: "sjælden", tekst: "Hård og pålidelig. Lær rekylmønsteret, så rammer du alt.",
     auto: true, kadence: 0.1, skade: 36, panser: 0.775, rækkevidde: 0.98, magasin: 30, reserve: 90, genlad: 2.4, fart: 215,
-    stå: 0.0048, duk: 0.0033, bevæg: 0.173, hop: 0.47, skudUro: 0.0078, uroTid: 0.35, spredning: 0.0006, mønster: STORM, træk: 0.75, model: "storm" },
+    stå: 0.0048, duk: 0.0033, bevæg: 0.173, hop: 0.47, skudUro: 0.0078, uroTid: 0.35, spredning: 0.0006, mønster: STORM, træk: 0.75, model: "gevaer" },
   taktisk: { navn: "Taktisk gevær", klasse: "gevær", sjælden: "sjælden", tekst: "Lydpotte og lav rekyl. Lidt mindre skade end stormgeværet.",
     auto: true, kadence: 0.09, skade: 33, panser: 0.7, rækkevidde: 0.97, magasin: 25, reserve: 75, genlad: 3.0, fart: 225, lydløs: true,
     stå: 0.0042, duk: 0.003, bevæg: 0.16, hop: 0.45, skudUro: 0.0065, uroTid: 0.33, spredning: 0.0005, mønster: lavMønster(25, 0.62, 12, 1.3, 0.55, 2), træk: 0.7, model: "taktisk" },

@@ -26,8 +26,7 @@ function lodtrækning(liste) {
   for (const [id, w] of liste) if ((r -= w) <= 0) return id;
   return liste[0][0];
 }
-// Den model, figuren holder (de leddeløse har et gevær, en snigskytte og en pistol)
-const tpModel = id => { const k = VÅBEN[id]?.klasse; return !k || k === "kniv" ? null : k === "snig" ? "snig" : k === "pistol" ? "pistol" : "gevær"; };
+
 export const NAVNE = ["Grus", "Kaktus", "Sandorm", "Gekko", "Skorpion", "Mirage", "Kamel", "Sahara", "Oase", "Klit", "Støvsky", "Ørkenvind", "Palme", "Fata Morgana"];
 export const SVÆRHED = {
   let: { navn: "Let", reaktion: 0.8, drej: 3.5, fejl: 8, sigteTid: 0.9, rekylStyr: 0.15, hoved: 0.05, salve: [2, 4], strafe: 0 },
@@ -103,7 +102,8 @@ export class Bot {
     this.sekundær = lodtrækning(BOTPISTOL);
     this.våben = nytVåben(Math.random() < (sv === SVÆRHED.let ? 0.2 : 0.06) ? this.sekundær : lodtrækning(BOTVÅBEN));
     if (this.våben.d.zoom) this.våben.kikkert = 1;                     // botter med kikkert har den altid på
-    this.blindTil = 0;
+    this.blindTil = 0; this.næsteKast = 0;
+    this.granater = Math.random() < 0.65 ? [lodtrækning([["he", 5], ["blænd", 3], ["røg", 2]])] : [];
     this.mål = null; this.setFørst = 0; this.sidstSet = null; this.sidstSetTid = -99; this.vej = []; this.vejMål = null;
     this.tænkTid = Math.random() * 0.12; this.salve = 0; this.salvePause = 0; this.fejlYaw = 0; this.fejlPitch = 0;
     this.fastTid = 0; this.fastPos = this.a.pos.clone(); this.lytte = null; this.strafe = 0; this.strafeTid = 0; this.dukker = false;
@@ -119,6 +119,7 @@ export class Bot {
     this.sidstHørt = nu;
     if (Math.random() > (this.holder ? 0.35 : 0.6) * (1 - d / 45)) return;
     this.lytte = { x: pos.x, y: pos.y, z: pos.z, tid: nu };
+    if (this.granater.length && nu > this.næsteKast && d > 8 && d < 22 && Math.random() < 0.3 && this.fig?.harArm() !== false) this.kast(pos, nu);   // en granat efter lyden
   }
   // Kan botten se fjenden? (fri sigtelinje til hovedet eller brystet)
   kanSe(f, nu) {
@@ -304,12 +305,24 @@ export class Bot {
     this.vej = (fra >= 0 && til >= 0 && findVej(knuder, fra, til)) || [];
     this.vejMål = { x: mål.x, z: mål.z };
   }
+  // Kast en granat derhen, hvor fjenden sidst blev set (en bue, der lander der)
+  kast(mål, nu) {
+    const type = this.granater.pop(), o = this.øje(), dx = mål.x - o.x, dz = mål.z - o.z, d = Math.hypot(dx, dz);
+    const v = Math.min(18, Math.sqrt(11 * d / Math.sin(2 * 0.62))), c = Math.cos(0.62) * v / d;
+    this.s.kast(this, type, o.add(new THREE.Vector3(dx / d * 0.4, 0, dz / d * 0.4)), new THREE.Vector3(dx * c, Math.sin(0.62) * v, dz * c));
+    this.næsteKast = nu + 6;
+  }
   // ---------- Tænk (10 gange i sekundet): hvem kan den se? ----------
   tænk(nu) {
     const fjender = this.s.kampfolk().filter(f => f.hold !== this.hold && !f.død);
     if (this.mål && (this.mål.død || !fjender.includes(this.mål))) this.mål = null;
     if (this.mål && !this.kanSe(this.mål, nu)) {                 // fjenden forsvandt bag noget: husk, hvor den var
       this.sidstSet = this.mål.a.pos.clone(); this.sidstSetTid = nu; this.mål = null; this.vej = []; this.vejMål = null;
+    }
+    // en fjende forsvandt lige bag et hjørne i nærheden: måske en granat efter den
+    if (!this.mål && this.granater.length && this.sidstSet && nu - this.sidstSetTid < 4 && nu > this.næsteKast && this.fig?.harArm() !== false) {
+      const d = Math.hypot(this.sidstSet.x - this.a.pos.x, this.sidstSet.z - this.a.pos.z);
+      if (d > 7 && d < 24 && Math.random() < 0.14) this.kast(this.sidstSet, nu);
     }
     if (!this.mål && !this.flygt && this.våben) {
       let bedst = null, bd = Infinity;
@@ -368,7 +381,7 @@ export class Bot {
   mistLem(lem, skud) {
     const { scene, verden, delLyd } = this.s, fart = this.fart();
     if (lem.startsWith("arm") && this.våben) {
-      this.fig.tabVåben(tpModel(this.våben.id), scene, verden, fart, delLyd);
+      this.fig.tabVåben(null, scene, verden, fart, delLyd);
       this.fig.skydAf(lem, skud, scene, verden, fart, delLyd);
       this.våben = this.fig.harArm() ? nytVåben(this.sekundær || "pistol") : null;
       if (!this.våben) this.mål = null;
@@ -385,7 +398,7 @@ export class Bot {
     if (this.fig) {
       if (this.død) return;                                              // delene ligger på jorden (dele.js)
       const c = Math.cos(a.yaw), s = Math.sin(a.yaw);                    // farten set fra soldaten selv (x til højre, z bagud)
-      this.fig.poser({ fart, vx: c * a.vel.x - s * a.vel.z, vz: s * a.vel.x + c * a.vel.z, duk: a.duk, pitch: a.pitch, kravl: !!a.kravl, våben: tpModel(this.våben?.id), dt });
+      this.fig.poser({ fart, vx: c * a.vel.x - s * a.vel.z, vz: s * a.vel.x + c * a.vel.z, duk: a.duk, pitch: a.pitch, kravl: !!a.kravl, våben: this.våben?.id ?? null, dt });
       return;
     }
     this.fase += dt * fart * 2.4;
