@@ -1,0 +1,74 @@
+{
+ "sandsten": {
+  "polyhaven": "sandstone_blocks_08",
+  "meter": 3.0,
+  "snitfarve": [
+   165,
+   147,
+   116
+  ]
+ },
+ "puds": {
+  "polyhaven": "beige_wall_002",
+  "meter": 3.0,
+  "snitfarve": [
+   183,
+   144,
+   97
+  ]
+ },
+ "sand": {
+  "polyhaven": "gravelly_sand",
+  "meter": 2.48,
+  "snitfarve": [
+   163,
+   122,
+   82
+  ]
+ },
+ "fliser": {
+  "polyhaven": "rock_tile_floor",
+  "meter": 1.96,
+  "snitfarve": [
+   163,
+   142,
+   112
+  ]
+ },
+ "doer": {
+  "polyhaven": "blue_painted_planks",
+  "meter": 1.0,
+  "snitfarve": [
+   85,
+   101,
+   102
+  ]
+ },
+ "planker": {
+  "polyhaven": "weathered_planks",
+  "meter": 2.0,
+  "snitfarve": [
+   128,
+   96,
+   70
+  ]
+ },
+ "metal": {
+  "polyhaven": "green_metal_rust",
+  "meter": 1.0,
+  "snitfarve": [
+   63,
+   77,
+   52
+  ]
+ },
+ "bark": {
+  "polyhaven": "palm_tree_bark",
+  "meter": 1.3,
+  "snitfarve": [
+   141,
+   123,
+   100
+  ]
+ }
+}

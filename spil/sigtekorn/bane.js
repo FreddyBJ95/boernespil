@@ -24,6 +24,9 @@ const ÅBNE = [
   [-22, -14, -4, -8], [-26, -24, -18, -8],      // fra midten til B
   [-40, 10, -4, 14],         // de nedre tunneler: fra midten til tunnelerne
 ];
+// Lamper under tunneltagene: deres lys er bagt ind i lysbilledet (blender/lav_lys.py), her tegnes kun selve lampen
+export const LAMPER = [[-44, 6], [-44, 18], [-44, 30], [-34, 12]];
+export const LAMPE_Y = 2.72;
 export const STEDER = { A: [36, -34], B: [-36, -36], midt: [0, 0], nord: [0, -47], syd: [0, 47] };
 export const START = {
   ræve: [[-10, 47], [-5, 50], [0, 46], [5, 50], [10, 47], [-12, 51], [12, 51], [0, 52]],
@@ -68,8 +71,15 @@ class Bygger {
     if (o.bund) { const fb = 0.55 * m; this.firkant(mat, [[x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1]], [0, -1, 0],
       [[x0 / t, z0 / t], [x1 / t, z0 / t], [x1 / t, z1 / t], [x0 / t, z1 / t]], [fb, fb, fb, fb]); }
   }
-  // Lav én mesh pr. materiale
+  // Et stykke gulv (kun oversiden)
+  gulv(x0, z0, x1, z1, mat) {
+    const t = FLISE[mat] || 4;
+    this.firkant(mat, [[x0, 0, z1], [x1, 0, z1], [x1, 0, z0], [x0, 0, z0]], [0, 1, 0],
+      [[x0 / t, -z1 / t], [x1 / t, -z1 / t], [x1 / t, -z0 / t], [x0 / t, -z0 / t]], [1, 1, 1, 1]);
+  }
+  // Lav én mesh pr. materiale (navnet er materialets, så lyset fra Blender kan finde den igen)
   færdig(scene, materialer) {
+    const masker = [];
     for (const [mat, g] of this.grupper) {
       const geo = new THREE.BufferGeometry();
       geo.setAttribute("position", new THREE.Float32BufferAttribute(g.pos, 3));
@@ -78,23 +88,39 @@ class Bygger {
       geo.setAttribute("color", new THREE.Float32BufferAttribute(g.farve, 3));
       geo.setIndex(g.idx);
       const mesh = new THREE.Mesh(geo, materialer[mat]);
-      mesh.castShadow = mesh.receiveShadow = true;
-      scene.add(mesh);
+      mesh.name = mat; mesh.castShadow = mesh.receiveShadow = true;
+      scene.add(mesh); masker.push(mesh);
     }
+    return masker;
   }
 }
 
-// ---------- Materialerne ----------
+// ---------- Materialerne: fotos fra Poly Haven (eller de tegnede teksturer, hvis fotoene ikke kunne hentes) ----------
 function lavMaterialer(t) {
   const std = (map, o = {}) => new THREE.MeshStandardMaterial({ map, bumpMap: map, bumpScale: o.bump ?? 1.2, roughness: o.ru ?? 0.95, metalness: o.me ?? 0, vertexColors: true, color: o.farve ?? 0xffffff });
+  // Et foto: farve, buler (normal) og ruhed + skygge i krogene (arm). Gentages, så det får sin rigtige størrelse i meter
+  const foto = (navn, flise, o = {}) => {
+    const f = t.foto[navn], gentag = flise / f.meter;
+    for (const k of [f.farve, f.normal, f.arm]) k.repeat.set(gentag, gentag);
+    return new THREE.MeshStandardMaterial({ map: f.farve, normalMap: f.normal, normalScale: new THREE.Vector2(o.nor ?? 1, o.nor ?? 1),
+      roughnessMap: f.arm, aoMap: f.arm, roughness: 1, metalness: 0, vertexColors: true, color: o.farve ?? 0xffffff });
+  };
+  const stof = farve => new THREE.MeshStandardMaterial({ color: farve, roughness: 1, vertexColors: true, side: THREE.DoubleSide });
+  const fælles = {
+    vindue: new THREE.MeshStandardMaterial({ color: 0x241a12, roughness: 0.4, vertexColors: true }),
+    stofRød: stof(0xb8402e), stofBlå: stof(0x2e6a9a), stofHvid: stof(0xe8dcc0),
+  };
+  if (t.foto) return {
+    sandsten: foto("sandsten", FLISE.sandsten, { nor: 1.3 }), puds: foto("puds", FLISE.puds), fliser: foto("fliser", FLISE.fliser), sand: foto("sand", FLISE.sand),
+    mørk: foto("sandsten", FLISE.mørk, { farve: 0x9a8a72, nor: 1.3 }), tag: foto("planker", FLISE.tag, { farve: 0xb89870 }),
+    trækasse: std(t.kasseFoto, { bump: 1.2, ru: 0.85 }), dør: std(t.dørFoto, { bump: 0.8, ru: 0.7 }),
+    metal: std(t.metal, { ru: 0.55, me: 0.45 }), ...fælles,
+  };
   return {
     sandsten: std(t.sandsten), puds: std(t.puds, { bump: 0.6 }), fliser: std(t.fliser, { bump: 1 }), sand: std(t.sand, { bump: 0.5 }),
     mørk: std(t.sandsten, { farve: 0x9a8a72 }), tag: std(t.trækasse, { farve: 0xb89870, bump: 0.6 }),
     trækasse: std(t.trækasse, { bump: 1.5, ru: 0.9 }), dør: std(t.dør, { bump: 0.8, ru: 0.6, me: 0.35 }), metal: std(t.metal, { ru: 0.55, me: 0.45 }),
-    vindue: new THREE.MeshStandardMaterial({ color: 0x241a12, roughness: 0.4, vertexColors: true }),
-    stofRød: new THREE.MeshStandardMaterial({ color: 0xb8402e, roughness: 1, vertexColors: true, side: THREE.DoubleSide }),
-    stofBlå: new THREE.MeshStandardMaterial({ color: 0x2e6a9a, roughness: 1, vertexColors: true, side: THREE.DoubleSide }),
-    stofHvid: new THREE.MeshStandardMaterial({ color: 0xe8dcc0, roughness: 1, vertexColors: true, side: THREE.DoubleSide }),
+    ...fælles,
   };
 }
 // Materialer, kuglerne kan ramme (bestemmer gnisterne og lyden)
@@ -105,27 +131,32 @@ export function lavBane(scene, verden, t) {
   const mat = lavMaterialer(t), b = new Bygger();
   const solid = (x0, y0, z0, x1, y1, z1, m, o = {}) => { b.kasse(x0, y0, z0, x1, y1, z1, m, o); if (o.kollision !== false) verden.tilføj(x0, y0, z0, x1, y1, z1, KUGLEMAT[m] || "sten"); };
 
-  // jorden: en stor flade af sand (og en kasse under den, så man ikke falder igennem)
+  // jorden: en kasse under hele byen, så man ikke falder igennem
   verden.tilføj(MIN - 10, -2, MIN - 10, MAX + 10, 0, MAX + 10, "sand");
-  b.kasse(MIN, -0.2, MIN, MAX, 0, MAX, "sand");
 
   // ---- husene: alt det, der ikke er gade, slået sammen til store kasser ----
   const fast = new Uint8Array(N * N).fill(1);
   for (const [x0, z0, x1, z1] of ÅBNE) for (let x = x0; x < x1; x++) for (let z = z0; z < z1; z++) fast[(x - MIN) + (z - MIN) * N] = 0;
   const erFast = (x, z) => x < MIN || z < MIN || x >= MAX || z >= MAX || fast[(Math.floor(x) - MIN) + (Math.floor(z) - MIN) * N] === 1;
-  const brugt = new Uint8Array(N * N);
-  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-    const k = i + j * N;
-    if (!fast[k] || brugt[k]) continue;
-    let w = 1; while (i + w < N && fast[k + w] && !brugt[k + w]) w++;
-    let h = 1;
-    while (j + h < N) { let ok = true; for (let q = 0; q < w; q++) if (!fast[k + q + h * N] || brugt[k + q + h * N]) { ok = false; break; } if (!ok) break; h++; }
-    for (let a = 0; a < w; a++) for (let c = 0; c < h; c++) brugt[k + a + c * N] = 1;
-    const x0 = MIN + i, z0 = MIN + j, x1 = x0 + w, z1 = z0 + h;
+  // Saml felterne af én slags (huse eller gade) til så store rektangler som muligt
+  const rektangler = (slags, gør) => {
+    const brugt = new Uint8Array(N * N), er = k => fast[k] === slags && !brugt[k];
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const k = i + j * N;
+      if (!er(k)) continue;
+      let w = 1; while (i + w < N && er(k + w)) w++;
+      let h = 1;
+      while (j + h < N) { let ok = true; for (let q = 0; q < w; q++) if (!er(k + q + h * N)) { ok = false; break; } if (!ok) break; h++; }
+      for (let a = 0; a < w; a++) for (let c = 0; c < h; c++) brugt[k + a + c * N] = 1;
+      gør(MIN + i, MIN + j, MIN + i + w, MIN + j + h);
+    }
+  };
+  rektangler(1, (x0, z0, x1, z1) => {
     const kant = x0 <= MIN || z0 <= MIN || x1 >= MAX || z1 >= MAX;
     const r = hash(x0 * 7 + 3, z0 * 13 + 1), højde = kant ? 10 : 6.5 + Math.floor(r * 6) * 0.5;
     solid(x0, 0, z0, x1, højde, z1, r < 0.58 ? "sandsten" : "puds");
-  }
+  });
+  rektangler(0, (x0, z0, x1, z1) => b.gulv(x0, z0, x1, z1, "sand"));   // sand i gaderne (ikke under husene)
 
   // ---- de hævede pladser A og B med trapper ----
   const plads = (x0, z0, x1, z1) => solid(x0, 0, z0, x1, 1, z1, "sandsten", { topMat: "fliser" });
@@ -212,26 +243,44 @@ export function lavBane(scene, verden, t) {
     }
   }
 
-  b.færdig(scene, mat);
+  const masker = b.færdig(scene, mat);
   lavTønder(scene, tønder, t);
+  lavLamper(scene);
   lavPalmer(scene, verden, t, [[-12, 49], [13, 43.5], [11, -51], [26, -25.5], [-25.5, -41], [46.5, 30], [-15, 51]]);
   const knuder = lavVejnet(verden, erFast);
-  return { knuder, erFast };
+  return { knuder, erFast, masker };
 }
 
 // Tønder: runde, med to ringe (kun til at se på — kollisionen er en kasse)
 function lavTønder(scene, tønder, t) {
   const geo = new THREE.CylinderGeometry(0.3, 0.3, 0.95, 16), ring = new THREE.TorusGeometry(0.305, 0.02, 6, 20);
-  const m = new THREE.MeshStandardMaterial({ map: t.metal, roughness: 0.6, metalness: 0.4, color: 0x8a9a70 });
+  const f = t.foto?.metal, gentag = k => { const c = k.clone(); c.repeat.set(2, 1); return c; };   // fotoet er 1 m: rundt om tønden ca. 2 m
+  const m = f ? new THREE.MeshStandardMaterial({ map: gentag(f.farve), normalMap: gentag(f.normal), roughnessMap: gentag(f.arm), metalnessMap: gentag(f.arm), roughness: 1, metalness: 1 })
+    : new THREE.MeshStandardMaterial({ map: t.metal, roughness: 0.6, metalness: 0.4, color: 0x8a9a70 });
   const rm = new THREE.MeshStandardMaterial({ color: 0x3a3f30, roughness: 0.5, metalness: 0.6 });
   for (const [x, z] of tønder) {
     const g = new THREE.Mesh(geo, m); g.position.set(x, 0.475, z); g.castShadow = g.receiveShadow = true; scene.add(g);
     for (const y of [0.25, 0.7]) { const r = new THREE.Mesh(ring, rm); r.rotation.x = Math.PI / 2; r.position.set(x, y, z); scene.add(r); }
   }
 }
+// Lamperne: en ledning fra taget, en skærm af metal og en pære, der lyser
+function lavLamper(scene) {
+  const skærm = new THREE.MeshStandardMaterial({ color: 0x2c2a26, roughness: 0.5, metalness: 0.7, side: THREE.DoubleSide });
+  const pære = new THREE.MeshBasicMaterial({ color: 0xffe2b0 });
+  const ledning = new THREE.MeshBasicMaterial({ color: 0x111111 });
+  for (const [x, z] of LAMPER) {
+    const g = new THREE.Group(); g.position.set(x, LAMPE_Y, z);
+    const l = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 3.3 - LAMPE_Y, 4), ledning); l.position.y = (3.3 - LAMPE_Y) / 2;
+    const s = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.2, 0.14, 16, 1, true), skærm); s.castShadow = true;
+    const p = new THREE.Mesh(new THREE.SphereGeometry(0.055, 12, 8), pære); p.position.y = -0.06;
+    g.add(l, s, p); scene.add(g);
+  }
+}
 // Palmer: en buet stamme og en krone af lange blade
 function lavPalmer(scene, verden, t, steder) {
-  const bark = new THREE.MeshStandardMaterial({ map: t.bark, roughness: 1 });
+  const f = t.foto?.bark, gentag = k => { const c = k.clone(); c.repeat.set(1, 0.7); return c; };
+  const bark = f ? new THREE.MeshStandardMaterial({ map: gentag(f.farve), normalMap: gentag(f.normal), roughnessMap: gentag(f.arm), roughness: 1 })
+    : new THREE.MeshStandardMaterial({ map: t.bark, roughness: 1 });
   const blad = new THREE.MeshStandardMaterial({ map: t.palmeblad, alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.9 });
   const bladGeo = new THREE.PlaneGeometry(1.2, 3.6, 1, 4);
   { const p = bladGeo.attributes.position; for (let i = 0; i < p.count; i++) { const y = p.getY(i); p.setZ(i, -(((y + 1.8) / 3.6) ** 2) * 1.2); } bladGeo.translate(0, 1.8, 0); bladGeo.computeVertexNormals(); }

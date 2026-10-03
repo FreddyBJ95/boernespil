@@ -5,13 +5,15 @@
 //  bevaegelse.js  bevægelsen (Source-fysik)     vaaben.js  våbnene, spredning og rekyl
 //  bane.js        Støvbyen og vej-nettet          bots.js    botterne
 //  haand.js       våbnet i hånden                 effekter.js skudhuller, støv og lysspor
-//  lyd.js         lydene                           hud.js     skærmen og statistikken     laas.js  koden
+//  lyd.js         lydene                           hud.js     skærmen og statistikken     ../laas.js  koden
+//  lys.js         lyset, der er bagt i Blender     teksturer.js  fotos og tegnede teksturer
 
 import * as THREE from "./three.js";
-import { lås } from "./laas.js";
+import { lås } from "../laas.js";
 import { lavTeksturer } from "./teksturer.js";
 import { Kasseverden } from "./verden.js";
 import { lavBane, START } from "./bane.js";
+import { hentLys, himmelMiljø } from "./lys.js";
 import { nyAktør, bevæg, øjeHøjde, TICK, U } from "./bevaegelse.js";
 import { VÅBEN, nytVåben, affyr, efterSkud, opdaterVåben, skudRetning, synligRekyl, retningsvektor, genlad, unøjagtighed, skade } from "./vaaben.js";
 import { Hånd } from "./haand.js";
@@ -55,7 +57,8 @@ sol.castShadow = true; sol.shadow.mapSize.set(4096, 4096);
 Object.assign(sol.shadow.camera, { left: -80, right: 80, top: 80, bottom: -80, near: 10, far: 280 });
 sol.shadow.bias = -0.0004; sol.shadow.normalBias = 0.035;
 scene.add(sol, sol.target);
-scene.add(new THREE.HemisphereLight(0xd8e4f2, 0xb8905e, 1.15));
+const himmelLys = new THREE.HemisphereLight(0xd8e4f2, 0xb8905e, 1.15);   // bruges kun, hvis lyset fra Blender mangler
+scene.add(himmelLys);
 // himlen: en stor kugle med blå top, lys horisont og en sol
 const himmel = new THREE.Mesh(new THREE.SphereGeometry(500, 32, 16), new THREE.ShaderMaterial({
   side: THREE.BackSide, depthWrite: false, fog: false,
@@ -72,9 +75,14 @@ const himmel = new THREE.Mesh(new THREE.SphereGeometry(500, 32, 16), new THREE.S
 himmel.renderOrder = -1; scene.add(himmel);
 
 // ---------- Banen, effekterne, hånden og skærmen ----------
-const t = lavTeksturer();
+const t = await lavTeksturer();
 const verden = new Kasseverden();
 const bane = lavBane(scene, verden, t);
+if (await hentLys(bane.masker)) {                                 // lyset fra Blender: himlen og det tilbagekastede lys
+  scene.remove(himmelLys);
+  scene.environment = himmelMiljø(renderer, himmel);
+  scene.add(new THREE.AmbientLight(0xe6dccb, 0.2));               // lidt lys overalt, så selv de mørkeste kroge ikke er helt sorte
+}
 await hentSoldat();                                               // soldaten fra Blender (ellers klodssoldaten)
 const effekter = new Effekter(scene, t);
 const hånd = new Hånd(t);
@@ -394,6 +402,6 @@ visMenu();
 // før kampen: kameraet kigger ud over midten af byen
 spiller.a = nyAktør(0, 6, 30, 0); spiller.a.pitch = -0.12;
 requestAnimationFrame(billede);
-if (location.search.includes("debug")) window.sk = { spiller, get bots() { return bots; }, verden, bane, kamera, ind, tick, skyd, startKamp, taster, hånd,
-  get vb() { return vb(); }, get point() { return point; }, kør() { pause = false; $("menu").classList.add("skjult"); },
+if (location.search.includes("debug")) window.sk = { spiller, get bots() { return bots; }, verden, bane, kamera, ind, tick, skyd, startKamp, taster, hånd, scene, himmelLys, renderer,
+  get vb() { return vb(); }, get point() { return point; }, kør() { pause = false; $("menu").classList.add("skjult"); }, stop() { pause = true; },
   steg(n) { for (let i = 0; i < n; i++) tick(TICK); }, skydNu() { skydHoldt = true; spillerSkyder(); skydHoldt = false; skydLåst = false; } };

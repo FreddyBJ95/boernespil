@@ -1,7 +1,9 @@
-// ===== Teksturer tegnet med kode: sandsten, puds, sand, fliser, trækasser, blå døre og metal =====
-// Alt tegnes på et lærred (canvas) én gang, når spillet starter. Teksturerne gentages i verdens-meter
-// (se bane.js), så murstenene har samme størrelse overalt. Samme billede bruges også som "bump",
-// så fugerne ligger dybere end stenene og fanger lyset fra solen.
+// ===== Teksturerne: fotos af rigtige mure, sand og planker — og dem, der tegnes med kode =====
+// Fotoene kommer fra Poly Haven (hentes af blender/hent_teksturer.py og ligger i teksturer/). Hvert foto har
+// tre billeder: farven, en "normal" (de små buler) og "arm" (skygge i krogene, ruhed og metal).
+// Trækasserne og dørene tegnes på et lærred (canvas) af fotoene, så de får ramme, kryds og fyldinger.
+// Kan fotoene ikke hentes, bruges de tegnede teksturer herunder. De gentages i verdens-meter (se bane.js),
+// så stenene har samme størrelse overalt.
 
 import * as THREE from "./three.js";
 
@@ -178,8 +180,80 @@ function bark(g, n, r) {
   korn(g, n, r, 24);
 }
 
+// ---------- Fotoene fra Poly Haven ----------
+const FOTOS = "teksturer/";
+async function hentFotos() {
+  try {
+    const svar = await fetch(FOTOS + "teksturer.json");
+    if (!svar.ok) throw new Error(`teksturer.json: ${svar.status}`);
+    const info = await svar.json(), loader = new THREE.TextureLoader();
+    const hent = (fil, farve) => loader.loadAsync(FOTOS + fil).then(t => {
+      t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8;
+      if (farve) t.colorSpace = THREE.SRGBColorSpace;
+      return t;
+    });
+    const fotos = {};
+    await Promise.all(Object.entries(info).map(async ([navn, i]) => {
+      const [farve, normal, arm] = await Promise.all([hent(`${navn}_farve.webp`, true), hent(`${navn}_normal.webp`), hent(`${navn}_arm.webp`)]);
+      fotos[navn] = { farve, normal, arm, meter: i.meter };
+    }));
+    return fotos;
+  } catch (e) {
+    console.warn("Fototeksturerne kunne ikke hentes — bruger de tegnede", e);
+    return null;
+  }
+}
+// Et foto lagt på lærredet inden for et rektangel: drejet, gentaget (s = fotoets størrelse i punkter) og forskudt dx,
+// så brædderne kan gå på tværs, og to brædder ikke ligner hinanden
+function fotoStykke(g, img, x, y, w, h, vinkel, s, dx = 0) {
+  g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip();
+  g.translate(x + w / 2 + dx, y + h / 2); g.rotate(vinkel);
+  const k = Math.ceil(Math.hypot(w, h) / 2 / s) + 1;
+  for (let i = -k; i <= k; i++) for (let j = -k; j <= k; j++) g.drawImage(img, i * s - s / 2, j * s - s / 2, s, s);
+  g.restore();
+}
+// Trækasse af rigtige planker: brædder på tværs, en ramme og et kryds med søm
+function fotoKasse(img) {
+  return lærred(512, (g, n, r) => {
+    fotoStykke(g, img, 0, 0, n, n, Math.PI / 2, 420);                                    // brædderne på tværs
+    const b = n * 0.11, kant = (x, y, w, h) => {
+      g.fillStyle = "rgba(0,0,0,0.35)"; g.fillRect(x - 3, y - 3, w + 6, h + 6);                         // skygge omkring brættet
+      fotoStykke(g, img, x, y, w, h, w > h ? Math.PI / 2 : 0, 300, r() * 200);
+      g.fillStyle = "rgba(255,235,200,0.18)"; g.fillRect(x, y, w, 2);
+    };
+    // krydset først, så rammen ligger ovenpå
+    for (const v of [Math.PI / 4, -Math.PI / 4]) {
+      g.save(); g.translate(n / 2, n / 2); g.rotate(v);
+      g.fillStyle = "rgba(0,0,0,0.35)"; g.fillRect(-n * 0.72, -b / 2 - 3, n * 1.44, b + 6);
+      fotoStykke(g, img, -n * 0.72, -b / 2, n * 1.44, b, Math.PI / 2, 300, r() * 200);
+      g.restore();
+    }
+    kant(0, 0, n, b); kant(0, n - b, n, b); kant(0, b, b, n - 2 * b); kant(n - b, b, b, n - 2 * b);
+    g.fillStyle = "#1d1a17";
+    for (const [x, y] of [[0.05, 0.05], [0.95, 0.05], [0.05, 0.95], [0.95, 0.95], [0.5, 0.055], [0.5, 0.945], [0.055, 0.5], [0.945, 0.5]]) { g.beginPath(); g.arc(x * n, y * n, 3, 0, 7); g.fill(); }
+    const gr = g.createRadialGradient(n / 2, n / 2, n * 0.3, n / 2, n / 2, n * 0.75);       // lidt snavs ud mod kanterne
+    gr.addColorStop(0, "rgba(0,0,0,0)"); gr.addColorStop(1, "rgba(40,25,10,0.3)"); g.fillStyle = gr; g.fillRect(0, 0, n, n);
+  }, 41);
+}
+// Blå dør af malede planker (brædderne lodret), med to fyldinger, rust forneden og et håndtag
+function fotoDør(img) {
+  const c = document.createElement("canvas"); c.width = 512; c.height = 1024;
+  const g = c.getContext("2d"), r = rng(43), w = 512, h = 1024, m = w / 1.4;   // 1,4 m bred dør: fotoet er 1 × 1 m
+  fotoStykke(g, img, 0, 0, w, h, Math.PI / 2, m);
+  g.strokeStyle = "rgba(8,20,32,0.55)"; g.lineWidth = 10; g.strokeRect(5, 5, w - 10, h - 10);
+  for (const [y0, y1] of [[0.07, 0.46], [0.53, 0.93]]) {
+    g.strokeStyle = "rgba(8,20,32,0.5)"; g.lineWidth = 8; g.strokeRect(w * 0.13, h * y0, w * 0.74, h * (y1 - y0));
+    g.strokeStyle = "rgba(220,235,240,0.18)"; g.lineWidth = 2; g.strokeRect(w * 0.13 + 6, h * y0 + 6, w * 0.74 - 12, h * (y1 - y0) - 12);
+  }
+  pletter(g, w, r, 10, "rgba(120,70,35,0.35)", 50);
+  const gr = g.createLinearGradient(0, h * 0.8, 0, h); gr.addColorStop(0, "rgba(90,60,30,0)"); gr.addColorStop(1, "rgba(90,60,30,0.45)");
+  g.fillStyle = gr; g.fillRect(0, h * 0.8, w, h * 0.2);
+  g.fillStyle = "#2a2622"; g.fillRect(w * 0.8, h * 0.47, 22, 70); g.beginPath(); g.arc(w * 0.8 + 11, h * 0.5, 13, 0, 7); g.fillStyle = "#4a4136"; g.fill();
+  return c;
+}
+
 // Alle teksturer i ét opslag (lavet én gang)
-export function lavTeksturer() {
+export async function lavTeksturer() {
   const t = {};
   for (const [navn, fn, n, frø] of [["sandsten", sandsten, 512, 3], ["puds", puds, 512, 5], ["sand", sand, 512, 7], ["fliser", fliser, 512, 11],
     ["trækasse", trækasse, 256, 13], ["dør", dør, 256, 17], ["metal", metal, 256, 19], ["bark", bark, 128, 23]]) t[navn] = tekstur(lærred(n, fn, frø));
@@ -187,5 +261,10 @@ export function lavTeksturer() {
   t.skudhul = tekstur(lærred(64, skudhul), true);
   t.glimt = tekstur(lærred(128, glimt, 31));
   t.røg = tekstur(lærred(64, røg), true);
+  t.foto = await hentFotos();
+  if (t.foto) {
+    t.kasseFoto = tekstur(fotoKasse(t.foto.planker.farve.image));
+    t.dørFoto = tekstur(fotoDør(t.foto.doer.farve.image));
+  }
   return t;
 }

@@ -1,7 +1,8 @@
 // ===== Låsen: voksenspillene kræver en firecifret kode =====
-// Første gang vælger den voksne en kode. Den gemmes (som et hash) her på computeren, og så skal den
-// skrives, hver gang spillet åbnes. Låsen holder børnene ude — men den er ikke rigtig sikkerhed:
-// spillet ligger på nettet, og en voksen med browserens udviklerværktøjer kan komme forbi.
+// Bruges både på forsiden (🔒 Voksenspil) og i selve voksenspillene, med den samme kode.
+// Første gang vælger den voksne en kode. Den gemmes (som et hash) her på enheden, og så skal den
+// skrives, hver gang browseren har været lukket. Låsen holder børnene ude — men den er ikke rigtig sikkerhed:
+// spillene ligger på nettet, og en voksen med browserens udviklerværktøjer kan komme forbi.
 
 const NØGLE = "voksen-pin", SESSION = "voksen-ok";
 
@@ -17,8 +18,12 @@ async function hash(pin, salt) {
 }
 const læs = () => { try { return JSON.parse(localStorage.getItem(NØGLE) || "null"); } catch (_) { return null; } };
 
-// Vis låsen i elementet `rod`. Svarer, når koden er rigtig (eller lige er valgt)
-export function lås(rod) {
+// Er koden allerede skrevet, siden browseren blev åbnet?
+export function erLåstOp() { try { return sessionStorage.getItem(SESSION) === "1"; } catch (_) { return false; } }
+
+// Vis låsen i elementet `rod`. Svarer, når koden er rigtig (eller lige er valgt).
+// hjem: hvor "Tilbage"-linket går hen — eller en funktion, der lukker låsen (som på forsiden)
+export function lås(rod, hjem = "../../") {
   return new Promise(klar => {
     try { if (sessionStorage.getItem(SESSION) === "1") { rod.classList.add("skjult"); klar(); return; } } catch (_) {}
     const gemt = læs();
@@ -26,8 +31,9 @@ export function lås(rod) {
     rod.innerHTML = `<div class="lås-kort"><div class="lås-ikon">🔒</div><h1>Voksenrummet</h1><p class="lås-tekst"></p>
       <div class="lås-prikker"><i></i><i></i><i></i><i></i></div>
       <div class="lås-taster">${[1, 2, 3, 4, 5, 6, 7, 8, 9, "⌫", 0, "✓"].map(k => `<button data-k="${k}">${k}</button>`).join("")}</div>
-      <a class="lås-hjem" href="../../">← Tilbage til spillene</a></div>`;
+      ${typeof hjem === "function" ? `<button class="lås-hjem">← Tilbage til spillene</button>` : `<a class="lås-hjem" href="${hjem}">← Tilbage til spillene</a>`}</div>`;
     rod.classList.remove("skjult");
+    if (typeof hjem === "function") rod.querySelector(".lås-hjem").addEventListener("click", () => { window.removeEventListener("keydown", tast); hjem(); });
     const tekst = rod.querySelector(".lås-tekst"), prikker = [...rod.querySelectorAll(".lås-prikker i")];
     const vis = () => {
       tekst.textContent = tilstand === "ny" ? "Vælg en kode på fire tal til voksenspillene." : tilstand === "igen" ? "Skriv koden én gang til." :

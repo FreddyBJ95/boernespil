@@ -3,16 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Spil for ungerne 🎈</title>
+  <title>Spilkassen</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="favicon.png">
 
   <!-- PWA: gør siden installerbar som app -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#120b2e">
-  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Børnespil">
+  <meta name="apple-mobile-web-app-title" content="Spilkassen">
 </head>
 <body>
   <!-- Baggrunden: billeder fra spillene, der ruller langsomt forbi (som på Netflix). Rækkerne laves nederst i scriptet. -->
@@ -20,7 +21,11 @@
   <div class="vaeg-skygge" aria-hidden="true"></div>
 
   <header>
-    <h1>Spil for ungerne</h1>
+    <!-- Logoet: Kassevennen vinker, og navnet står ved siden af (billederne er lavet af Codex, se billeder/spilkassen/) -->
+    <h1 class="logo">
+      <img class="logo-ven" src="billeder/spilkassen/kasseven-vinker.webp" alt="" width="511" height="560">
+      <img class="logo-navn" src="billeder/spilkassen/ordmaerke.webp" alt="Spilkassen" width="900" height="191">
+    </h1>
     <p class="undertekst">✨ Tryk på et kort og leg ✨</p>
     <button class="installer" id="installer" hidden>💻 Installér som app på computeren</button>
   </header>
@@ -106,7 +111,24 @@
   <footer class="voksne">
     <p class="voksne-titel">For voksne</p>
     <a class="voksne-link" href="tilslut/">📷 Spil Broekraft sammen — forbind tabletten til computeren</a>
+    <button class="voksne-link" id="voksenKnap">🔒 Voksenspil</button>
   </footer>
+
+  <!-- Voksenrummet: kræver koden (spil/laas.js — samme kode som i voksenspillene). Spillene herinde vises først, når koden er skrevet -->
+  <div class="voksenrum" id="voksenrum" hidden>
+    <div class="voksen-boks" role="dialog" aria-modal="true" aria-label="Voksenspil">
+      <button class="voksen-luk" id="voksenLuk" aria-label="Luk">✕</button>
+      <div class="voksen-lås skjult" id="voksenLås"></div>
+      <div class="voksen-spil" id="voksenSpil" hidden>
+        <img class="voksen-ven" src="billeder/spilkassen/kasseven-taenker.webp" alt="" width="389" height="420">
+        <h2>Voksenspil</h2>
+        <a class="voksen-kort" href="spil/sigtekorn/">
+          <img src="billeder/sigtekorn.jpg" alt="" width="800" height="450">
+          <span class="voksen-tekst"><b>🎯 Sigtekorn</b><span>3D-skydespil mod bots i ørkenbyen Støvbyen — i stil med Counter-Strike. Kun på computer med mus og tastatur.</span></span>
+        </a>
+      </div>
+    </div>
+  </div>
 
   <script>
     // ----- Faner: vis én kategori eller alle -----
@@ -186,6 +208,23 @@
         if (Array.isArray(hentet) && !hentet.includes(id)) { hentet.push(id); localStorage.setItem("broekraft-hentet", JSON.stringify(hentet)); }
       } catch (_) {}
     });
+  </script>
+
+  <!-- Voksenrummet åbnes med 🔒-knappen nederst -->
+  <script type="module">
+    import { lås } from "./spil/laas.js";
+    const rum = document.getElementById("voksenrum"), låsRod = document.getElementById("voksenLås"), spil = document.getElementById("voksenSpil");
+    const skjul = () => { rum.hidden = true; låsRod.classList.add("skjult"); };
+    // Luk: står låsen åben, lukkes den via sin egen tilbage-knap (så den holder op med at lytte på tastaturet)
+    const luk = () => { const tilbage = !låsRod.classList.contains("skjult") && låsRod.querySelector(".lås-hjem"); if (tilbage) tilbage.click(); else skjul(); };
+    document.getElementById("voksenKnap").addEventListener("click", async () => {
+      rum.hidden = false; spil.hidden = true;
+      await lås(låsRod, skjul);
+      spil.hidden = false;
+    });
+    document.getElementById("voksenLuk").addEventListener("click", luk);
+    rum.addEventListener("click", e => { if (e.target === rum) luk(); });
+    addEventListener("keydown", e => { if (e.key === "Escape" && !rum.hidden) luk(); });
   </script>
 
   <!-- Registrér service worker (offline + installerbar) -->

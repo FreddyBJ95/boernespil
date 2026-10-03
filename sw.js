@@ -1,6 +1,6 @@
 // ===== Service Worker — gør spillene installerbare og tilgængelige offline =====
 // Bump dette tal når der ændres filer, så de gamle bliver hentet på ny.
-const CACHE = "boernespil-v58";
+const CACHE = "boernespil-v59";
 
 const SPIL = ["balloner", "byg-burger", "enhjoerning", "vask", "slange", "tegne", "piano", "fisk", "broekraft", "rulle-rasmus", "burgerloeb"];
 
@@ -21,8 +21,14 @@ const FILER = [
   "style.css",
   "effekter.js",
   "manifest.json",
+  "spil/laas.js",                               // låsen til voksenspillene
   "icon-192.png",
   "icon-512.png",
+  "icon-maskable-512.png",
+  "apple-touch-icon.png",
+  "favicon.png",
+  // Spilkassens logo og maskotter
+  ...["ordmaerke", "kasseven-vinker", "kasseven-taenker"].map(n => `billeder/spilkassen/${n}.webp`),
   // billederne fra spillene på forsiden
   ...["fyrvaerkeri", "tornado", "nuke", "brandby", "dino", "hav", "slik", "sky", "pirat", "droner", "pariserhjul",
     "underverden", "graesoe", "skydebane", "nytaar", "fisk", "svampesky", "rasmus", "slange", "burgerloeb"].map(n => `billeder/${n}.jpg`),
