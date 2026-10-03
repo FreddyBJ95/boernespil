@@ -30,7 +30,7 @@ export function aftrækker(v, holdt, dt, bot = false) {
     v.kø--; v.klar = v.kø > 0 ? d.salveTid : d.kadence;
     return true;
   }
-  if (!holdt || v.klar > 0 || v.genlader > 0 || v.skud <= 0) return false;
+  if (!holdt || v.klar > 0 || v.genlader > 0 || (v.skud <= 0 && !d.nærkamp)) return false;   // (en kniv har ingen patroner)
   if (d.opspin && v.spin < d.opspin) return false;
   if (!d.auto && !nyt && !bot) return false;
   if (!affyr(v)) return false;

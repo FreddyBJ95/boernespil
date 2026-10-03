@@ -24,8 +24,8 @@ export class Hud {
     $("livBoks").classList.toggle("lavt", liv <= 25);
     $("livBjælke").style.width = `${Math.max(0, Math.min(100, liv))}%`; $("panserBjælke").style.width = `${Math.max(0, Math.min(100, panser))}%`;
   }
-  ammo(v) {
-    this.el.våben.textContent = v.d.navn; this.el.våben.style.color = SJÆLDEN[v.d.sjælden]?.farve || "";
+  ammo(v, ekstra = "") {                                            // ekstra: fx "5/17" i våbenræs
+    this.el.våben.textContent = ekstra ? `${v.d.navn} · ${ekstra}` : v.d.navn; this.el.våben.style.color = SJÆLDEN[v.d.sjælden]?.farve || "";
     const intet = v.d.nærkamp || v.d.klasse === "ingen";
     this.el.ammo.textContent = intet ? "" : v.genlader > 0 ? "…" : v.d.granat ? `${v.d.ikon} ${v.skud}` : v.skud;
     this.el.reserve.textContent = intet || v.d.granat ? "" : v.d.opspin && v.spin < v.d.opspin && v.spin > 0 ? "snurrer…" : `/ ${v.reserve}`;
