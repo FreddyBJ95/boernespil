@@ -69,28 +69,11 @@ d(løft("aftrækker", [[(-0.0025, 0.03 - 0.006 * t, -0.026 - 0.02 * t), (0.0025,
 gevær = saml("gevær", dele)
 bag(gevær, "gevær", 1024)
 
-# ---- hænderne: handsker og ærmer (eget materiale og egne billeder) ----
-HANDSKE, ÆRME = farvet("handske", (0.03, 0.03, 0.032), ru=0.7, støj=0.25, skala=120), farvet("ærme", (0.42, 0.33, 0.2), ru=0.95, støj=0.2, skala=60)
-hd = []
-# højre hånd om grebet: håndflade, fire fingre om grebets forside og pegefingeren på aftrækkeren
-hd.append(kasse("højre håndflade", -0.008, -0.062, -0.112, 0.03, -0.004, -0.032, HANDSKE, 0.012))
-for i, z in enumerate((-0.058, -0.078, -0.098)):
-    hd.append(rør(f"finger{i}", (0.026, 0.0, z), (-0.019, 0.014, z - 0.004), 0.0095, HANDSKE, 14, 0.003))
-hd.append(rør("pegefinger", (0.024, 0.005, -0.037), (0.002, 0.034, -0.042), 0.0088, HANDSKE, 14, 0.003))
-hd.append(rør("tommel", (-0.02, -0.03, -0.035), (-0.02, 0.005, -0.022), 0.0095, HANDSKE, 14, 0.003))
-hd.append(rør("højre håndled", (0.02, -0.05, -0.095), (0.06, -0.12, -0.13), 0.026, HANDSKE, 18, 0.004, 0.03))
-hd.append(rør("højre ærme", (0.055, -0.11, -0.125), (0.19, -0.42, -0.29), 0.04, ÆRME, 20, 0.004, 0.05))
-hd.append(rør("højre manchet", (0.05, -0.1, -0.12), (0.07, -0.145, -0.14), 0.043, ÆRME, 20, 0.004))
-# venstre hånd under håndbeskytteren: fingrene op ad venstre side, tommelen på højre
-hd.append(kasse("venstre håndflade", -0.026, 0.298, -0.06, 0.022, 0.372, -0.028, HANDSKE, 0.011))
-for i, y in enumerate((0.305, 0.327, 0.349, 0.37)):
-    hd.append(rør(f"vfinger{i}", (-0.012, y, -0.046), (-0.03, y + 0.004, 0.012), 0.0085, HANDSKE, 14, 0.003))
-hd.append(rør("vtommel", (0.016, 0.31, -0.04), (0.028, 0.345, 0.004), 0.009, HANDSKE, 14, 0.003))
-hd.append(rør("venstre håndled", (-0.01, 0.3, -0.06), (-0.05, 0.24, -0.1), 0.026, HANDSKE, 18, 0.004, 0.03))
-hd.append(rør("venstre ærme", (-0.045, 0.25, -0.095), (-0.24, -0.04, -0.27), 0.04, ÆRME, 20, 0.004, 0.05))
-hd.append(rør("venstre manchet", (-0.04, 0.255, -0.09), (-0.065, 0.22, -0.11), 0.043, ÆRME, 20, 0.004))
-hænder = saml("hænder", hd)
-bag(hænder, "hænder", 512)
+# ---- hænderne: halvfingerhandsker med fingre, der krummer sig om grebet og håndbeskytteren (haender.py) ----
+from vaabendele import hænder as hænder_opskrift
+from haender import lav_hænder
+hænder = lav_hænder(hænder_opskrift((0.0, -0.033, -0.072), (0, 0.335, -0.035), ((0.055, -0.11, -0.125), (0.19, -0.42, -0.29)),
+                                    ((-0.045, 0.25, -0.095), (-0.24, -0.04, -0.27))), gevær)
 
 # mundingen (hvor glimtet skal sidde) — et tomt punkt, som spillet finder
 m = bpy.data.objects.new("munding", None); bpy.context.collection.objects.link(m); m.location = (0, 0.69, 0.006)

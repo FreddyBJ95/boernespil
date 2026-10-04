@@ -44,6 +44,7 @@ function holdMat(hold, m, hud) {
     const ny = m.clone(), f = farver(hold)[m.name];
     if (f !== undefined) ny.color.set(f);
     if (m.name === "hud") ny.color.set(farver(hold).hud ?? HUDFARVER[hud]);
+    if (hold === "zombier" && ["uniform", "vest", "hud"].includes(m.name)) { ny.map = zombieTekstur(m.name, ny.color); ny.color.set(0xffffff); }   // (snavs og blod)
     matLager.set(nøgle, ny);
   }
   return matLager.get(nøgle);
@@ -76,6 +77,37 @@ const enkel = id => { const k = VÅBEN[id]?.klasse; return !k || k === "kniv" ? 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _d = new THREE.Vector3(), _e = new THREE.Vector3();
 const _q = new THREE.Quaternion(), _m = new THREE.Matrix4(), _eu = new THREE.Euler();
 const OP = new THREE.Vector3(0, 1, 0), FREM = new THREE.Vector3(0, 0, -1), NED = new THREE.Vector3(0, -1, 0);
+// Zombiernes tøj og hud: snavs, flænger og blod — huden med årer og sår (tegnes én gang pr. slags)
+function zombieTekstur(navn, farve) {
+  const c = document.createElement("canvas"); c.width = c.height = 256; const g = c.getContext("2d");
+  let frø = navn.length * 9301; const r = () => ((frø = (frø * 16807) % 2147483647) / 2147483647);
+  const hex = "#" + farve.getHexString();
+  g.fillStyle = hex; g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 260; i++) {                                   // pletter: lysere og mørkere (snavs og slid)
+    const x = r() * 256, y = r() * 256, rad = 4 + r() * 22, lys = r() < 0.5;
+    g.fillStyle = lys ? "rgba(255,255,240,0.06)" : "rgba(20,15,5,0.12)"; g.beginPath(); g.arc(x, y, rad, 0, 7); g.fill();
+  }
+  if (navn === "hud") for (let i = 0; i < 26; i++) {                 // årer
+    g.strokeStyle = `rgba(${40 + r() * 30},${20 + r() * 20},${60 + r() * 30},0.35)`; g.lineWidth = 1 + r() * 1.5; g.beginPath();
+    let x = r() * 256, y = r() * 256; g.moveTo(x, y);
+    for (let j = 0; j < 6; j++) { x += (r() - 0.5) * 34; y += (r() - 0.5) * 34; g.lineTo(x, y); } g.stroke();
+  }
+  if (navn !== "hud") for (let i = 0; i < 14; i++) {                 // flænger i stoffet (mørke revner)
+    g.strokeStyle = "rgba(10,8,5,0.75)"; g.lineWidth = 2 + r() * 3; g.beginPath();
+    let x = r() * 256, y = r() * 256; g.moveTo(x, y);
+    for (let j = 0; j < 4; j++) { x += (r() - 0.5) * 22; y += 6 + r() * 14; g.lineTo(x, y); } g.stroke();
+  }
+  const blod = { hud: [10, 10], vest: [5, 7], uniform: [12, 14] }[navn];   // (vesten er lille på billedet: færre og mindre klatter)
+  for (let i = 0; i < blod[0]; i++) {                                // blod: klatter og løbende dråber
+    const x = r() * 256, y = r() * 256, rad = 4 + r() * blod[1], mørk = r() < 0.5;
+    g.fillStyle = mørk ? "rgba(70,6,6,0.85)" : "rgba(120,12,10,0.75)";
+    g.beginPath(); g.arc(x, y, rad, 0, 7); g.fill();
+    for (let j = 0; j < 5; j++) { g.beginPath(); g.arc(x + (r() - 0.5) * rad * 2.4, y + (r() - 0.5) * rad * 2.4, rad * (0.15 + r() * 0.3), 0, 7); g.fill(); }
+    if (r() < 0.6) g.fillRect(x - 1.5, y, 3, rad + r() * 30);       // (en dråbe, der løber)
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
 // Et blødt lys til zombiernes øjne (tegnes én gang)
 let _glød = null;
 function glødTekstur() {
