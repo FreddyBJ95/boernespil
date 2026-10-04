@@ -118,6 +118,22 @@ if (bagtLys) {
 } else if (ind.vejr === "nat") himmelLys.intensity = 0.12;
 // vejret (vejr.js): nat eller storm ændrer tågen, himlen, solen og lyset — og giver lommelygter, regn, sne eller sand
 const vejr = lavVejr(ind.vejr, bane.storm, { scene, sol, solRet, himmel, omgivelse, masker: bane.masker });
+// Zombiernes stemning: tættere, grågrøn tåge og en mere dyster himmel (kun i en zombiekamp — vejret bestemmer resten)
+const normalStemning = { tåge: [scene.fog.color.clone(), scene.fog.near, scene.fog.far], himmel: ["top", "midt", "bund"].map(k => himmel.material.uniforms[k].value.clone()),
+  lys: bane.masker.map(m => m.material.lightMapIntensity), sol: sol.intensity, omgivelse: omgivelse?.intensity };
+function zombieStemning(på) {
+  const n = normalStemning, u = himmel.material.uniforms, grøn = new THREE.Color(vejr.nat ? 0x131711 : 0x5a6250);
+  scene.fog.color.copy(n.tåge[0]); scene.fog.near = n.tåge[1]; scene.fog.far = n.tåge[2];
+  ["top", "midt", "bund"].forEach((k, i) => u[k].value.copy(n.himmel[i]));
+  bane.masker.forEach((m, i) => { m.material.lightMapIntensity = n.lys[i]; }); sol.intensity = n.sol; if (omgivelse) omgivelse.intensity = n.omgivelse;
+  if (!på) return;
+  if (!vejr.nat) {                                                 // om dagen: dyster skumring (det bagte lys, solen og lyset overalt dæmpes)
+    bane.masker.forEach((m, i) => { m.material.lightMapIntensity = n.lys[i] * 0.55; });
+    sol.intensity = n.sol * 0.45; if (omgivelse) omgivelse.intensity = n.omgivelse * 0.6;
+  }
+  scene.fog.color.lerp(grøn, 0.88); scene.fog.near = Math.min(n.tåge[1], 4); scene.fog.far = Math.min(n.tåge[2], 72);
+  u.top.value.lerp(new THREE.Color(vejr.nat ? 0x020302 : 0x3a4236), 0.75); u.midt.value.lerp(grøn, 0.85); u.bund.value.lerp(grøn, 0.9);
+}
 Lyd.vejrLyd(vejr.lyd); vejr.torden = d => Lyd.torden(d);
 let lygteTændt = true;                                             // din lommelygte om natten (tast F)
 if (bagtLys) scene.environment = himmelMiljø(renderer, himmel);
@@ -1017,7 +1033,8 @@ function startKamp() {
   br.ryd();
   const hold = træning() ? "ræve" : brSpil() ? "br0" : ind.side;     // det hold, man har valgt i menuen (battle royale: sit eget)
   if (hold !== spiller.hold) { spiller.hold = hold; lavSpillerFig(hold); }
-  byggeri.ryd(); byggeri.træ = bygTil() ? BYG_START : 0; fjernForsyning();          // (alt det byggede fra sidste kamp forsvinder)
+  byggeri.ryd(); byggeri.træ = bygTil() ? BYG_START : 0; fjernForsyning();
+  zombieStemning(zombieSpil());          // (alt det byggede fra sidste kamp forsvinder)
   lavBots(); botSpil.bombe = bombeSpil() ? bombe : null; visMærker(bombe, bombeSpil()); visKøb(undefined);
   if (bombeSpil()) bombe.startKamp();
   else if (zombieSpil()) { bombe.stop(); genopstå(); for (const b of bots) if (!b.zombie) b.spawn(); zombier.startKamp(); }
