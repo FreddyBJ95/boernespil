@@ -1,5 +1,9 @@
 Broekraft Server lader 1–8 børn bygge i samme Broekraft-verden på familiens eget wifi.
 
+**Nyt i 0.5.4**
+- Serveren oplyser den korrekte filstørrelse, når browseren spørger med HEAD, også for 3D-modeller,
+  teksturer og hjemmecertifikatet. Selve filindholdet er uændret.
+
 **Nyt i 0.5.3**
 - Det Sidste Lys har flere detaljer på øen, måger, en levende havn og fire valgfrie minder i dagbogen.
   Fingerstyring, større tekst, trinvise vink og gådevalg kan tilpasses og gemmes.

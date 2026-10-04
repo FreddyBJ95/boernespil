@@ -25,6 +25,7 @@ function pakkesvar({ mangler, afkortet } = {}) {
     return new Response(method === "HEAD" ? null : bytes, {
       headers: {
         "content-type": typer[sti.split(".").at(-1)],
+        "content-length": String(bytes.byteLength),
         "x-content-type-options": "nosniff", "cache-control": "public, max-age=3600",
       },
     });

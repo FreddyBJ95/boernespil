@@ -1,3 +1,24 @@
+# Status: de tre forbedrede spil er udgivet; sidste serverrettelse afprøves
+
+4. oktober 2026. PR #6 er flettet, og spillenes forbedringer er på main i
+`e7f66956198dd0f98603b31d99e1559d90613da8`. Server 0.5.3 er udgivet til alle fem platforme,
+og Pi 192.168.0.26 kører den officielle ARM64-pakke. Far-verdenen starter, og alle syv verdens-/
+certifikatfiler har uændrede hashes. Privat Pi-backup: `/home/vindr1/BroekraftServer-053-4rv39v13/backup/`.
+GitHub Pages leverer alle 170 kontrollerede runtimefiler (36 GLB) præcis som udgivelsestagget.
+
+Den strengere kontrol af den officielle Windows-pakke fandt en lille HTTP-fejl:
+HEAD meldte filstørrelse 0, selv om GET leverede komplette, korrekte filer.
+Codex retter fil- og certifikatsvar til rigtig bytelængde i server 0.5.4 på
+`codex/server-filstoerrelse`. Rigtige HTTP/HTTPS-prøver og begge platformes pakketest kontrollerer nu længden.
+Dette ændrer ingen spil, gemmeformater, certifikater eller adgangsregler.
+0.5.4 er endnu ikke udgivet eller installeret på Pi. Codex fortsætter frem til ca. 02:33.
+
+Ny manuel gennemspilning afventer ejerens eksisterende voksenkode; fysisk iPad/Safari er ikke tilsluttet.
+Voksenlåsen og alle gamle v1-gemninger er bevaret. De tre spilmapper er færdige; der arbejdes kun på serverrettelsen.
+
+---
+
+## Tidligere status under detaljearbejdet
 # Viderearbejde: flere detaljer og bedre brugeroplevelse i de tre 3D-spil
 
 4. oktober 2026, 01:30 dansk tid. Codex arbejder fortsat frem til ca. 02:33 på

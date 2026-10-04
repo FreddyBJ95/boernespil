@@ -65,6 +65,7 @@ export async function prøvVoksenverden(hent, id, sammenlignKilde = false) {
     const head = await hent("/" + sti, { method: "HEAD" });
     assert.equal(head.status, 200, sti);
     assert.equal(head.headers.get("content-type"), svar.headers.get("content-type"), sti);
+    assert.equal(head.headers.get("content-length"), String(data.byteLength), `${sti}: HEAD beskriver hele filens størrelse`);
     assert.equal((await head.arrayBuffer()).byteLength, 0, sti);
   }
   for (const fil of ["three.module.js", "GLTFLoader.js", "BufferGeometryUtils.js", "start.js"]) {

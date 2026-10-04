@@ -40,12 +40,44 @@ Deno.test("HTTPS virker med egen rod; HTTP-certifikat og omdirigering behøver i
     const base = `http://127.0.0.1:${http.addr.port}`;
     const redirect = await fetch(base, { redirect: "manual" }); await redirect.body?.cancel();
     assert.equal(redirect.status, 307); assert.equal(redirect.headers.get("location"), `https://127.0.0.1:${https.addr.port}/`);
-    const side = await fetch(base + "/certifikat"); assert.equal(side.status, 200);
-    assert.ok((await side.text()).includes(cert.aftryk));
-    const profil = await fetch(base + "/certifikat/broekraft.mobileconfig");
-    assert.equal(profil.headers.get("content-type"), "application/x-apple-aspen-config"); assert.equal(await profil.text(), cert.profil);
-    const crt = await fetch(base + "/certifikat/broekraft.crt"); assert.deepEqual(new Uint8Array(await crt.arrayBuffer()), cert.der);
     client = Deno.createHttpClient({ caCerts: [cert.ca] });
+
+    // Rigtig HTTP/HTTPS fanger Deno's automatiske HEAD-længde; UTF-8 måles i bytes, ikke tegn.
+    const filer = [
+      ["/certifikat", "text/html; charset=utf-8", null],
+      ["/certifikat/broekraft.mobileconfig", "application/x-apple-aspen-config", 'attachment; filename="Broekraft-hjemme.mobileconfig"'],
+      ["/certifikat/broekraft.crt", "application/x-x509-ca-cert", 'attachment; filename="Broekraft-hjemme.crt"'],
+    ];
+    for (const [adresse, tillid] of [[base, undefined], [`https://127.0.0.1:${https.addr.port}`, client]]) {
+      for (const [sti, mime, disposition] of filer) {
+        const muligheder = { headers: { "accept-encoding": "identity" }, client: tillid };
+        const get = await fetch(adresse + sti, muligheder), bytes = new Uint8Array(await get.arrayBuffer());
+        assert.equal(get.status, 200, `${adresse}${sti}: GET`);
+        assert.equal(get.headers.get("content-type"), mime, sti);
+        assert.equal(get.headers.get("content-disposition"), disposition, sti);
+        assert.equal(get.headers.get("cache-control"), "no-store", sti);
+        assert.equal(get.headers.get("x-content-type-options"), "nosniff", sti);
+        assert.equal(get.headers.get("content-length"), String(bytes.byteLength), `${sti}: GET-længden skal være byteantal`);
+        assert.ok(!get.headers.get("content-encoding") || get.headers.get("content-encoding") === "identity", sti);
+        if (sti.endsWith(".crt")) assert.deepEqual(bytes, cert.der);
+        else {
+          const tekst = new TextDecoder().decode(bytes);
+          assert.equal(new TextEncoder().encode(tekst).byteLength, bytes.byteLength, `${sti}: UTF-8-længde`);
+          if (sti.endsWith(".mobileconfig")) assert.equal(tekst, cert.profil);
+          else {
+            assert.ok(tekst.includes(cert.aftryk));
+            assert.ok(bytes.byteLength > tekst.length, "Den danske side skal afprøve flerbyte-tegn");
+          }
+        }
+        const head = await fetch(adresse + sti, { ...muligheder, method: "HEAD" });
+        assert.equal(head.status, 200, `${adresse}${sti}: HEAD`);
+        for (const navn of ["content-type", "content-disposition", "cache-control", "x-content-type-options", "content-length"]) {
+          assert.equal(head.headers.get(navn), get.headers.get(navn), `${sti}: HEAD bevarer ${navn}`);
+        }
+        assert.ok(!head.headers.get("content-encoding") || head.headers.get("content-encoding") === "identity", sti);
+        assert.equal((await head.arrayBuffer()).byteLength, 0, `${sti}: HEAD skal være uden filkrop`);
+      }
+    }
     const sikker = await fetch(`https://127.0.0.1:${https.addr.port}/`, { client });
     assert.equal(sikker.status, 200); assert.ok((await sikker.text()).includes("Spil sammen"));
     assert.equal(certifikatSvar("/certifikat/ca.json", cert, "https://localhost/").status, 404);
