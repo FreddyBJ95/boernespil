@@ -118,6 +118,7 @@ export const BANER = {
   stoevbyen: { navn: "Støvbyen", sjælden: "sjælden", tekst: "En ørkenby med to pladser, tunneler og en lang midtergade." },
   havnen: { navn: "Havnen", sjælden: "episk", tekst: "Containere i alle farver, en stor kran, en lagerhal og et skib ved kajen." },
   fjeldbyen: { navn: "Fjeldbyen", sjælden: "legendarisk", tekst: "En by i sneen med en hvid trækirke, en frossen sø, en skov og et savværk." },
+  museet: { navn: "Museet", sjælden: "episk", tekst: "Kamp indendørs: en lysgård med en statue, malerisalen, kontorer og et stort magasin." },
 };
 
 // Standard-udrustningen

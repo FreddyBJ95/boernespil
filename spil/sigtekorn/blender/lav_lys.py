@@ -49,7 +49,7 @@ if "sne" in snit:                                                   # Fjeldbyen
                    "panelHvid": tuple(min(0.95, v * 1.5) for v in snit["panel"])})
 if "beton" in snit:                                                 # Havnen
     blik = snit["blik"]
-    ALBEDO.update({"beton": snit["beton"], "lagerhal": gange(blik, hexlin(0xa0acb6)), "pier": gange(snit["planker"], hexlin(0x9a8070)),
+    ALBEDO.update({"beton": snit["beton"], "galleri": tuple(min(0.95, v * 1.45) for v in snit["beton"]), "lagerhal": gange(blik, hexlin(0xa0acb6)), "pier": gange(snit["planker"], hexlin(0x9a8070)),
                    **{f"container{n}": gange(blik, hexlin(h)) for n, h in [("Rød", 0xe85038), ("Blå", 0x3a7ae0), ("Grøn", 0x4ab05a), ("Orange", 0xf89038), ("Gul", 0xf8cc3a), ("Hvid", 0xf0f0e8)]}})
 NAVNE = list(ALBEDO)
 
@@ -133,7 +133,7 @@ so.rotation_euler = Vector((SOL[0], -SOL[2], SOL[1])).normalized().to_track_quat
 LAMPE_W = float(os.environ.get("LYS_LAMPE", 70))
 lamper = []
 for x, y, z, *w in d.get("lamper", []):
-    l = bpy.data.lights.new("lampe", "POINT"); l.energy = w[0] if w else LAMPE_W; l.color = (1.0, 0.72, 0.42); l.shadow_soft_size = 0.06
+    l = bpy.data.lights.new("lampe", "POINT"); l.energy = w[0] if w else LAMPE_W; l.color = tuple(VEJR.get("lampeFarve", (1.0, 0.72, 0.42))); l.shadow_soft_size = 0.06
     lo = bpy.data.objects.new("lampe", l); bpy.context.collection.objects.link(lo); lo.location = (x, -z, y); lamper.append(lo)
 
 
