@@ -17,7 +17,7 @@ import { lavTeksturer } from "./teksturer.js";
 import { Kasseverden } from "./verden.js";
 import { lavBane, fotoBrug } from "./bane.js";
 import { hentLys, himmelMiljø } from "./lys.js";
-import { deleTrin, deleTegn, ryddDele, deleSynlige } from "./dele.js";
+import { deleTrin, deleTegn, ryddDele, deleSynlige, slipDel, tagDel } from "./dele.js";
 import { nyAktør, bevæg, øjeHøjde, TICK, U } from "./bevaegelse.js";
 import { VÅBEN, nytVåben, aftrækker, efterSkud, opdaterVåben, skudRetning, synligRekyl, retningsvektor, genlad, unøjagtighed, skade } from "./vaaben.js";
 import { SJÆLDEN } from "./katalog.js";
@@ -241,6 +241,10 @@ const botSpil = {
   spawnSted: bot => træning() ? målSted(bot) : bot.zombie ? zombier.sted() : brSpil() ? br.himmelSted() : null,
   zombie: () => zombier.nyZombie(), zombieFart: () => zombier.fart,
   bid: (z, o) => zombieBid(z, o),                                 // (en zombie bider den, den har fat i)
+  tygge: z => { const m = z.holdLem(); effekter.blod(m, new THREE.Vector3(0, -1, 0.2), verden, 0.9); if (m.distanceTo(kamera.position) < 20) Lyd.bid(m, 0.55); },   // (gnav: blod fra munden)
+  slipLem: (z, obj) => slipDel(obj, verden, new THREE.Vector3(Math.sin(z.a.yaw) * -1.2, 1, Math.cos(z.a.yaw) * -1.2), new THREE.Vector3(Math.random() * 4 - 2, Math.random() * 4 - 2, Math.random() * 4 - 2), botSpil.delLyd),
+  tagDel: (pos, r) => tagDel(pos, r),
+  dryp: z => { if (z.a.pos.distanceTo(kamera.position) < 25) effekter.blod(z.holdLem().add(new THREE.Vector3(0, -0.12, 0)), new THREE.Vector3(0, -1, 0), verden, 0.25); },
   zombieOpstår: z => {                                             // jorden revner, og der står støv op
     for (let i = 0; i < 3; i++) effekter.nedslag(z.a.pos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.8, 0.05, (Math.random() - 0.5) * 0.8)), [0, 1, 0], bane.id === "stoevbyen" ? "sand" : "sten", 2.2);
     if (z.a.pos.distanceTo(kamera.position) < 25) Lyd.zombie(z.a.pos);
@@ -431,7 +435,7 @@ function nærSpilleren() {
 const pilTekstur = (() => { const c = document.createElement("canvas"); c.width = c.height = 64; const g = c.getContext("2d"); g.fillStyle = "#7dff6a"; g.strokeStyle = "#0a2a0a"; g.lineWidth = 4; g.beginPath(); g.moveTo(10, 14); g.lineTo(54, 14); g.lineTo(32, 50); g.closePath(); g.fill(); g.stroke(); return new THREE.CanvasTexture(c); })();
 function lavBots() {
   const fjerne = bots.filter(b => b.fjern);                          // (de andre spillere online bliver, hvor de er)
-  for (const b of bots) scene.remove(b.model);
+  for (const b of bots) { scene.remove(b.model); if (b.lemIHånd) scene.remove(b.lemIHånd.obj); }   // (også det, zombierne stod og spiste)
   killcam.ryd();
   ryddDele(); effekter.ryd(); projektiler.ryd();
   const navne = [...NAVNE].sort(() => Math.random() - 0.5);
@@ -658,12 +662,29 @@ function botHug(bot, o, ret, v) {
     if (h && (!bedst || h.t < bedst.t)) bedst = { k, ...h };
   }
   if (o.distanceTo(kamera.position) < 8) Lyd.kniv();
+  if (!bedst && bot.zombie && bot.mål && !bot.mål.død && Math.hypot(bot.mål.a.pos.x - bot.a.pos.x, bot.mål.a.pos.z - bot.a.pos.z) < v.d.rækkevidde && Math.abs(bot.mål.a.pos.y - bot.a.pos.y) < 1.4)
+    bedst = { k: bot.mål, t: 0.4, del: "krop", lem: null };            // (helt tæt på: kløerne rammer kroppen)
   if (!bedst) { if (bot.blokeret && byggeri.afstand(bot.blokeret, bot.a.pos) < v.d.rækkevidde + 0.6) byggeri.skad(bot.blokeret, v.d.skade); return; }   // (en bygget væg i vejen)
   const s = skade(v, bedst.del, bedst.k, bedst.t, false), skud = { r, del: bedst.del, lem: bedst.lem, kniv: true, kraft: KRAFT.kniv };
   effekter.blod(o.clone().addScaledVector(r, bedst.t), r, verden, 0.8);
   if (bedst.k === spiller ? spillerRamt(s, bot, skud) : bedst.k.ramt(s, bot, skud)) drab(bot, bedst.k, v, false);
   else if (bot.zombie) prøvGreb(bot, bedst.k);                       // (en zombie kan få fat)
 }
+// ---------- Ingen står oven i hinanden ----------
+// To kroppe, der er for tæt på hinanden, skubbes fra hinanden (ikke ind i mure) — spilleren flytter sig mindst
+const AFSTAND = 0.62;
+function adskil() {
+  const folk = kampfolk.filter(f => !f.død && !f.a.svæver && !(f === spiller && køretøjer.kører));
+  for (let i = 0; i < folk.length; i++) for (let j = i + 1; j < folk.length; j++) {
+    const A = folk[i], B = folk[j], a = A.a, b = B.a;
+    let dx = b.pos.x - a.pos.x, dz = b.pos.z - a.pos.z, d = Math.hypot(dx, dz);
+    if (d >= AFSTAND || Math.abs(a.pos.y - b.pos.y) > 1.5) continue;
+    if (d < 1e-4) { const v = Math.random() * 6.3; dx = Math.cos(v); dz = Math.sin(v); d = 1; } else { dx /= d; dz /= d; }
+    const ind = AFSTAND - Math.min(d, AFSTAND), wa = A === spiller ? 0.2 : B === spiller ? 0.8 : 0.5;
+    flyt(a, -dx * ind * wa, -dz * ind * wa); flyt(b, dx * ind * (1 - wa), dz * ind * (1 - wa));
+  }
+}
+function flyt(a, dx, dz) { if (verden.fri(a.pos.x + dx, a.pos.y + 0.02, a.pos.z + dz, a.b, a.h)) { a.pos.x += dx; a.pos.z += dz; } }
 // ---------- Zombierne griber fat og æder (zombier.js, bots.js) ----------
 // En zombie, der slår nogen, kan få fat i dem (kæmperne oftere). Så holder den fast og bider: en arm, en arm,
 // et ben, et ben — og til sidst hovedet. Man river sig løs ved at trykke E hurtigt (eller skyde zombien).
@@ -684,7 +705,12 @@ function zombieBid(z, o) {
   effekter.blod(mund, r.clone().negate(), verden, 1.8);
   Lyd.bid(mund, o === spiller ? 1.4 : 1);
   const sidste = lem === "hoved" || (!lem && o.liv <= z.våben.d.skade);
-  const skud = { r, del: lem === "hoved" ? "hoved" : lem ? (lem.startsWith("arm") ? "arm" : "ben") : "krop", lem, kraft: 1.4, navn: "Tænder" };
+  const skud = { r, del: lem === "hoved" ? "hoved" : lem ? (lem.startsWith("arm") ? "arm" : "ben") : "krop", lem, kraft: 1.4, navn: "Tænder",
+    tilMund: lem && lem !== "hoved" ? g => z.tagLem(g) : null };            // (armen eller benet rives af — og zombien spiser det)
+  if (lem && lem !== "hoved") {                                        // stumpen sprøjter blod
+    const stump = o.a.pos.clone().add(new THREE.Vector3(0, lem.startsWith("arm") ? 1.35 : 0.85, 0));
+    for (let i = 0; i < 3; i++) setTimeout(() => effekter.blod(stump, new THREE.Vector3(Math.random() - 0.5, 0.6, Math.random() - 0.5).normalize(), verden, 1.4), i * 180);
+  }
   const dræbt = o === spiller ? spillerRamt({ liv: sidste ? 999 : z.våben.d.skade, panser: 0 }, z, skud) : o.ramt({ liv: sidste ? 999 : z.våben.d.skade, panser: 0 }, z, skud);
   if (o === spiller) slag = Math.min(1.4, slag + 0.9);
   if (dræbt) { drab(z, o, { d: { navn: "Tænder" } }, lem === "hoved"); z.slip(); z.ædeLig = { pos: o.a.pos.clone(), til: tid + 6 + Math.random() * 3 }; }
@@ -873,6 +899,7 @@ function tick(dt) {
   projektiler.trin(dt);
   if (bombeSpil() && iGang) bombe.tick(dt, taster.has("KeyE") && !spiller.død);
   if (zombieSpil() && iGang) zombier.tick(dt);
+  adskil();                                                        // (ingen går igennem hinanden)
   if (brSpil() && iGang) br.tick(dt);
   if (onlineSpil() && iGang) online.tick(dt, minOnlineTilstand);     // (ens egen tilstand til de andre)
   killcam.optag(tid);

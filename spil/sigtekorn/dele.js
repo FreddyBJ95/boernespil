@@ -121,6 +121,20 @@ export function løsDel(obj, scene, verden, fart, spin, lyd) {
   return k;
 }
 function fjern(k) { k.obj.parent?.remove(k.obj); }
+// En del, der allerede ligger i scenen (fx et lem, en zombie har gnavet i), bliver løs og falder med fysik
+export function slipDel(obj, verden, fart, spin, lyd) {
+  obj.updateMatrixWorld(true);
+  const k = new Klods(obj, verden, fart, spin, lyd); alle.push(k);
+  while (alle.length > MAKS) fjern(alle.shift());
+  return k;
+}
+// Saml den nærmeste løse del op (højst r meter væk): den er ikke længere løs — svarer med selve tingen
+export function tagDel(pos, r) {
+  let bedst = -1, bd = r;
+  alle.forEach((k, i) => { if (k.alder > LIV) return; const p = k.p[0], d = Math.hypot(p.x - pos.x, p.z - pos.z); if (d < bd && Math.abs(p.y - pos.y) < 1.5) { bd = d; bedst = i; } });
+  if (bedst < 0) return null;
+  const k = alle.splice(bedst, 1)[0]; k.tegn(); return k.obj;
+}
 export function deleTrin(dt) {
   for (let i = alle.length - 1; i >= 0; i--) {
     const k = alle[i]; k.trin(dt);

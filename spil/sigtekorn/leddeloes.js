@@ -197,7 +197,7 @@ export class Figur {
     const iKrop = v => v.applyQuaternion(kropQ).add(hofte);
     const hals = iKrop(new THREE.Vector3(0, 0.62, 0.01)), bryst = iKrop(new THREE.Vector3(0, 0.42, 0));
     // hovedet kigger derhen, soldaten sigter
-    if (bid && (t.æder || t.lig)) this.sæt("hoved", iKrop(new THREE.Vector3(0, 0.62 - 0.05 * bid, 0.01 - 0.12 * bid)), _q.setFromEuler(_eu.set(t.pitch * 0.6 - 0.55 * bid, Math.sin(bid * 9) * 0.25 * bid, 0)));   // (et bid: hovedet farer frem)
+    if (bid && (t.æder || t.lig || t.spiser)) this.sæt("hoved", iKrop(new THREE.Vector3(0, 0.62 - 0.05 * bid, 0.01 - 0.12 * bid)), _q.setFromEuler(_eu.set(t.pitch * 0.6 - 0.55 * bid, Math.sin(bid * 9) * 0.25 * bid, 0)));   // (et bid: hovedet farer frem)
     else this.sæt("hoved", hals, _q.setFromEuler(_eu.set(t.pitch * 0.6, 0, 0)));
     // ---- våbnet og armene ----
     const sigteQ = new THREE.Quaternion().setFromEuler(_eu.set(t.pitch + this.kick * 0.12, 0, 0));
@@ -227,6 +227,7 @@ export class Figur {
     // arme uden våben: hænger ned (eller skubber fra, når den kravler)
     // (zombier strækker armene frem)
     const fri = (sk, side) => kb > 0.5 ? new THREE.Vector3(side * 0.28, 0.05, hofte.z - 0.8 - Math.cos(ψ + (side > 0 ? 0 : Math.PI)) * 0.15)
+      : this.hold === "zombier" && t.spiser ? sk.clone().add(new THREE.Vector3(-side * 0.13, 0.12 - 0.06 * bid, -0.3))   // (holder noget op til munden)
       : this.hold === "zombier" && t.lig ? sk.clone().add(new THREE.Vector3(side * 0.08, -0.62 + 0.12 * Math.sin(ψ * 3 + side), -0.32))   // (graver i liget — eller i den, der ligger ned)
       : this.hold === "zombier" && t.æder ? sk.clone().add(new THREE.Vector3(-side * 0.07, -0.02 - 0.08 * bid, -0.42))     // (holder fast om skuldrene)
       : this.hold === "zombier" ? sk.clone().add(new THREE.Vector3(side * 0.03, -0.1 + Math.sin(ψ * 0.5 + side) * 0.05, -0.56))
@@ -285,6 +286,7 @@ export class Figur {
   // ---------- En arm, et ben eller hovedet flyver af ----------
   skydAf(lem, skud, scene, verden, grundfart, lyd) {
     if (this.mangler[lem]) return;
+    if (skud?.tilMund && lem !== "hoved") { skud.tilMund(this.revAf(lem, scene)); return; }   // (en zombie river det af og spiser det)
     this.mangler[lem] = true;
     const r = skud?.r || FREM, kraft = (skud?.kraft ?? 3) * 1.3;
     if (lem === "hoved") for (const o of this.hovedtøj) if (o.visible)              // hjelmen flyver lidt for sig selv
@@ -293,6 +295,19 @@ export class Figur {
       const o = this.d[n]; if (!o.visible) continue;
       løsDel(o, scene, verden, grundfart.clone().addScaledVector(r, kraft).add(new THREE.Vector3((Math.random() - 0.5) * 1.5, 1.8 + Math.random(), (Math.random() - 0.5) * 1.5)), tilfældigSpin(7), lyd);
     }
+  }
+  // Et lem bliver revet af: delene samles i én ting i scenen (samme sted som før), som en zombie kan holde
+  revAf(lem, scene) {
+    this.mangler[lem] = true;
+    const g = new THREE.Group(); g.matrixAutoUpdate = false;
+    for (const n of LEMMER[lem]) {
+      const o = this.d[n]; if (!o.visible) continue;
+      o.updateWorldMatrix(true, true);
+      const kopi = o.clone(); kopi.visible = true; kopi.matrix.copy(o.matrixWorld); kopi.matrixAutoUpdate = false;
+      g.add(kopi); o.visible = false;
+    }
+    scene.add(g); g.updateMatrixWorld(true);
+    return g;
   }
   // Den rigtige model til et våben (hentes første gang; indtil den er klar, svarer den null)
   våbenTil(id) {
