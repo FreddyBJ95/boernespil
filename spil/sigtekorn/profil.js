@@ -23,6 +23,7 @@ export const UDFORDRINGER = [
   { id: "zombier", navn: "Overlever", tekst: "Overlev 10 bølger zombier", mål: 1, skin: "gift" },
   { id: "sejre", navn: "Vinder", tekst: "Vind 10 kampe", mål: 10, skin: "lava" },
   { id: "niveau", navn: "Veteran", tekst: "Nå niveau 15", mål: 15, skin: "galakse" },
+  { id: "royale", navn: "Den sidste", tekst: "Vind et battle royale", mål: 1, skin: "regnbue" },
 ];
 
 export class Profil {

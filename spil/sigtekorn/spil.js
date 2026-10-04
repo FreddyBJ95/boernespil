@@ -25,14 +25,15 @@ import { lavUdrustning, retUdrustning } from "./udrustning.js";
 import { Projektiler } from "./projektiler.js";
 import { Hånd } from "./haand.js";
 import { Effekter } from "./effekter.js";
-import { Bot, SVÆRHED, NAVNE, træfKrop, vinkel, hentSoldat } from "./bots.js";
-import { Figur, harLeddeløs } from "./leddeloes.js";
+import { Bot, SVÆRHED, NAVNE, træfKrop, vinkel, hentSoldat, botVåben, botKanBruge } from "./bots.js";
+import { Figur, harLeddeløs, holdFarve } from "./leddeloes.js";
 import { Bombe, visMærker } from "./bombe.js";
 import { Killcam } from "./killcam.js";
 import { lavVejr } from "./vejr.js";
 import { Zombier, MAKS_SAMTIDIG } from "./zombier.js";
 import { Køretøjer } from "./koeretoejer.js";
 import { Byggeri, DELE, PRIS } from "./byggeri.js";
+import { BattleRoyale, sjældenFarve } from "./br.js";
 import { køb, drabPenge, giv as givPenge, tegnKøbsmenu, GRUPPER, nytUdstyr } from "./penge.js";
 import * as Lyd from "./lyd.js";
 import { Profil, UDFORDRINGER } from "./profil.js";
@@ -79,14 +80,14 @@ sol.shadow.bias = -0.0004; sol.shadow.normalBias = 0.035;
 scene.add(sol, sol.target);
 const himmelLys = new THREE.HemisphereLight(0xd8e4f2, 0xb8905e, 1.15);   // bruges kun, hvis lyset fra Blender mangler
 scene.add(himmelLys);
-// himlen: en stor kugle med blå top, lys horisont og en sol
+// himlen: en stor kugle med blå top, lys horisont og en sol (retningen regnes ud for hver pixel, så der ikke ses kanter)
 const himmel = new THREE.Mesh(new THREE.SphereGeometry(500, 32, 16), new THREE.ShaderMaterial({
   side: THREE.BackSide, depthWrite: false, fog: false,
   uniforms: { top: { value: new THREE.Color(0x3a78c8) }, midt: { value: new THREE.Color(0x8fbce8) }, bund: { value: new THREE.Color(0xf0dcbc) }, sol: { value: solRet }, glod: { value: 1 } },   // (navnene i shaderen skal være uden æ, ø og å)
-  vertexShader: "varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+  vertexShader: "varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
   fragmentShader: `uniform vec3 top; uniform vec3 midt; uniform vec3 bund; uniform vec3 sol; uniform float glod; varying vec3 vP;
-    void main(){ float h = clamp(vP.y, -0.2, 1.0); vec3 c = mix(bund, midt, smoothstep(0.0, 0.22, h)); c = mix(c, top, smoothstep(0.22, 0.9, h));
-      float s = max(dot(normalize(vP), sol), 0.0); c += (vec3(1.0, 0.92, 0.75) * pow(s, 900.0) * 6.0 + vec3(1.0, 0.85, 0.6) * pow(s, 10.0) * 0.22) * glod;
+    void main(){ vec3 d = normalize(vP); float h = clamp(d.y, -0.2, 1.0); vec3 c = mix(bund, midt, smoothstep(0.0, 0.22, h)); c = mix(c, top, smoothstep(0.22, 0.9, h));
+      float s = max(dot(d, sol), 0.0); c += (vec3(1.0, 0.92, 0.75) * pow(s, 900.0) * 6.0 + vec3(1.0, 0.85, 0.6) * pow(s, 10.0) * 0.22) * glod;
       gl_FragColor = vec4(c, 1.0);
       #include <tonemapping_fragment>
       #include <colorspace_fragment>
@@ -160,19 +161,21 @@ const TRÆNING = 30;
 const træning = () => ind.spiltype === "træning";
 const bombeSpil = () => ind.spiltype === "bombe";                  // bombe: runder som i CS (se bombe.js)
 const zombieSpil = () => ind.spiltype === "zombier";               // zombier: overlev bølger sammen med botterne (se zombier.js)
+const brSpil = () => ind.spiltype === "br";                        // battle royale: alle mod alle, stormen og kisterne (se br.js)
+const medUdstyr = () => bombeSpil() || brSpil();                   // (våbnene er dem, man har købt eller fundet)
 let følgNr = 0;                                                    // død i en bomberunde: hvilken holdkammerat man ser med hos
 let træningTal = { skud: 0, træf: 0 };                                // træningens skud og træffere (tæller ikke med i statistikken)
 // Plads 1, 2 og 3 (tasterne): i våbenræs er det rækkens våben, en pistol og kniven
 const plads = n => ræs() ? [ræsVåben(spiller), "pistol", "kniv"][n - 1]
-  : bombeSpil() ? [spiller.udstyr?.primær, spiller.udstyr?.sekundær, ind.udrustning.kniv][n - 1]
+  : medUdstyr() ? [spiller.udstyr?.primær, spiller.udstyr?.sekundær, ind.udrustning.kniv][n - 1]
   : [ind.udrustning.primær, ind.udrustning.sekundær, ind.udrustning.kniv][n - 1];
 // Granaterne, man har (i Bombe dem, man har købt)
-const mineGranater = () => bombeSpil() ? (spiller.udstyr?.granater || []) : ind.udrustning.granater;
+const mineGranater = () => medUdstyr() ? (spiller.udstyr?.granater || []) : ind.udrustning.granater;
 // Udrustningen: plads 1 hovedvåben, 2 pistol, 3 nærkamp og 4 granaterne (i våbenræs: rækkens våben, pistol og kniv — til sidst kun kniven)
 function udrust() {
   const u = ind.udrustning, sidst = ræs() && ræsVåben(spiller) === "kniv";
   const k = spiller.udstyr || nytUdstyr();                          // (i Bombe: det, man har købt)
-  const ids = bombeSpil() ? [k.primær, k.sekundær, u.kniv, ...k.granater.map(g => `granat_${g}`), "ingen"].filter(Boolean)
+  const ids = medUdstyr() ? [k.primær, k.sekundær, u.kniv, ...k.granater.map(g => `granat_${g}`), "ingen"].filter(Boolean)
     : !ræs() ? [u.primær, u.sekundær, u.kniv, ...u.granater.map(g => `granat_${g}`), "ingen"] : sidst ? ["kniv", "ingen"] : [ræsVåben(spiller), "pistol", "kniv", "ingen"];
   våbenSæt = {};
   for (const id of ids) våbenSæt[id] = nytVåben(id);
@@ -209,11 +212,13 @@ const botSpil = {
   ræsVåben: bot => ræs() ? ræsVåben(bot) : null,                     // våbenræs: botten får rækkens våben
   træning: () => træning(),                                       // træning: botterne er mål, der ikke skyder
   get byggeri() { return byggeri; },                              // (vægge, der står i vejen, skyder eller hugger de i stykker)
+  efterSpawn: bot => { if (brSpil() && !bot.zombie) { bot.våben = nytVåben(bot.sekundær); bot.granater = []; bot.panser = 0; br.iLuften(bot, holdFarve(bot.hold)); } },
+  svæv: (bot, dt) => br.svæv(bot, null, dt),                      // (battle royale: på vej ned i glideflyet)
   synsvidde: () => vejr.synsvidde,                                // (kortere om natten og i storm)
-  spawnSted: bot => træning() ? målSted(bot) : bot.zombie ? zombier.sted() : null,
+  spawnSted: bot => træning() ? målSted(bot) : bot.zombie ? zombier.sted() : brSpil() ? br.himmelSted() : null,
   zombie: () => ({ liv: zombier.liv, skade: zombier.skade }), zombieFart: () => zombier.fart,
   zombieLyd: pos => { if (pos.distanceTo(kamera.position) < 30) Lyd.zombie(pos); },
-  særPost: bot => zombieSpil() && !bot.zombie ? nærSpilleren() : null,      // holdkammeraterne holder sig tæt på dig
+  særPost: bot => zombieSpil() && !bot.zombie ? nærSpilleren() : brSpil() ? br.sikkerSted(bot) : null,   // holdkammeraterne holder sig tæt på dig (battle royale: inde i cirklen)
   delLyd: (pos, fart) => {                                         // en løs del rammer jorden (ikke for mange lyde på én gang)
     if (fart < 1.2 || tid - sidsteDelLyd < 0.04 || pos.distanceTo(kamera.position) > 40) return;
     sidsteDelLyd = tid; Lyd.dunk(pos, Math.min(1, fart / 6));
@@ -261,6 +266,45 @@ const byggeri = new Byggeri({ scene, verden, kampfolk: () => kampfolk, effekter,
 const bygTil = () => ind.byg && !bombeSpil() && !træning();
 const BYG_START = 300, BYG_DRAB = 30, BYG_MAKS = 999;
 const givTræ = n => { byggeri.træ = Math.min(BYG_MAKS, byggeri.træ + n); };
+// Battle royale (br.js): stormen, kisterne og glideflyene — stormen "skyder" som en kæmper, så den står i drabslisten
+const STORM = { navn: "Stormen", hold: "storm", storm: true, drab: 0, hoveder: 0, død: false, a: { pos: new THREE.Vector3() } };
+let brPlads = 0;
+const br = new BattleRoyale({
+  scene, verden, bane, kampfolk: () => kampfolk, hånd, effekter, lyd: Lyd,
+  skad: (f, n) => { STORM.a.pos.set(br.midt.x, 0, br.midt.y); skadFra(f, { liv: n, panser: 0 }, STORM, null, "Stormen"); },
+  kisteFund: (f, fund) => kisteFund(f, fund),
+  slut: vinder => { if (vinder === spiller) { hud.besked("🏆 Sejr! Du er den sidste tilbage", 2400); setTimeout(() => slutBR(true), 2200); } },
+});
+const RANG = ["almindelig", "usædvanlig", "sjælden", "episk", "legendarisk"], rang = d => RANG.indexOf(d?.sjælden);
+// En kiste er åbnet: våbnet (og måske en granat, en vest og træ) til den, der åbnede den
+function kisteFund(f, fund) {
+  if (f !== spiller) {                                               // en bot: tager våbnet, hvis det er bedre end det, den har
+    const nu = f.våben?.d;
+    if (!nu || nu.klasse === "pistol" || rang(VÅBEN[fund.våben]) > rang(nu)) f.fåVåben(botKanBruge(fund.våben) ? fund.våben : botVåben());
+    if (fund.vest) f.panser = Math.min(100, f.panser + 50);
+    if (fund.granat) f.granater = [fund.granat];
+    return;
+  }
+  const u = spiller.udstyr, d = VÅBEN[fund.våben];
+  u[d.klasse === "pistol" ? "sekundær" : "primær"] = fund.våben;
+  if (fund.granat && !u.granater.includes(fund.granat)) u.granater = [...u.granater, fund.granat].slice(-2);
+  if (fund.vest) spiller.panser = Math.min(100, spiller.panser + 50);
+  if (bygTil()) givTræ(fund.træ);
+  udrust(); if (våbenSæt[fund.våben] && aktivt !== fund.våben) skiftVåben(fund.våben);
+  hud.besked(`📦 ${d.navn} (${SJÆLDEN[d.sjælden]?.navn || ""})${fund.granat ? " + " + VÅBEN[`granat_${fund.granat}`].ikon : ""}${fund.vest ? " + 🛡 vest" : ""}${bygTil() ? ` + 🌲 ${fund.træ}` : ""}`, 3000, sjældenFarve(fund.våben));
+}
+// Battle royale: spilleren starter højt oppe i et glidefly med kun kniven
+function brStart() {
+  const [x, z] = br.himmelSted();
+  spiller.a = nyAktør(x, 0.01, z, Math.random() * Math.PI * 2);
+  spiller.liv = 100; spiller.panser = 0; spiller.død = false; beskyttet = 0; brPlads = 0;
+  spillerFig?.nulstil(); killcam.stop(); killcamVent = null; deleSynlige(true); hud.killcam(null);
+  spiller.udstyr = { primær: null, sekundær: null, granater: [], panser: 0 };
+  udrust(); hud.død(""); hud.kikkert(false);
+  br.iLuften(spiller);
+  if (bygTil()) byggeri.træ = 100;
+  hud.besked("🪂 Glid ned — find en kiste og åbn den med E. Bliv inde i cirklen!", 4000);
+}
 // Byggetilstand til og fra: våbnet væk (og frem igen)
 function skiftByg(på) {
   if (byggeri.aktiv === på) return;
@@ -299,6 +343,7 @@ function lavBots() {
     for (let i = 0; i < ind.hold - 1; i++) bots.push(new Bot(botSpil, spiller.hold, navne.pop()));
     for (let i = 0; i < MAKS_SAMTIDIG; i++) { const z = new Bot(botSpil, "zombier", "Zombie"); z.død = true; z.dødTid = -99; z.model.visible = false; bots.push(z); }
   }
+  else if (brSpil()) for (let i = 1; i <= ind.hold * 2 + 1; i++) bots.push(new Bot(botSpil, `br${i}`, navne.pop() || `Soldat ${i}`));   // alle mod alle
   else {
     const andet = spiller.hold === "ræve" ? "slanger" : "ræve";       // holdkammeraterne og fjenderne
     for (let i = 0; i < ind.hold - 1; i++) bots.push(new Bot(botSpil, spiller.hold, navne.pop()));
@@ -397,11 +442,12 @@ function spillerRamt(s, fra, skud = null) {
   if (spiller.liv > 0) return false;
   if (køretøjer.kører) { spiller.a.pos.copy(køretøjer.stigUd()); spiller.a.forrige.copy(spiller.a.pos); Lyd.motorLyd(null); }   // (man falder ud af køretøjet)
   spiller.død = true; spiller.dødsfald++; dødTid = tid; stime = 0; stat.død++; byggeri.aktiv = false;
+  if (brSpil()) { brPlads = br.tilbage() + 1; br.landet(spiller); }   // (battle royale: din placering)
   if (egneLemmer()) spillerFig.falder(skud, scene, verden, new THREE.Vector3(spiller.a.vel.x, 0, spiller.a.vel.z), botSpil.delLyd);   // du falder fra hinanden
-  dræber = fra !== spiller ? fra : null; dødSyn = { yaw: spiller.a.yaw, pitch: spiller.a.pitch };
+  dræber = fra !== spiller && !fra.storm ? fra : null; dødSyn = { yaw: spiller.a.yaw, pitch: spiller.a.pitch };
   killcamVent = ind.killcam && dræber && !træning() ? tid + 1.2 : null;
   const med = fra.våben?.d ? ` med ${fra.våben.d.navn}` : "", rest = fra !== spiller && fra.liv > 0 ? ` · ${Math.ceil(fra.liv)} liv tilbage` : "";
-  const efter = bombeSpil() ? "du ser med til næste runde (klik: en anden)" : zombieSpil() ? "du kommer tilbage i næste bølge (klik: se med hos en anden)" : `tilbage om ${genopståTid()}`;
+  const efter = brSpil() ? `du blev nr. ${brPlads}` : bombeSpil() ? "du ser med til næste runde (klik: en anden)" : zombieSpil() ? "du kommer tilbage i næste bølge (klik: se med hos en anden)" : `tilbage om ${genopståTid()}`;
   hud.død(`${fra === spiller ? "Du ramte dig selv" : `Du blev ramt af <b class="${fra.hold}">${fra.navn}</b>${med}${rest}`} · ${efter}`); hud.kikkert(false);
   return true;
 }
@@ -423,7 +469,7 @@ function kanBruge(id) {
 function drab(drabsmand, offer, v, hoved) {
   if (drabsmand === offer) { hud.drabLinje(drabsmand, offer, v.d.navn, false, offer === spiller); return; }   // sin egen raket eller granat
   drabsmand.drab++; if (hoved) drabsmand.hoveder++;
-  point[drabsmand.hold]++;
+  if (drabsmand.hold in point) point[drabsmand.hold]++;
   hud.drabLinje(drabsmand, offer, v.d.navn, hoved, drabsmand === spiller || offer === spiller);
   if (drabsmand === spiller && bygTil()) givTræ(BYG_DRAB);          // træ for hvert drab
   if (drabsmand === spiller && !træning()) {                         // (træningen tæller ikke med i statistikken)
@@ -435,7 +481,7 @@ function drab(drabsmand, offer, v, hoved) {
   if (bombeSpil()) { givPenge(drabsmand, drabPenge(v.d)); if (drabsmand === spiller) hud.penge(drabPenge(v.d)); }   // penge for drabet
   if (ræs()) ræsDrab(drabsmand, offer, v);
   else if (træning()) { if (point.ræve >= TRÆNING) slutKamp(); }        // træning: efter 30 mål er det slut
-  else if (bombeSpil() || zombieSpil()) { /* runderne (bombe.js) eller bølgerne (zombier.js) afgør det */ }
+  else if (bombeSpil() || zombieSpil() || brSpil()) { /* runderne (bombe.js), bølgerne (zombier.js) eller den sidste tilbage (br.js) afgør det */ }
   else if (point[drabsmand.hold] >= MÅL) slutKamp();
 }
 // XP og udfordringer: et lille "+100 XP" ved sigtekornet — og en besked, når man stiger et niveau eller klarer en udfordring
@@ -524,10 +570,11 @@ addEventListener("keydown", e => {
   if (e.repeat) return;
   taster.add(e.code);
   if (e.code === "KeyF" && vejr.nat) { lygteTændt = !lygteTændt; Lyd.klik(); }
-  if (e.code === "KeyG" && bygTil() && !spiller.død && !køretøjer.kører) { skiftByg(!byggeri.aktiv); return; }
+  if (e.code === "KeyE" && brSpil() && !spiller.død && !spiller.a.svæver) { const k = br.kisteNær(spiller.a.pos); if (k) { br.åbn(k, spiller); return; } }
+  if (e.code === "KeyG" && bygTil() && !spiller.død && !køretøjer.kører && !spiller.a.svæver) { skiftByg(!byggeri.aktiv); return; }
   if (byggeri.aktiv && /^Digit[123]$/.test(e.code)) { byggeri.valgt = DELE[+e.code.slice(5) - 1]; byggeri.slip(); Lyd.klik(); return; }
   if (byggeri.aktiv && (e.code === "Digit4" || e.code === "KeyQ")) skiftByg(false);
-  if (e.code === "KeyE" && !spiller.død && (køretøjer.kører || (køretøjer.nærmeste(spiller.a.pos) && !påBombeplads()))) { køretøjE(); return; }
+  if (e.code === "KeyE" && !spiller.død && !spiller.a.svæver && (køretøjer.kører || (køretøjer.nærmeste(spiller.a.pos) && !påBombeplads()))) { køretøjE(); return; }
   if (e.code === "KeyB" && bombeSpil() && !spiller.død) { visKøb(købGruppe === undefined ? null : undefined); return; }
   if (købGruppe !== undefined && /^Digit\d$/.test(e.code)) { vælgKøb(+e.code.slice(5)); return; }   // (købsmenuen er åben)
   if (e.code === "KeyR" && !spiller.død) { const v = vb(); if (genlad(v)) { hånd.genladStart(v.d.genlad); Lyd.genlad(v.d.genlad); hud.kikkert(false); } }
@@ -605,7 +652,8 @@ function tick(dt) {
     const gå = taster.has("ShiftLeft") || taster.has("ShiftRight"), duk = taster.has("KeyC") || taster.has("ControlLeft") || taster.has("ControlRight");
     const hop = taster.has("Space") || hjulHop > 0; if (hjulHop > 0) hjulHop--;
     const før = spiller.a.pos.clone(), frys = bombeSpil() && bombe.fryser;   // (i starten af en bomberunde står alle stille)
-    if (køretøjer.kører) {                                         // i et køretøj: W/S er gas og bremse, A/D styrer — og man sidder i førersædet
+    if (spiller.a.svæver) br.svæv(spiller, { frem: frys ? 0 : frem, side }, dt);   // i glideflyet (battle royale)
+    else if (køretøjer.kører) {                                    // i et køretøj: W/S er gas og bremse, A/D styrer — og man sidder i førersædet
       const drejet = køretøjer.kører.yaw; køretøjer.tick(dt, frys ? 0 : frem, side);
       spiller.a.yaw += køretøjer.kører.yaw - drejet;                // (man kigger med rundt, når køretøjet drejer)
       const p = køretøjer.førerPos(førerPlads), t = køretøjer.kører.t;
@@ -624,7 +672,7 @@ function tick(dt) {
     if (spiller.a.landet) { spiller.a.landet = 0; Lyd.landing(); hånd.land = 1; }
     // skyd: aftrækkeren (automat, ét skud pr. klik, salver og minigunnens opspin står i vaaben.js)
     if (byggeri.aktiv) { if (skydHoldt && !frys) byggeri.prøvByg(spiller.a, tid); else byggeri.slip(); }   // byggetilstand: venstre klik bygger
-    else if (v.d.klasse === "ingen" || frys || køretøjer.kører) { /* ingen arme, frysetid eller i et køretøj: intet at skyde med */ }
+    else if (v.d.klasse === "ingen" || frys || køretøjer.kører || spiller.a.svæver) { /* ingen arme, frysetid, i et køretøj eller i luften: intet at skyde med */ }
     else if (v.d.nærkamp) { if (skydHoldt && v.klar <= 0) knivHug(false); }
     else if (v.d.granat) { if (skydHoldt && !skydLåst) { skydLåst = true; kastGranat(false); } }
     else {
@@ -634,19 +682,21 @@ function tick(dt) {
       if (aftrækker(v, skydHoldt, dt)) spillerSkyder();
     }
     if (!skydHoldt) skydLåst = false;
-  } else if (!bombeSpil() && !zombieSpil() && tid - dødTid > genopståTid()) genopstå();
+  } else if (brSpil()) { if (tid - dødTid > genopståTid()) slutBR(false); }   // battle royale: ingen genopstand
+  else if (!bombeSpil() && !zombieSpil() && tid - dødTid > genopståTid()) genopstå();
   else { const s = genopståTid() - (tid - dødTid); hud.død(hud.el.død.innerHTML.replace(/tilbage om \d/, `tilbage om ${Math.ceil(s)}`)); }
   for (const b of bots) {
     if (!(bombeSpil() && bombe.fryser)) b.tick(dt);
     if (zombieSpil()) { if (b.zombie && b.død && tid - b.dødTid > 1.5 && zombier.måKomme()) b.spawn(); }   // zombierne kommer frem, så længe bølgen varer
-    else if (b.død && !bombeSpil() && tid - b.dødTid > (træning() ? 0.6 : 3) && !(træning() && point.ræve + bots.filter(x => !x.død).length >= TRÆNING)) b.spawn();
+    else if (b.død && !bombeSpil() && !brSpil() && tid - b.dødTid > (træning() ? 0.6 : 3) && !(træning() && point.ræve + bots.filter(x => !x.død).length >= TRÆNING)) b.spawn();
   }
   deleTrin(dt);                                                    // hoveder, arme og ben, der er skudt af, falder og bliver liggende
   projektiler.trin(dt);
   if (bombeSpil() && iGang) bombe.tick(dt, taster.has("KeyE") && !spiller.død);
   if (zombieSpil() && iGang) zombier.tick(dt);
+  if (brSpil() && iGang) br.tick(dt);
   killcam.optag(tid);
-  if (kampSlut <= 0 && !træning() && !bombeSpil() && !zombieSpil()) slutKamp();
+  if (kampSlut <= 0 && !træning() && !bombeSpil() && !zombieSpil() && !brSpil()) slutKamp();
 }
 function spillerSkyder() {
   const v = vb();
@@ -735,10 +785,12 @@ function tegnBillede(nu) {
   bombe.tegn(tid);                                                 // bombens lampe blinker
   køretøjer.tegn();
   byggeri.tegn(dt, !spiller.død && iGang ? spiller.a : null);     // det, der vokser frem, og hvor den næste del kommer
+  br.tegn(dt, tid, spiller);                                       // stormvæggen, kisterne og glideflyet
   hud.byg(bygTil() && iGang && !spiller.død, byggeri.aktiv, byggeri.valgt, byggeri.træ, PRIS);
   if (køretøjer.kører) Lyd.motorLyd(køretøjer.kører.fart, køretøjer.kører.type === "snescooter" ? 1.3 : 0.8);
-  const nær = !spiller.død && !køretøjer.kører && !påBombeplads() && køretøjer.nærmeste(spiller.a.pos);
-  hud.køreHjælp(køretøjer.kører ? `E: stig ud · W/S: gas og bremse · A/D: styr · ${Math.round(Math.abs(køretøjer.kører.fart) * 3.6)} km/t`
+  const nær = !spiller.død && !køretøjer.kører && !påBombeplads() && !spiller.a.svæver && køretøjer.nærmeste(spiller.a.pos);
+  const kiste = brSpil() && !spiller.død && !køretøjer.kører && !spiller.a.svæver && br.kisteNær(spiller.a.pos);
+  hud.køreHjælp(spiller.a.svæver && !spiller.død ? "🪂 W: hurtigere frem og ned · S: bremse · musen styrer" : kiste ? "E: åbn kisten" : køretøjer.kører ? `E: stig ud · W/S: gas og bremse · A/D: styr · ${Math.round(Math.abs(køretøjer.kører.fart) * 3.6)} km/t`
     : nær ? `E: stig ind i ${nær.type === "snescooter" ? "snescooteren" : "gaffeltrucken"}` : "");
   // botterne, hånden og effekterne
   for (const b of bots) b.tegn(Math.min(1, alfa), dt);
@@ -749,7 +801,7 @@ function tegnBillede(nu) {
     spillerFig.poser({ fart: Math.hypot(a.vel.x, a.vel.z), vx: c * a.vel.x - sn * a.vel.z, vz: sn * a.vel.x + c * a.vel.z, duk: a.duk, pitch: a.pitch, kravl: !!a.kravl, våben: aktivt, dt });
   }
   const fart = Math.hypot(a.vel.x, a.vel.z);
-  hånd.opdater(dt, { fart: v ? fart / v.d.fart : 0, jord: a.jord, musX, musY, duk: a.duk, skjul: kikkert || spiller.død || !!køretøjer.kører || byggeri.aktiv, sigte: zoomet && !kikkert, spin: v?.d.opspin ? v.spin / v.d.opspin : 0, landet: false });
+  hånd.opdater(dt, { fart: v ? fart / v.d.fart : 0, jord: a.jord, musX, musY, duk: a.duk, skjul: kikkert || spiller.død || !!køretøjer.kører || byggeri.aktiv || !!spiller.a.svæver, sigte: zoomet && !kikkert, spin: v?.d.opspin ? v.spin / v.d.opspin : 0, landet: false });
   musX = musY = 0;
   effekter.opdater(dt); hud.opdater(dt);
   // skærmen
@@ -761,7 +813,9 @@ function tegnBillede(nu) {
       const st = bombe.status(); hud.stilling(st.ræve, st.slanger, st.ur); hud.bombe(st, spiller);
       if (købGruppe !== undefined && (!bombe.kanKøbe || spiller.død)) visKøb(undefined);
     }
+    else if (brSpil()) { const st = br.stormTekst(); hud.stilling(`👤 ${br.tilbage()}`, `☠ ${spiller.drab}`, st.sek); }
     else hud.stilling(point.ræve, point.slanger, kampSlut);
+    if (brSpil()) { hud.storm(br.stormTekst().tekst, !spiller.død && br.iStormen(spiller.a.pos)); br.tegnKort($("kort"), spiller.a); } else hud.storm(null, false);
     hud.pengeTal(bombeSpil() ? spiller.penge : null, bombeSpil() && bombe.kanKøbe && !spiller.død);
     // sigtekornet: væk når man sigter, og altid væk på snigskytterne (som i CS) — rødpunktet, når man kigger gennem et rødpunktsigte
     hud.sigte(unøjagtighed(v, a) + (v.d.spredning || 0), kamera.fov * G, innerHeight, !spiller.død && !zoomet && !(v.d.zoom && v.d.sigte !== "sigte"));
@@ -769,7 +823,7 @@ function tegnBillede(nu) {
     hud.kikkert(kikkert); hud.fart(ind.fart ? fart : null);
     // granaterne (ingen i våbenræs og træning)
     hud.granater(ræs() || træning() ? [] : mineGranater().map(g => ({ ikon: VÅBEN[`granat_${g}`].ikon, antal: våbenSæt[`granat_${g}`]?.skud ?? 0, aktiv: aktivt === `granat_${g}` })));
-    hud.tavle(taster.has("Tab"), kampfolk, HOLD);
+    hud.tavle(taster.has("Tab"), kampfolk, HOLD, brSpil());
   }
   kamera.getWorldDirection(frem); Lyd.lytter(kamera.position, frem, op);
   renderer.clear(); renderer.render(scene, kamera);
@@ -785,16 +839,18 @@ addEventListener("resize", tilpas); tilpas();
 function startKamp() {
   point = { ræve: 0, slanger: 0 }; tid = 0; kampSlut = KAMPTID; spiller.drab = spiller.dødsfald = spiller.hoveder = 0; stime = 0;
   spiller.niveau = 0; vinder = null; træningTal = { skud: 0, træf: 0 }; profil.kampXp = 0;
-  const hold = træning() ? "ræve" : ind.side;                        // det hold, man har valgt i menuen
+  br.ryd();
+  const hold = træning() ? "ræve" : brSpil() ? "br0" : ind.side;     // det hold, man har valgt i menuen (battle royale: sit eget)
   if (hold !== spiller.hold) { spiller.hold = hold; lavSpillerFig(hold); }
   byggeri.ryd(); byggeri.træ = bygTil() ? BYG_START : 0;          // (alt det byggede fra sidste kamp forsvinder)
   lavBots(); botSpil.bombe = bombeSpil() ? bombe : null; visMærker(bombe, bombeSpil()); visKøb(undefined);
   if (bombeSpil()) bombe.startKamp();
   else if (zombieSpil()) { bombe.stop(); genopstå(); for (const b of bots) if (!b.zombie) b.spawn(); zombier.startKamp(); }
+  else if (brSpil()) { bombe.stop(); br.start(); brStart(); }
   else { bombe.stop(); genopstå(); for (const b of bots) b.spawn(); }
   iGang = true; if (!træning()) stat.kampe++; gemStatistik(stat);
   $("hud").classList.remove("skjult"); $("fortsæt").classList.remove("skjult"); $("start").textContent = "↻ Ny kamp";
-  if (!bombeSpil() && !zombieSpil()) hud.besked(ræs() ? `Våbenræs! Hvert drab giver dig et nyt våben — ${RÆKKE.length - 1} drab, og så vinder du med kniven`
+  if (!bombeSpil() && !zombieSpil() && !brSpil()) hud.besked(ræs() ? `Våbenræs! Hvert drab giver dig et nyt våben — ${RÆKKE.length - 1} drab, og så vinder du med kniven`
     : træning() ? `Træning! Skyd ${TRÆNING} mål så hurtigt du kan` + (ind.sværhed === "let" ? "" : " — de bevæger sig") : "Holdkamp! Første hold til 50 drab", 3000);   // (bomben har sin egen besked)
 }
 function slutKamp() {
@@ -820,6 +876,19 @@ function slutZombier() {
   document.exitPointerLock?.();
   $("slutOverskrift").textContent = "🧟 Zombierne fik jer";
   $("slutTekst").innerHTML = `I klarede ${zombieResultat} ${zombieResultat === 1 ? "bølge" : "bølger"} · rekord: ${stat.zombier}<br>Du: ${spiller.drab} zombier` + xpLinje();
+  $("slut").classList.remove("skjult"); $("hud").classList.add("skjult"); $("menu").classList.add("skjult");
+}
+// Battle royale er slut: din placering (nr. 1 er en sejr)
+function slutBR(vandt) {
+  if (!iGang) return;
+  iGang = false; pause = true;
+  const plads = vandt ? 1 : brPlads || bots.length + 1, alle = bots.length + 1;
+  if (vandt) stat.sejre++;
+  stat.royale = Math.min(stat.royale || 99, plads); gemStatistik(stat);
+  belønning(vandt ? 1000 : plads <= 3 ? 400 : 150, vandt && ["royale", 1], vandt && ["sejre", 1]);
+  document.exitPointerLock?.();
+  $("slutOverskrift").textContent = vandt ? "🏆 Sejr! Du er den sidste tilbage" : `Du blev nr. ${plads} af ${alle}`;
+  $("slutTekst").innerHTML = `Du: ${spiller.drab} drab, ${spiller.drab ? Math.round(100 * spiller.hoveder / spiller.drab) : 0} % hovedskud<br>Bedste placering: nr. ${stat.royale}` + xpLinje();
   $("slut").classList.remove("skjult"); $("hud").classList.add("skjult"); $("menu").classList.add("skjult");
 }
 // Træningen er slut: tiden, træfferne og hovedskuddene — og en rekord for hver sværhed
@@ -879,7 +948,7 @@ function skyder(id, nøgle, vis) {
 }
 knapper("valgSværhed", Object.entries(SVÆRHED).map(([k, v]) => [k, v.navn]), "sværhed");
 knapper("valgHold", [1, 2, 3, 4, 5].map(n => [n, `${n} mod ${n}`]), "hold");
-knapper("valgSpil", [["hold", "Holdkamp"], ["bombe", "Bombe"], ["ræs", "Våbenræs"], ["zombier", "🧟 Zombier"], ["træning", "Træning"]], "spiltype");
+knapper("valgSpil", [["hold", "Holdkamp"], ["bombe", "Bombe"], ["ræs", "Våbenræs"], ["zombier", "🧟 Zombier"], ["br", "🪂 Battle royale"], ["træning", "Træning"]], "spiltype");
 knapper("valgSide", [["ræve", "🦊 Ørkenrævene"], ["slanger", "🐍 Sandslangerne"]], "side");
 // sigtekornets farve (som i CS kan man vælge den, man bedst kan se)
 const sætSkFarve = () => document.documentElement.style.setProperty("--sk", ind.skFarve);
@@ -930,4 +999,4 @@ spiller.a = nyAktør(0, 6, 30, 0); spiller.a.pitch = -0.12;
 requestAnimationFrame(billede);
 if (location.search.includes("debug")) window.sk = { spiller, get bots() { return bots; }, verden, bane, kamera, ind, tick, skyd, startKamp, taster, hånd, scene, himmelLys, renderer,
   get vb() { return vb(); }, get point() { return point; }, kør() { pause = false; $("menu").classList.add("skjult"); }, stop() { pause = true; }, udrust, kast: kastGranat, vælg: id => skiftVåben(id), effekter, hud, spillerFig, get aktivt() { return aktivt; }, get projektiler() { return projektiler; },
-  steg(n) { for (let i = 0; i < n; i++) tick(TICK); }, tegn: nu => tegnBillede(nu), bombe, killcam, køretøjer, køretøjE, byggeri, skiftByg: på => skiftByg(på), skydNu() { skydHoldt = true; spillerSkyder(); skydHoldt = false; skydLåst = false; } };
+  steg(n) { for (let i = 0; i < n; i++) tick(TICK); }, tegn: nu => tegnBillede(nu), bombe, killcam, køretøjer, køretøjE, byggeri, br, skiftByg: på => skiftByg(på), skydNu() { skydHoldt = true; spillerSkyder(); skydHoldt = false; skydLåst = false; } };

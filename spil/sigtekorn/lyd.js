@@ -178,6 +178,13 @@ export function byg(pos) {
   const t = ctx.currentTime, m = kæde(pos, 0.45);
   for (const d of [0, 0.07]) { tone(m, t + d, 520 + Math.random() * 80, 260, 0.06, "triangle", 0.5); støjStød(m, t + d, 0.05, "bandpass", 1600, 1.5, 0.5, 0.04); }
 }
+// En kiste åbnes: en lille glitrende fanfare
+export function kiste(pos) {
+  if (!ctx) return;
+  const t = ctx.currentTime, m = kæde(pos, 0.5);
+  [1047, 1319, 1568, 2093].forEach((f, i) => tone(m, t + i * 0.07, f, f, 0.25, "triangle", 0.35));
+  støjStød(m, t, 0.4, "highpass", 6000, 1, 0.25, 0.35);
+}
 export function knæk(pos) {
   if (!ctx) return;
   const t = ctx.currentTime, m = kæde(pos, 0.7);

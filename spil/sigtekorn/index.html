@@ -84,6 +84,10 @@
   #bygBoks span.valgt { color: #fff; border-color: #6ab8ff; background: rgba(40, 90, 150, 0.6); }
   #bygBoks kbd { font: 700 12px system-ui; padding: 1px 5px; border-radius: 4px; background: #0006; margin-right: 4px; }
   #træ { position: absolute; right: 18px; bottom: 124px; padding: 4px 12px; border-radius: 10px; background: rgba(12, 10, 7, 0.45); font: 700 18px system-ui; color: #e8c080; } #træ.lavt { color: #ff6a4a; }
+  #stormSkær { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, rgba(120, 40, 220, 0.08) 35%, rgba(120, 40, 220, 0.5) 100%); }
+  #stormTekst { position: absolute; top: 54px; left: 50%; transform: translateX(-50%); padding: 3px 12px; border-radius: 8px; background: rgba(12, 10, 7, 0.5); font: 700 14px system-ui; color: #d8b8ff; white-space: nowrap; }
+  #kort { position: absolute; top: 12px; left: 12px; width: 150px; height: 150px; border-radius: 10px; border: 2px solid rgba(255, 255, 255, 0.25); }
+  .storm { color: #c08aff; }
   #køreHjælp { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); padding: 6px 14px; border-radius: 8px; background: rgba(10, 8, 6, 0.7); font: 600 15px system-ui; }
   #penge { position: absolute; left: 20px; bottom: 98px; font: 700 20px system-ui; color: #8fe08a; }
   .xp.penge { color: #8fe08a; top: 59%; }
@@ -166,6 +170,9 @@
   <div id="killcam" class="skjult"></div>
   <div id="penge" class="skjult"></div>
   <div id="køreHjælp" class="skjult"></div>
+  <div id="stormSkær" class="skjult"></div>
+  <div id="stormTekst" class="skjult"></div>
+  <canvas id="kort" width="150" height="150" class="skjult"></canvas>
   <div id="bygBoks" class="skjult"><span data-del="væg"><kbd>1</kbd> Væg</span><span data-del="gulv"><kbd>2</kbd> Gulv</span><span data-del="trappe"><kbd>3</kbd> Trappe</span></div>
   <div id="træ" class="skjult"></div>
   <div id="købsmenu" class="skjult"></div>
@@ -216,7 +223,7 @@
       <a href="../../">← Tilbage til spillene</a>
     </div>
     <p id="statLinje"></p>
-    <p class="hjælp"><kbd>W A S D</kbd> gå · <kbd>Mus</kbd> sigt · <kbd>Venstre klik</kbd> skyd · <kbd>Højre klik</kbd> kikkert / stik · <kbd>R</kbd> genlad · <kbd>E</kbd> læg / desarmer bomben · <kbd>B</kbd> køb (i Bombe) · <kbd>F</kbd> lommelygte (om natten) · <kbd>E</kbd> stig ind/ud af køretøjer · <kbd>G</kbd> byg (<kbd>1</kbd> væg, <kbd>2</kbd> gulv, <kbd>3</kbd> trappe) ·
+    <p class="hjælp"><kbd>W A S D</kbd> gå · <kbd>Mus</kbd> sigt · <kbd>Venstre klik</kbd> skyd · <kbd>Højre klik</kbd> kikkert / stik · <kbd>R</kbd> genlad · <kbd>E</kbd> læg / desarmer bomben · <kbd>B</kbd> køb (i Bombe) · <kbd>F</kbd> lommelygte (om natten) · <kbd>E</kbd> stig ind/ud af køretøjer (og åbn kister i battle royale) · <kbd>G</kbd> byg (<kbd>1</kbd> væg, <kbd>2</kbd> gulv, <kbd>3</kbd> trappe) ·
       <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> våben · <kbd>4</kbd> granat (venstre klik: langt, højre: kort) · <kbd>Q</kbd> sidste våben · <kbd>Mellemrum</kbd> eller <kbd>musehjul</kbd> hop · <kbd>Shift</kbd> gå stille ·
       <kbd>Ctrl</kbd> eller <kbd>C</kbd> duk (også i luften: så kommer man højere op) · <kbd>Tab</kbd> pointtavle · <kbd>Esc</kbd> pause.<br>Stå stille, når du skyder — og træk musen ned imod rekylen. Første hold til 50 drab vinder.</p>
   </div>

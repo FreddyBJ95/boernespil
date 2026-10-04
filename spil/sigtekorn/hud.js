@@ -53,8 +53,8 @@ export class Hud {
     this.el.drab.prepend(d); setTimeout(() => d.remove(), 6000);
     while (this.el.drab.children.length > 6) this.el.drab.lastChild.remove();
   }
-  besked(tekst, ms = 2200) {
-    this.el.besked.textContent = tekst; this.el.besked.classList.add("vis");
+  besked(tekst, ms = 2200, farve = "") {
+    this.el.besked.textContent = tekst; this.el.besked.style.color = farve; this.el.besked.classList.add("vis");
     clearTimeout(this.beskedT); this.beskedT = setTimeout(() => this.el.besked.classList.remove("vis"), ms);
   }
   // Killcam: hvem man ser fra, med hvilket våben, og hvor meget liv de havde
@@ -71,6 +71,14 @@ export class Hud {
     const tekst = vis ? `🌲 ${træ}${aktiv ? "" : " · G: byg"}` : "";
     if (tal.textContent !== tekst) tal.textContent = tekst;
     tal.classList.toggle("skjult", !vis); tal.classList.toggle("lavt", træ < pris);
+  }
+  // Battle royale: hvad stormen gør (øverst), et lilla skær, når man står i den — og kortet
+  storm(tekst, ude) {
+    const el = document.getElementById("stormTekst");
+    if (el.textContent !== (tekst || "")) el.textContent = tekst || "";
+    el.classList.toggle("skjult", !tekst);
+    document.getElementById("stormSkær").classList.toggle("skjult", !ude);
+    document.getElementById("kort").classList.toggle("skjult", !tekst);
   }
   // Hjælp til køretøjerne (tom tekst skjuler den)
   køreHjælp(tekst) {
@@ -114,11 +122,12 @@ export class Hud {
   }
   fart(v) { this.el.fart.textContent = v == null ? "" : `${Math.round(v / 0.0254)} u/s`; }
   // Pointtavlen (hold Tab): navn, drab, dødsfald og hovedskud
-  tavle(vis, kampfolk, holdNavne) {
+  tavle(vis, kampfolk, holdNavne, alleMod = false) {
     this.el.tavle.classList.toggle("skjult", !vis);
     if (!vis) return;
-    const rækker = h => kampfolk.filter(k => k.hold === h).sort((a, b) => b.drab - a.drab)
+    const rækker = h => kampfolk.filter(k => alleMod || k.hold === h).sort((a, b) => a.død - b.død || b.drab - a.drab)
       .map(k => `<tr class="${k.erSpiller ? "mig" : ""}${k.død ? " død" : ""}"><td>${k.navn}</td><td>${k.drab}</td><td>${k.dødsfald}</td><td>${k.drab ? Math.round(100 * k.hoveder / k.drab) : 0} %</td></tr>`).join("");
+    if (alleMod) { this.el.tavle.innerHTML = `<div class="hold"><h2>Alle mod alle</h2><table><tr><th>Navn</th><th>Drab</th><th>Død</th><th>Hoved</th></tr>${rækker()}</table></div>`; return; }   // (battle royale)
     this.el.tavle.innerHTML = ["ræve", "slanger"].map(h => `<div class="hold ${h}"><h2>${holdNavne[h]}</h2><table><tr><th>Navn</th><th>Drab</th><th>Død</th><th>Hoved</th></tr>${rækker(h)}</table></div>`).join("");
   }
   opdater(dt) {

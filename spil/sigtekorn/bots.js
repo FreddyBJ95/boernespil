@@ -21,6 +21,9 @@ const G = Math.PI / 180;
 const BOTVÅBEN = [["storm", 14], ["taktisk", 10], ["salve", 6], ["kamp", 5], ["mp", 9], ["sprøjte", 6], ["pump", 6], ["hagl", 4],
   ["snig", 3], ["jagt", 3], ["spejder", 4], ["lmg", 4], ["minigun", 1.5], ["raket", 1.5], ["armbrøst", 2]];
 const BOTPISTOL = [["pistol", 5], ["lydløs", 2], ["automat", 2], ["revolver", 1.5]];
+// Battle royale: kan en bot bruge våbnet fra kisten? (ellers får den et af sine egne)
+export const botKanBruge = id => [...BOTVÅBEN, ...BOTPISTOL].some(([v]) => v === id);
+export const botVåben = () => lodtrækning(BOTVÅBEN);
 function lodtrækning(liste) {
   let r = Math.random() * liste.reduce((s, [, w]) => s + w, 0);
   for (const [id, w] of liste) if ((r -= w) <= 0) return id;
@@ -58,7 +61,7 @@ const DRAGT = {
   slanger: { trøje: 0x55673a, bukser: 0x3d4a2b, vest: 0x2e3324, hoved: 0x4a5530, tørklæde: 0x2a3020, støvler: 0x1e1e1a },
 };
 function byggSoldat(hold) {
-  const d = DRAGT[hold], g = new THREE.Group(), mat = c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9 });
+  const d = DRAGT[hold] || DRAGT.ræve, g = new THREE.Group(), mat = c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9 });
   const hud = mat([0xd9a877, 0xb9805a, 0x8a5a3a, 0xe8c09a][Math.floor(Math.random() * 4)]);
   const kasse = (p, w, h, dd, m, x, y, z) => { const k = new THREE.Mesh(new THREE.BoxGeometry(w, h, dd), m); k.position.set(x, y, z); k.castShadow = true; p.add(k); return k; };
   const hofte = new THREE.Group(); hofte.position.y = 0.9; g.add(hofte);
@@ -116,7 +119,10 @@ export class Bot {
     this.fastTid = 0; this.fastPos = this.a.pos.clone(); this.lytte = null; this.strafe = 0; this.strafeTid = 0; this.dukker = false;
     this.post = null; this.holder = false; this.holdTil = 0; this.holdDuk = false; this.flygt = null; this.sidstHørt = -9; this.fase0 = Math.random() * 6;
     this.model.visible = true; this.model.rotation.set(0, 0, 0); this.fald = 0; this.fase = 0; this.trinTid = 0;
+    this.s.efterSpawn?.(this);                                        // (battle royale: en pistol og op i luften)
   }
+  // Battle royale: et nyt våben fra en kiste
+  fåVåben(id) { this.våben = nytVåben(id); if (this.våben.d.zoom) this.våben.kikkert = 1; }
   // En lyd i nærheden (et skud eller fodtrin) — er der ingen fjende i syne, går botten hen og kigger
   // (højst hvert andet sekund, ikke for langt væk — og ikke altid: en bot, der holder en post, bliver ofte, hvor den er)
   hør(pos, fra) {
@@ -151,6 +157,7 @@ export class Bot {
   tick(dt) {
     const nu = this.s.nu();
     if (this.død) { this.fald = Math.min(1, this.fald + dt * 2.5); return; }
+    if (this.a.svæver && this.s.svæv) return this.s.svæv(this, dt);   // (battle royale: i glideflyet på vej ned)
     if (this.s.træning?.()) return this.mål_(dt, nu);
     if (this.zombie) return this.zombieTick(dt, nu);
     if (this.våben) opdaterVåben(this.våben, dt);
@@ -194,7 +201,7 @@ export class Bot {
       if (d.nærkamp) { frem = l > d.rækkevidde * 0.7 ? 1 : 0; trykker = l < d.rækkevidde + 0.25 && afvig < 0.6; }   // kniv: løb hen og hug
       if ((this.strafeTid -= dt) <= 0) { this.strafeTid = 0.3 + Math.random() * 0.5; this.strafe = Math.random() < 0.5 ? -1 : 1; }
       duk = this.dukker && !d.nærkamp;
-      if (this.våben.skud <= 0) genlad(this.våben);
+      if (this.våben.skud <= 0 && !genlad(this.våben) && this.våben.reserve <= 0 && !this.våben.d.nærkamp) this.våben.reserve = this.våben.d.reserve ?? 60;   // (en bot, der lever længe, løber ikke tør)
     } else {
       // ---- gå efter vej-nettet (mod det, den har hørt, det sidste sted, den så fjenden, eller en post) — eller hold posten ----
       const p = this.næstePunkt(nu);
@@ -203,7 +210,7 @@ export class Bot {
         const [, , kx, kz] = this.post, yaw = Math.atan2(-(kx - this.a.pos.x), -(kz - this.a.pos.z)) + Math.sin(nu * 0.6 + this.fase0) * 0.3;
         this.drejMod(yaw, 0, dt); duk = this.holdDuk;
       }
-      if (this.våben && this.våben.skud < this.våben.d.magasin * 0.4) genlad(this.våben);
+      if (this.våben && this.våben.skud < this.våben.d.magasin * 0.4 && !genlad(this.våben) && this.våben.reserve <= 0 && !this.våben.d.nærkamp) this.våben.reserve = this.våben.d.reserve ?? 60;
       if (this.blokeret && (this.blokeret.væk || this.blokeret.midt.distanceTo(this.a.pos) > 5)) this.blokeret = null;
       if (this.blokeret && this.våben && !this.våben.d.granat) {     // en bygget del står i vejen: skyd (eller hug) den i stykker
         this.sigtPå(this.blokeret.midt, dt);

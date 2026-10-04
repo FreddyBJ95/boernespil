@@ -60,6 +60,10 @@ export const SKINS = {
     glød: g => { linjer(g, "#ff6a10", 30, 5, 43, 10); linjer(g, "#ffd040", 30, 1.5, 43, 10); } },
   galakse: { navn: "Galakse", sjælden: "legendarisk", mønster: g => { fyld(g, "#100828"); klatter(g, ["#4a1a7a", "#1a3a8a", "#8a2a7a", "#0a0418"], 60, 30, 90, 47, 26); },
     glød: g => { const r = tilfældig(53); for (let i = 0; i < 260; i++) { g.fillStyle = `rgba(255,255,255,${0.4 + r() * 0.6})`; g.fillRect(r() * S, r() * S, 1 + r() * 2.4, 1 + r() * 2.4); } } },
+  regnbue: { navn: "Regnbue", sjælden: "legendarisk", mønster: g => {
+    const farver = ["#ff3a3a", "#ff9a2a", "#ffe23a", "#4ad04a", "#3a9aff", "#8a4aff"], b = S / 6;
+    for (let i = -6; i < 18; i++) { g.fillStyle = farver[((i % 6) + 6) % 6]; g.beginPath(); g.moveTo(i * b, 0); g.lineTo(i * b + b, 0); g.lineTo(i * b + b - S, S); g.lineTo(i * b - S, S); g.fill(); }
+  }, lys: 1.15 },
 };
 
 // Et lærred med skinnets mønster (og et med det, der lyser) — laves kun én gang pr. skin

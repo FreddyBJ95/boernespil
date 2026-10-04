@@ -192,7 +192,7 @@ export class Byggeri {
     for (const nabo of del.nab) nabo.nab.delete(del);
     this.k.scene.remove(del.mesh); del.mesh.material.dispose();
     if (!effekt) return;
-    const op = new THREE.Vector3(0, 1, 0);                            // splinter og et knæk
+    const op = [0, 1, 0];                                             // splinter og et knæk (normalen som liste, ligesom fra kollisionen)
     for (let i = 0; i < 3; i++) this.k.effekter.nedslag(del.midt.clone().add(new THREE.Vector3((Math.random() - 0.5) * 2.5, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 2.5)), op, "træ", 2);
     this.k.lyd.knæk?.(del.midt);
     if (støtte) this.styrt();

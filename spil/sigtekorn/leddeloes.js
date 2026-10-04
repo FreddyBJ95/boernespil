@@ -26,14 +26,24 @@ const HOLDFARVER = {
   zombier: { uniform: 0x5e5a50, vest: 0x3a3028, hud: 0x8aa06a, vis: [] },             // grå, laset tøj og grønlig hud
 };
 const HUDFARVER = [0xd9a877, 0xb9805a, 0x8a5a3a, 0xe8c09a];
+// Battle royale: alle er på hvert sit "hold" (br1, br2 …) — og får hver sin farve på uniformen
+const BR_FARVER = [0x3a6ab8, 0xb83a3a, 0x7a3ab8, 0xd07a2a, 0x2a9a8a, 0xc8b030, 0x4a4a52, 0xd06aa0, 0x5aa03a, 0x8a5a3a, 0x2a4a8a, 0xe0e0e0];
+function farver(hold) {
+  if (!HOLDFARVER[hold]) {
+    const n = parseInt(hold.replace(/\D/g, ""), 10) || 0, u = BR_FARVER[n % BR_FARVER.length], v = new THREE.Color(u).multiplyScalar(0.6).getHex();
+    HOLDFARVER[hold] = n % 2 ? { uniform: u, vest: v, kasket: u, tørklæde: 0x222222, vis: ["kasket", "tørklæde"] } : { uniform: u, vest: v, hjelm: v, vis: ["hjelm", "briller"] };
+  }
+  return HOLDFARVER[hold];
+}
+export const holdFarve = hold => farver(hold).uniform;
 // materialerne deles af alle på samme hold (og hver hudfarve), så der ikke laves nye for hver soldat
 const matLager = new Map();
 function holdMat(hold, m, hud) {
   const nøgle = `${hold}:${m.name}:${m.name === "hud" ? hud : ""}`;
   if (!matLager.has(nøgle)) {
-    const ny = m.clone(), f = HOLDFARVER[hold][m.name];
+    const ny = m.clone(), f = farver(hold)[m.name];
     if (f !== undefined) ny.color.set(f);
-    if (m.name === "hud") ny.color.set(HOLDFARVER[hold].hud ?? HUDFARVER[hud]);
+    if (m.name === "hud") ny.color.set(farver(hold).hud ?? HUDFARVER[hud]);
     matLager.set(nøgle, ny);
   }
   return matLager.get(nøgle);
@@ -70,7 +80,7 @@ const OP = new THREE.Vector3(0, 1, 0), FREM = new THREE.Vector3(0, 0, -1), NED =
 export class Figur {
   constructor(hold) {
     this.hold = hold; this.model = new THREE.Group(); this.d = {};
-    const f = HOLDFARVER[hold], hud = Math.floor(Math.random() * HUDFARVER.length);
+    const f = farver(hold), hud = Math.floor(Math.random() * HUDFARVER.length);
     const kopi = n => { const o = proto[n].clone(); o.position.set(0, 0, 0); o.quaternion.identity();
       o.traverse(m => { if (m.isMesh) { m.material = holdMat(hold, m.material, hud); m.castShadow = true; m.frustumCulled = false; } }); return o; };
     for (const n of ["krop", "overarmR", "underarmR", "overarmL", "underarmL", "lårR", "skinnebenR", "lårL", "skinnebenL", "gevær", "snig", "pistol"]) { this.d[n] = kopi(n); this.model.add(this.d[n]); }
