@@ -63,6 +63,17 @@ export class Hud {
     if (el.innerHTML !== tekst) el.innerHTML = tekst;
     el.classList.toggle("skjult", !info);
   }
+  // Pengene i Bombe (og en lille "B: køb", så længe man kan købe)
+  pengeTal(penge, kanKøbe) {
+    const el = document.getElementById("penge"), tekst = penge === null ? "" : `$${penge}${kanKøbe ? " · B: køb" : ""}`;
+    if (el.textContent !== tekst) el.textContent = tekst;
+    el.classList.toggle("skjult", penge === null);
+  }
+  // Penge for et drab: "+$300" ved sigtekornet
+  penge(n) {
+    const el = document.createElement("div"); el.className = "xp penge"; el.textContent = `+$${n}`;
+    document.getElementById("hud").appendChild(el); setTimeout(() => el.remove(), 1300);
+  }
   // XP: et lille tal, der svæver op ved sigtekornet
   xp(n) {
     const el = document.createElement("div"); el.className = "xp"; el.textContent = `+${n} XP`;

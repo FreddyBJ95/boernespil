@@ -8,6 +8,8 @@
 // (Ørkenrævene) — eller ved bomben for at desarmere den (Sandslangerne).
 
 import * as THREE from "./three.js";
+import { nytVåben } from "./vaaben.js";
+import { START, KØBETID, RUNDE, nytUdstyr, botKøb, giv } from "./penge.js";
 
 export const RUNDER = 8;                                           // runder for at vinde
 const RUNDETID = 115, BOMBETID = 40, LÆGTID = 3.2, DESARMERTID = 5, FRYS = 3, PAUSE = 4.5;
@@ -21,14 +23,24 @@ export class Bombe {
     this.runder = { ræve: 0, slanger: 0 }; this.tilstand = "slut"; this.pause = 0;
   }
   startKamp() {
-    this.runder = { ræve: 0, slanger: 0 };
+    this.runder = { ræve: 0, slanger: 0 }; this.tabt = { ræve: 0, slanger: 0 };
+    for (const f of this.k.kampfolk()) { f.penge = START; f.udstyr = nytUdstyr(); }   // alle starter med $800 og en pistol
+    this.første = true;
     this.startRunde();
   }
   // En anden spiltype: ingen bombe på jorden
   stop() { this.tilstand = "færdig"; this.lagt = false; this.handling = null; this.model.visible = false; }
   // En ny runde: alle får liv igen, en af Ørkenrævene får bomben, og holdet vælger en plads (A eller B)
   startRunde() {
+    // udstyret: de døde starter forfra med en pistol — de overlevende beholder våben, granater og det, der er tilbage af vesten
+    for (const f of this.k.kampfolk()) {
+      if (!f.udstyr || f.død || this.første) f.udstyr = nytUdstyr();
+      else { f.udstyr.panser = Math.round(f.panser); if (!f.erSpiller) f.udstyr.granater = [...f.granater]; else f.udstyr.granater = this.k.spillerGranater(); }
+    }
+    this.første = false;
     this.k.nyRunde();
+    for (const b of this.k.kampfolk()) if (!b.erSpiller) { botKøb(b); this.udrustBot(b); }    // botterne køber med det samme
+    this.købTid = FRYS + KØBETID;
     this.tilstand = "frys"; this.frys = FRYS; this.tid = RUNDETID;
     this.lagt = false; this.timer = 0; this.ligger = null; this.sted = null; this.handling = null; this.næsteBip = 0;
     const ræve = this.k.kampfolk().filter(k => k.hold === "ræve");
@@ -50,6 +62,13 @@ export class Bombe {
     for (const b of this.k.kampfolk()) if (!b.erSpiller) { b.post = null; b.holder = false; b.vej = []; b.vejMål = null; }
   }
   get fryser() { return this.tilstand === "frys"; }
+  get kanKøbe() { return (this.tilstand === "frys" || this.tilstand === "spil") && this.købTid > 0; }   // de første sekunder af runden
+  // En bot får sit udstyr: hovedvåbnet (eller pistolen), granaterne og vesten
+  udrustBot(b) {
+    const u = b.udstyr;
+    b.sekundær = u.sekundær; b.våben = nytVåben(u.primær || u.sekundær); if (b.våben.d.zoom) b.våben.kikkert = 1;
+    b.granater = [...u.granater]; b.panser = u.panser;
+  }
   // Hvert tick: bomben, at lægge og desarmere, og hvem der har vundet runden. brug = spilleren holder E inde
   tick(dt, brug) {
     if (this.tilstand === "slut") {
@@ -60,6 +79,7 @@ export class Bombe {
       return;
     }
     if (this.tilstand === "færdig") return;
+    this.købTid -= dt;
     if (this.tilstand === "frys") { if ((this.frys -= dt) <= 0) this.tilstand = "spil"; return; }
     this.tid -= dt;
     const folk = this.k.kampfolk();
@@ -123,7 +143,7 @@ export class Bombe {
     if (h.type === "lægge") {
       this.lagt = true; this.timer = BOMBETID; this.næsteBip = BOMBETID - 1; this.lægger = h.hvem;
       this.ligger = h.hvem.a.pos.clone(); this.sted = this.påPlads(this.ligger); this.bærer = null; this.vis(this.ligger);
-      this.k.lyd.bip(990); this.k.hændelse?.("lagt", { hvem: h.hvem });
+      this.k.lyd.bip(990); this.k.hændelse?.("lagt", { hvem: h.hvem }); giv(h.hvem, RUNDE.lagt);
       this.k.hud.besked(sp.hold === "slanger" ? `💣 Bomben er lagt på ${this.sted}! Find den, og hold E inde for at desarmere` : `💣 Bomben er lagt på ${this.sted}!`, 2600);
       this.nyePoster();
     } else {
@@ -146,6 +166,13 @@ export class Bombe {
   }
   vinder(hold, grund) {
     this.runder[hold]++; this.tilstand = "slut"; this.pause = PAUSE; this.k.hændelse?.("runde", { hold });
+    // pengene: vinderne får mest (bomben, der springer, giver lidt ekstra), taberne mere for hver runde i træk, de har tabt
+    const taber = hold === "ræve" ? "slanger" : "ræve";
+    this.tabt[hold] = 0; this.tabt[taber]++;
+    for (const f of this.k.kampfolk()) {
+      if (f.hold === hold) giv(f, grund.startsWith("💥") ? RUNDE.bombe : RUNDE.sejr);
+      else giv(f, RUNDE.tab(this.tabt[taber]) + (taber === "ræve" && this.lagt ? RUNDE.lagtTab : 0));
+    }
     if (this.handling) { this.handling.hvem.handling = false; this.handling = null; }
     const navn = hold === "ræve" ? "Ørkenrævene" : "Sandslangerne";
     this.k.hud.besked(`${grund} — ${navn} vandt runden (${this.runder.ræve}–${this.runder.slanger})`, 3800);

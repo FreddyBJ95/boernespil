@@ -29,6 +29,7 @@ import { Bot, SVÆRHED, NAVNE, træfKrop, vinkel, hentSoldat } from "./bots.js";
 import { Figur, harLeddeløs } from "./leddeloes.js";
 import { Bombe, visMærker } from "./bombe.js";
 import { Killcam } from "./killcam.js";
+import { køb, drabPenge, giv as givPenge, tegnKøbsmenu, GRUPPER, nytUdstyr } from "./penge.js";
 import * as Lyd from "./lyd.js";
 import { Profil, UDFORDRINGER } from "./profil.js";
 import { SKINS, skinBillede } from "./skins.js";
@@ -148,11 +149,17 @@ const bombeSpil = () => ind.spiltype === "bombe";                  // bombe: run
 let følgNr = 0;                                                    // død i en bomberunde: hvilken holdkammerat man ser med hos
 let træningTal = { skud: 0, træf: 0 };                                // træningens skud og træffere (tæller ikke med i statistikken)
 // Plads 1, 2 og 3 (tasterne): i våbenræs er det rækkens våben, en pistol og kniven
-const plads = n => ræs() ? [ræsVåben(spiller), "pistol", "kniv"][n - 1] : [ind.udrustning.primær, ind.udrustning.sekundær, ind.udrustning.kniv][n - 1];
+const plads = n => ræs() ? [ræsVåben(spiller), "pistol", "kniv"][n - 1]
+  : bombeSpil() ? [spiller.udstyr?.primær, spiller.udstyr?.sekundær, ind.udrustning.kniv][n - 1]
+  : [ind.udrustning.primær, ind.udrustning.sekundær, ind.udrustning.kniv][n - 1];
+// Granaterne, man har (i Bombe dem, man har købt)
+const mineGranater = () => bombeSpil() ? (spiller.udstyr?.granater || []) : ind.udrustning.granater;
 // Udrustningen: plads 1 hovedvåben, 2 pistol, 3 nærkamp og 4 granaterne (i våbenræs: rækkens våben, pistol og kniv — til sidst kun kniven)
 function udrust() {
   const u = ind.udrustning, sidst = ræs() && ræsVåben(spiller) === "kniv";
-  const ids = !ræs() ? [u.primær, u.sekundær, u.kniv, ...u.granater.map(g => `granat_${g}`), "ingen"] : sidst ? ["kniv", "ingen"] : [ræsVåben(spiller), "pistol", "kniv", "ingen"];
+  const k = spiller.udstyr || nytUdstyr();                          // (i Bombe: det, man har købt)
+  const ids = bombeSpil() ? [k.primær, k.sekundær, u.kniv, ...k.granater.map(g => `granat_${g}`), "ingen"].filter(Boolean)
+    : !ræs() ? [u.primær, u.sekundær, u.kniv, ...u.granater.map(g => `granat_${g}`), "ingen"] : sidst ? ["kniv", "ingen"] : [ræsVåben(spiller), "pistol", "kniv", "ingen"];
   våbenSæt = {};
   for (const id of ids) våbenSæt[id] = nytVåben(id);
   aktivt = ids[0]; forrige = ids[1];
@@ -169,7 +176,7 @@ function genopstå() {
     if (d > bd) { bd = d; bedst = [x, z]; }
   }
   spiller.a = nyAktør(bedst[0], 0.01, bedst[1], 0);
-  spiller.liv = 100; spiller.panser = 100; spiller.død = false; beskyttet = 1.5;
+  spiller.liv = 100; spiller.panser = bombeSpil() ? spiller.udstyr?.panser ?? 0 : 100; spiller.død = false; beskyttet = 1.5;
   spillerFig?.nulstil();
   killcam.stop(); killcamVent = null; deleSynlige(true); hud.killcam(null);
   udrust(); hud.død(""); hud.kikkert(false);
@@ -201,6 +208,7 @@ const bombe = new Bombe({
   eksplosion: (pos, skytte) => { projektiler.eksplosion(pos, skytte, "Bomben", 700, 22); effekter.eksplosion(pos.clone().add(new THREE.Vector3(1.5, 0.5, 0))); effekter.eksplosion(pos.clone().add(new THREE.Vector3(-1, 1.2, 1))); },
   nyRunde: () => { ryddDele(); effekter.ryd(); projektiler.ryd(); genopstå(); for (const b of bots) b.spawn(); følgNr = 0; },
   slut: runder => { point = { ...runder }; slutKamp(); },
+  spillerGranater: () => mineGranater().filter(g => våbenSæt[`granat_${g}`]?.skud > 0),
   hændelse: (navn, d) => {                                          // XP for runder, og for at lægge eller desarmere bomben selv
     if (navn === "runde" && d.hold === spiller.hold) belønning(250, ["bombe", 1]);
     if ((navn === "lagt" || navn === "desarmeret") && d.hvem === spiller) belønning(200, ["desarmer", 1]);
@@ -348,6 +356,7 @@ function drab(drabsmand, offer, v, hoved) {
     const snig = v.d?.klasse === "snig" || v.id === "jagt";
     belønning(hoved ? 150 : 100, hoved && ["hoveder", 1], v.d?.nærkamp && ["kniv", 1], snig && ["snig", 1], stime === 5 && ["stime", 1]);
   }
+  if (bombeSpil()) { givPenge(drabsmand, drabPenge(v.d)); if (drabsmand === spiller) hud.penge(drabPenge(v.d)); }   // penge for drabet
   if (ræs()) ræsDrab(drabsmand, offer, v);
   else if (træning()) { if (point.ræve >= TRÆNING) slutKamp(); }        // træning: efter 30 mål er det slut
   else if (bombeSpil()) { /* bombe: runderne afgør det (bombe.js) */ }
@@ -432,6 +441,8 @@ addEventListener("keydown", e => {
   if (["Tab", "Space"].includes(e.code) || e.ctrlKey) e.preventDefault();   // Ctrl er duk: ingen Ctrl+S, Ctrl+D osv. midt i kampen
   if (e.repeat) return;
   taster.add(e.code);
+  if (e.code === "KeyB" && bombeSpil() && !spiller.død) { visKøb(købGruppe === undefined ? null : undefined); return; }
+  if (købGruppe !== undefined && /^Digit\d$/.test(e.code)) { vælgKøb(+e.code.slice(5)); return; }   // (købsmenuen er åben)
   if (e.code === "KeyR" && !spiller.død) { const v = vb(); if (genlad(v)) { hånd.genladStart(v.d.genlad); Lyd.genlad(v.d.genlad); hud.kikkert(false); } }
   const u = ind.udrustning;
   let ny = { Digit1: plads(1), Digit2: plads(2), Digit3: plads(3) }[e.code] || (e.code === "KeyQ" ? forrige : null);
@@ -439,9 +450,28 @@ addEventListener("keydown", e => {
   if (ny && ny !== aktivt && våbenSæt[ny] && !spiller.død && kanBruge(ny)) skiftVåben(ny);
 });
 addEventListener("keyup", e => taster.delete(e.code));
+// ---------- Købsmenuen i Bombe (penge.js): B åbner og lukker, et tal vælger en gruppe og så en ting ----------
+let købGruppe;                                                     // undefined = lukket, null = grupperne, ellers den åbne gruppe
+function visKøb(gruppe) {
+  if (gruppe !== undefined && !bombe.kanKøbe) { hud.besked("Der kan kun købes i starten af runden", 1500); gruppe = undefined; }
+  købGruppe = gruppe;
+  $("købsmenu").classList.toggle("skjult", gruppe === undefined);
+  if (gruppe !== undefined) tegnKøbsmenu($("købsmenu"), spiller, gruppe);
+}
+function vælgKøb(n) {
+  if (købGruppe === null) { if (n >= 1 && n <= GRUPPER.length) visKøb(n - 1); return; }
+  if (n === 0) return visKøb(null);
+  const id = GRUPPER[købGruppe].ting[n - 1];
+  if (!id || !bombe.kanKøbe) return;
+  if (!køb(spiller, id)) { Lyd.klik(); return; }
+  Lyd.bip(1200);
+  if (id === "vest") spiller.panser = 100;
+  else { const før = aktivt; udrust(); const ny = spiller.udstyr.primær === id || spiller.udstyr.sekundær === id ? id : før; if (våbenSæt[ny] && ny !== aktivt) skiftVåben(ny); }
+  tegnKøbsmenu($("købsmenu"), spiller, købGruppe);
+}
 // Plads 4: den næste granat, der er nogen tilbage af (tryk igen for den anden slags)
 function næsteGranat() {
-  const g = ind.udrustning.granater.map(x => `granat_${x}`).filter(id => våbenSæt[id]?.skud > 0);
+  const g = mineGranater().map(x => `granat_${x}`).filter(id => våbenSæt[id]?.skud > 0);
   if (!g.length) return null;
   return g[(g.indexOf(aktivt) + 1) % g.length];
 }
@@ -619,14 +649,18 @@ function tegnBillede(nu) {
   if (iGang && v) {
     hud.liv(spiller.liv, spiller.panser); hud.ammo(v, ræs() ? `${(spiller.niveau || 0) + 1}/${RÆKKE.length}` : "");
     if (træning()) hud.stilling(point.ræve, TRÆNING, tid);
-    else if (bombeSpil()) { const st = bombe.status(); hud.stilling(st.ræve, st.slanger, st.ur); hud.bombe(st, spiller); }
+    else if (bombeSpil()) {
+      const st = bombe.status(); hud.stilling(st.ræve, st.slanger, st.ur); hud.bombe(st, spiller);
+      if (købGruppe !== undefined && (!bombe.kanKøbe || spiller.død)) visKøb(undefined);
+    }
     else hud.stilling(point.ræve, point.slanger, kampSlut);
+    hud.pengeTal(bombeSpil() ? spiller.penge : null, bombeSpil() && bombe.kanKøbe && !spiller.død);
     // sigtekornet: væk når man sigter, og altid væk på snigskytterne (som i CS) — rødpunktet, når man kigger gennem et rødpunktsigte
     hud.sigte(unøjagtighed(v, a) + (v.d.spredning || 0), kamera.fov * G, innerHeight, !spiller.død && !zoomet && !(v.d.zoom && v.d.sigte !== "sigte"));
     hud.prik(zoomet && !kikkert && v.d.prik && hånd.sigte > 0.85);
     hud.kikkert(kikkert); hud.fart(ind.fart ? fart : null);
     // granaterne (ingen i våbenræs og træning)
-    hud.granater(ræs() || træning() ? [] : ind.udrustning.granater.map(g => ({ ikon: VÅBEN[`granat_${g}`].ikon, antal: våbenSæt[`granat_${g}`]?.skud ?? 0, aktiv: aktivt === `granat_${g}` })));
+    hud.granater(ræs() || træning() ? [] : mineGranater().map(g => ({ ikon: VÅBEN[`granat_${g}`].ikon, antal: våbenSæt[`granat_${g}`]?.skud ?? 0, aktiv: aktivt === `granat_${g}` })));
     hud.tavle(taster.has("Tab"), kampfolk, HOLD);
   }
   kamera.getWorldDirection(frem); Lyd.lytter(kamera.position, frem, op);
@@ -645,7 +679,7 @@ function startKamp() {
   spiller.niveau = 0; vinder = null; træningTal = { skud: 0, træf: 0 }; profil.kampXp = 0;
   const hold = træning() ? "ræve" : ind.side;                        // det hold, man har valgt i menuen
   if (hold !== spiller.hold) { spiller.hold = hold; lavSpillerFig(hold); }
-  lavBots(); botSpil.bombe = bombeSpil() ? bombe : null; visMærker(bombe, bombeSpil());
+  lavBots(); botSpil.bombe = bombeSpil() ? bombe : null; visMærker(bombe, bombeSpil()); visKøb(undefined);
   if (bombeSpil()) bombe.startKamp(); else { bombe.stop(); genopstå(); for (const b of bots) b.spawn(); }
   iGang = true; if (!træning()) stat.kampe++; gemStatistik(stat);
   $("hud").classList.remove("skjult"); $("fortsæt").classList.remove("skjult"); $("start").textContent = "↻ Ny kamp";
@@ -688,7 +722,7 @@ function lås_mus() {
   Lyd.start();
   // fuld skærm, og browseren må ikke bruge tasterne selv (ellers lukker Ctrl+W fanen, når man dukker og går frem)
   if (ind.fuldskærm && !document.fullscreenElement) document.documentElement.requestFullscreen?.({ navigationUI: "hide" })
-    .then(() => navigator.keyboard?.lock?.(["ControlLeft", "ControlRight", "KeyW", "KeyA", "KeyS", "KeyD", "KeyQ", "KeyR", "KeyC", "KeyE", "Space", "Tab", "Digit1", "Digit2", "Digit3"]))
+    .then(() => navigator.keyboard?.lock?.(["ControlLeft", "ControlRight", "KeyW", "KeyA", "KeyS", "KeyD", "KeyQ", "KeyR", "KeyC", "KeyE", "KeyB", "Space", "Tab", "Digit1", "Digit2", "Digit3"]))
     .catch(() => {});
   const fejl = () => hud.besked("Musen kunne ikke fanges — åbn spillet i Chrome eller Edge", 4000);
   const igen = () => { try { lærred.requestPointerLock()?.catch?.(fejl); } catch (_) { fejl(); } };
