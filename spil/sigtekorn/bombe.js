@@ -123,11 +123,11 @@ export class Bombe {
     if (h.type === "lægge") {
       this.lagt = true; this.timer = BOMBETID; this.næsteBip = BOMBETID - 1; this.lægger = h.hvem;
       this.ligger = h.hvem.a.pos.clone(); this.sted = this.påPlads(this.ligger); this.bærer = null; this.vis(this.ligger);
-      this.k.lyd.bip(990);
+      this.k.lyd.bip(990); this.k.hændelse?.("lagt", { hvem: h.hvem });
       this.k.hud.besked(sp.hold === "slanger" ? `💣 Bomben er lagt på ${this.sted}! Find den, og hold E inde for at desarmere` : `💣 Bomben er lagt på ${this.sted}!`, 2600);
       this.nyePoster();
     } else {
-      this.timer = 0; this.lagt = false; this.k.lyd.bip(520);
+      this.timer = 0; this.lagt = false; this.k.lyd.bip(520); this.k.hændelse?.("desarmeret", { hvem: h.hvem });
       this.vinder("slanger", "✂️ Bomben blev desarmeret");
     }
   }
@@ -145,7 +145,7 @@ export class Bombe {
     }
   }
   vinder(hold, grund) {
-    this.runder[hold]++; this.tilstand = "slut"; this.pause = PAUSE;
+    this.runder[hold]++; this.tilstand = "slut"; this.pause = PAUSE; this.k.hændelse?.("runde", { hold });
     if (this.handling) { this.handling.hvem.handling = false; this.handling = null; }
     const navn = hold === "ræve" ? "Ørkenrævene" : "Sandslangerne";
     this.k.hud.besked(`${grund} — ${navn} vandt runden (${this.runder.ræve}–${this.runder.slanger})`, 3800);

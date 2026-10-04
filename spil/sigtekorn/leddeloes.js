@@ -6,6 +6,7 @@
 //   falder(skud)       soldaten falder fra hinanden         nulstil()         hel igen (når den starter forfra)
 
 import * as THREE from "./three.js";
+import { sætSkin as skinPå } from "./skins.js";
 import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
 import { ramKasse } from "./verden.js";
 import { løsDel } from "./dele.js";
@@ -223,6 +224,7 @@ export class Figur {
         const roterer = m.roterer?.clone(true); if (roterer) obj.add(roterer);          // minigunnens løb, der drejer rundt
         obj.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
         this.model.add(obj);
+        if (this.skin && this.skin !== "standard") skinPå(obj, this.skin);     // et skin på våbnet (se skins.js)
         this.våbenModeller[id] = { obj, roterer, greb: m.greb, forgreb: m.forgreb };
         this.d[`våben_${id}`] = obj;
       });

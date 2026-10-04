@@ -29,6 +29,8 @@ import { Bot, SVÆRHED, NAVNE, træfKrop, vinkel, hentSoldat } from "./bots.js";
 import { Figur, harLeddeløs } from "./leddeloes.js";
 import { Bombe, visMærker } from "./bombe.js";
 import * as Lyd from "./lyd.js";
+import { Profil, UDFORDRINGER } from "./profil.js";
+import { SKINS, skinBillede } from "./skins.js";
 import { Hud, læsStatistik, gemStatistik, statistikTekst } from "./hud.js";
 
 const $ = id => document.getElementById(id);
@@ -110,6 +112,7 @@ const hånd = new Hånd(t);
 hånd.lavMiljø(renderer);
 const hud = new Hud();
 let stat = læsStatistik();
+const profil = new Profil();                                       // XP, niveau, rang, udfordringer og skins (profil.js)
 const projektiler = new Projektiler({
   scene, verden, effekter, lyd: Lyd, kampfolk: () => kampfolk, nu: () => tid,
   træf: (k, o, r, maks) => træfKæmper(k, o, r, maks),
@@ -196,6 +199,10 @@ const bombe = new Bombe({
   eksplosion: (pos, skytte) => { projektiler.eksplosion(pos, skytte, "Bomben", 700, 22); effekter.eksplosion(pos.clone().add(new THREE.Vector3(1.5, 0.5, 0))); effekter.eksplosion(pos.clone().add(new THREE.Vector3(-1, 1.2, 1))); },
   nyRunde: () => { ryddDele(); effekter.ryd(); projektiler.ryd(); genopstå(); for (const b of bots) b.spawn(); følgNr = 0; },
   slut: runder => { point = { ...runder }; slutKamp(); },
+  hændelse: (navn, d) => {                                          // XP for runder, og for at lægge eller desarmere bomben selv
+    if (navn === "runde" && d.hold === spiller.hold) belønning(250, ["bombe", 1]);
+    if ((navn === "lagt" || navn === "desarmeret") && d.hvem === spiller) belønning(200, ["desarmer", 1]);
+  },
 });
 // Små grønne pile over ens holdkammerater, så man ikke skyder efter dem
 const pilTekstur = (() => { const c = document.createElement("canvas"); c.width = c.height = 64; const g = c.getContext("2d"); g.fillStyle = "#7dff6a"; g.strokeStyle = "#0a2a0a"; g.lineWidth = 4; g.beginPath(); g.moveTo(10, 14); g.lineTo(54, 14); g.lineTo(32, 50); g.closePath(); g.fill(); g.stroke(); return new THREE.CanvasTexture(c); })();
@@ -210,6 +217,8 @@ function lavBots() {
     for (let i = 0; i < ind.hold - 1; i++) bots.push(new Bot(botSpil, spiller.hold, navne.pop()));
     for (let i = 0; i < ind.hold; i++) bots.push(new Bot(botSpil, andet, navne.pop()));
   }
+  const skins = Object.keys(SKINS).filter(id => id !== "standard");
+  for (const b of bots) if (b.fig) b.fig.skin = Math.random() < 0.35 ? skins[Math.floor(Math.random() * skins.length)] : "standard";   // nogle botter har et skin
   for (const b of bots) if (b.hold === spiller.hold) {
     const pil = new THREE.Sprite(new THREE.SpriteMaterial({ map: pilTekstur, depthTest: false, transparent: true })); pil.scale.setScalar(0.32); pil.position.y = 2.25; pil.renderOrder = 5;
     b.model.add(pil);
@@ -326,11 +335,24 @@ function drab(drabsmand, offer, v, hoved) {
   if (drabsmand === spiller && !træning()) {                         // (træningen tæller ikke med i statistikken)
     stat.drab++; if (hoved) stat.hoved++; stime++; stat.bedsteStime = Math.max(stat.bedsteStime, stime);
     if (stime >= 3 && stime % 1 === 0) hud.besked(stime >= 5 ? `🔥 ${stime} i træk!` : `${stime} i træk`, 1500);
+    const snig = v.d?.klasse === "snig" || v.id === "jagt";
+    belønning(hoved ? 150 : 100, hoved && ["hoveder", 1], v.d?.nærkamp && ["kniv", 1], snig && ["snig", 1], stime === 5 && ["stime", 1]);
   }
   if (ræs()) ræsDrab(drabsmand, offer, v);
   else if (træning()) { if (point.ræve >= TRÆNING) slutKamp(); }        // træning: efter 30 mål er det slut
   else if (bombeSpil()) { /* bombe: runderne afgør det (bombe.js) */ }
   else if (point[drabsmand.hold] >= MÅL) slutKamp();
+}
+// XP og udfordringer: et lille "+100 XP" ved sigtekornet — og en besked, når man stiger et niveau eller klarer en udfordring
+function belønning(xp, ...udfordringer) {
+  const klaret = [];
+  if (xp) {
+    hud.xp(xp);
+    const r = profil.giv(xp); klaret.push(...r.klaret);
+    if (r.op) hud.besked(`⭐ Niveau ${r.op.niveau} — ${r.op.rang}`, 2600);
+  }
+  for (const u of udfordringer) if (u) klaret.push(...profil.tæl(u[0], u[1]));
+  for (const u of klaret) setTimeout(() => hud.besked(`🏆 ${u.navn} klaret — nyt skin: ${SKINS[u.skin].navn}`, 3200), 1200);
 }
 // Våbenræs: drabsmanden får det næste våben (og den, der bliver stukket med en kniv, går et våben tilbage).
 // Stillingen er det bedste våben på hvert hold
@@ -603,7 +625,7 @@ addEventListener("resize", tilpas); tilpas();
 // ---------- Kampen: start, pause og slut ----------
 function startKamp() {
   point = { ræve: 0, slanger: 0 }; tid = 0; kampSlut = KAMPTID; spiller.drab = spiller.dødsfald = spiller.hoveder = 0; stime = 0;
-  spiller.niveau = 0; vinder = null; træningTal = { skud: 0, træf: 0 };
+  spiller.niveau = 0; vinder = null; træningTal = { skud: 0, træf: 0 }; profil.kampXp = 0;
   const hold = træning() ? "ræve" : ind.side;                        // det hold, man har valgt i menuen
   if (hold !== spiller.hold) { spiller.hold = hold; lavSpillerFig(hold); }
   lavBots(); botSpil.bombe = bombeSpil() ? bombe : null; visMærker(bombe, bombeSpil());
@@ -621,10 +643,11 @@ function slutKamp() {
   const vandt = vinder ? vinder.hold === spiller.hold : bedst === spiller.hold, uafgjort = !vinder && point.ræve === point.slanger;
   if (vandt) stat.sejre++;
   gemStatistik(stat);
+  belønning(vandt ? 600 : 200, vandt && ["sejre", 1], vinder === spiller && ["ræs", 1]);
   document.exitPointerLock?.();
   $("slutOverskrift").textContent = vinder ? (vinder === spiller ? "🏆 Du vandt våbenræset!" : `${vinder.navn} vandt våbenræset`)
     : uafgjort ? "Uafgjort!" : `${vandt ? "🏆 " : ""}${bedst === "ræve" ? "Ørkenrævene" : "Sandslangerne"} vandt!`;
-  $("slutTekst").innerHTML = `${point.ræve} – ${point.slanger}<br>Du: ${spiller.drab} drab, ${spiller.dødsfald} gange død, ${spiller.drab ? Math.round(100 * spiller.hoveder / spiller.drab) : 0} % hovedskud`;
+  $("slutTekst").innerHTML = `${point.ræve} – ${point.slanger}<br>Du: ${spiller.drab} drab, ${spiller.dødsfald} gange død, ${spiller.drab ? Math.round(100 * spiller.hoveder / spiller.drab) : 0} % hovedskud` + xpLinje();
   $("slut").classList.remove("skjult"); $("hud").classList.add("skjult"); $("menu").classList.add("skjult");
 }
 // Træningen er slut: tiden, træfferne og hovedskuddene — og en rekord for hver sværhed
@@ -635,11 +658,12 @@ function slutTræning() {
   const før = stat.træning[ind.sværhed], rekord = point.ræve >= TRÆNING && (!før || tid < før);
   if (rekord) stat.træning[ind.sværhed] = tid;
   gemStatistik(stat);
+  if (point.ræve >= TRÆNING) belønning(200, tid < 30 && ["træning", 1]);
   document.exitPointerLock?.();
   $("slutOverskrift").textContent = point.ræve < TRÆNING ? "Træningen blev stoppet" : rekord ? "🏆 Ny rekord!" : "Træning færdig";
   $("slutTekst").innerHTML = `${tid.toFixed(1).replace(".", ",")} sekunder · ${(tid / Math.max(1, point.ræve)).toFixed(2).replace(".", ",")} s pr. mål<br>` +
     `${skud ? Math.round(100 * træf / skud) : 0} % træffere · ${point.ræve ? Math.round(100 * spiller.hoveder / point.ræve) : 0} % hovedskud` +
-    (før && !rekord ? `<br>Din rekord: ${før.toFixed(1).replace(".", ",")} sekunder` : "");
+    (før && !rekord ? `<br>Din rekord: ${før.toFixed(1).replace(".", ",")} sekunder` : "") + xpLinje();
   $("slut").classList.remove("skjult"); $("hud").classList.add("skjult"); $("menu").classList.add("skjult");
 }
 // Fang musen — med rå bevægelse (uden Windows’ museacceleration), hvis browseren kan, så sigtet er præcist
@@ -665,6 +689,7 @@ $("fortsæt").addEventListener("click", () => { gemIndst(); lås_mus(); });
 $("igen").addEventListener("click", () => { $("slut").classList.add("skjult"); startKamp(); lås_mus(); });
 $("tilMenu").addEventListener("click", () => { $("slut").classList.add("skjult"); $("fortsæt").classList.add("skjult"); $("start").textContent = "▶ Start kamp"; visMenu(); });
 $("klik").addEventListener("click", lås_mus);
+hånd.sætSkin(profil.skin); tegnProfil();
 $("start").disabled = false; $("start").textContent = "▶ Start kamp";      // banen og modellerne er hentet: klar
 // ---------- Menuen ----------
 function knapper(id, valg, nøgle, efter) {
@@ -697,7 +722,33 @@ knapper("valgLemmer", [[true, "Ja"], [false, "Nej"]], "egneLemmer");
 skyder("følsomhed", "følsomhed", v => v.toFixed(2));
 skyder("synsfelt", "synsfelt", v => `${v}°`);
 skyder("lydstyrke", "lydstyrke", v => `${Math.round(v * 100)} %`);
-function visMenu() { $("statLinje").textContent = statistikTekst(stat); $("menu").classList.remove("skjult"); }
+function visMenu() { $("statLinje").textContent = statistikTekst(stat); tegnProfil(); $("menu").classList.remove("skjult"); }
+// XP i den kamp, man lige har spillet — og niveauet
+const xpLinje = () => { const n = profil.niveau; return `<br><span class="xpLinje">+${profil.kampXp} XP · niveau ${n.niveau} · ${n.rang}</span>`; };
+// Profilen øverst i menuen: niveau, rang og hvor langt der er til næste niveau
+function tegnProfil() {
+  const n = profil.niveau;
+  $("profil").innerHTML = `<span class="rang">⭐ Niveau ${n.niveau} · <b>${n.rang}</b></span><i class="xpBjælke"><b style="width:${Math.round(100 * n.rest / n.krav)}%"></b></i>
+    <span class="xpTal">${n.rest} / ${n.krav} XP</span><button class="stor anden" id="visUdfordringer">🏆 Udfordringer og skins</button>`;
+  $("visUdfordringer").addEventListener("click", visUdfordringer);
+}
+// Udfordringerne (med fremskridt) og skinsene — de skins, man har låst op, kan man vælge til sine våben
+function visUdfordringer() {
+  const v = $("vælger"), låst = profil.skins;
+  v.innerHTML = `<div class="vælger-kort"><h2>Udfordringer</h2><div class="udfordringer">${UDFORDRINGER.map(u => {
+    const n = Math.min(u.mål, profil.tal[u.id] || 0);
+    return `<div class="udfordring${n >= u.mål ? " klaret" : ""}"><b>${n >= u.mål ? "✅" : "🔒"} ${u.navn}</b><span>${u.tekst}</span><i><b style="width:${Math.round(100 * n / u.mål)}%"></b></i><small>${n} / ${u.mål} · skin: ${SKINS[u.skin].navn}</small></div>`;
+  }).join("")}</div><h2>Skins på dine våben</h2><div class="skins">${Object.entries(SKINS).map(([id, s]) =>
+    `<button class="skin${profil.skin === id ? " valgt" : ""}${låst.includes(id) ? "" : " låst"}" data-skin="${id}" style="--s:${SJÆLDEN[s.sjælden]?.farve || "#888"}">
+      ${s.mønster ? `<img src="${skinBillede(id)}" alt="">` : "<span class='ingen'>—</span>"}<b>${låst.includes(id) ? "" : "🔒 "}${s.navn}</b></button>`).join("")}</div>
+    <button class="stor anden luk">Tilbage</button></div>`;
+  v.classList.remove("skjult");
+  v.querySelectorAll(".skin").forEach(k => k.addEventListener("click", () => {
+    if (!låst.includes(k.dataset.skin)) return;
+    profil.skin = k.dataset.skin; profil.gem(); hånd.sætSkin(profil.skin); Lyd.bip(); visUdfordringer();
+  }));
+  v.querySelector(".luk").addEventListener("click", () => v.classList.add("skjult"));
+}
 visMenu();
 // før kampen: kameraet kigger ud over midten af byen
 spiller.a = nyAktør(0, 6, 30, 0); spiller.a.pitch = -0.12;
