@@ -3,6 +3,10 @@
 // (verden.js) er enkel. Til sidst laves et vej-net, som botterne går efter.
 // En ny bane: lav baner/<navn>.js (se stoevbyen.js), tilføj den i BANER herunder og i katalog.js.
 // steder i banens fil er bombepladserne A og B: [x, z, radius].
+// natLamper: gadelamper, der kun står der om natten: [x, z, højde, watt] — og storm: "sand", "regn" eller "sne".
+
+// Natten: månen og en næsten sort himmel (også til Blender, når natlyset bages)
+export const NAT = { sol: [-0.35, 0.62, -0.5], solStyrke: 0.32, solFarve: 0x8aa4d8, horisont: [0.012, 0.016, 0.03], zenit: [0.003, 0.005, 0.012], himmelLys: 0.04 };
 
 import * as THREE from "./three.js";
 import stoevbyen from "./baner/stoevbyen.js";
@@ -132,7 +136,7 @@ const KUGLEMAT = { sandsten: "sten", puds: "sten", fliser: "sten", sand: "sand",
   galleri: "sten", sne: "sand", klippe: "sten", sten: "sten", is: "sten", stammer: "træ", tagSort: "træ", panelRød: "træ", panelGul: "træ", panelBrun: "træ", panelHvid: "træ" };
 
 // ---------- Byg en bane (id fra katalog.js) ----------
-export function lavBane(scene, verden, t, id = "stoevbyen") {
+export function lavBane(scene, verden, t, id = "stoevbyen", vejr = "dag") {
   const def = BANER[id] || BANER.stoevbyen;
   const mat = lavMaterialer(t), b = new Bygger();
   const solid = (x0, y0, z0, x1, y1, z1, m, o = {}) => { b.kasse(x0, y0, z0, x1, y1, z1, m, o); if (o.kollision !== false) verden.tilføj(x0, y0, z0, x1, y1, z1, KUGLEMAT[m] || "sten"); };
@@ -140,13 +144,17 @@ export function lavBane(scene, verden, t, id = "stoevbyen") {
   const masker = b.færdig(scene, mat);
   lavTønder(scene, info.tønder || [], t);
   lavLamper(scene, info.lamper || []);
+  // om natten: gadelamperne (de bages med i natlyset)
+  const natLamper = vejr === "nat" ? (def.natLamper || []).map(([x, z, h, w]) => [x, h - 0.25, z, h, w]) : [];
+  if (natLamper.length) lavNatLamper(scene, def.natLamper);
   lavPalmer(scene, verden, t, info.palmer || []);
   lavGraner(scene, verden, t, info.graner || []);
   // det, der kun er til at se på (fx vand og et skib, eller sne der falder) — kun i browseren, ikke når banen gemmes til Blender
   const pynt = typeof document !== "undefined" ? info.pynt?.({ scene, THREE, t, hash }) : null;
   const knuder = lavVejnet(verden, info.erFast || (() => false), info.grænse, info.ekstraKnuder || []);
-  return { id: BANER[id] ? id : "stoevbyen", navn: def.navn, knuder, erFast: info.erFast, masker, start: def.start, poster: def.poster, omveje: def.omveje || [], steder: def.steder || {}, postVægt: def.postVægt || (() => 1), lamper: info.lamper || [], grænse: info.grænse,
-    vejr: def.vejr || null, opdater: pynt?.opdater || null };
+  return { id: BANER[id] ? id : "stoevbyen", navn: def.navn, knuder, erFast: info.erFast, masker, start: def.start, poster: def.poster, omveje: def.omveje || [], steder: def.steder || {}, postVægt: def.postVægt || (() => 1), lamper: [...(info.lamper || []), ...natLamper], grænse: info.grænse,
+    vejr: vejr === "nat" ? { ...(def.vejr?.lampeFarve ? { lampeFarve: def.vejr.lampeFarve } : {}), ...NAT } : def.vejr || null,
+    storm: def.storm || "regn", opdater: pynt?.opdater || null };
 }
 
 // Tønder: runde, med to ringe (kun til at se på — kollisionen er en kasse)
@@ -172,6 +180,24 @@ function lavLamper(scene, lamper) {
     const s = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.2, 0.14, 16, 1, true), skærm); s.castShadow = true;
     const p = new THREE.Mesh(new THREE.SphereGeometry(0.055, 12, 8), pære); p.position.y = -0.06;
     g.add(l, s, p); scene.add(g);
+  }
+}
+// Gadelamper om natten: en sort mast, en arm og en lygte med en varm pære, der lyser lidt op omkring sig
+function lavNatLamper(scene, lamper) {
+  if (typeof document === "undefined") return;                     // (når banen gemmes til Blender, er kun lyset med)
+  const metal = new THREE.MeshStandardMaterial({ color: 0x1c1c1e, roughness: 0.5, metalness: 0.7 });
+  const pære = new THREE.MeshBasicMaterial({ color: 0xffe0a8 });
+  const c = document.createElement("canvas"); c.width = c.height = 64;
+  const g = c.getContext("2d"), grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grad.addColorStop(0, "rgba(255,220,160,0.9)"); grad.addColorStop(0.3, "rgba(255,200,130,0.35)"); grad.addColorStop(1, "rgba(255,200,130,0)");
+  g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
+  const glød = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
+  for (const [x, z, h] of lamper) {
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, h, 8), metal); mast.position.set(x, h / 2, z); mast.castShadow = true;
+    const lygte = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.2, 0.28, 8), metal); lygte.position.set(x, h + 0.05, z);
+    const p = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), pære); p.position.set(x, h - 0.12, z);
+    const s = new THREE.Sprite(glød); s.position.set(x, h - 0.15, z); s.scale.setScalar(2.2);
+    scene.add(mast, lygte, p, s);
   }
 }
 // Palmer: en buet stamme og en krone af lange blade

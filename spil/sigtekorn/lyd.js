@@ -21,6 +21,25 @@ export function start() {
   // hvid støj, som skuddene og trinene laves af
   støj = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
   const d = støj.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  if (ønsketVejr) startVejr();
+}
+
+// Vejret: en løkke af susende støj (regn: lys og jævn · vind: dyb og svingende) — og torden
+let ønsketVejr = null, vejrKilde = null;
+export function vejrLyd(slags) { ønsketVejr = slags; if (ctx) startVejr(); }
+function startVejr() {
+  if (vejrKilde) { vejrKilde.stop(); vejrKilde = null; }
+  if (!ønsketVejr) return;
+  const regn = ønsketVejr === "regn", s = ctx.createBufferSource(); s.buffer = støj; s.loop = true;
+  const f = ctx.createBiquadFilter(); f.type = regn ? "highpass" : "lowpass"; f.frequency.value = regn ? 1500 : 420;
+  const g = ctx.createGain(); g.gain.value = regn ? 0.1 : 0.16;
+  if (!regn) { const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 0.13; lg.gain.value = 0.09; lfo.connect(lg); lg.connect(g.gain); lfo.start(); }
+  s.connect(f); f.connect(g); g.connect(ud); s.start(); vejrKilde = s;
+}
+export function torden(forsinkelse = 0.5) {
+  if (!ctx) return;
+  const t = ctx.currentTime + forsinkelse, m = kæde(null, 0.9);
+  støjStød(m, t, 3, "lowpass", 140, 0.7, 1.5, 2.8); tone(m, t, 55, 28, 1.8, "sine", 0.5);
 }
 
 // Lytteren følger kameraet (position og retning)

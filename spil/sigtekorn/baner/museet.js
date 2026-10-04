@@ -168,4 +168,7 @@ function byg({ b, solid, verden }) {
 // Lyset: lamperne er hvidere end i de andre baner (som i et rigtigt museum)
 const vejr = { lampeFarve: [1.0, 0.9, 0.76] };
 
-export default { navn: "Museet", vejr, fotos: ["sandsten", "fliser", "beton", "panel"], start: START, poster: POSTER, omveje: OMVEJE, steder: STEDER, byg };
+// Gadelamper om natten i gården og lysgården: [x, z, højde, watt] — og stormen er regn med lyn og torden
+const NATLAMPER = [[-30, 25.5, 4.5, 150], [-14, 25.5, 4.5, 150], [14, 25.5, 4.5, 150], [30, 25.5, 4.5, 150], [-24, 34, 4.5, 150], [24, 34, 4.5, 150], [-6, -19, 4, 120], [6, 4, 4, 120]];
+
+export default { navn: "Museet", natLamper: NATLAMPER, storm: "regn", vejr, fotos: ["sandsten", "fliser", "beton", "panel"], start: START, poster: POSTER, omveje: OMVEJE, steder: STEDER, byg };

@@ -8,9 +8,9 @@ import * as THREE from "./three.js";
 // Samme kontrolsum som blender/eksporter_bane.mjs
 const kontrolsum = p => { let s = 0; for (let i = 0; i < p.length; i++) s += p[i] * ((i % 7) + 1); return Math.round(s); };
 
-export async function hentLys(masker, bane = "stoevbyen") {
+export async function hentLys(masker, bane = "stoevbyen", nat = false) {
   try {
-    const fil = bane === "stoevbyen" ? "modeller/lys" : `modeller/lys_${bane}`;      // (Støvbyens filer hedder bare lys.*)
+    const fil = (bane === "stoevbyen" ? "modeller/lys" : `modeller/lys_${bane}`) + (nat ? "_nat" : "");   // (Støvbyens filer hedder bare lys.*)
     const [info, bin, billede] = await Promise.all([
       fetch(`${fil}.json`).then(r => r.json()),
       fetch(`${fil}.bin`).then(r => r.arrayBuffer()),

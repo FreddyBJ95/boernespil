@@ -268,4 +268,8 @@ const vejr = {
 // Bombepladserne (tættere på Sandslangernes start, som i CS): A mellem savværket og kontoret, B nord i skoven
 const STEDER = { A: [36, -13, 6], B: [-38, -20, 7] };
 
-export default { navn: "Fjeldbyen", steder: STEDER, fotos: ["sne", "klippe", "panel"], start: START, poster: POSTER, omveje: OMVEJE, postVægt, vejr, byg };
+// Gadelamper om natten: [x, z, højde, watt] — og stormen er en snestorm
+const NATLAMPER = [[-10, -8, 4, 120], [10, 8, 4, 120], [-10, 8, 4, 120], [10, -8, 4, 120], [-8, -44.5, 4, 120], [8, -44.5, 4, 120], [-8, 44.5, 4, 120], [8, 44.5, 4, 120],
+  [32, -15, 4, 120], [32, 15, 4, 120], [-23, -14, 4, 120], [-23, 20, 4, 120], [23, -12, 4, 120], [23, 21, 4, 120], [-38, -9, 4, 120], [-38, 9, 4, 120]];
+
+export default { navn: "Fjeldbyen", natLamper: NATLAMPER, storm: "sne", steder: STEDER, fotos: ["sne", "klippe", "panel"], start: START, poster: POSTER, omveje: OMVEJE, postVægt, vejr, byg };

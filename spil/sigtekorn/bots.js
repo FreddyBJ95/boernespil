@@ -126,7 +126,7 @@ export class Bot {
   kanSe(f, nu) {
     if (nu < this.blindTil) return false;                                // blændet af en blændgranat
     const øje = this.øje(), d = Math.hypot(f.a.pos.x - øje.x, f.a.pos.z - øje.z);
-    if (d > 90) return false;
+    if (d > (this.s.synsvidde?.() ?? 90)) return false;               // (kortere om natten og i storm)
     const ret = Math.atan2(-(f.a.pos.x - øje.x), -(f.a.pos.z - øje.z));
     let v = Math.abs(((ret - this.a.yaw + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI);
     if (v > 75 * G && d > 3) return false;

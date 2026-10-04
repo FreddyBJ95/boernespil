@@ -174,4 +174,8 @@ const postVægt = ([x]) => Math.abs(x) < 5 ? 0.3 : 1;
 // Bombepladserne: A og B er de to hævede pladser tæt på Sandslangernes start
 const STEDER = { A: [34, -34, 7], B: [-34, -34, 7] };
 
-export default { navn: "Støvbyen", steder: STEDER, fotos: ["sandsten", "puds", "sand", "fliser"], start: START, poster: POSTER, omveje: OMVEJE, postVægt, byg };
+// Gadelamper om natten: [x, z, højde, watt] — og stormen er en sandstorm
+const NATLAMPER = [[3.5, -30, 4, 110], [-3.5, 0, 4, 110], [3.5, 28, 4, 110], [23, -36, 4, 110], [41, -26, 4, 110], [-26, -41, 4, 110], [-41, -26, 4, 110],
+  [45, 12, 4, 110], [30, 45.5, 4, 110], [12, -10, 4, 110], [-14, -10, 4, 110], [-12, 43, 4, 110], [12, -43, 4, 110], [-30, 45.5, 4, 110]];
+
+export default { navn: "Støvbyen", natLamper: NATLAMPER, storm: "sand", steder: STEDER, fotos: ["sandsten", "puds", "sand", "fliser"], start: START, poster: POSTER, omveje: OMVEJE, postVægt, byg };

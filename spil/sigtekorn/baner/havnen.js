@@ -123,4 +123,8 @@ const postVægt = ([x, z]) => z > 18 && Math.abs(x) < 18 ? 2.6 : z > -16 && z < 
 // Bombepladserne: A på containerpladsen under kranen, B på læsserampen inde i lagerhallen
 const STEDER = { A: [6, -32, 8], B: [0, 41.5, 6] };
 
-export default { navn: "Havnen", steder: STEDER, fotos: ["beton", "blik"], start: START, poster: POSTER, omveje: OMVEJE, postVægt, byg };
+// Gadelamper om natten: [x, z, højde, watt] — og stormen er regn med lyn og torden
+const NATLAMPER = [[-40, -13.4, 6, 220], [-20, -13.4, 6, 220], [0, -13.4, 6, 220], [20, -13.4, 6, 220], [40, -13.4, 6, 220], [-36, 16.5, 6, 220], [-10, 16, 6, 220],
+  [10, 16, 6, 220], [36, 16.5, 6, 220], [-30, -45, 6, 220], [0, -45, 6, 220], [30, -45, 6, 220], [-28, 46.5, 6, 220], [28, 46.5, 6, 220]];
+
+export default { navn: "Havnen", natLamper: NATLAMPER, storm: "regn", steder: STEDER, fotos: ["beton", "blik"], start: START, poster: POSTER, omveje: OMVEJE, postVægt, byg };
