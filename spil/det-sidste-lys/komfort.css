@@ -40,7 +40,7 @@
   #touch { grid-template-columns: repeat(3,44px); grid-template-rows: 44px 44px; }
   .mål-kort { width: 270px; }
   .mål-kort.foldet { width: 250px; }
-  .kig-hjælp { bottom: 167px; }
+  .kig-hjælp { bottom: 190px; }                  /* over teksten ved Undersøg */
 }
 @media (max-width:520px) {
   .værktøj button { min-width: 44px; width: 44px; min-height: 44px; padding: 5px; }

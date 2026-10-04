@@ -245,6 +245,7 @@ a:hover {
   min-height: 44px;
   font-size: 19px;
   background: rgba(15,35,42,.66);
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
 }
 .mål-kort {
@@ -255,6 +256,7 @@ a:hover {
   width: 295px;
   border: 1px solid var(--kant);
   background: linear-gradient(110deg,rgba(17,35,41,.9),rgba(17,35,41,.6));
+  -webkit-backdrop-filter: blur(9px);
   backdrop-filter: blur(9px);
   z-index: 2;
   border-radius: 4px;
@@ -344,6 +346,7 @@ a:hover {
 }
 .bund-knapper button {
   background: rgba(15,35,42,.78);
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   font-size: 12px;
   min-width: 85px;
@@ -373,6 +376,7 @@ a:hover {
   align-items: center;
   justify-content: center;
   margin: auto;
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
 }
 .tast {
@@ -396,6 +400,7 @@ a:hover {
   z-index: 2;
 }
 .besked {
+  pointer-events: none;                /* man kan stadig se sig omkring med et træk hen over beskeden */
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
@@ -428,6 +433,7 @@ a:hover {
   align-items: center;
   justify-content: center;
   background: rgba(4,16,22,.65);
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   padding: 18px;
   touch-action: auto;
@@ -952,8 +958,13 @@ a:hover {
   .samling {
     max-width: 46%;
   }
-  .ud-knap {
-    top: 215px;
+  .ud-knap {                          /* nede til højre, så den ikke dækker målkortet */
+    top: auto;
+    bottom: calc(118px + env(safe-area-inset-bottom));
+    right: calc(15px + env(safe-area-inset-right));
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: #15242acc;
   }
   .touch-kontrol {
     left: calc(15px + env(safe-area-inset-left));

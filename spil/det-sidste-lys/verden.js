@@ -2,6 +2,11 @@ import * as THREE from "../3d-faelles/three.module.js";
 import { GLTFLoader } from "../3d-faelles/GLTFLoader.js";
 import { mergeGeometries } from "../3d-faelles/BufferGeometryUtils.js";
 import { aktivOpgave, terrænHøjde } from "./logik.js";
+import { lavHimmel, lavMiljø, detaljerEfterNavn } from "../3d-faelles/pynt.js";
+
+// Himlens farver i skumringen og om natten (blandes efter tilstand.nat)
+const DAG = { top: "#24578a", horisont: "#d6aa7c", bund: "#6f7f7d", sky: "#ecc9a8", tåge: "#8e918c" };
+const NAT = { top: "#050e1f", horisont: "#1b3043", bund: "#0c1923", sky: "#2a3a4c", tåge: "#182c3b" };
 
 export const STEDER = {
   havn: { navn: "Den stille havn", x: -25, z: 73, ikon: "⚓" },
@@ -76,8 +81,15 @@ export function gangHøjde(x, z) {
   return terrænHøjde(x, z);
 }
 
+// Mure og sten, man ikke kan gå igennem: ruinens to mure og søjler, grottens bagvæg (kasser: minX, maxX, minZ, maxZ)
+// samt grottealteret (cirkler: x, z, radius). Det lave kompasfundament kan man stå på, for stien begynder dér. Tallene følger blender/tre-verdener/det-sidste-lys/byg_o.py.
+const MURE = [[-19.15, -17.85, -68, -56], [-6.15, -4.85, -68, -56], [-16.6, -15.4, -67.6, -66.4], [-8.6, -7.4, -67.6, -66.4], [-71, -61, 37.1, 38.9]];
+const STENE = [[-66, 44, 2]];
+
 export function kanGå(x, z) {
   if (Math.hypot(x / 82, z / 102) > 1.015 || gangHøjde(x, z) < .55) return false;
+  if (MURE.some(([a, b, c, d]) => x > a - .4 && x < b + .4 && z > c - .4 && z < d + .4)) return false;
+  if (STENE.some(([sx, sz, r]) => Math.hypot(x - sx, z - sz) < r + .4)) return false;
   const iHus = x > 1.5 && x < 12.5 && z > 18 && z < 28;
   if (
     iHus &&
@@ -159,7 +171,7 @@ export class ØVerden {
     this.mobil = matchMedia("(pointer: coarse)").matches || innerWidth < 800;
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color("#526b76");
-    this.scene.fog = new THREE.FogExp2("#879394", .0045);
+    this.scene.fog = new THREE.FogExp2(DAG.tåge, .0045);
     this.kamera = new THREE.PerspectiveCamera(66, innerWidth / innerHeight, .1, 900);
     this.kamera.rotation.order = "YXZ";
     this.renderer = new THREE.WebGLRenderer({
@@ -197,6 +209,19 @@ export class ØVerden {
     this.model = rod;
     this.genstande = bevægelige;
     this.scene.add(rod);
+    // Spejlinger fra himlen og fine mønstre i græs, sand, sten og træ (spil/3d-faelles/pynt.js)
+    this.scene.environment = lavMiljø(this.renderer, this.himmel, "#4a5a50");
+    // Græsfelterne havde hver sin grøntone og lignede et skakbræt: de får nu næsten samme farve,
+    // og mønstret på grafikkortet giver i stedet bløde, naturlige pletter.
+    const græs = new THREE.Color("#5f7a4c");
+    rod.traverse(o => { if (o.isMesh && /^Marehalm/.test(o.material.name)) o.material.color.lerp(græs, 0.75); });
+    // Spejlingerne er lavet af dagshimlen, så de dæmpes om natten (se opdater)
+    this.spejlMaterialer = new Set();
+    rod.traverse(o => { if (o.isMesh && o.material.isMeshStandardMaterial) this.spejlMaterialer.add(o.material); });
+    detaljerEfterNavn(rod, [["marehalm", "græs", { styrke: 0.28, bump: 0.7 }], ["strandsand", "sand", { styrke: 0.2, bump: 0.6, skala: 2 }],
+      ["skaller", "sten", { styrke: 0.3, bump: 0.6, skala: 2 }], ["kyststen", "klippe", { styrke: 0.3, bump: 1 }],
+      ["honningtræ", "træ", { styrke: 0.3, bump: 0.5 }], ["drivtømmer", "træ", { styrke: 0.35, bump: 0.6 }], ["mørk eg", "træ", { styrke: 0.3, bump: 0.5 }],
+      ["skifer", "sten", { styrke: 0.22, bump: 0.4, skala: 3 }], ["kalk", "sten", { styrke: 0.12, bump: 0.25, skala: 2 }]], { fin: !this.mobil });
     this.vind = { value: 0 };
     this.model.traverse(o=>{
       if (!o.isMesh || !/^Fyrregrøn|Gylden strandsennep|Salvie/.test(o.material.name)) return;
@@ -210,6 +235,7 @@ export class ØVerden {
     this.linse = bevægelige.find((o) => o.name.startsWith("Den_gamle_linse"));
     this.prisme = bevægelige.find((o) => o.name.startsWith("Havgrotten_prisme"));
     this.lanterne = bevægelige.find((o) => o.name.startsWith("Lanternens_lys"));
+    if (this.lanterne) this.lanterne.material = this.lanterne.material.clone();   // eget materiale: vinduerne skal ikke lyse med
     this.spejle = bevægelige.filter(o => o.name.startsWith("Prismens_spejl"));
     await this.#måger();
     this.status(100);
@@ -241,13 +267,21 @@ export class ØVerden {
     this.spot.visible = !letGrafik;
     sætLanterneBudget(this.lanterner, this.kamera.position, letGrafik);
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, letGrafik ? 1.1 : this.mobil ? 1.3 : 1.75));
-    this.renderer.shadowMap.enabled = !letGrafik && !this.mobil;
+    const skygger = !letGrafik && !this.mobil;
+    if (this.renderer.shadowMap.enabled !== skygger) {
+      this.renderer.shadowMap.enabled = skygger;
+      this.scene.traverse(o => { if (o.material) [].concat(o.material).forEach(m => { m.needsUpdate = true; }); });
+    }
     this.renderer.toneMappingExposure = 1.1;
     this.rolig = valg.rolig;
     this.tilpas();
   }
 
   #himmel() {
+    // Himlen med sol, skyer og stjerner (spil/3d-faelles/pynt.js). Solen står samme sted som den gamle solkugle.
+    this.himmel = lavHimmel({ top: DAG.top, horisont: DAG.horisont, bund: DAG.bund, sol: [-160, 55, -245], solFarve: "#ffcf96", solStyrke: 1.1, dis: 0.45, skyer: 0.3, skyFarve: DAG.sky });
+    this.scene.add(this.himmel);
+    this.himmelFarver = { top: new THREE.Color(), horisont: new THREE.Color(), bund: new THREE.Color(), sky: new THREE.Color() };
     const geometri = new THREE.SphereGeometry(550, 24, 12);
     this.himmelMateriale = new THREE.ShaderMaterial({
       side: THREE.BackSide,
@@ -257,7 +291,7 @@ export class ØVerden {
       fragmentShader:
         `varying vec3 p;uniform float nat;void main(){float h=clamp(normalize(p).y,0.,1.);vec3 dag=mix(vec3(.64,.64,.53),vec3(.19,.35,.46),pow(h,.6));vec3 aften=mix(vec3(.15,.24,.29),vec3(.025,.055,.11),pow(h,.45));gl_FragColor=vec4(mix(dag,aften,nat),1.);}`,
     });
-    this.scene.add(new THREE.Mesh(geometri, this.himmelMateriale));
+    // (den gamle farvekugle beholdes kun som reserve og tegnes ikke)
     const stjernePos = stjernePositioner();
     const data = new THREE.BufferGeometry();
     data.setAttribute("position", new THREE.Float32BufferAttribute(stjernePos, 3));
@@ -265,10 +299,11 @@ export class ØVerden {
       data,
       new THREE.PointsMaterial({ color: "#c6e1e1", size: 1.2, transparent: true, opacity: 0, depthWrite: false, fog: false }),
     );
+    this.stjerner.visible = false;                            // stjernerne tegnes nu af himlen selv
     this.scene.add(this.stjerner);
     this.sol = new THREE.Mesh(new THREE.SphereGeometry(6, 16, 12), new THREE.MeshBasicMaterial({ color: "#f8d6a0", fog: false }));
     this.sol.position.set(-160, 55, -245);
-    this.scene.add(this.sol);
+    this.sol.visible = false;                                 // solskiven tegnes nu af himlen
     this.måne = new THREE.Mesh(
       new THREE.SphereGeometry(5, 16, 12),
       new THREE.MeshBasicMaterial({ color: "#c8e3e4", fog: false }),
@@ -281,11 +316,38 @@ export class ØVerden {
   #hav() {
     this.havMateriale = new THREE.ShaderMaterial({
       transparent: false,
-      uniforms: { tid: { value: 0 }, nat: { value: 0 }, kamera: { value: new THREE.Vector3() } },
+      uniforms: { tid: { value: 0 }, nat: { value: 0 }, kamera: { value: new THREE.Vector3() },
+        himmelTop: { value: new THREE.Color(DAG.top) }, horisont: { value: new THREE.Color(DAG.horisont) },
+        solRetning: { value: new THREE.Vector3(-160, 55, -245).normalize() } },
       vertexShader:
         `varying vec3 p;uniform float tid;void main(){vec3 q=position;q.y+=sin(q.x*.06+tid*.6)*.19+cos(q.z*.075-tid*.43)*.16;p=q;gl_Position=projectionMatrix*modelViewMatrix*vec4(q,1.);}`,
-      fragmentShader:
-        `varying vec3 p;uniform float tid;uniform float nat;uniform vec3 kamera;void main(){float w=sin(p.x*.48+p.z*.19+sin(p.z*.15+tid)*1.2-tid*1.8);float s=pow(max(0.,w),16.);float v=sin(p.z*.065+p.x*.04+tid*.7)*.5+.5;vec3 c=mix(vec3(.08,.24,.28),vec3(.17,.36,.36),v)+vec3(.16,.16,.10)*s;c=mix(c,c*.43+vec3(.01,.04,.08),nat);float d=clamp(length(p.xz-kamera.xz)/470.,0.,1.);c=mix(c,mix(vec3(.55,.61,.59),vec3(.10,.19,.24),nat),pow(d,1.7));gl_FragColor=vec4(c,1.);}`,
+      fragmentShader: `
+varying vec3 p;
+uniform float tid, nat;
+uniform vec3 kamera, himmelTop, horisont, solRetning;
+vec2 boelge(vec2 q, vec2 r, float f, float a, float hast) { float k = dot(q, r) * f + tid * hast; return r * cos(k) * f * a; }
+void main() {
+  // smaa boelger giver vandet en normal, saa det kan spejle himlen og glimte i solen
+  vec2 g = boelge(p.xz, normalize(vec2(1.0, 0.4)), 0.48, 0.05, -1.8) + boelge(p.xz, normalize(vec2(-0.3, 1.0)), 0.9, 0.025, 1.3)
+         + boelge(p.xz, normalize(vec2(0.7, -0.7)), 1.7, 0.012, 2.1) + boelge(p.xz, normalize(vec2(-0.9, -0.2)), 3.1, 0.006, -2.6);
+  vec3 n = normalize(vec3(-g.x, 1.0, -g.y));
+  vec3 v = normalize(kamera - p);
+  float fres = 0.04 + 0.96 * pow(1.0 - max(dot(n, v), 0.0), 5.0);
+  vec3 r = reflect(-v, n);
+  vec3 spejl = mix(horisont, himmelTop, clamp(r.y * 1.8, 0.0, 1.0));
+  float e = length(vec2(p.x / 82.0, p.z / 102.0));             // 1 = oeens kyst
+  vec3 dyb = mix(vec3(0.012, 0.07, 0.085), vec3(0.03, 0.16, 0.16), smoothstep(1.35, 1.0, e));
+  vec3 c = mix(dyb, spejl, fres);
+  float glimt = pow(max(dot(r, normalize(solRetning)), 0.0), 220.0) * (1.0 - nat);
+  c += vec3(1.0, 0.85, 0.6) * glimt * 2.5;
+  float skum = smoothstep(1.075, 1.0, e) * (0.55 + 0.45 * sin(e * 140.0 - tid * 1.7 + sin(p.x * 0.3) * 2.0));
+  c = mix(c, vec3(0.75, 0.78, 0.72) * (1.0 - nat * 0.75), clamp(skum, 0.0, 1.0) * 0.65);
+  float d = clamp(length(p.xz - kamera.xz) / 470.0, 0.0, 1.0);
+  c = mix(c, horisont, pow(d, 1.6));
+  gl_FragColor = vec4(c, 1.0);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+}`,
     });
     const data = new THREE.PlaneGeometry(1800, 1800, 100, 100);
     data.rotateX(-Math.PI / 2);
@@ -411,15 +473,20 @@ export class ØVerden {
     const n = this.nat;
     this.himmelMateriale.uniforms.nat.value = n;
     this.havMateriale.uniforms.nat.value = n;
+    const u = this.himmel.userData.uniforms, f = this.himmelFarver;
+    for (const nøgle of ["top", "horisont", "bund", "sky"]) f[nøgle].set(DAG[nøgle]).lerp(new THREE.Color(NAT[nøgle]), n);
+    u.uTop.value.copy(f.top); u.uHorisont.value.copy(f.horisont); u.uBund.value.copy(f.bund); u.uSkyFarve.value.copy(f.sky);
+    u.uSolStyrke.value = 1.1 * (1 - n); u.uStjerner.value = n * 0.9;
+    for (const m of this.spejlMaterialer || []) m.envMapIntensity = 1 - n * 0.85;
+    this.havMateriale.uniforms.himmelTop.value.copy(f.top); this.havMateriale.uniforms.horisont.value.copy(f.horisont);
     this.havMateriale.uniforms.tid.value = tid;
     this.havMateriale.uniforms.kamera.value.copy(this.kamera.position);
-    this.scene.fog.color.set("#879394").lerp(new THREE.Color("#182c3b"), n);
+    this.scene.fog.color.set(DAG.tåge).lerp(new THREE.Color(NAT.tåge), n);
     this.scene.fog.density = .0045 + n * .002;
-    this.halvlys.intensity = 2.3 - n * 1.15;
+    this.halvlys.intensity = 1.35 - n * 0.65;                  // himlens spejlinger giver resten af lyset
     this.sollys.intensity = 3.2 - n * 2.8;
     this.sollys.color.set("#ffdab1").lerp(new THREE.Color("#a9c3e5"), n);
     this.stjerner.material.opacity = n * .8;
-    this.sol.visible = n < .7;
     this.måne.visible = n > .35;
     this.fyrlys.intensity = tilstand.færdige.includes("strøm") ? 90 + n * 110 : 15;
     this.lanterner.forEach((l) => l.intensity = 8 + n * 24);

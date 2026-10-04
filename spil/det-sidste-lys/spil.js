@@ -102,7 +102,7 @@ function dialog(overlinje, titel, indhold, knapper = [], tilbage = tilstandUI) {
   $("hud").inert = true;
   $("dialog").querySelector(".dialog-kort").scrollTop = 0;
   $("luk-dialog").focus({ preventScroll: true });
-  lyd.sæt(tilstand.lyd, true);
+  lyd.dæmp(tilstand.lyd);                                       // havet dæmpes, men gådernes toner høres
 }
 
 function lukDialog() {
@@ -423,8 +423,10 @@ function fyr() {
           ? "Lanternen drejer langsomt. Strålen holder øje med havet. I morgen kommer Elin hjem."
           : "Fyret hæver sig over hele øen. Fra galleriet kan du se landsbyen, skoven, ruinen og havgrottens klipper."
       }</p>${
-        !tilstand.færdige.includes("linse")
+        !tilstand.færdige.includes("harpiks")
           ? "<p>Kontrolbordet mangler den gamle linse og rav fra skoven.</p>"
+          : !tilstand.færdige.includes("linse")
+          ? "<p>Ravet er klar. Kontrolbordet mangler nu kun den gamle linse fra kompasruinen.</p>"
           : !tilstand.færdige.includes("prisme")
           ? "<p>Havets prisme mangler endnu. Følg de blå sten langs kysten, når natten er faldet.</p>"
           : ""
@@ -656,7 +658,7 @@ function findInteraktion() {
     ...STEDNOTER.filter(n=>Number.isFinite(n.x)).map(n=>({...n,handling:"Læs stednoten",gør:()=>læsStednote(n.id),radius:2.8})),
     { x: -25, z: 73, navn: "Elins brev · rød postkasse", handling: "Læs brevet", gør: læsBrev, radius: 5 },
     { x: 7, z: 24, navn: "Tidevandslås · inde i værkstedet", handling: "Undersøg låsen", gør: værksted, radius: 3.3 },
-    {
+    ...(p.z > 27.5 ? [{
       x: 7,
       z: 29,
       navn: "Det åbne værksted",
@@ -668,14 +670,14 @@ function findInteraktion() {
         besked("Et varmt rum · undersøg messingæsken på bordet.");
       },
       radius: 3.0,
-    },
+    }] : []),                                                     // døren vises kun udefra
     { x: -12, z: -62, navn: "Ruinens kompasrose", handling: "Undersøg ringene", gør: ruin, radius: 6 },
     { x: 32, z: -38, navn: "Fyrets kontrolbord", handling: "Undersøg fyret", gør: fyr, radius: 6 },
     { x: -66, z: 46, navn: "Havgrottens spejlalter", handling: "Undersøg spejlene", gør: grotte, radius: 6 },
     ...RAVTRÆER.map((r, i) => ({
       ...r,
       navn: tilstand.rav.includes(i) ? "Gammelt fyrretræ" : "Varmt rav · gammelt fyrretræ",
-      handling: "Saml rav",
+      handling: tilstand.rav.includes(i) ? "Se på træet" : "Saml rav",
       gør: () => ravtræ(i),
       radius: 4.8,
     })),
@@ -728,6 +730,7 @@ function pause() {
 }
 
 function genoptag() {
+  lyd.start();
   $("pause-lag").classList.add("skjult");
   tilstandUI = "spil";
   $("hud").inert = false;
@@ -877,7 +880,7 @@ function gå(delta) {
   const p = tilstand.position;
   if (galleriet) {
     const x = p.x + dx, z = p.z + dz, r = Math.hypot(x - 38, z + 44);
-    if (r > 3.5 && r < 4.7) {
+    if (r > 3.5 && r < 4.2) {
       p.x = x;
       p.z = z;
     }
@@ -916,7 +919,7 @@ function billede(nu) {
   }
   if (tidsSum > beskedTid) $("besked").classList.add("skjult");
   // Menuscenens langsomme bevægelser behøver højst 20 billeder/s; en skjult fane tegner intet.
-  if (!document.hidden && (tilstandUI === "spil" || nu - sidsteTegning >= 50)) {
+  if (!document.hidden && (tilstandUI === "spil" || tilstandUI === "slut" || nu - sidsteTegning >= 50)) {
     const tegneDelta = Math.min(.1, (nu - sidsteTegning) / 1000 || delta);
     sidsteTegning = nu;
     verden.opdater(tidsSum, tegneDelta, tilstand, tilstandUI === "menu" || tilstandUI === "slut");
@@ -931,6 +934,7 @@ async function begynd() {
       $("indlæsning").textContent = `Øens huse, skov og fyr · ${procent}%`;
     });
     await verden.indlæs();
+    if (location.search.includes("debug")) window.lys = { verden, tilstand: () => tilstand };   // til afprøvning i konsollen
     anvendIndstillinger();
     if (!kanGå(tilstand.position.x, tilstand.position.z)) tilstand.position = { x: -25, z: 80 };
     $("start").disabled = false;
@@ -955,6 +959,7 @@ $("start").addEventListener("click", () => {
   $("menu").classList.add("skjult");
   $("hud").classList.remove("skjult");
   tilstandUI = "spil";
+  lyd.sæt(tilstand.lyd);                                        // en slukket lyd forbliver slukket fra første øjeblik
   lyd.start().then(() => lyd.sæt(tilstand.lyd));
   if (!tilstand.færdige.length) {
     dialog(

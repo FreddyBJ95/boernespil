@@ -36,6 +36,11 @@ export class ØLyd {
         kilde.connect(filter);
         filter.connect(hav);
         hav.connect(master);
+        // Små toner (gåder, nye kapitler) har deres egen styrke: de skal høres, selv om havet er dæmpet bag en dialog
+        const effekter = ny.createGain();
+        effekter.gain.value = .14;
+        effekter.connect(ny.destination);
+        this.effekter = effekter;
         kilde.start();
         this.ctx = ny;
         this.master = master;
@@ -60,8 +65,17 @@ export class ØLyd {
     } catch { /* Nogle enheder kan lukke lydkonteksten under en pause. */ }
   }
 
+  // En dialog dæmper havet, men gådernes klik og kapitlernes klokker skal stadig høres
+  dæmp(aktiv) {
+    this.aktiv = aktiv;
+    this.pauset = false;
+    try {
+      if (this.master) this.master.gain.setTargetAtTime(0, this.ctx.currentTime, .3);
+    } catch { /* lyd er valgfri */ }
+  }
+
   tone(frekvens, efter = 0, styrke = .12) {
-    if (!this.ctx || !this.master || !this.aktiv || this.pauset) return;
+    if (!this.ctx || !this.effekter || !this.aktiv || this.pauset) return;
     try {
       const nu = this.ctx.currentTime + efter, osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
       osc.type = "sine";
@@ -70,7 +84,7 @@ export class ØLyd {
       gain.gain.linearRampToValueAtTime(styrke, nu + .06);
       gain.gain.exponentialRampToValueAtTime(.001, nu + 2.6);
       osc.connect(gain);
-      gain.connect(this.master);
+      gain.connect(this.effekter);
       osc.start(nu);
       osc.stop(nu + 2.7);
     } catch { /* En tone er valgfri feedback; spillet kan fortsætte uden den. */ }

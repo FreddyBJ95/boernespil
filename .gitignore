@@ -8,3 +8,4 @@ _test.html
 # Prøvebilleder og Python-cache fra Blender-værktøjet
 blender/proever/
 blender/__pycache__/
+*.blend1

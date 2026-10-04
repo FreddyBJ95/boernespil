@@ -115,6 +115,7 @@ def bogstaver(navn,tekst,pos,størrelse=.22,vinkel=0):
   o.rotation_euler=(math.pi/2,0,vinkel)
   o.data.materials.append(sejl)
   bpy.ops.object.convert(target='MESH')
+  bpy.context.object['tekst']=True   # spejles tilbage ved eksporten, så skiltene kan læses i spillet
   return bpy.context.object
 
 def jord(navn,x,z,r=.7):
@@ -356,7 +357,7 @@ def skilt(x,z,navne):
     bogstaver('Skiltets_hjemsted',navne[1],(x,z-.09*math.cos(side),h+1.55),.18,side)
 for x,z,navne in [(-19,43,('VÆRKSTED','HAVN')),(-27,19,('RAVSKOV','LANDSBY')),
   (-38,-10,('KOMPASRUIN','RAVSKOV')),(24,5,('FYRET','LANDSBY')),
-  (40,-24,('FYRET','HAVN')),(-48,38,('HAVNGROTTE','LANDSBY'))]: skilt(x,z,navne)
+  (40,-24,('FYRET','HAVN')),(-48,38,('HAVGROTTE','LANDSBY'))]: skilt(x,z,navne)
 for x,z in [(-25,66),(7,32),(-20,40),(18,10),(31,-24),(34,-38),(-39,-9)]:
   h=højde(x,z)
   cylinder('Lanternepæl',(x,z,h+1.7),.12,3.4,træ,vertices=7)
@@ -471,15 +472,19 @@ for o in bpy.context.scene.objects:
   if o.type=='MESH' and not o.name.startswith('Maage_'): o.select_set(True)
 bpy.ops.wm.save_as_mainfile(filepath=str(KILDE/'det-sidste-lys.blend'))
 spejl = Matrix.Diagonal((1,-1,1,1))
+# Øen spejles til spillets akser. Bogstaver spejles også om deres egen midte, ellers står de i spejlskrift.
+vend = Matrix.Diagonal((-1,1,1,1))
+def spejlvend(o):
+  o.matrix_world = spejl @ o.matrix_world @ (vend if o.get('tekst') else Matrix.Identity(4))
 for o in bpy.context.scene.objects:
-  if o.type=='MESH': o.matrix_world = spejl @ o.matrix_world
+  if o.type=='MESH': spejlvend(o)
 bpy.ops.export_scene.gltf(filepath=str(SPIL/'oe.glb'),export_format='GLB',use_selection=True,export_apply=True,export_materials='EXPORT')
 bpy.ops.object.select_all(action='DESELECT')
 for o in bpy.context.scene.objects:
   if o.name.startswith('Maage_'):o.select_set(True)
 bpy.ops.export_scene.gltf(filepath=str(SPIL/'maage.glb'),export_format='GLB',use_selection=True,export_apply=True,export_materials='EXPORT')
 for o in bpy.context.scene.objects:
-  if o.type=='MESH': o.matrix_world = spejl @ o.matrix_world
+  if o.type=='MESH': spejlvend(o)
   if o.name.startswith('Maage_'):o.hide_render=True
 
 # Forsidefotografiet renderes af de samme modeller, som spilleren udforsker.
