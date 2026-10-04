@@ -42,7 +42,7 @@ await lås($("lås"));
 
 // ---------- Indstillinger (gemmes på computeren) ----------
 const INDST = "sigtekorn-indstillinger";
-const ind = Object.assign({ sværhed: "normal", hold: 5, følsomhed: 2.0, synsfelt: 90, lydstyrke: 0.8, fart: false, fuldskærm: true, egneLemmer: true, spiltype: "hold", side: "ræve" },
+const ind = Object.assign({ sværhed: "normal", hold: 5, følsomhed: 2.0, synsfelt: 90, lydstyrke: 0.8, fart: false, fuldskærm: true, egneLemmer: true, spiltype: "hold", side: "ræve", skFarve: "#5dff6a" },
   (() => { try { return JSON.parse(localStorage.getItem(INDST) || "{}"); } catch (_) { return {}; } })());
 if (ind.primær && !ind.udrustning) ind.udrustning = { primær: ind.primær === "gevær" ? "storm" : ind.primær };   // fra før udrustningen
 delete ind.primær;
@@ -684,6 +684,12 @@ knapper("valgSværhed", Object.entries(SVÆRHED).map(([k, v]) => [k, v.navn]), "
 knapper("valgHold", [1, 2, 3, 4, 5].map(n => [n, `${n} mod ${n}`]), "hold");
 knapper("valgSpil", [["hold", "Holdkamp"], ["bombe", "Bombe"], ["ræs", "Våbenræs"], ["træning", "Træning"]], "spiltype");
 knapper("valgSide", [["ræve", "🦊 Ørkenrævene"], ["slanger", "🐍 Sandslangerne"]], "side");
+// sigtekornets farve (som i CS kan man vælge den, man bedst kan se)
+const sætSkFarve = () => document.documentElement.style.setProperty("--sk", ind.skFarve);
+const SK_FARVER = [["#5dff6a", "Grøn"], ["#ffe640", "Gul"], ["#40e8ff", "Cyan"], ["#ff4fd8", "Lyserød"], ["#ffffff", "Hvid"]];
+knapper("valgSkFarve", SK_FARVER, "skFarve", sætSkFarve);
+[...$("valgSkFarve").children].forEach((b, i) => { b.style.boxShadow = `inset 0 -4px 0 ${SK_FARVER[i][0]}`; });   // en streg i farven
+sætSkFarve();
 lavUdrustning($("udrustning"), $("vælger"), ind, gemIndst, () => Lyd.bip());
 knapper("valgFart", [[false, "Nej"], [true, "Ja (u/s)"]], "fart");
 knapper("valgFuld", [[true, "Ja"], [false, "Nej"]], "fuldskærm");
