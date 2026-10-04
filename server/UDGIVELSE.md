@@ -1,5 +1,16 @@
 Broekraft Server lader 1–8 børn bygge i samme Broekraft-verden på familiens eget wifi.
 
+**Nyt i 0.5.7**
+- Krystaljægernes skattekister åbner låget og viser de mønter og eliksirer, du faktisk finder.
+  Lyskrystaller og bossegl løfter sig frem som originale Blender-genstande med glød og animation.
+- Store genstandskort viser fundenes navn og antal. Rejsetasken viser billeder af beholdningen og
+  krystalopgavens fremgang. Rolige effekter og enhedens valg om mindre bevægelse understøttes.
+- De udgivne Sigtekorn-ændringer med købsmenu og det nye Spilkassen-appikon følger med i pakken.
+
+**Nyt i 0.5.6**
+- Krystaljægeren slår synligt med sværd, spænder sin bue med pil og løfter staven ved magi.
+  En frivillig øveplads lader dig prøve alle tre våben, og kampknappen viser tid til næste angreb.
+
 **Nyt i 0.5.5**
 - Skrotstorms hjælp, køreskole og kort åbner ved begyndelsen på små skærme,
   så tastaturfokus på knapperne ikke skjuler vejledningen.

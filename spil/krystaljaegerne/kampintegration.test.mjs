@@ -71,6 +71,9 @@ function prøvSpil(våben = "sværd") {
     dialog() { c.paused = true; },
     ramFjende(f, antal) { ramt.push({ f, antal }); f.hp -= antal; },
     opdatérKampstatus(data) { hændelser.push({ type: "status", ...data }); },
+    fundfigur: { ryd() {}, opdatér() {} },
+    fundkort: { skjul() {}, opdatér() {} },
+    roligeFund: () => false,
     kampfigur: {
       pose(data) { hændelser.push({ type: "pose", x: c.helt.position.x, z: c.helt.position.z, ...data }); },
       munding({ x, z }) {

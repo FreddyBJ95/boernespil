@@ -59,6 +59,23 @@ afprøver de faktiske kampfunktioner, bevægelse, sigtelinjer, udstyr, afbrydels
 Ren visuel prøve: `server/tests/krystal-kamp-modelvisning.html` viser model, sværdslag, bue/pil og stav uden spil,
 voksenlås eller gemninger. Den erstatter ikke en manuel gennemspilning af eventyret.
 
+## Skatte og synlige genstande
+
+Skattekistens låg åbner på et hængsel, og mønter og den faktisk modtagne eliksir løfter sig ud af kisten.
+En lyskrystal bliver vist som en facetteret, lysende Blender-genstand; de tre bossegl får samme tydelige fundforløb.
+Genstandskortet viser navne og antal. Hurtige fund sættes i en afgrænset kø, så kisteindhold ikke forsvinder ved
+det næste krystalfund. Kortet blokerer ingen fingerknapper. Pause fryser tiden; områdeskift rydder midlertidige fund.
+
+Belønningerne er uændrede: krystal giver 3 kobber og op til 16 energi, kiste giver 18 kobber, 15 erfaring og op til
+én eliksir. Eliksirgrænsen er stadig 99; en fuld taske viser ingen fiktiv eliksir. Når en opgave samtidig fuldføres,
+medregnes dens ekstra kobber/erfaring og genopfyldning forklares. Samme fund-id kan kun belønnes én gang.
+Rejsetaskens billeder viser den aktuelle beholdning af kobber, eliksirer og segl. Lyskrystallernes felt viser 8-krystalopgaven,
+da krystallens lys bruges ved indsamlingen. Der er ingen ny gemmeversion eller ændring af gamle rejser.
+
+`blender/tre-verdener/krystaljaegerne/fund.py` og `fund.blend` bygger `modeller/fund.glb` med kiste, krystal,
+kobbermønt, eliksir og segl. Egne SVG-genstande gør kortet let på telefonen. Rolige effekter og systemets valg om
+mindre bevægelse slår rotation og glimt fra. Ren komponentprøve: `server/tests/krystal-fund-modelvisning.html`.
+
 ## Gemning og kontrol
 
 `krystaljaegerne-rejse-v1` i localStorage gemmer hvert 5. sekund, ved regioner, belønning, pause og sideskift. Fortsæt
