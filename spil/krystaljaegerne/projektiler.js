@@ -10,8 +10,12 @@ export function opdatérFlyvere(skud, dt, { erFrit, ramning, fjern, afbryd }) {
     p.liv -= dt;
     p.obj.position.x += p.dx * dt;
     p.obj.position.z += p.dz * dt;
+    if (p.dy) p.obj.position.y += p.dy * dt;
     const x = p.obj.position.x, z = p.obj.position.z;
-    if (p.liv <= 0 || !erFrit(x, z) || !friLinje(fra, { x, z }, erFrit, .2)) {
+    if (
+      p.liv <= 0 || p.dy < 0 && p.obj.position.y < .15 || !erFrit(x, z) ||
+      !friLinje(fra, { x, z }, erFrit, .2)
+    ) {
       fjern(p);
       skud.splice(i, 1);
       continue;

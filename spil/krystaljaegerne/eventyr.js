@@ -1,13 +1,39 @@
 // Eventyrets regler er adskilt fra tegningen, så gemninger og kamp kan kontrolleres.
 export const VERSION = 1;
 export const VÅBEN = {
-  sværd: { navn: "Kobbersværd", skade: 19, rækkevidde: 3.0, pause: .55, mana: 0 },
+  sværd: {
+    navn: "Kobbersværd",
+    skade: 19,
+    rækkevidde: 3.0,
+    pause: .55,
+    mana: 0,
+  },
   bue: { navn: "Skovbue", skade: 15, rækkevidde: 24, pause: .7, mana: 0 },
-  magi: { navn: "Krystalstav", skade: 25, rækkevidde: 18, pause: 1.0, mana: 14 },
+  magi: {
+    navn: "Krystalstav",
+    skade: 25,
+    rækkevidde: 18,
+    pause: 1.0,
+    mana: 14,
+  },
 };
 export const OPGAVER = [
-  { id: "mira", navn: "En stemme i landsbyen", tekst: "Tal med Mira ved brønden.", mål: 1, xp: 20, mønter: 12 },
-  { id: "krystal", navn: "Lys i lommen", tekst: "Find 8 lyskrystaller på øen.", mål: 8, xp: 65, mønter: 35 },
+  {
+    id: "mira",
+    navn: "En stemme i landsbyen",
+    tekst: "Tal med Mira ved brønden.",
+    mål: 1,
+    xp: 20,
+    mønter: 12,
+  },
+  {
+    id: "krystal",
+    navn: "Lys i lommen",
+    tekst: "Find 8 lyskrystaller på øen.",
+    mål: 8,
+    xp: 65,
+    mønter: 35,
+  },
   {
     id: "kiste",
     navn: "De glemte kort",
@@ -16,7 +42,14 @@ export const OPGAVER = [
     xp: 70,
     mønter: 45,
   },
-  { id: "vogter", navn: "Ruinerne vågner", tekst: "Berolig 4 stenvogtere med dine våben.", mål: 4, xp: 85, mønter: 55 },
+  {
+    id: "vogter",
+    navn: "Ruinerne vågner",
+    tekst: "Berolig 4 stenvogtere med dine våben.",
+    mål: 4,
+    xp: 85,
+    mønter: 55,
+  },
   {
     id: "boss0",
     navn: "Mossets hemmelighed",
@@ -52,11 +85,28 @@ export const OPGAVER = [
 ];
 export const GROTTENAVNE = ["Mosgrotten", "Spejlgrotten", "Kobberdybet"];
 export const FJENDETYPER = {
-  slim: { navn: "Mosslim", svaghed: "sværd", hint: "Sværdet spreder mossets bløde lys." },
-  stenvogter: { navn: "Stenvogter", svaghed: "magi", hint: "Magi løsner lyset i dens sten." },
-  krystaldyr: { navn: "Krystaldyr", svaghed: "bue", hint: "Buen finder sprækker mellem krystallerne." },
+  slim: {
+    navn: "Mosslim",
+    svaghed: "sværd",
+    hint: "Sværdet spreder mossets bløde lys.",
+  },
+  stenvogter: {
+    navn: "Stenvogter",
+    svaghed: "magi",
+    hint: "Magi løsner lyset i dens sten.",
+  },
+  krystaldyr: {
+    navn: "Krystaldyr",
+    svaghed: "bue",
+    hint: "Buen finder sprækker mellem krystallerne.",
+  },
 };
-export const VALG = { autosigte: true, roligeEffekter: false, vejviser: true, kamera: 1 };
+export const VALG = {
+  autosigte: true,
+  roligeEffekter: false,
+  vejviser: true,
+  kamera: 1,
+};
 
 // Rejsen består kun af JSON-data; ældre Safari kan også tage en selvstændig kopi.
 export function kopiRejse(s) {
@@ -121,7 +171,10 @@ export function danGrotte(frø, id, dybde) {
 // Rummenes gulvareal bestemmer bevægelse; der kan aldrig gås gennem en ydervæg.
 export function kanGå(grotte, x, z, radius = .45) {
   const kendt = new Set(grotte.rum.map((r) => `${r.x},${r.z}`));
-  return [[x - radius, z - radius], [x + radius, z - radius], [x - radius, z + radius], [x + radius, z + radius]]
+  return [[x - radius, z - radius], [x + radius, z - radius], [
+    x - radius,
+    z + radius,
+  ], [x + radius, z + radius]]
     .every(([a, b]) => kendt.has(`${Math.floor((a + 4) / 8)},${Math.floor((b + 4) / 8)}`));
 }
 
@@ -146,6 +199,7 @@ export function nyRejse(frø = Math.floor(Math.random() * 4294967295)) {
     lyd: true,
     valg: { ...VALG },
     vejledning: 0,
+    træning: false,
   };
 }
 
@@ -153,26 +207,36 @@ export function nyRejse(frø = Math.floor(Math.random() * 4294967295)) {
 export function læsRejse(tekst) {
   try {
     const s = typeof tekst === "string" ? JSON.parse(tekst) : tekst;
-    if (!s || s.version !== VERSION || !Number.isInteger(s.frø) || s.frø < 0 || s.frø > 4294967295) return null;
-    for (const n of ["x", "z", "hp", "mana", "xp", "mønter", "udstyr", "eliksirer"]) {
+    if (
+      !s || s.version !== VERSION || !Number.isInteger(s.frø) || s.frø < 0 ||
+      s.frø > 4294967295
+    ) return null;
+    for (
+      const n of ["x", "z", "hp", "mana", "xp", "mønter", "udstyr", "eliksirer"]
+    ) {
       if (!Number.isFinite(s[n])) return null;
     }
     if (
-      Math.abs(s.x) > 200 || Math.abs(s.z) > 200 || s.xp < 0 || s.xp > 100000 || s.mønter < 0 || s.mønter > 100000 ||
+      Math.abs(s.x) > 200 || Math.abs(s.z) > 200 || s.xp < 0 || s.xp > 100000 ||
+      s.mønter < 0 || s.mønter > 100000 ||
       s.hp < 0 ||
       s.mana < 0 || s.mana > 100
     ) return null;
     if (
-      !Number.isInteger(s.udstyr) || s.udstyr < 0 || s.udstyr > 3 || !Number.isInteger(s.eliksirer) ||
+      !Number.isInteger(s.udstyr) || s.udstyr < 0 || s.udstyr > 3 ||
+      !Number.isInteger(s.eliksirer) ||
       s.eliksirer < 0 ||
       s.eliksirer > 99 || !VÅBEN[s.våben]
     ) return null;
     // Det største lovlige liv følger niveauet. Lidt for højt liv fra ældre data kan stadig repareres.
     if (s.hp > Math.max(300, maxLiv(s))) return null;
-    if (!s.opgaver || typeof s.opgaver !== "object" || Array.isArray(s.opgaver)) return null;
+    if (
+      !s.opgaver || typeof s.opgaver !== "object" || Array.isArray(s.opgaver)
+    ) return null;
     for (const k of Object.keys(s.opgaver)) {
       if (
-        !OPGAVER.some((o) => o.id === k) || !Number.isInteger(s.opgaver[k]) || s.opgaver[k] < 0 || s.opgaver[k] > 10000
+        !OPGAVER.some((o) => o.id === k) || !Number.isInteger(s.opgaver[k]) ||
+        s.opgaver[k] < 0 || s.opgaver[k] > 10000
       ) {
         return null;
       }
@@ -184,13 +248,15 @@ export function læsRejse(tekst) {
       ) return null;
     }
     if (
-      !Array.isArray(s.besøg) || s.besøg.length !== 3 || s.besøg.some((n) => !Number.isInteger(n) || n < 0 || n > 10000)
+      !Array.isArray(s.besøg) || s.besøg.length !== 3 ||
+      s.besøg.some((n) => !Number.isInteger(n) || n < 0 || n > 10000)
     ) {
       return null;
     }
     if (
       s.grotte &&
-      (![0, 1, 2].includes(s.grotte.id) || ![1, 2].includes(s.grotte.dybde) || !Number.isInteger(s.grotte.frø) ||
+      (![0, 1, 2].includes(s.grotte.id) || ![1, 2].includes(s.grotte.dybde) ||
+        !Number.isInteger(s.grotte.frø) ||
         s.grotte.frø < 0 || s.grotte.frø > 4294967295)
     ) return null;
     const kopi = kopiRejse(s);
@@ -202,14 +268,21 @@ export function læsRejse(tekst) {
       for (const k of ["autosigte", "roligeEffekter", "vejviser"]) {
         if (typeof s.valg[k] === "boolean") kopi.valg[k] = s.valg[k];
       }
-      if (Number.isFinite(s.valg.kamera)) kopi.valg.kamera = Math.max(.4, Math.min(1.8, s.valg.kamera));
+      if (Number.isFinite(s.valg.kamera)) {
+        kopi.valg.kamera = Math.max(.4, Math.min(1.8, s.valg.kamera));
+      }
     }
     kopi.vejledning = Number.isInteger(s.vejledning) ? Math.max(0, Math.min(4, s.vejledning)) : s.opgaver.mira ? 4 : 0;
+    // Øvepladsens engangsbelønning er valgfri i gamle v1-gemninger.
+    kopi.træning = s.træning === true;
     if (!s.grotte && (Math.abs(s.x) > 68 || Math.abs(s.z) > 68)) {
       kopi.x = 0;
       kopi.z = 5;
     }
-    if (s.grotte && !kanGå(danGrotte(s.grotte.frø, s.grotte.id, s.grotte.dybde), s.x, s.z)) {
+    if (
+      s.grotte &&
+      !kanGå(danGrotte(s.grotte.frø, s.grotte.id, s.grotte.dybde), s.x, s.z)
+    ) {
       kopi.x = 0;
       kopi.z = 0;
     }
@@ -252,7 +325,9 @@ export function fremskridt(s, id, antal = 1) {
 export function skade(s, art) {
   const bonus = 1 + (niveau(s) - 1) * .12 + s.udstyr * .2;
   const svaghed = FJENDETYPER[art]?.svaghed;
-  return Math.round(VÅBEN[s.våben].skade * bonus * (svaghed === s.våben ? 1.4 : 1));
+  return Math.round(
+    VÅBEN[s.våben].skade * bonus * (svaghed === s.våben ? 1.4 : 1),
+  );
 }
 export function sværdRammer(fra, til, retning) {
   const dx = til.x - fra.x, dz = til.z - fra.z, d = Math.hypot(dx, dz);
@@ -284,11 +359,14 @@ export function givEliksirer(s, antal) {
 // Et mål i en anden grotte leder først til udgangen; døde vogtere er aldrig spor.
 export function bossSpor(s, id, fjender, steder) {
   if (!s.grotte) return null;
-  const udgang = steder.find((v) => v.id === "bossudgang") || steder.find((v) => v.type === "udgang");
+  const udgang = steder.find((v) => v.id === "bossudgang") ||
+    steder.find((v) => v.type === "udgang");
   if (s.grotte.id !== id) return udgang || steder[0];
   const boss = fjender.find((f) => f.boss && f.hp > 0 && f.grotte === id);
   if (boss) return boss.obj.position;
-  if (s.grotte.dybde === 1) return steder.find((v) => v.type === "trappe") || udgang || steder[0];
+  if (s.grotte.dybde === 1) {
+    return steder.find((v) => v.type === "trappe") || udgang || steder[0];
+  }
   return udgang || steder[0];
 }
 export function startGrotte(s, id) {

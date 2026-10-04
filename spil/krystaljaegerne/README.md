@@ -30,12 +30,34 @@ regenererer langsomt uden kamp. Mira kan hele gratis. Eliksirer og opgraderinger
 
 - WASD eller pile: gå i kameraets retning. Mus klik / mellemrum: angrib. Højre musetræk: kamera. 1/2/3: sværd/bue/magi.
   E: Brug. Q: eliksir. I: taske. Esc: pause.
-- Tablet/telefon: venstre joystick, højre drag drejer kameraet, op/ned-drag ændrer afstand. Store Angrib og Brug;
+- Tablet/telefon: venstre joystick, højre drag drejer kameraet, op/ned-drag ændrer afstand. Store Slå/Skyd/Kast lys og Brug;
   separate våben og eliksirknap. Touch sigter på nærmeste fjende. Alle menuer, opgaver og slutmålet kan betjenes med
   touch alene. Intet Pointer Lock.
 - Mobil: DPR højst 1,4, ingen skyggekort, instanser til statiske gentagelser, fjender langt væk skjules. Desktop DPR
   højst 1,8 og ét 1024-skyggekort. Ingen CDN eller importmap.
 - Lyd er selvskabte WebAudio-toner efter interaktion. Mute gemmes.
+
+## Synlige angreb og frivillig øveplads
+
+Sværdet følger højre hånd i to skiftende fejninger. Buen holdes i venstre hånd, mens højre hånd trækker strengen med
+en synlig pil. Pilen frigives fra nokken; magien kommer fra stavens løftede krystal. Tilløb, faktisk ramning og
+afslutning bruger samme forløb, så skade og skud først udløses ved bevægelsen. Våbnenes oprindelige pauser og skader
+bevares. Skift, rejse og død afbryder ufærdige angreb; pause fryser dem. Knappen viser handling, status og tid til klar.
+
+Kameraet starter tættere på (afstand 20) og kan trækkes/rulles ind til 10 for at se figuren. På øvepladsen syd for
+brønden står skiver ved `(-3,12)`, `(0,13)` og `(3,12)`: brug henholdsvis sværd, bue og magi. Autosigte hjælper på
+touch eller kampknappen; klik kan sigte direkte. Brug / E ved `(0,10)` viser råd og nulstiller en fuldført runde.
+Første fuldførelse giver 25 kobber og 15 erfaring. V1-feltet `træning` husker engangsbelønningen; ældre saves får false.
+Øvelsen er valgfri og ændrer ikke de otte opgaver. Skiverne nulstilles ved områdeskift; belønningen bevares.
+
+`blender/tre-verdener/krystaljaegerne/kamp.py` og `kamp.blend` er kilderne til fem originale modeller i
+`modeller/kamp.glb` (113 KB): sværd, bue, pil, stav og træningsskive. `kampfigur.js` tilføjer skulder-/albueled på
+den eksisterende figur. Ansigts- og kappedetaljer vendes lokalt mod spillets −Z uden at ændre de gamle modeller.
+De faktiske GLB'er testes for håndkontakt, slipsted, sværdets bevægelse og mange poser uden drift. Integrationstests
+afprøver de faktiske kampfunktioner, bevægelse, sigtelinjer, udstyr, afbrydelser og magiens flyvebane.
+
+Ren visuel prøve: `server/tests/krystal-kamp-modelvisning.html` viser model, sværdslag, bue/pil og stav uden spil,
+voksenlås eller gemninger. Den erstatter ikke en manuel gennemspilning af eventyret.
 
 ## Gemning og kontrol
 
