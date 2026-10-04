@@ -32,6 +32,9 @@ import { opdatérAngreb, startAngreb } from "./kamp.js";
 import { opretKampfigur } from "./kampfigur.js";
 import { opdatérKampstatus } from "./kampstatus.js";
 import { nyeØveskiver, ramØveskive } from "./øveplads.js";
+import { indsamlFund, medOpgavebelønning, seglFund } from "./fund.js";
+import { opretFundfigur } from "./fundfigur.js";
+import { fundTaske, opretFundkort } from "./fundkort.js";
 
 const $ = (id) => document.getElementById(id);
 // Uændret tekst genudskrives ikke; statusfelter forbliver rolige for skærmlæsere.
@@ -43,6 +46,9 @@ function sætTekst(felt, tekst) {
 const NØGLE = "krystaljaegerne-rejse-v1";
 const touch = matchMedia("(pointer:coarse)").matches;
 const mobil = touch || Math.min(innerWidth, innerHeight) < 700;
+const mindreBevægelse = matchMedia("(prefers-reduced-motion: reduce)");
+const fundkort = opretFundkort();
+let fundfigur;
 let gemt = null;
 try {
   gemt = læsRejse(localStorage.getItem(NØGLE));
@@ -273,6 +279,7 @@ function dialog(titel, tekst, knapper, mærke = "KRYSTALJÆGERNE") {
     fokusTilbage = document.activeElement;
   }
   paused = true;
+  $("fundkort").classList.add("fund-pause");
   angrebHold = null;
   dragId = null;
   joystickId = null;
@@ -299,6 +306,7 @@ function dialog(titel, tekst, knapper, mærke = "KRYSTALJÆGERNE") {
 function lukDialog() {
   $("dialog").classList.add("skjult");
   paused = false;
+  $("fundkort").classList.remove("fund-pause");
   angrebHold = null;
   taster.clear();
   if (fokusTilbage?.isConnected) fokusTilbage.focus({ preventScroll: true });
@@ -329,9 +337,9 @@ function inventar() {
   const færdige = OPGAVER.filter((o) => (s.opgaver[o.id] || 0) >= o.mål);
   dialog(
     "Din rejsetaske",
-    `<p>Niveau ${niveau(s)} · ${s.xp} erfaring<br>${s.mønter} kobber · ${s.eliksirer} eliksirer<br>Udstyr ${
+    `${fundTaske(s)}<p>Niveau ${niveau(s)} · ${s.xp} erfaring<br>Udstyr ${
       ["I", "II", "III", "IV"][s.udstyr]
-    } · ${[0, 1, 2].filter((i) => s.opgaver["boss" + i]).length} af 3 segl</p><p>${
+    }</p><p>${
       90 * niveau(s) ** 2 - s.xp
     } erfaring til næste niveau · ${maxLiv(s)} maksimalt liv.</p><h3>Dine tre våben</h3><ul class="våbenoversigt"><li>⚔ Sværd · ${
       skade({ ...s, våben: "sværd" }, "slim")
@@ -540,6 +548,19 @@ function flyvetekst(x, z, tekst, farve = "#efdca8", liv = 1.2) {
   flyvetekster.push({ obj, liv, max: liv });
 }
 
+// Genstandskort og Blender-fund viser samme belønning, som allerede er gemt i rejsen.
+function roligeFund() {
+  return s.valg.roligeEffekter || mindreBevægelse.matches;
+}
+function visFund(fund, sted, færdig = null) {
+  const belønning = medOpgavebelønning(fund, færdig);
+  const rolig = roligeFund();
+  fundfigur.vis(belønning, {
+    x: sted.x, z: sted.z, kiste: sted.type === "kiste" ? sted.obj : null, rolig,
+  });
+  fundkort.vis(belønning, { rolig });
+}
+
 // Lokale teksturer og effekter frigives ved områdeskift; modelbiblioteket deles videre.
 function fjern(obj) {
   if (!obj) return;
@@ -600,6 +621,9 @@ function nyFjende(data) {
 // Kun aktivitetstilstand og koordinater gemmes; geometri dannes fra det validerede frø.
 function skiftVerden() {
   afbrydAngreb();
+  fundfigur?.ryd();
+  fundkort.skjul();
+  nær = null;
   angrebspause = 0;
   øveskiver.length = 0;
   målFjende = null;
@@ -643,10 +667,10 @@ function skiftVerden() {
     if (s.hentet.includes(data.id)) continue;
     const obj = kopi(
       modeller,
-      data.type === "kiste" ? "kiste" : "krystal",
+      data.type === "kiste" ? "skattekiste" : "fundkrystal",
       data.x,
       data.z,
-      data.type === "kiste" ? 1 : .3,
+      data.type === "kiste" ? 1 : .7,
     );
     scene.add(obj);
     ting.push({ ...data, obj });
@@ -946,26 +970,25 @@ function brug() {
   tone(520, .1);
   if (nær.type === "krystal" || nær.type === "kiste") {
     const t = nær;
-    s.hentet.push(t.id);
-    fjern(t.obj);
+    const fund = indsamlFund(s, t);
+    if (!fund) return;
+    // Den åbnede kiste ejes nu af fundforløbet; den kan ikke samles igen.
+    if (t.type !== "kiste") fjern(t.obj);
     ting.splice(ting.indexOf(t), 1);
+    nær = null;
     blink(t.x, t.z, 0x85ecd4);
+    const færdig = opgave(t.type);
     if (t.type === "krystal") {
-      s.mønter += 3;
-      s.mana = Math.min(100, s.mana + 16);
-      const færdig = opgave("krystal");
       if (!færdig) besked("Lyskrystal fundet · +3 kobber");
       flyvetekst(t.x, t.z, "+3 kobber · lysenergi", "#96eddb", 1.6);
     } else {
-      s.mønter += 18;
-      s.xp += 15;
-      const flere = givEliksirer(s, 1);
-      const færdig = opgave("kiste");
+      const flere = fund.genstande.find((g) => g.type === "eliksir")?.antal || 0;
       if (!færdig) {
         besked(`Skat! +18 kobber · +15 erfaring${flere ? " · 1 eliksir" : ""}`);
       }
       flyvetekst(t.x, t.z, "+18 kobber · +15 erfaring", "#efd3a3", 2.0);
     }
+    visFund(fund, t, færdig);
     hud();
     gem();
     return;
@@ -1111,9 +1134,9 @@ function ramFjende(f, antal) {
         2.0,
       );
     }
-    if (f.art === "stenvogter") opgave("vogter");
+    const vogteropgave = f.art === "stenvogter" ? opgave("vogter") : null;
     if (f.boss) {
-      opgave("boss" + f.grotte);
+      const færdig = opgave("boss" + f.grotte);
       const flere = givEliksirer(s, 2);
       s.hp = maxLiv(s);
       s.mana = 100;
@@ -1121,6 +1144,9 @@ function ramFjende(f, antal) {
         `✦ Segl fundet! ${["Mosvogteren", "Krystalhjorten", "Den gamle vogter"][f.grotte]} hviler nu. +${flere} eliksirer`,
         7,
       );
+      visFund(medOpgavebelønning(seglFund(f.grotte, flere), vogteropgave), {
+        x: f.obj.position.x, z: f.obj.position.z,
+      }, færdig);
       const udgang = {
         id: "bossudgang",
         navn: "Seglet er dit · tilbage til øen",
@@ -1612,6 +1638,9 @@ function opdatér(dt) {
   if (paused) return;
   opdatérSkud(dt);
   if (paused) return;
+  const rolig = roligeFund();
+  fundfigur.opdatér(dt, { rolig });
+  fundkort.opdatér(dt, { rolig });
   for (let i = flyvetekster.length - 1; i >= 0; i--) {
     const t = flyvetekster[i];
     t.liv -= dt;
@@ -1635,8 +1664,8 @@ function opdatér(dt) {
   for (const t of ting) {
     if (t.type === "krystal") {
       t.obj.position.y = .25 +
-        (s.valg.roligeEffekter ? 0 : Math.sin(tid * 2 + t.x) * .15);
-      t.obj.rotation.y += dt * .7;
+        (rolig ? 0 : Math.sin(tid * 2 + t.x) * .15);
+      if (!rolig) t.obj.rotation.y += dt * .7;
     }
   }
   for (const skive of øveskiver) {
@@ -1911,6 +1940,7 @@ $("start").disabled = true;
 $("fortsæt").disabled = true;
 try {
   modeller = await hentModeller();
+  fundfigur = opretFundfigur(scene, modeller);
   for (const model of Object.values(modeller)) {
     model.traverse((del) => {
       if (del.geometry) fællesGeometri.add(del.geometry);

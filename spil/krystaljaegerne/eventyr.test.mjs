@@ -542,7 +542,12 @@ test("faktisk tastatur: Pause/Fortsæt og våbenklik bevarer angreb, mens Tab og
   const hændelser = new Map(), dokument = { activeElement: null };
   const felt = (navn, tag = "button") => ({
     id: navn, isConnected: true,
-    classList: { add() {} },
+    classList: {
+      klasser: new Set(),
+      add(navn) { this.klasser.add(navn); },
+      remove(navn) { this.klasser.delete(navn); },
+      contains(navn) { return this.klasser.has(navn); },
+    },
     closest: (valg) => valg.split(",").includes(tag) ? {} : null,
     querySelectorAll: () => [],
     focus() { dokument.activeElement = this; },
@@ -551,6 +556,7 @@ test("faktisk tastatur: Pause/Fortsæt og våbenklik bevarer angreb, mens Tab og
     verden: felt("verden", "canvas"), pause: felt("pause"), fortsæt: felt("fortsæt"),
     våben: felt("våben"), dialog: felt("dialog"), formular: felt("formular", "input"),
     valg: felt("valg", "select"), tekst: felt("tekst", "textarea"), angrib: felt("angrib"),
+    fundkort: felt("fundkort", "section"),
   };
   const vindue = { addEventListener: (type, fn) => hændelser.set(type, fn) };
   const prøve = new Function("window", "document", "$", "tastFokus", "trykTast", `
@@ -569,9 +575,11 @@ test("faktisk tastatur: Pause/Fortsæt og våbenklik bevarer angreb, mens Tab og
   };
   const slip = (key) => hændelser.get("keyup")({ key });
   felter.fortsæt.focus();
+  felter.fundkort.classList.add("fund-pause");
   prøve.lukDialog();
   assert.equal(dokument.activeElement, felter.pause, "dialogen returnerer fokus til sin åbnende knap");
   assert.equal(prøve.erPaused(), false);
+  assert.equal(felter.fundkort.classList.contains("fund-pause"), false, "fundkortet vises igen efter Fortsæt");
   assert.equal(prøve.hold(), null);
   assert.equal(prøve.taster.size, 0, "holdte taster fra pausen er ryddet");
   send("w", felter.pause, true);
