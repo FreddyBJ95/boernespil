@@ -7,12 +7,12 @@ import { writeFileSync, mkdirSync } from "node:fs";
 register("./krog.mjs", import.meta.url);
 
 const { lavBane } = await import("../bane.js");
-const BANE = process.env.BANE || "stoevbyen";
+const BANE = process.env.BANE || "stoevbyen", VEJR = process.env.VEJR || "dag";   // VEJR=nat: natlyset
 const { Kasseverden } = await import("../verden.js");
 const { Scene } = { Scene: class { constructor() { this.children = []; } add(...b) { this.children.push(...b); } } };
 
 const scene = new Scene(), verden = new Kasseverden();
-const resultat = lavBane(scene, verden, {}, BANE);
+const resultat = lavBane(scene, verden, {}, BANE, VEJR);
 const [MIN_X, MIN_Z, MAX_X, MAX_Z] = resultat.grænse;
 
 // Er et punkt inde i en af kollisionskasserne? (så er fladen skjult — fx to huse, der står op ad hinanden)
@@ -46,7 +46,7 @@ for (const m of scene.children) {
 
 const kasser = verden.kasser.map(k => ({ min: k.min, max: k.max, mat: k.mat }));
 mkdirSync(new URL("./ud/", import.meta.url), { recursive: true });
-const fil = BANE === "stoevbyen" ? "./ud/bane.json" : `./ud/bane_${BANE}.json`;
+const fil = (BANE === "stoevbyen" ? "./ud/bane" : `./ud/bane_${BANE}`) + (VEJR === "nat" ? "_nat" : "") + ".json";
 writeFileSync(new URL(fil, import.meta.url), JSON.stringify({ masker, kasser, lamper: resultat.lamper.map(([x, y, z, , w]) => [x, y - 0.06, z, w ?? 70]), vejr: resultat.vejr }));
 console.log(`synligt areal: ${Math.round(areal)} m²`);
 console.log(masker.map(m => `${m.mat}: ${m.hjørner} hjørner, ${m.skjult.filter(s => !s).length}/${m.skjult.length} synlige`).join("\n"));

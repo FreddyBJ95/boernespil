@@ -115,8 +115,8 @@ export class Hånd {
   constructor(t) {
     this.scene = new THREE.Scene();
     this.kamera = new THREE.PerspectiveCamera(58, 1, 0.01, 10);
-    this.scene.add(new THREE.HemisphereLight(0xfff2dd, 0x6a5a40, 1.4));
-    const sol = new THREE.DirectionalLight(0xffe6c0, 2.2); sol.position.set(1, 2, 1.5); this.scene.add(sol);
+    this.himmel = new THREE.HemisphereLight(0xfff2dd, 0x6a5a40, 1.4); this.scene.add(this.himmel);
+    const sol = new THREE.DirectionalLight(0xffe6c0, 2.2); sol.position.set(1, 2, 1.5); this.scene.add(sol); this.sol = sol;
     this.rod = new THREE.Group(); this.scene.add(this.rod);
     this.modeller = {};
     const glimtMat = new THREE.MeshBasicMaterial({ map: t.glimt, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
@@ -129,6 +129,7 @@ export class Hånd {
       if (this.modeller[id]) continue;
       const k = id.startsWith("granat_") ? "granat" : id === "ingen" ? "ingen" : grundklasse(id), g = BYG[k](), holder = new THREE.Group();
       holder.add(g); hænder(holder, g.userData.venstre, g.userData.højre);
+      holder.traverse(o => { if (o.isMesh) o.material.envMapIntensity = this.lys ?? 1; });   // (mørkere om natten)
       holder.visible = false; this.rod.add(holder);
       const m = this.modeller[id] = { holder, g, klasse: k };
       if (k !== "granat" && k !== "ingen") this.hentModel(id, m);
@@ -140,7 +141,7 @@ export class Hånd {
     hent(egen).catch(() => hent(reserve)).then(gltf => {
       const ny = gltf.scene.clone(true), mund = ny.getObjectByName("munding"), greb = ny.getObjectByName("greb"), ref = REF_GREB[m.klasse];
       if (greb && ref) ny.position.set(ref[0] - greb.position.x, ref[1] - greb.position.y, ref[2] - greb.position.z);
-      ny.traverse(o => { if (o.isMesh) { o.material.envMapIntensity = 0.7; o.frustumCulled = false; } });
+      ny.traverse(o => { if (o.isMesh) { o.material.envMapIntensity = 0.7 * (this.lys ?? 1); o.frustumCulled = false; } });
       m.holder.clear(); m.holder.add(ny);
       m.g = ny; m.g.userData.munding = mund ? mund.position.clone() : new THREE.Vector3(0, 0, -0.7);
       const øje = ny.getObjectByName("oeje");                       // når man sigter, lægges dette punkt lige foran kameraet
@@ -149,6 +150,11 @@ export class Hånd {
       m.glb = true;
       skinPå(ny, this.skin);                                          // dit skin (profil.js)
     }).catch(fejl => console.warn("Kunne ikke hente modellen til", id, fejl));
+  }
+  // Lyset på våbnet i hånden (1 = dag; mindre om natten og i storm)
+  lysStyrke(f = 1) {
+    this.himmel.intensity = 1.4 * f; this.sol.intensity = 2.2 * f; this.lys = f;
+    for (const m of Object.values(this.modeller)) m.g.traverse(o => { if (o.isMesh) o.material.envMapIntensity = 0.7 * f; });
   }
   // Skift skin på alle våbnene (også dem, der allerede er hentet)
   sætSkin(id) {

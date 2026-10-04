@@ -20,7 +20,7 @@ SOL = (0.55, 0.78, 0.3)                             # samme sol som i spil.js (r
 SOL_STYRKE, SOL_FARVE = 3.1, (1.0, 0.871, 0.686)    # 0xfff0d8 som lineære farver
 
 BANE = os.environ.get("LYS_BANE", "stoevbyen")                  # hvilken bane (Støvbyens filer hedder bare bane.json og lys.*)
-NAVN = "" if BANE == "stoevbyen" else f"_{BANE}"
+NAVN = ("" if BANE == "stoevbyen" else f"_{BANE}") + ("_nat" if os.environ.get("LYS_NAT") else "")   # LYS_NAT=1: natlyset
 d = json.load(open(os.path.join(MAPPE, "ud", f"bane{NAVN}.json"), encoding="utf-8"))
 VEJR = d.get("vejr") or {}                                          # banens eget vejr (solen og himlen), hvis den har et
 if "sol" in VEJR: SOL = tuple(VEJR["sol"])

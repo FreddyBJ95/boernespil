@@ -29,6 +29,7 @@ import { Bot, SVÆRHED, NAVNE, træfKrop, vinkel, hentSoldat } from "./bots.js";
 import { Figur, harLeddeløs } from "./leddeloes.js";
 import { Bombe, visMærker } from "./bombe.js";
 import { Killcam } from "./killcam.js";
+import { lavVejr } from "./vejr.js";
 import { køb, drabPenge, giv as givPenge, tegnKøbsmenu, GRUPPER, nytUdstyr } from "./penge.js";
 import * as Lyd from "./lyd.js";
 import { Profil, UDFORDRINGER } from "./profil.js";
@@ -46,7 +47,7 @@ await lås($("lås"));
 
 // ---------- Indstillinger (gemmes på computeren) ----------
 const INDST = "sigtekorn-indstillinger";
-const ind = Object.assign({ sværhed: "normal", hold: 5, følsomhed: 2.0, synsfelt: 90, lydstyrke: 0.8, fart: false, fuldskærm: true, egneLemmer: true, killcam: true, spiltype: "hold", side: "ræve", skFarve: "#5dff6a" },
+const ind = Object.assign({ sværhed: "normal", hold: 5, følsomhed: 2.0, synsfelt: 90, lydstyrke: 0.8, fart: false, fuldskærm: true, egneLemmer: true, killcam: true, vejr: "dag", spiltype: "hold", side: "ræve", skFarve: "#5dff6a" },
   (() => { try { return JSON.parse(localStorage.getItem(INDST) || "{}"); } catch (_) { return {}; } })());
 if (ind.primær && !ind.udrustning) ind.udrustning = { primær: ind.primær === "gevær" ? "storm" : ind.primær };   // fra før udrustningen
 delete ind.primær;
@@ -78,11 +79,11 @@ scene.add(himmelLys);
 // himlen: en stor kugle med blå top, lys horisont og en sol
 const himmel = new THREE.Mesh(new THREE.SphereGeometry(500, 32, 16), new THREE.ShaderMaterial({
   side: THREE.BackSide, depthWrite: false, fog: false,
-  uniforms: { top: { value: new THREE.Color(0x3a78c8) }, midt: { value: new THREE.Color(0x8fbce8) }, bund: { value: new THREE.Color(0xf0dcbc) }, sol: { value: solRet } },
+  uniforms: { top: { value: new THREE.Color(0x3a78c8) }, midt: { value: new THREE.Color(0x8fbce8) }, bund: { value: new THREE.Color(0xf0dcbc) }, sol: { value: solRet }, glød: { value: 1 } },
   vertexShader: "varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
-  fragmentShader: `uniform vec3 top; uniform vec3 midt; uniform vec3 bund; uniform vec3 sol; varying vec3 vP;
+  fragmentShader: `uniform vec3 top; uniform vec3 midt; uniform vec3 bund; uniform vec3 sol; uniform float glød; varying vec3 vP;
     void main(){ float h = clamp(vP.y, -0.2, 1.0); vec3 c = mix(bund, midt, smoothstep(0.0, 0.22, h)); c = mix(c, top, smoothstep(0.22, 0.9, h));
-      float s = max(dot(normalize(vP), sol), 0.0); c += vec3(1.0, 0.92, 0.75) * pow(s, 900.0) * 6.0 + vec3(1.0, 0.85, 0.6) * pow(s, 10.0) * 0.22;
+      float s = max(dot(normalize(vP), sol), 0.0); c += (vec3(1.0, 0.92, 0.75) * pow(s, 900.0) * 6.0 + vec3(1.0, 0.85, 0.6) * pow(s, 10.0) * 0.22) * glød;
       gl_FragColor = vec4(c, 1.0);
       #include <tonemapping_fragment>
       #include <colorspace_fragment>
@@ -93,8 +94,9 @@ himmel.renderOrder = -1; scene.add(himmel);
 // ---------- Banen, effekterne, hånden og skærmen ----------
 const t = await lavTeksturer(fotoBrug(ind.udrustning.bane));         // kun de fotos, banen bruger
 const verden = new Kasseverden();
-const bane = lavBane(scene, verden, t, ind.udrustning.bane);     // banen, man har valgt i udrustningen
-document.querySelector(".menu-kort h1 small").textContent = `${bane.navn} · Ørkenrævene mod Sandslangerne · mod bots`;
+const bane = lavBane(scene, verden, t, ind.udrustning.bane, ind.vejr);   // banen, man har valgt i udrustningen — og vejret
+const vejrNavn = { nat: " om natten", storm: { sand: " i sandstorm", regn: " i regnvejr", sne: " i snestorm" }[bane.storm] }[ind.vejr] || "";
+document.querySelector(".menu-kort h1 small").textContent = `${bane.navn}${vejrNavn} · Ørkenrævene mod Sandslangerne · mod bots`;
 if (bane.vejr) {                                                  // banens vejr: tågen, solen og himlens farver
   const v = bane.vejr;
   if (v.tåge) { scene.fog.color.set(v.tåge[0]); scene.fog.near = v.tåge[1]; scene.fog.far = v.tåge[2]; }
@@ -103,14 +105,21 @@ if (bane.vejr) {                                                  // banens vejr
   if (v.solStyrke) sol.intensity = v.solStyrke;
   if (v.himmel) ["top", "midt", "bund"].forEach((k, i) => himmel.material.uniforms[k].value.set(v.himmel[i]));
 }
-if (await hentLys(bane.masker, bane.id)) {                                 // lyset fra Blender: himlen og det tilbagekastede lys
+let omgivelse = null;
+const bagtLys = await hentLys(bane.masker, bane.id, ind.vejr === "nat");     // lyset fra Blender: himlen og det tilbagekastede lys (om natten: natlyset)
+if (bagtLys) {
   scene.remove(himmelLys);
-  scene.environment = himmelMiljø(renderer, himmel);
-  scene.add(new THREE.AmbientLight(0xe6dccb, 0.2));               // lidt lys overalt, så selv de mørkeste kroge ikke er helt sorte
-}
+  omgivelse = new THREE.AmbientLight(0xe6dccb, 0.2); scene.add(omgivelse);   // lidt lys overalt, så selv de mørkeste kroge ikke er helt sorte
+} else if (ind.vejr === "nat") himmelLys.intensity = 0.12;
+// vejret (vejr.js): nat eller storm ændrer tågen, himlen, solen og lyset — og giver lommelygter, regn, sne eller sand
+const vejr = lavVejr(ind.vejr, bane.storm, { scene, sol, solRet, himmel, omgivelse, masker: bane.masker });
+Lyd.vejrLyd(vejr.lyd); vejr.torden = d => Lyd.torden(d);
+let lygteTændt = true;                                             // din lommelygte om natten (tast F)
+if (bagtLys) scene.environment = himmelMiljø(renderer, himmel);
 await hentSoldat();                                               // de leddeløse soldater fra Blender (ellers klodssoldaten)
 const effekter = new Effekter(scene, t);
 const hånd = new Hånd(t);
+hånd.lysStyrke(vejr.håndLys);                                      // (våbnet i hånden er mørkere om natten og i storm)
 hånd.lavMiljø(renderer);
 const hud = new Hud();
 let stat = læsStatistik();
@@ -192,6 +201,7 @@ const botSpil = {
   kast: (bot, type, o, fart) => projektiler.granat(type, bot, o, fart),  // botterne kaster også granater
   ræsVåben: bot => ræs() ? ræsVåben(bot) : null,                     // våbenræs: botten får rækkens våben
   træning: () => træning(),                                       // træning: botterne er mål, der ikke skyder
+  synsvidde: () => vejr.synsvidde,                                // (kortere om natten og i storm)
   spawnSted: bot => træning() ? målSted(bot) : null,
   delLyd: (pos, fart) => {                                         // en løs del rammer jorden (ikke for mange lyde på én gang)
     if (fart < 1.2 || tid - sidsteDelLyd < 0.04 || pos.distanceTo(kamera.position) > 40) return;
@@ -441,6 +451,7 @@ addEventListener("keydown", e => {
   if (["Tab", "Space"].includes(e.code) || e.ctrlKey) e.preventDefault();   // Ctrl er duk: ingen Ctrl+S, Ctrl+D osv. midt i kampen
   if (e.repeat) return;
   taster.add(e.code);
+  if (e.code === "KeyF" && vejr.nat) { lygteTændt = !lygteTændt; Lyd.klik(); }
   if (e.code === "KeyB" && bombeSpil() && !spiller.død) { visKøb(købGruppe === undefined ? null : undefined); return; }
   if (købGruppe !== undefined && /^Digit\d$/.test(e.code)) { vælgKøb(+e.code.slice(5)); return; }   // (købsmenuen er åben)
   if (e.code === "KeyR" && !spiller.død) { const v = vb(); if (genlad(v)) { hånd.genladStart(v.d.genlad); Lyd.genlad(v.d.genlad); hud.kikkert(false); } }
@@ -632,6 +643,7 @@ function tegnBillede(nu) {
   if (Math.abs(kamera.fov - fov) > 0.01) { kamera.fov = fov; kamera.updateProjectionMatrix(); }
   himmel.position.copy(kamera.position);
   bane.opdater?.(dt, kamera.position);                            // fx sneen, der falder
+  vejr.opdater(dt, kamera, kampfolk, lygteTændt && !spiller.død);  // regn, sne eller sand — og lommelygterne om natten
   bombe.tegn(tid);                                                 // bombens lampe blinker
   // botterne, hånden og effekterne
   for (const b of bots) b.tegn(Math.min(1, alfa), dt);
@@ -722,7 +734,7 @@ function lås_mus() {
   Lyd.start();
   // fuld skærm, og browseren må ikke bruge tasterne selv (ellers lukker Ctrl+W fanen, når man dukker og går frem)
   if (ind.fuldskærm && !document.fullscreenElement) document.documentElement.requestFullscreen?.({ navigationUI: "hide" })
-    .then(() => navigator.keyboard?.lock?.(["ControlLeft", "ControlRight", "KeyW", "KeyA", "KeyS", "KeyD", "KeyQ", "KeyR", "KeyC", "KeyE", "KeyB", "Space", "Tab", "Digit1", "Digit2", "Digit3"]))
+    .then(() => navigator.keyboard?.lock?.(["ControlLeft", "ControlRight", "KeyW", "KeyA", "KeyS", "KeyD", "KeyQ", "KeyR", "KeyC", "KeyE", "KeyB", "KeyF", "Space", "Tab", "Digit1", "Digit2", "Digit3"]))
     .catch(() => {});
   const fejl = () => hud.besked("Musen kunne ikke fanges — åbn spillet i Chrome eller Edge", 4000);
   const igen = () => { try { lærred.requestPointerLock()?.catch?.(fejl); } catch (_) { fejl(); } };
@@ -771,6 +783,7 @@ knapper("valgFart", [[false, "Nej"], [true, "Ja (u/s)"]], "fart");
 knapper("valgFuld", [[true, "Ja"], [false, "Nej"]], "fuldskærm");
 knapper("valgLemmer", [[true, "Ja"], [false, "Nej"]], "egneLemmer");
 knapper("valgKillcam", [[true, "Ja"], [false, "Nej"]], "killcam");
+knapper("valgVejr", [["dag", "☀️ Dag"], ["nat", "🌙 Nat"], ["storm", { sand: "🌪️ Sandstorm", regn: "🌧️ Regn og torden", sne: "❄️ Snestorm" }[bane.storm]]], "vejr", () => location.reload());
 skyder("følsomhed", "følsomhed", v => v.toFixed(2));
 skyder("synsfelt", "synsfelt", v => `${v}°`);
 skyder("lydstyrke", "lydstyrke", v => `${Math.round(v * 100)} %`);
