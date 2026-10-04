@@ -1,7 +1,7 @@
 // ===== Skærmen: sigtekorn, liv, ammunition, stilling, drab, ramt-tegn, skaderetning og pointtavle =====
 // Og statistikken, der gemmes på computeren, så man kan se, at man bliver bedre.
 
-import { SJÆLDEN } from "./katalog.js";
+import { SJÆLDEN, ALLE as VÅBEN } from "./katalog.js";
 
 const $ = id => document.getElementById(id);
 
@@ -56,6 +56,12 @@ export class Hud {
   besked(tekst, ms = 2200) {
     this.el.besked.textContent = tekst; this.el.besked.classList.add("vis");
     clearTimeout(this.beskedT); this.beskedT = setTimeout(() => this.el.besked.classList.remove("vis"), ms);
+  }
+  // Killcam: hvem man ser fra, med hvilket våben, og hvor meget liv de havde
+  killcam(info) {
+    const el = document.getElementById("killcam"), tekst = info ? `📹 Killcam · <b class="${info.hold}">${info.navn}</b>${info.våben && VÅBEN[info.våben] ? " · " + VÅBEN[info.våben].navn : ""} · ${Math.max(0, Math.ceil(info.liv))} liv` : "";
+    if (el.innerHTML !== tekst) el.innerHTML = tekst;
+    el.classList.toggle("skjult", !info);
   }
   // XP: et lille tal, der svæver op ved sigtekornet
   xp(n) {

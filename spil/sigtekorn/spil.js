@@ -17,7 +17,7 @@ import { lavTeksturer } from "./teksturer.js";
 import { Kasseverden } from "./verden.js";
 import { lavBane, fotoBrug } from "./bane.js";
 import { hentLys, himmelMiljø } from "./lys.js";
-import { deleTrin, deleTegn, ryddDele } from "./dele.js";
+import { deleTrin, deleTegn, ryddDele, deleSynlige } from "./dele.js";
 import { nyAktør, bevæg, øjeHøjde, TICK, U } from "./bevaegelse.js";
 import { VÅBEN, nytVåben, aftrækker, efterSkud, opdaterVåben, skudRetning, synligRekyl, retningsvektor, genlad, unøjagtighed, skade } from "./vaaben.js";
 import { SJÆLDEN } from "./katalog.js";
@@ -28,6 +28,7 @@ import { Effekter } from "./effekter.js";
 import { Bot, SVÆRHED, NAVNE, træfKrop, vinkel, hentSoldat } from "./bots.js";
 import { Figur, harLeddeløs } from "./leddeloes.js";
 import { Bombe, visMærker } from "./bombe.js";
+import { Killcam } from "./killcam.js";
 import * as Lyd from "./lyd.js";
 import { Profil, UDFORDRINGER } from "./profil.js";
 import { SKINS, skinBillede } from "./skins.js";
@@ -44,7 +45,7 @@ await lås($("lås"));
 
 // ---------- Indstillinger (gemmes på computeren) ----------
 const INDST = "sigtekorn-indstillinger";
-const ind = Object.assign({ sværhed: "normal", hold: 5, følsomhed: 2.0, synsfelt: 90, lydstyrke: 0.8, fart: false, fuldskærm: true, egneLemmer: true, spiltype: "hold", side: "ræve", skFarve: "#5dff6a" },
+const ind = Object.assign({ sværhed: "normal", hold: 5, følsomhed: 2.0, synsfelt: 90, lydstyrke: 0.8, fart: false, fuldskærm: true, egneLemmer: true, killcam: true, spiltype: "hold", side: "ræve", skFarve: "#5dff6a" },
   (() => { try { return JSON.parse(localStorage.getItem(INDST) || "{}"); } catch (_) { return {}; } })());
 if (ind.primær && !ind.udrustning) ind.udrustning = { primær: ind.primær === "gevær" ? "storm" : ind.primær };   // fra før udrustningen
 delete ind.primær;
@@ -170,6 +171,7 @@ function genopstå() {
   spiller.a = nyAktør(bedst[0], 0.01, bedst[1], 0);
   spiller.liv = 100; spiller.panser = 100; spiller.død = false; beskyttet = 1.5;
   spillerFig?.nulstil();
+  killcam.stop(); killcamVent = null; deleSynlige(true); hud.killcam(null);
   udrust(); hud.død(""); hud.kikkert(false);
 }
 
@@ -204,10 +206,15 @@ const bombe = new Bombe({
     if ((navn === "lagt" || navn === "desarmeret") && d.hvem === spiller) belønning(200, ["desarmer", 1]);
   },
 });
+// Killcam: de sidste sekunder, før du døde, set fra den, der dræbte dig (killcam.js)
+const killcam = new Killcam({ scene, kampfolk: () => kampfolk, spiller, effekter, øjeHøjde, aktivt: () => aktivt });
+let killcamVent = null;                                            // hvornår afspilningen skal starte (lidt efter, man døde)
+const genopståTid = () => ind.killcam && !træning() ? 6 : 3;       // med killcam venter man lidt længere
 // Små grønne pile over ens holdkammerater, så man ikke skyder efter dem
 const pilTekstur = (() => { const c = document.createElement("canvas"); c.width = c.height = 64; const g = c.getContext("2d"); g.fillStyle = "#7dff6a"; g.strokeStyle = "#0a2a0a"; g.lineWidth = 4; g.beginPath(); g.moveTo(10, 14); g.lineTo(54, 14); g.lineTo(32, 50); g.closePath(); g.fill(); g.stroke(); return new THREE.CanvasTexture(c); })();
 function lavBots() {
   for (const b of bots) scene.remove(b.model);
+  killcam.ryd();
   ryddDele(); effekter.ryd(); projektiler.ryd();
   const navne = [...NAVNE].sort(() => Math.random() - 0.5);
   bots = [];
@@ -268,8 +275,10 @@ function kugle(skytte, o, ret, v, spor) {
   const slut = tmpS.copy(o).addScaledVector(r, maks).clone();
   // lysspor fra mundingen (spilleren: fra våbnet i hånden)
   if (spor) {
+    const fra = o.clone().addScaledVector(r, 0.7).add(new THREE.Vector3(0, -0.15, 0));
     if (skytte === spiller) { if (Math.random() < 0.6) effekter.sporFra(hånd.munding(kamera, tmpM), slut); }
-    else effekter.sporFra(o.clone().addScaledVector(r, 0.7).add(new THREE.Vector3(0, -0.15, 0)), slut);
+    else effekter.sporFra(fra, slut);
+    killcam.spor(fra, slut, tid);                                  // (så det også kan ses i killcam)
   }
   if (ramt) return { hoved: ramt.del === "hoved", dræbt: træfOffer(skytte, ramt.k, ramt.del, ramt.lem, v, maks, r, slut) };
   if (væg) {
@@ -307,8 +316,9 @@ function spillerRamt(s, fra, skud = null) {
   spiller.død = true; spiller.dødsfald++; dødTid = tid; stime = 0; stat.død++;
   if (egneLemmer()) spillerFig.falder(skud, scene, verden, new THREE.Vector3(spiller.a.vel.x, 0, spiller.a.vel.z), botSpil.delLyd);   // du falder fra hinanden
   dræber = fra !== spiller ? fra : null; dødSyn = { yaw: spiller.a.yaw, pitch: spiller.a.pitch };
+  killcamVent = ind.killcam && dræber && !træning() ? tid + 1.2 : null;
   const med = fra.våben?.d ? ` med ${fra.våben.d.navn}` : "", rest = fra !== spiller && fra.liv > 0 ? ` · ${Math.ceil(fra.liv)} liv tilbage` : "";
-  const efter = bombeSpil() ? "du ser med til næste runde (klik: en anden)" : "tilbage om 3";
+  const efter = bombeSpil() ? "du ser med til næste runde (klik: en anden)" : `tilbage om ${genopståTid()}`;
   hud.død(`${fra === spiller ? "Du ramte dig selv" : `Du blev ramt af <b class="${fra.hold}">${fra.navn}</b>${med}${rest}`} · ${efter}`); hud.kikkert(false);
   return true;
 }
@@ -497,8 +507,8 @@ function tick(dt) {
       if (aftrækker(v, skydHoldt, dt)) spillerSkyder();
     }
     if (!skydHoldt) skydLåst = false;
-  } else if (!bombeSpil() && tid - dødTid > 3) genopstå();
-  else { const s = 3 - (tid - dødTid); hud.død(hud.el.død.innerHTML.replace(/tilbage om \d/, `tilbage om ${Math.ceil(s)}`)); }
+  } else if (!bombeSpil() && tid - dødTid > genopståTid()) genopstå();
+  else { const s = genopståTid() - (tid - dødTid); hud.død(hud.el.død.innerHTML.replace(/tilbage om \d/, `tilbage om ${Math.ceil(s)}`)); }
   for (const b of bots) {
     if (!(bombeSpil() && bombe.fryser)) b.tick(dt);
     if (b.død && !bombeSpil() && tid - b.dødTid > (træning() ? 0.6 : 3) && !(træning() && point.ræve + bots.filter(x => !x.død).length >= TRÆNING)) b.spawn();
@@ -506,6 +516,7 @@ function tick(dt) {
   deleTrin(dt);                                                    // hoveder, arme og ben, der er skudt af, falder og bliver liggende
   projektiler.trin(dt);
   if (bombeSpil() && iGang) bombe.tick(dt, taster.has("KeyE") && !spiller.død);
+  killcam.optag(tid);
   if (kampSlut <= 0 && !træning() && !bombeSpil()) slutKamp();
 }
 function spillerSkyder() {
@@ -557,7 +568,7 @@ function billede(nu) {
   tegnBillede(nu);
 }
 function tegnBillede(nu) {
-  const dt = Math.min(0.1, (nu - sidst) / 1000); sidst = nu;
+  const dt = Math.max(0, Math.min(0.1, (nu - sidst) / 1000)); sidst = nu;   // (aldrig baglæns, og højst 0,1 s ad gangen)
   if (iGang && !pause) { akk += dt; let n = 0; while (akk >= TICK && n++ < 30) { tick(TICK); akk -= TICK; } }
   const alfa = akk / TICK, a = spiller.a;
   // kameraet: mellem de to sidste tick (blødt) — og trin op glider i stedet for at hoppe
@@ -574,7 +585,13 @@ function tegnBillede(nu) {
     dødSyn.yaw += vinkel(Math.atan2(-dx, -dz) - dødSyn.yaw) * k; dødSyn.pitch += (Math.atan2(dy, Math.hypot(dx, dz)) - dødSyn.pitch) * k;
     kamera.rotation.set(dødSyn.pitch, dødSyn.yaw, dødFald * 0.25);
   } else kamera.rotation.set(a.pitch + rp + slag * 0.05, a.yaw + ry + slagYaw * slag, dødFald * 0.6);
-  const venner = spiller.død && bombeSpil() && tid - dødTid > 2.2 ? bots.filter(b => b.hold === spiller.hold && !b.død) : [];
+  if (killcamVent !== null && tid >= killcamVent) {                // killcam: start afspilningen
+    killcamVent = null;
+    if (killcam.start(dræber, dødTid)) deleSynlige(false);
+  }
+  if (killcam.aktiv && !killcam.tegn(dt, kamera)) deleSynlige(true);  // (kameraet sidder i drabsmandens øjne)
+  hud.killcam(killcam.info);
+  const venner = spiller.død && bombeSpil() && !killcam.aktiv && killcamVent === null && tid - dødTid > 2.2 ? bots.filter(b => b.hold === spiller.hold && !b.død) : [];
   if (venner.length) {                                             // død i en bomberunde: kameraet følger en holdkammerat bagfra
     const ven = venner[følgNr % venner.length], yaw = ven.a.yaw;
     kamera.position.set(ven.a.pos.x + Math.sin(yaw) * 2.6, ven.a.pos.y + 2.2, ven.a.pos.z + Math.cos(yaw) * 2.6);
@@ -719,6 +736,7 @@ lavUdrustning($("udrustning"), $("vælger"), ind, gemIndst, () => Lyd.bip());
 knapper("valgFart", [[false, "Nej"], [true, "Ja (u/s)"]], "fart");
 knapper("valgFuld", [[true, "Ja"], [false, "Nej"]], "fuldskærm");
 knapper("valgLemmer", [[true, "Ja"], [false, "Nej"]], "egneLemmer");
+knapper("valgKillcam", [[true, "Ja"], [false, "Nej"]], "killcam");
 skyder("følsomhed", "følsomhed", v => v.toFixed(2));
 skyder("synsfelt", "synsfelt", v => `${v}°`);
 skyder("lydstyrke", "lydstyrke", v => `${Math.round(v * 100)} %`);
@@ -755,4 +773,4 @@ spiller.a = nyAktør(0, 6, 30, 0); spiller.a.pitch = -0.12;
 requestAnimationFrame(billede);
 if (location.search.includes("debug")) window.sk = { spiller, get bots() { return bots; }, verden, bane, kamera, ind, tick, skyd, startKamp, taster, hånd, scene, himmelLys, renderer,
   get vb() { return vb(); }, get point() { return point; }, kør() { pause = false; $("menu").classList.add("skjult"); }, stop() { pause = true; }, udrust, kast: kastGranat, vælg: id => skiftVåben(id), effekter, hud, spillerFig, get aktivt() { return aktivt; }, get projektiler() { return projektiler; },
-  steg(n) { for (let i = 0; i < n; i++) tick(TICK); }, tegn: nu => tegnBillede(nu), bombe, skydNu() { skydHoldt = true; spillerSkyder(); skydHoldt = false; skydLåst = false; } };
+  steg(n) { for (let i = 0; i < n; i++) tick(TICK); }, tegn: nu => tegnBillede(nu), bombe, killcam, skydNu() { skydHoldt = true; spillerSkyder(); skydHoldt = false; skydLåst = false; } };

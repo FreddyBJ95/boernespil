@@ -79,6 +79,8 @@
   #fremskridt i { display: block; height: 8px; margin-top: 6px; border-radius: 4px; background: #e8b860; box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.6); width: 0; }
   #bombeIkon { position: absolute; left: 18px; bottom: 96px; padding: 6px 10px; border-radius: 8px; background: rgba(120, 20, 10, 0.75); font: 600 14px system-ui; color: #ffe0c0; }
   #ur.bombe { color: #ff5040; }
+  #killcam { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); padding: 6px 14px; border-radius: 8px; background: rgba(10, 8, 6, 0.75); font: 600 16px system-ui; }
+  #killcam b.ræve { color: var(--ræve); } #killcam b.slanger { color: var(--slanger); }
   #prik { position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: #ff2a2a; box-shadow: 0 0 5px 1px rgba(255, 40, 40, 0.75); }
   #kikkert { position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, transparent 0, transparent calc(44vh - 1px), #000 44vh); }
   #kikkert::before, #kikkert::after { content: ""; position: absolute; background: #000; }
@@ -149,6 +151,7 @@
   <div id="kikkert" class="skjult"></div>
   <div id="prik" class="skjult"></div>
   <div id="fremskridt" class="skjult"><span></span><i></i></div>
+  <div id="killcam" class="skjult"></div>
   <div id="bombeIkon" class="skjult">💣 Du har bomben — hold E inde på A eller B</div>
   <div id="sigte"><i class="t"></i><i class="b"></i><i class="v"></i><i class="h"></i></div>
   <div id="ramt"></div>
@@ -186,6 +189,7 @@
       <label>Vis fart</label><div class="knapper" id="valgFart"></div>
       <label>Fuld skærm</label><div class="knapper" id="valgFuld"></div>
       <label>Du kan miste arme og ben</label><div class="knapper" id="valgLemmer"></div>
+      <label>Killcam, når du dør</label><div class="knapper" id="valgKillcam"></div>
     </div>
     <div class="menu-bund">
       <button class="stor" id="start" disabled>Henter banen…</button>

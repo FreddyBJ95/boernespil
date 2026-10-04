@@ -128,4 +128,5 @@ export function deleTrin(dt) {
   }
 }
 export function deleTegn() { for (const k of alle) k.tegn(); }
+export function deleSynlige(til) { for (const k of alle) k.obj.visible = til; }   // (skjules under killcam)
 export function ryddDele() { for (const k of alle) fjern(k); alle.length = 0; }
