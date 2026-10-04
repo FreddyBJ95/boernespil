@@ -42,7 +42,7 @@ await lås($("lås"));
 
 // ---------- Indstillinger (gemmes på computeren) ----------
 const INDST = "sigtekorn-indstillinger";
-const ind = Object.assign({ sværhed: "normal", hold: 5, følsomhed: 2.0, synsfelt: 90, lydstyrke: 0.8, fart: false, fuldskærm: true, egneLemmer: true, spiltype: "hold" },
+const ind = Object.assign({ sværhed: "normal", hold: 5, følsomhed: 2.0, synsfelt: 90, lydstyrke: 0.8, fart: false, fuldskærm: true, egneLemmer: true, spiltype: "hold", side: "ræve" },
   (() => { try { return JSON.parse(localStorage.getItem(INDST) || "{}"); } catch (_) { return {}; } })());
 if (ind.primær && !ind.udrustning) ind.udrustning = { primær: ind.primær === "gevær" ? "storm" : ind.primær };   // fra før udrustningen
 delete ind.primær;
@@ -121,10 +121,15 @@ const projektiler = new Projektiler({
 
 // ---------- Spilleren ----------
 // Spilleren er også leddeløs: en usynlig figur følger med, så botterne kan skyde dine arme, ben og hoved af
-const spillerFig = harLeddeløs() ? new Figur("ræve") : null;
-if (spillerFig) { spillerFig.model.visible = false; scene.add(spillerFig.model); }
+let spillerFig = null;
+function lavSpillerFig(hold) {                                     // (den usynlige figur får holdets farver, når man falder fra hinanden)
+  if (!harLeddeløs()) return;
+  if (spillerFig) scene.remove(spillerFig.model);
+  spillerFig = new Figur(hold); spillerFig.model.visible = false; scene.add(spillerFig.model);
+}
+lavSpillerFig(ind.side);
 const egneLemmer = () => spillerFig && ind.egneLemmer;
-const spiller = { navn: "Dig", hold: "ræve", erSpiller: true, liv: 100, panser: 100, død: false, drab: 0, dødsfald: 0, hoveder: 0, a: nyAktør(0, 0.01, 47) };
+const spiller = { navn: "Dig", hold: ind.side, erSpiller: true, liv: 100, panser: 100, død: false, drab: 0, dødsfald: 0, hoveder: 0, a: nyAktør(0, 0.01, 47) };
 let dræber = null, dødSyn = { yaw: 0, pitch: 0 };                    // hvem dræbte dig (kameraet drejer hen mod dem)
 let våbenSæt = {}, aktivt = "storm", forrige = "pistol", dødTid = 0, beskyttet = 0, stime = 0, trinVej = 0, slag = 0, slagYaw = 0;
 // ---------- Våbenræs: hvert drab giver det næste våben i rækken — den første, der dræber med kniven, vinder ----------
@@ -154,8 +159,8 @@ function udrust() {
 const vb = () => våbenSæt[aktivt];
 // Start (eller start igen) det sted i Ørkenrævenes start, der er længst fra fjenderne
 function genopstå() {
-  let bedst = bane.start.ræve[0], bd = -1;
-  for (const [x, z] of bane.start.ræve) {
+  let bedst = bane.start[spiller.hold][0], bd = -1;
+  for (const [x, z] of bane.start[spiller.hold]) {
     const d = Math.min(...bots.filter(b => b.hold !== spiller.hold && !b.død).map(b => Math.hypot(b.a.pos.x - x, b.a.pos.z - z)), 999);
     if (d > bd) { bd = d; bedst = [x, z]; }
   }
@@ -201,8 +206,9 @@ function lavBots() {
   bots = [];
   if (træning()) for (let i = 0; i < 3; i++) bots.push(new Bot(botSpil, "slanger", navne.pop()));   // tre mål ad gangen
   else {
-    for (let i = 0; i < ind.hold - 1; i++) bots.push(new Bot(botSpil, "ræve", navne.pop()));
-    for (let i = 0; i < ind.hold; i++) bots.push(new Bot(botSpil, "slanger", navne.pop()));
+    const andet = spiller.hold === "ræve" ? "slanger" : "ræve";       // holdkammeraterne og fjenderne
+    for (let i = 0; i < ind.hold - 1; i++) bots.push(new Bot(botSpil, spiller.hold, navne.pop()));
+    for (let i = 0; i < ind.hold; i++) bots.push(new Bot(botSpil, andet, navne.pop()));
   }
   for (const b of bots) if (b.hold === spiller.hold) {
     const pil = new THREE.Sprite(new THREE.SpriteMaterial({ map: pilTekstur, depthTest: false, transparent: true })); pil.scale.setScalar(0.32); pil.position.y = 2.25; pil.renderOrder = 5;
@@ -598,6 +604,8 @@ addEventListener("resize", tilpas); tilpas();
 function startKamp() {
   point = { ræve: 0, slanger: 0 }; tid = 0; kampSlut = KAMPTID; spiller.drab = spiller.dødsfald = spiller.hoveder = 0; stime = 0;
   spiller.niveau = 0; vinder = null; træningTal = { skud: 0, træf: 0 };
+  const hold = træning() ? "ræve" : ind.side;                        // det hold, man har valgt i menuen
+  if (hold !== spiller.hold) { spiller.hold = hold; lavSpillerFig(hold); }
   lavBots(); botSpil.bombe = bombeSpil() ? bombe : null; visMærker(bombe, bombeSpil());
   if (bombeSpil()) bombe.startKamp(); else { genopstå(); for (const b of bots) b.spawn(); }
   iGang = true; if (!træning()) stat.kampe++; gemStatistik(stat);
@@ -609,12 +617,13 @@ function slutKamp() {
   if (!iGang) return;
   iGang = false; pause = true;
   if (træning()) return slutTræning();
-  const vandt = vinder ? vinder.hold === spiller.hold : point.ræve > point.slanger, uafgjort = !vinder && point.ræve === point.slanger;
+  const bedst = point.ræve > point.slanger ? "ræve" : "slanger";
+  const vandt = vinder ? vinder.hold === spiller.hold : bedst === spiller.hold, uafgjort = !vinder && point.ræve === point.slanger;
   if (vandt) stat.sejre++;
   gemStatistik(stat);
   document.exitPointerLock?.();
   $("slutOverskrift").textContent = vinder ? (vinder === spiller ? "🏆 Du vandt våbenræset!" : `${vinder.navn} vandt våbenræset`)
-    : uafgjort ? "Uafgjort!" : vandt ? "🏆 Ørkenrævene vandt!" : "Sandslangerne vandt";
+    : uafgjort ? "Uafgjort!" : `${vandt ? "🏆 " : ""}${bedst === "ræve" ? "Ørkenrævene" : "Sandslangerne"} vandt!`;
   $("slutTekst").innerHTML = `${point.ræve} – ${point.slanger}<br>Du: ${spiller.drab} drab, ${spiller.dødsfald} gange død, ${spiller.drab ? Math.round(100 * spiller.hoveder / spiller.drab) : 0} % hovedskud`;
   $("slut").classList.remove("skjult"); $("hud").classList.add("skjult"); $("menu").classList.add("skjult");
 }
@@ -674,6 +683,7 @@ function skyder(id, nøgle, vis) {
 knapper("valgSværhed", Object.entries(SVÆRHED).map(([k, v]) => [k, v.navn]), "sværhed");
 knapper("valgHold", [1, 2, 3, 4, 5].map(n => [n, `${n} mod ${n}`]), "hold");
 knapper("valgSpil", [["hold", "Holdkamp"], ["bombe", "Bombe"], ["ræs", "Våbenræs"], ["træning", "Træning"]], "spiltype");
+knapper("valgSide", [["ræve", "🦊 Ørkenrævene"], ["slanger", "🐍 Sandslangerne"]], "side");
 lavUdrustning($("udrustning"), $("vælger"), ind, gemIndst, () => Lyd.bip());
 knapper("valgFart", [[false, "Nej"], [true, "Ja (u/s)"]], "fart");
 knapper("valgFuld", [[true, "Ja"], [false, "Nej"]], "fuldskærm");

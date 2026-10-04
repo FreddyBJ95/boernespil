@@ -4,7 +4,8 @@
 //  · af Ørkenrævene, når bomben springer, eller når alle Sandslanger er væk
 //  · af Sandslangerne, når bomben bliver desarmeret, når alle Ørkenræve er væk (før bomben er lagt),
 //    eller når tiden løber ud, uden at bomben er lagt
-// Første hold til 8 runder vinder kampen. Spilleren er altid en Ørkenræv: hold E inde på en plads for at lægge bomben.
+// Første hold til 8 runder vinder kampen. Spilleren kan være på begge hold: hold E inde på en plads for at lægge bomben
+// (Ørkenrævene) — eller ved bomben for at desarmere den (Sandslangerne).
 
 import * as THREE from "./three.js";
 
@@ -38,7 +39,9 @@ export class Bombe {
     this.nyePoster();
     this.model.visible = false;
     const { hud } = this.k;
-    hud.besked(this.bærer === this.k.spiller ? "💣 Du har bomben! Læg den på A eller B (hold E inde)" : `Runde ${this.runder.ræve + this.runder.slanger + 1} — læg bomben på A eller B`, 2800);
+    const nr = this.runder.ræve + this.runder.slanger + 1, sp = this.k.spiller;
+    hud.besked(this.bærer === sp ? "💣 Du har bomben! Læg den på A eller B (hold E inde)"
+      : sp.hold === "ræve" ? `Runde ${nr} — læg bomben på A eller B` : `Runde ${nr} — forsvar A og B`, 2800);
   }
   // Botterne vælger nye poster med det samme (når bomben bliver lagt eller tabt)
   nyePoster() {
@@ -103,7 +106,9 @@ export class Bombe {
       let hvem = null, type = null;
       if (!this.lagt && this.bærer && !this.bærer.død && this.påPlads(this.bærer.a.pos) && (this.bærer.erSpiller ? brug : !this.bærer.mål)) { hvem = this.bærer; type = "lægge"; }
       if (this.lagt) {
-        hvem = folk.find(k => k.hold === "slanger" && !k.død && !k.erSpiller && !k.mål && Math.hypot(k.a.pos.x - this.ligger.x, k.a.pos.z - this.ligger.z) < 1.6);
+        const ved = k => Math.hypot(k.a.pos.x - this.ligger.x, k.a.pos.z - this.ligger.z) < 1.6;
+        hvem = sp.hold === "slanger" && !sp.død && brug && ved(sp) ? sp                     // spilleren desarmerer (hold E inde)
+          : folk.find(k => k.hold === "slanger" && !k.død && !k.erSpiller && !k.mål && ved(k));
         type = hvem ? "desarmere" : null;
       }
       if (hvem) { h = this.handling = { hvem, type, tid: 0, x: hvem.a.pos.x, z: hvem.a.pos.z }; hvem.handling = true; if (type === "lægge") this.k.lyd.bip(660); }
@@ -116,7 +121,8 @@ export class Bombe {
     if (h.type === "lægge") {
       this.lagt = true; this.timer = BOMBETID; this.næsteBip = BOMBETID - 1; this.lægger = h.hvem;
       this.ligger = h.hvem.a.pos.clone(); this.sted = this.påPlads(this.ligger); this.bærer = null; this.vis(this.ligger);
-      this.k.lyd.bip(990); this.k.hud.besked(`💣 Bomben er lagt på ${this.sted}!`, 2400);
+      this.k.lyd.bip(990);
+      this.k.hud.besked(sp.hold === "slanger" ? `💣 Bomben er lagt på ${this.sted}! Find den, og hold E inde for at desarmere` : `💣 Bomben er lagt på ${this.sted}!`, 2600);
       this.nyePoster();
     } else {
       this.timer = 0; this.lagt = false; this.k.lyd.bip(520);
@@ -172,7 +178,8 @@ export class Bombe {
   status() {
     const h = this.handling;
     return { ræve: this.runder.ræve, slanger: this.runder.slanger, ur: this.lagt ? this.timer : this.tilstand === "frys" ? this.frys : this.tid, lagt: this.lagt,
-      fremskridt: h ? { andel: h.tid / (h.type === "lægge" ? LÆGTID : DESARMERTID), tekst: h.hvem.erSpiller ? "Lægger bomben…" : h.type === "lægge" ? `${h.hvem.navn} lægger bomben` : `${h.hvem.navn} desarmerer` } : null,
+      fremskridt: h ? { andel: h.tid / (h.type === "lægge" ? LÆGTID : DESARMERTID),
+        tekst: h.hvem.erSpiller ? (h.type === "lægge" ? "Lægger bomben…" : "Desarmerer…") : h.type === "lægge" ? `${h.hvem.navn} lægger bomben` : `${h.hvem.navn} desarmerer` } : null,
       bærer: this.bærer };
   }
   // Hvert billede: lampen på bomben blinker
