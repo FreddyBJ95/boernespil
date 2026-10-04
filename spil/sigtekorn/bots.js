@@ -21,6 +21,7 @@ const G = Math.PI / 180;
 const BOTVÅBEN = [["storm", 14], ["taktisk", 10], ["salve", 6], ["kamp", 5], ["mp", 9], ["sprøjte", 6], ["pump", 6], ["hagl", 4],
   ["snig", 3], ["jagt", 3], ["spejder", 4], ["lmg", 4], ["minigun", 1.5], ["raket", 1.5], ["armbrøst", 2]];
 const BOTPISTOL = [["pistol", 5], ["lydløs", 2], ["automat", 2], ["revolver", 1.5]];
+const OPSTÅ = 1.4;                                                    // så længe er en zombie om at kravle op af jorden
 // Battle royale: kan en bot bruge våbnet fra kisten? (ellers får den et af sine egne)
 export const botKanBruge = id => [...BOTVÅBEN, ...BOTPISTOL].some(([v]) => v === id);
 export const botVåben = () => lodtrækning(BOTVÅBEN);
@@ -116,6 +117,7 @@ export class Bot {
       this.liv = z.liv; this.panser = 0; this.granater = []; this.sekundær = null;
       this.model.scale.setScalar(z.skala);
       this.fig?.zombieØjne(z.type === "kæmpe" ? 0xff3a20 : z.type === "løber" ? 0xffb020 : 0xd8ff40);   // glødende øjne
+      this.opstår = OPSTÅ; this.s.zombieOpstår?.(this);               // (den kravler op af jorden)
     }
     this.blokeret = null;
     this.mål = null; this.setFørst = 0; this.sidstSet = null; this.sidstSetTid = -99; this.vej = []; this.vejMål = null;
@@ -234,6 +236,11 @@ export class Bot {
   }
   // Zombie: løb mod det nærmeste menneske — lige på, når den kan se det tæt på, ellers efter vej-nettet — og slå med kløerne
   zombieTick(dt, nu) {
+    if (this.opstår > 0) {                                           // på vej op af jorden: den kan ikke noget endnu
+      const før = this.opstår; this.opstår -= dt; this.a.vel.set(0, 0, 0);
+      if (før > OPSTÅ / 2 && this.opstår <= OPSTÅ / 2) this.s.zombieOpstår?.(this);
+      return;
+    }
     if (this.fanget) return this.æd(dt, nu);                          // den har fat i nogen: hold fast og æd
     this.bid = Math.max(0, this.bid - dt * 2);
     let mål = null, bd = Infinity;
@@ -527,6 +534,7 @@ export class Bot {
   tegn(alfa, dt) {
     const a = this.a, u = this.model.userData;
     this.model.position.lerpVectors(a.forrige, a.pos, alfa);
+    if (this.opstår > 0) this.model.position.y -= 1.8 * (this.opstår / OPSTÅ) ** 1.5;   // (zombien kravler op af jorden)
     this.model.rotation.y = a.yaw;
     const fart = Math.hypot(a.vel.x, a.vel.z);
     if (this.fig) {

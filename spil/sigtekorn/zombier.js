@@ -43,7 +43,8 @@ export class Zombier {
     if (this.pause > 0) { if ((this.pause -= dt) <= 0) this.næsteBølge(); return; }
     if (this.tilbage <= 0 && zombier === 0) {                     // bølgen er klaret
       this.k.xp(this.bølge);
-      this.k.hud.besked(`✅ Bølge ${this.bølge} klaret! Næste bølge om ${PAUSE} sekunder`, 3000);
+      this.k.hud.besked(`✅ Bølge ${this.bølge} klaret! Næste bølge om ${PAUSE} sekunder — der står en forsyningskasse`, 3200);
+      this.k.forsyning?.();                                          // (en kasse med liv, vest, granater og ammunition)
       this.pause = PAUSE;
     }
   }

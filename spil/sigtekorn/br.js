@@ -32,7 +32,7 @@ export function kisteIndhold() {
 export const sjældenFarve = id => SJÆLDEN[(PRIMÆR[id] || SEKUNDÆR[id])?.sjælden]?.farve || "#fff";
 
 // En kiste: brunt træ med guldbeslag, et låg på hængsler og et gyldent skær
-function lavKiste(glødTekstur) {
+export function lavKiste(glødTekstur = kisteGlød()) {
   const g = new THREE.Group(), træ = new THREE.MeshStandardMaterial({ color: 0x7a4620, roughness: 0.8 });
   const guld = new THREE.MeshStandardMaterial({ color: 0xd8a228, metalness: 0.8, roughness: 0.35, emissive: 0x5a3c00 });
   const kasse = (b, h, d, mat, x, y, z, far = g) => { const m = new THREE.Mesh(new THREE.BoxGeometry(b, h, d), mat); m.position.set(x, y, z); m.castShadow = true; far.add(m); return m; };
@@ -45,6 +45,15 @@ function lavKiste(glødTekstur) {
   const skær = new THREE.Sprite(new THREE.SpriteMaterial({ map: glødTekstur, color: 0xffc040, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
   skær.scale.set(2.2, 2.2, 1); skær.position.y = 0.45; g.add(skær);
   return { model: g, låg, skær };
+}
+// Kisternes skær: en blød gylden plet (tegnes én gang)
+let _glød = null;
+export function kisteGlød() {
+  if (_glød) return _glød;
+  const s = document.createElement("canvas"); s.width = s.height = 64; const sg = s.getContext("2d"), rg = sg.createRadialGradient(32, 32, 0, 32, 32, 32);
+  rg.addColorStop(0, "rgba(255,230,140,0.9)"); rg.addColorStop(0.4, "rgba(255,190,60,0.35)"); rg.addColorStop(1, "rgba(255,170,40,0)");
+  sg.fillStyle = rg; sg.fillRect(0, 0, 64, 64);
+  return (_glød = new THREE.CanvasTexture(s));
 }
 // Et glidefly: en trekantet vinge i en klar farve med to snore ned til føreren (egen: den, man selv ser over sig)
 function lavGlidefly(farve, egen = false) {
@@ -71,10 +80,7 @@ export class BattleRoyale {
     this.væg = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 160, 128, 1, true),
       new THREE.MeshBasicMaterial({ map: this.stribeTekstur, color: 0xb070ff, transparent: true, opacity: 0.24, side: THREE.DoubleSide, depthWrite: false, fog: false }));
     this.væg.position.y = 40; this.væg.renderOrder = 4; this.væg.visible = false; k.scene.add(this.væg);
-    // kisternes skær: en blød gylden plet
-    const s = document.createElement("canvas"); s.width = s.height = 64; const sg = s.getContext("2d"), rg = sg.createRadialGradient(32, 32, 0, 32, 32, 32);
-    rg.addColorStop(0, "rgba(255,230,140,0.9)"); rg.addColorStop(0.4, "rgba(255,190,60,0.35)"); rg.addColorStop(1, "rgba(255,170,40,0)");
-    sg.fillStyle = rg; sg.fillRect(0, 0, 64, 64); this.glød = new THREE.CanvasTexture(s);
+    this.glød = kisteGlød();
     // vingen, man selv ser over sig, når man glider
     this.minVinge = lavGlidefly(0x3aa0ff, true); this.minVinge.position.set(0, 0.36, -0.6); this.minVinge.rotation.x = 0.12; this.minVinge.scale.setScalar(0.42); this.minVinge.visible = false;
     k.hånd.scene.add(this.minVinge);
