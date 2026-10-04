@@ -120,4 +120,7 @@ const farve = (f, i, j, k) => f[(i * 5 + j * 3 + k * 7) % f.length];
 // Lagerhallen (B) og strædet ved siden af skal have flere besøg — gaden i midten får dem af sig selv
 const postVægt = ([x, z]) => z > 18 && Math.abs(x) < 18 ? 2.6 : z > -16 && z < 16 ? 0.6 : 1;
 
-export default { navn: "Havnen", fotos: ["beton", "blik"], start: START, poster: POSTER, omveje: OMVEJE, postVægt, byg };
+// Bombepladserne: A på containerpladsen under kranen, B på læsserampen inde i lagerhallen
+const STEDER = { A: [6, -32, 8], B: [0, 41.5, 6] };
+
+export default { navn: "Havnen", steder: STEDER, fotos: ["beton", "blik"], start: START, poster: POSTER, omveje: OMVEJE, postVægt, byg };

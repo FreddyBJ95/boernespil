@@ -265,4 +265,7 @@ const vejr = {
   himmel: [0x5f86b8, 0xb8cde2, 0xeef2f6], horisont: [0.86, 0.9, 0.97], zenit: [0.4, 0.55, 0.85], himmelLys: 1.25,
 };
 
-export default { navn: "Fjeldbyen", fotos: ["sne", "klippe", "panel"], start: START, poster: POSTER, omveje: OMVEJE, postVægt, vejr, byg };
+// Bombepladserne (tættere på Sandslangernes start, som i CS): A mellem savværket og kontoret, B nord i skoven
+const STEDER = { A: [36, -13, 6], B: [-38, -20, 7] };
+
+export default { navn: "Fjeldbyen", steder: STEDER, fotos: ["sne", "klippe", "panel"], start: START, poster: POSTER, omveje: OMVEJE, postVægt, vejr, byg };

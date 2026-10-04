@@ -2,6 +2,7 @@
 // Hver bane står i sin egen fil i baner/ og bygger sig selv af klodserne her. Alt er kasser, så kollisionen
 // (verden.js) er enkel. Til sidst laves et vej-net, som botterne går efter.
 // En ny bane: lav baner/<navn>.js (se stoevbyen.js), tilføj den i BANER herunder og i katalog.js.
+// steder i banens fil er bombepladserne A og B: [x, z, radius].
 
 import * as THREE from "./three.js";
 import stoevbyen from "./baner/stoevbyen.js";
@@ -143,7 +144,7 @@ export function lavBane(scene, verden, t, id = "stoevbyen") {
   // det, der kun er til at se på (fx vand og et skib, eller sne der falder) — kun i browseren, ikke når banen gemmes til Blender
   const pynt = typeof document !== "undefined" ? info.pynt?.({ scene, THREE, t, hash }) : null;
   const knuder = lavVejnet(verden, info.erFast || (() => false), info.grænse, info.ekstraKnuder || []);
-  return { id: BANER[id] ? id : "stoevbyen", navn: def.navn, knuder, erFast: info.erFast, masker, start: def.start, poster: def.poster, omveje: def.omveje || [], postVægt: def.postVægt || (() => 1), lamper: info.lamper || [], grænse: info.grænse,
+  return { id: BANER[id] ? id : "stoevbyen", navn: def.navn, knuder, erFast: info.erFast, masker, start: def.start, poster: def.poster, omveje: def.omveje || [], steder: def.steder || {}, postVægt: def.postVægt || (() => 1), lamper: info.lamper || [], grænse: info.grænse,
     vejr: def.vejr || null, opdater: pynt?.opdater || null };
 }
 

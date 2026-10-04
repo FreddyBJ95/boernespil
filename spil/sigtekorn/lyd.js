@@ -141,4 +141,5 @@ export function såret() { if (!ctx) return; const t = ctx.currentTime, m = kæd
 // Kuglen rammer muren lige ved siden af en (sus og smæld)
 export function nærSkud(pos) { if (!ctx) return; støjStød(kæde(pos, 0.5), ctx.currentTime, 0.1, "highpass", 3500, 1, 0.5, 0.07); }
 // Et lille bip (menuer, nedtælling)
+export function bombeBip(pos) { if (!ctx) return; tone(kæde(pos, 0.7), ctx.currentTime, 1850, 1850, 0.09, "square", 0.35); }
 export function bip(f = 880) { if (!ctx) return; tone(kæde(null, 0.3), ctx.currentTime, f, f, 0.08, "sine", 0.3); }

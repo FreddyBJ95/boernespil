@@ -171,4 +171,7 @@ function byg({ b, solid, verden, hash }) {
 // Midtergaden (x tæt på 0) er kun en gang imellem en post — ellers står alle der og skyder på hinanden
 const postVægt = ([x]) => Math.abs(x) < 5 ? 0.3 : 1;
 
-export default { navn: "Støvbyen", fotos: ["sandsten", "puds", "sand", "fliser"], start: START, poster: POSTER, omveje: OMVEJE, postVægt, byg };
+// Bombepladserne: A og B er de to hævede pladser tæt på Sandslangernes start
+const STEDER = { A: [34, -34, 7], B: [-34, -34, 7] };
+
+export default { navn: "Støvbyen", steder: STEDER, fotos: ["sandsten", "puds", "sand", "fliser"], start: START, poster: POSTER, omveje: OMVEJE, postVægt, byg };

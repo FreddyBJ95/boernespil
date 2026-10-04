@@ -148,6 +148,10 @@ export class Bot {
     if (this.s.træning?.()) return this.mål_(dt, nu);
     if (this.våben) opdaterVåben(this.våben, dt);
     if ((this.tænkTid -= dt) <= 0) { this.tænkTid = 0.1; this.tænk(nu); }
+    if (this.handling && !this.mål) {                                // lægger eller desarmerer bomben: sid stille på hug
+      bevæg(this.a, { frem: 0, side: 0, hop: false, gå: false, duk: true }, dt, this.s.verden, 3);
+      return;
+    }
     let frem = 0, side = 0, duk = false, hop = false, gå = false, trykker = false;
     const sv = this.sv;
     if (this.flygt && (nu > this.flygt.til || (!this.vej.length && this.flygt.fremme && nu > this.flygt.fremme + 1.2))) {   // færdig med at gemme sig: kig efter fjenden igen
@@ -264,6 +268,8 @@ export class Bot {
   }
   // Vælg en post: helst 8–55 meter væk, ikke den samme som sidst, og hvor der ikke allerede er holdkammerater
   vælgPost() {
+    const bombePost = this.s.bombe?.vælgPost(this);                  // bomberunder: angreb og forsvar af pladserne (bombe.js)
+    if (bombePost) return (this.sidstePost = bombePost);
     const venner = this.s.kampfolk().filter(f => f !== this && f.hold === this.hold && !f.død);
     let sum = 0;
     const POSTER = this.s.bane.poster;
