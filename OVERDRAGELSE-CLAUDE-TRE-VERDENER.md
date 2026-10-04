@@ -25,14 +25,16 @@ SSH-tunnelen til kontrolpanelet på localhost:18080 er bevaret.
 
 Den officielle Windows-download (SHA256 `784c6c5cabb855f2e0de9172214df5b53b8558017c4944e9a82e3e2d788e5ccf`)
 er kørt med egne tomme prøvedata og består pakketesten (netværk, gemning, filafskærmning og spilfiler).
-Windows, Pi og GitHub Pages leverer alle 182 runtimefiler/37 GLB byte-identisk med tagget, med korrekt GET/HEAD.
+Windows og Pi leverer alle 182 runtimefiler/37 GLB byte-identisk med tagget, med korrekt GET/HEAD.
+GitHub Pages blev kontrolleret på samme commit før Claudes senere webændringer og bestod de samme 182 filer.
 Begge officielle Mac-downloads består checksum, fuld zip-CRC, korrekt Mach-O 64-bit Intel/ARM64 og Unix-mode 0755.
 Det er statisk pakkekontrol; fysisk Mac/Gatekeeper er ikke afprøvet. Se tidligere begrænsning om manuel spilprøve/iPad.
 
-Den fælles checkout fik imens Claudes lokale commit `ab8a759` (Sigtekorn-killcam) oven på `86871eb` og er derfor
-divergeret fra GitHub-main. Codex har bevaret dette commit og undladt at flette/pushe det. Claude skal hente/flette
-aktuel origin/main, når hans igangværende arbejde er klar; Krystal-ændringerne ligger færdige der og i denne worktree.
-Der er ikke nulstillet andre ændringer. Serverpakken indeholder Sigtekorn til `86871eb`, ikke den senere killcam.
+Under arbejdet fik den fælles checkout Claudes lokale commit `ab8a759` (Sigtekorn-killcam) oven på `86871eb` og
+var kortvarigt divergeret. Codex bevarede dette commit; Claude har siden flettet origin/main i `35e49d7`.
+Krystal-ændringerne er dermed også i fælles checkout. Codex har ikke nulstillet Claudes øvrige filer eller skubbet
+hans lokale commits. Serverpakken indeholder Sigtekorn til `86871eb`; senere killcam-/ikonændringer på websiden
+ligger uden for den fastlåste 0.5.6-pakke og kræver en senere serverudgave.
 README i Krystaljægerne beskriver styring, øveplads, gemning og afprøvning.
 Den tidligere afsluttede udgivelse 0.5.5 og dens kontrolresultater følger nedenfor som historik.
 
