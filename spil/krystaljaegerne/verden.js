@@ -36,7 +36,7 @@ export const STEDER = [
 export async function hentModeller() {
   const loader = new GLTFLoader();
   const pakker = await Promise.all(
-    ["eventyr", "detaljer", "kamp"].map((n) => loader.loadAsync(`./modeller/${n}.glb`)),
+    ["eventyr", "detaljer", "kamp", "fund"].map((n) => loader.loadAsync(`./modeller/${n}.glb`)),
   );
   const modeller = {};
   for (const gltf of pakker) {

@@ -1,4 +1,33 @@
-# Krystaljægerne: synlige våben og frivillig øveplads
+# Krystaljægerne: visuelle skatte og genstande
+
+4. oktober 2026: ejeren har bedt Codex gøre skatte og krystalfund meget mere visuelle.
+Implementeringen ligger på `codex/krystal-fund` i det eksisterende isolerede worktree.
+Fælles checkout og Claudes Sigtekorn-arbejde er bevaret.
+
+- Original `fund.glb` fra Blender (129.940 bytes), med `fund.py`/`fund.blend`: facetteret lyskrystal,
+  kobbermønt, eliksir, segl og en hul skattekiste med ægte låghængsel.
+- Kisten åbner på 0,6 sekunder, og faktiske modelgenstande løfter sig frem. Krystaller og bossegl
+  får glødende fundforløb. Lokale materialer frigives; det delte modelbibliotek bevares.
+- Et genstandskort viser navn/antal, medregner fuldførte opgavers ekstra kobber/erfaring og forklarer heling.
+  Fundkort har en afgrænset kø, der samler hurtige fund uden at miste belønningsrækker.
+- Taskens billeder viser faktisk kobber, eliksirer, segl og lyskrystalopgavens fremgang (ikke en opdigtet beholdning).
+  Belønninger og v1-save er uændrede. Eliksirgrænse 99; dublet-id giver ingen ekstra belønning.
+- Pause fryser tid, skjuler kortet og standser dets CSS-animation. Områdeskift/død/ny rejse rydder fund.
+  Rolige effekter og `prefers-reduced-motion` standser spin/glimt, også på krystaller i verden.
+- Offline-cache v70 inkluderer alle tre nye moduler og GLB. Serverudgave er sat til 0.5.7;
+  offentlig udgivelse og Pi-opdatering følger efter komponent- og pakkekontrol.
+
+127 spilprøver og 140 serverprøver består. Modeller, faktisk Brug/boss-belønning, opgavebonusser,
+gemning, afbrydelser, figurens ejerskab og fundkø er prøvet uden adgang til familie-/browserdata.
+Visuel komponentprøve: `server/tests/krystal-fund-modelvisning.html`, uden spil/lås/gemninger.
+Chrome-modelprøven indlæser alle fem Blender-modeller uden fejl. Den faktiske HUD og fundtaske er afprøvet
+ved 320×566 og 740×370; navne/antal, bossvarsler og fingerknapper holder sig fri af hinanden.
+På korte skærme er den lange fundnote kun i engangsoplæsningen; alle genstandsnavne/antal er synlige.
+Udgivelse/pakkekontrol er endnu i gang. Den eksisterende voksenkode mangler stadig til manuel gennemspilning;
+fysisk iPad/Safari og Mac/Gatekeeper er ikke tilsluttet.
+
+---
+# Afsluttet: synlige våben og frivillig øveplads (0.5.6)
 
 4. oktober 2026: ejeren har bedt Codex udvikle Krystaljægerne videre med synlige sværdslag og bue/pil.
 Arbejdet ligger isoleret på `codex/krystal-kamp`; Claudes fælles checkout og igangværende Sigtekorn-filer bevares.
