@@ -114,6 +114,7 @@ a {
 }
 canvas#verden {
   width: 100vw;
+  height: 100vh;
   height: 100dvh;
   display: block;
 }
@@ -127,6 +128,7 @@ canvas#verden {
   display: grid;
   place-items: center;
   background: #0c1b2eb8;
+  -webkit-backdrop-filter: blur(7px);
   backdrop-filter: blur(7px);
 }
 /* Skærmudskæringer holder menu og dialoger fri af kanterne uden at flytte baggrunden. */
@@ -139,6 +141,7 @@ canvas#verden {
   background: linear-gradient(90deg,#101e30ed 0%,#101e30b8 42%,#14263b28 100%),url('forside.jpg') center/cover
     no-repeat;
   justify-items: start;
+  -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
 .forside {
@@ -198,6 +201,7 @@ p {
 }
 .kort {
   width: min(540px,calc(100vw - 30px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px)));
+  max-height: 85vh;
   max-height: 85dvh;
   overflow: auto;
   background: #172e40;
@@ -375,7 +379,7 @@ progress::-moz-progress-bar {
 #besked {
   position: absolute;
   left: 50%;
-  top: 15%;
+  top: max(15%, 205px);                /* under fjendens navn og livsbjælke (#kampmål) */
   transform: translateX(-50%);
   max-width: 460px;
   width: 80%;
@@ -969,6 +973,7 @@ header > a {
 #stortkort {
   display: block;
   width: 100%;
+  max-height: 47vh;
   max-height: 47dvh;
   object-fit: contain;
   border: 1px solid #618c80;
@@ -1124,6 +1129,9 @@ header > a {
   #prompt {
     bottom: 185px;
   }
+  #vejledning:not(.skjult) ~ #prompt {   /* Brug-knappen står over vejledningen, ikke oven på den */
+    bottom: 296px;
+  }
 }
 @media (max-height:500px) and (max-width:1000px) {
   #åbnkort {
@@ -1224,6 +1232,7 @@ header > a {
     max-width: 260px;
   }
   #stortkort {
+    max-height: 38vh;
     max-height: 38dvh;
   }
   .kort h3 {

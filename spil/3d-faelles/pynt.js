@@ -131,9 +131,12 @@ const MØNSTRE = {
 };
 
 // type: et af MØNSTRE · styrke: hvor meget farven svinger (0,1–0,4) · bump: hvor dybe rillerne er · fin: false = billigere
+const pyntede = new WeakSet();
 export function detaljer(materiale, type, { styrke = 0.22, bump = 0.6, fin = true, skala = 1, tone = null } = {}) {
-  if (!materiale || materiale.userData.pynt) return materiale;
+  if (!materiale || pyntede.has(materiale)) return materiale;
+  pyntede.add(materiale);
   materiale.userData.pynt = type;
+  materiale.userData.pyntValg = { styrke, bump, fin, skala, tone };
   const toneFarve = tone ? new THREE.Color(tone) : null;
   materiale.onBeforeCompile = sh => {
     sh.uniforms.uPyntTone = { value: toneFarve || new THREE.Color(1, 1, 1) };
@@ -157,6 +160,13 @@ export function detaljer(materiale, type, { styrke = 0.22, bump = 0.6, fin = tru
   return materiale;
 }
 
+// Et klonet materiale (material.clone()) mister mønstret: giv det det samme igen
+export function fornyDetaljer(materiale) {
+  const v = materiale?.userData?.pyntValg;
+  if (v && materiale.userData.pynt) detaljer(materiale, materiale.userData.pynt, v);
+  return materiale;
+}
+
 // Find materialerne i en indlæst model efter navn (fx "Gyldent sand") og giv dem mønstre
 export function detaljerEfterNavn(rod, regler, valg = {}) {
   const set = new Set();
@@ -170,4 +180,52 @@ export function detaljerEfterNavn(rod, regler, valg = {}) {
     }
   });
   return set.size;
+}
+
+// ---------- Havet: små bølger, der spejler himlen, glimter i solen og skummer ved en ø ----------
+// farver: { dyb, lav, top, horisont, sol: retning, ø: [x, z, radius] } · størrelse: kantlængde i meter
+export function lavHav(farver = {}, størrelse = 1200, inddeling = 1) {
+  const u = {
+    uTid: { value: 0 }, uKamera: { value: new THREE.Vector3() },
+    uDyb: { value: new THREE.Color(farver.dyb ?? "#0b2f3d") }, uLav: { value: new THREE.Color(farver.lav ?? "#2f8c8c") },
+    uTop: { value: new THREE.Color(farver.top ?? "#4a8ad8") }, uHorisont: { value: new THREE.Color(farver.horisont ?? "#dce9f0") },
+    uSolRetning: { value: new THREE.Vector3(...(farver.sol ?? [-0.5, 0.45, -0.7])).normalize() },
+    uØ: { value: new THREE.Vector3(...(farver.ø ?? [0, 0, 0])) },
+  };
+  const materiale = new THREE.ShaderMaterial({
+    uniforms: u,
+    vertexShader: `
+varying vec3 vP;
+void main() { vec4 w = modelMatrix * vec4(position, 1.0); vP = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+    fragmentShader: `
+varying vec3 vP;
+uniform float uTid;
+uniform vec3 uKamera, uDyb, uLav, uTop, uHorisont, uSolRetning, uO;
+vec2 boelge(vec2 q, vec2 r, float f, float a, float hast) { float k = dot(q, r) * f + uTid * hast; return r * cos(k) * f * a; }
+void main() {
+  vec2 g = boelge(vP.xz, normalize(vec2(1.0, 0.4)), 0.48, 0.05, -1.8) + boelge(vP.xz, normalize(vec2(-0.3, 1.0)), 0.9, 0.025, 1.3)
+         + boelge(vP.xz, normalize(vec2(0.7, -0.7)), 1.7, 0.012, 2.1) + boelge(vP.xz, normalize(vec2(-0.9, -0.2)), 3.1, 0.006, -2.6);
+  vec3 n = normalize(vec3(-g.x, 1.0, -g.y));
+  vec3 v = normalize(uKamera - vP);
+  float fres = 0.04 + 0.96 * pow(1.0 - max(dot(n, v), 0.0), 5.0);
+  vec3 r = reflect(-v, n);
+  vec3 spejl = mix(uHorisont, uTop, clamp(r.y * 1.8, 0.0, 1.0));
+  float kyst = uO.z > 0.0 ? length(vP.xz - uO.xy) / uO.z : 9.0;      // 1 = oeens kant
+  vec3 c = mix(mix(uDyb, uLav, smoothstep(1.35, 1.0, kyst)), spejl, fres);
+  c += vec3(1.0, 0.86, 0.62) * pow(max(dot(r, uSolRetning), 0.0), 220.0) * 2.5;
+  float skum = smoothstep(1.08, 1.0, kyst) * (0.55 + 0.45 * sin(kyst * 140.0 - uTid * 1.7 + sin(vP.x * 0.3) * 2.0));
+  c = mix(c, vec3(0.82, 0.86, 0.82), clamp(skum, 0.0, 1.0) * 0.6);
+  float d = clamp(length(vP.xz - uKamera.xz) / 400.0, 0.0, 1.0);
+  c = mix(c, uHorisont, pow(d, 1.6));
+  gl_FragColor = vec4(c, 1.0);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+}`,
+  });
+  materiale.uniforms.uO = u.uØ;                                // (GLSL-navne må ikke have æ, ø og å)
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(størrelse, størrelse, inddeling, inddeling).rotateX(-Math.PI / 2), materiale);
+  mesh.userData.ingenSkygge = true;
+  mesh.onBeforeRender = (_r, _s, kamera) => { u.uKamera.value.copy(kamera.position); u.uTid.value = performance.now() / 1000; };
+  mesh.userData.uniforms = u;
+  return mesh;
 }

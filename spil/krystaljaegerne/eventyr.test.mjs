@@ -89,10 +89,11 @@ test("ødelagte eller farlige gemninger afvises; position uden gulv repareres", 
       { udstyr: 4 },
       { besøg: [0] },
       { opgaver: { hack: 1 } },
-      { hentet: ["a", "a"] },
       { grotte: { id: 9, dybde: 1, frø: 1 } },
     ]
   ) assert.equal(læsRejse({ ...nyRejse(1), ...ændring }), null);
+  // Dubletter (fx en boss' lysvæsner, der blev besejret i to forsøg) repareres i stedet for at slette hele rejsen
+  assert.deepEqual(læsRejse({ ...nyRejse(1), hentet: ["a", "a"], beroliget: ["b", "b", "c"] })?.beroliget, ["b", "c"]);
   const s = nyRejse(1);
   startGrotte(s, 1);
   s.x = 190;

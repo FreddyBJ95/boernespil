@@ -29,7 +29,7 @@ export const OPGAVER = [
   {
     id: "krystal",
     navn: "Lys i lommen",
-    tekst: "Find 8 lyskrystaller på øen.",
+    tekst: "Find 8 lyskrystaller på øen eller i grotterne.",
     mål: 8,
     xp: 65,
     mønter: 35,
@@ -37,7 +37,7 @@ export const OPGAVER = [
   {
     id: "kiste",
     navn: "De glemte kort",
-    tekst: "Åbn 3 skattekister i skoven og ruinerne.",
+    tekst: "Åbn 3 skattekister i skoven, ruinerne eller grotterne.",
     mål: 3,
     xp: 70,
     mønter: 45,
@@ -207,6 +207,8 @@ export function nyRejse(frø = Math.floor(Math.random() * 4294967295)) {
 export function læsRejse(tekst) {
   try {
     const s = typeof tekst === "string" ? JSON.parse(tekst) : tekst;
+    // Ældre gemte rejser kunne få det samme id to gange; dubletter fjernes i stedet for at kassere hele rejsen
+    for (const k of ["hentet", "beroliget"]) if (s && Array.isArray(s[k])) s[k] = [...new Set(s[k])];
     if (
       !s || s.version !== VERSION || !Number.isInteger(s.frø) || s.frø < 0 ||
       s.frø > 4294967295

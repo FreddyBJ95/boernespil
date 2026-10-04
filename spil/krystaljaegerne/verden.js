@@ -2,6 +2,11 @@ import * as THREE from "../3d-faelles/three.module.js";
 import { GLTFLoader } from "../3d-faelles/GLTFLoader.js";
 import { kanGå, tilfældig } from "./eventyr.js";
 import { nærmesteFriePunkt } from "./navigation.js";
+import { detaljer, detaljerEfterNavn, fornyDetaljer, lavHav } from "../3d-faelles/pynt.js";
+
+// Fine mønstre på grafikkortet: græs, sand, sten og træ (fin = med små skygger i rillerne)
+const fin = !(globalThis.matchMedia?.("(pointer: coarse)")?.matches || globalThis.innerWidth < 760);
+const mønster = (farve, type, valg = {}) => detaljer(new THREE.MeshStandardMaterial({ color: farve, roughness: 1 }), type, { fin, ...valg });
 
 export const STEDER = [
   { id: "mira", navn: "Mira · værkstedet", x: 2, z: 0, type: "mira" },
@@ -41,6 +46,8 @@ export async function hentModeller() {
   const modeller = {};
   for (const gltf of pakker) {
     for (const obj of gltf.scene.children) modeller[obj.name] = obj;
+    detaljerEfterNavn(gltf.scene, [["sten", "klippe", { styrke: 0.3, bump: 0.8, skala: 2 }], ["træ", "træ", { styrke: 0.3, bump: 0.5, skala: 2 }],
+      ["jord", "sand", { styrke: 0.25, bump: 0.6, skala: 2 }], ["blad", "græs", { styrke: 0.22, bump: 0.4, skala: 3 }]], { fin });
   }
   return modeller;
 }
@@ -55,7 +62,7 @@ export function instanser(rod, modeller, navn, steder, farve = null) {
     q = new THREE.Quaternion();
   kilde.traverse((del) => {
     if (!del.isMesh) return;
-    const mat = farve ? del.material.clone() : del.material;
+    const mat = farve ? fornyDetaljer(del.material.clone()) : del.material;
     if (farve) mat.color.lerp(new THREE.Color(farve), .38);
     const samlet = new THREE.InstancedMesh(del.geometry, mat, steder.length);
     steder.forEach((s, i) => {
@@ -94,17 +101,19 @@ function plet(rod, x, z, r, farve, y = .01) {
   geo.rotateX(-Math.PI / 2);
   const mesh = new THREE.Mesh(
     geo,
-    new THREE.MeshStandardMaterial({ color: farve, roughness: 1 }),
+    mønster(farve, "græs", { styrke: 0.3, bump: 0.7 }),
   );
   mesh.position.set(x, y, z);
   mesh.receiveShadow = true;
   rod.add(mesh);
 }
+let stiMat = null;
+const stiMateriale = () => stiMat || (stiMat = mønster(0x8a866b, "sten", { styrke: 0.35, bump: 0.6, skala: 2 }));
 function sti(rod, a, b, bredde = 2.6) {
   const d = Math.hypot(b.x - a.x, b.z - a.z);
   const mesh = new THREE.Mesh(
     new THREE.PlaneGeometry(bredde, d),
-    new THREE.MeshStandardMaterial({ color: 0x8a866b, roughness: 1 }),
+    stiMateriale(),
   );
   mesh.rotation.x = -Math.PI / 2;
   mesh.rotation.z = Math.atan2(b.x - a.x, b.z - a.z);
@@ -145,20 +154,18 @@ export function bygØ(modeller, frø) {
     ting = [];
   const bund = new THREE.Mesh(
     new THREE.CylinderGeometry(72, 64, 7, 64),
-    new THREE.MeshStandardMaterial({ color: 0x567e6c, roughness: 1 }),
+    mønster(0x567e6c, "græs", { styrke: 0.3, bump: 0.7 }),
   );
   bund.position.y = -3.5;
   bund.receiveShadow = true;
   rod.add(bund);
-  const hav = new THREE.Mesh(
-    new THREE.PlaneGeometry(1000, 1000),
-    new THREE.MeshStandardMaterial({
-      color: 0x244759,
-      roughness: .38,
-      metalness: .25,
-    }),
-  );
-  hav.rotation.x = -Math.PI / 2;
+  // en smal sandstrand rundt om klippefoden
+  const strand = new THREE.Mesh(new THREE.RingGeometry(63, 70.5, 96, 1).rotateX(-Math.PI / 2), mønster(0xcdb98a, "sand", { styrke: 0.25, bump: 0.6, skala: 2 }));
+  strand.position.y = -4.92;
+  strand.receiveShadow = true;
+  rod.add(strand);
+  // havet spejler himlen og skummer ved stranden (spil/3d-faelles/pynt.js)
+  const hav = lavHav({ dyb: "#0f3346", lav: "#2b7d84", top: "#3d6f93", horisont: "#a9c4c9", sol: [-18, 30, 15], ø: [0, 0, 70.5] }, 1000);
   hav.position.y = -5;
   rod.add(hav);
   plet(rod, 0, 0, 15, 0x899782);
@@ -392,7 +399,7 @@ export function bygØ(modeller, frø) {
     blokeringCases,
     fjender,
     ting,
-    steder: STEDER,
+    steder: STEDER.map((s) => ({ ...s })),                    // egen kopi: øvepladsen lægges til hver gang øen bygges
     mærker,
     grotte: null,
   };

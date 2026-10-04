@@ -23,6 +23,7 @@ import {
   VÅBEN,
 } from "./eventyr.js";
 import { animer, bygGrotte, bygØ, frit, hentModeller, kopi, STEDER } from "./verden.js";
+import { lavHimmel, lavMiljø } from "../3d-faelles/pynt.js";
 import { opdatérFlyvere } from "./projektiler.js";
 import { fortsætSpor, friLinje, rumRute, ruteLængde, vælgMål, øRute } from "./navigation.js";
 import { tegnRejsekort } from "./kort.js";
@@ -99,8 +100,8 @@ const taster = new Set(),
   skud = [],
   effekter = [];
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x789cab);
-scene.fog = new THREE.Fog(0x789cab, 38, 100);
+scene.background = new THREE.Color(0xa9c4c9);
+scene.fog = new THREE.Fog(0xa9c4c9, 38, 100);
 const kamera = new THREE.PerspectiveCamera(
   48,
   innerWidth / innerHeight,
@@ -125,8 +126,15 @@ renderer.shadowMap.enabled = !mobil;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.2;
-scene.add(new THREE.HemisphereLight(0xc6e7ec, 0x385141, 2.5));
+renderer.toneMappingExposure = 1.02;                         // himlens spejlinger giver ekstra lys
+// Himmel med sol og skyer over øen; spejlingerne laves af den samme himmel (spil/3d-faelles/pynt.js)
+const himmel = lavHimmel({ top: "#3d6f93", horisont: "#a9c4c9", bund: "#5c7f86", sol: [-18, 30, 15], solFarve: "#ffe8c7", dis: 0.45, skyer: 0.35, skyFarve: "#eef3f0" });
+scene.add(himmel);
+const miljø = lavMiljø(renderer, himmel, "#3d5a50");
+scene.environment = miljø;
+// I grotterne ses himlen ikke, og spejlingerne fra den lyse himmel slås fra
+scene.userData.vedOmråde = (iGrotte) => { himmel.visible = !iGrotte; scene.environment = iGrotte ? null : miljø; };
+scene.add(new THREE.HemisphereLight(0xc6e7ec, 0x385141, 1.6));
 const sol = new THREE.DirectionalLight(0xffe8c7, 2.5);
 sol.position.set(-18, 30, 15);
 sol.castShadow = !mobil;
@@ -478,7 +486,7 @@ function vejledning() {
     ],
     [
       "4 · Klar til øen",
-      "Hold Angrib / mellemrum for at slå. Kortet viser næste krystal og sikre rum.",
+      "Tryk Slå / Skyd / Kast lys eller mellemrum for at angribe. Kortet viser næste krystal og sikre rum.",
     ],
   ];
   const vis = trin[s.vejledning];
@@ -566,7 +574,7 @@ function fjern(obj) {
   if (!obj) return;
   scene.remove(obj);
   obj.traverse((del) => {
-    if (del.geometry && !fællesGeometri.has(del.geometry)) {
+    if (del.geometry && !del.isSprite && !fællesGeometri.has(del.geometry)) {   // alle sprites deler én form
       del.geometry.dispose();
     }
     for (
@@ -653,7 +661,8 @@ function skiftVerden() {
     )
     : bygØ(modeller, s.frø);
   scene.add(verden.rod);
-  scene.background.set(s.grotte ? 0x172439 : 0x789cab);
+  scene.background.set(s.grotte ? 0x172439 : 0xa9c4c9);
+  scene.userData?.vedOmråde?.(!!s.grotte);                      // himmel og spejlinger kun på øen
   scene.fog.color.copy(scene.background);
   scene.fog.near = s.grotte ? 25 : 38;
   scene.fog.far = s.grotte ? 60 : 100;
@@ -693,7 +702,7 @@ function skiftVerden() {
   }
   if (!s.grotte) {
     mira = kopi(modeller, "eventyrer", 2, 0, 1);
-    mira.rotation.y = Math.PI;
+    mira.rotation.y = 0;                                     // ansigtet (+Z) vender mod landsbyen og kameraet
     scene.add(mira);
     bygØveplads();
   }
@@ -820,7 +829,7 @@ function opdatérSpor(mål) {
     sporring.visible = false;
     return;
   }
-  const trin = s.grotte ? 8 : 2,
+  const trin = 8,                                          // ruten regnes kun om for hver 8. meter (det kan tage lidt tid på en tablet)
     n = `${s.grotte?.frø || "ø"}-${s.grotte?.dybde || 0}-${Math.floor((s.x + trin / 2) / trin)},${
       Math.floor((s.z + trin / 2) / trin)
     }-${Math.round(mål.x)},${Math.round(mål.z)}`;
@@ -1122,7 +1131,7 @@ function ramFjende(f, antal) {
       fjern(f.ring);
       f.ring = null;
     }
-    s.beroliget.push(f.id);
+    if (!s.beroliget.includes(f.id)) s.beroliget.push(f.id);       // bossens lysvæsner får samme id ved hvert nyt forsøg
     s.xp += f.boss ? 45 : 12;
     s.mønter += f.boss ? 30 : 7;
     if (!f.boss) {
@@ -1141,7 +1150,7 @@ function ramFjende(f, antal) {
       s.hp = maxLiv(s);
       s.mana = 100;
       besked(
-        `✦ Segl fundet! ${["Mosvogteren", "Krystalhjorten", "Den gamle vogter"][f.grotte]} hviler nu. +${flere} eliksirer`,
+        `✦ Segl fundet! ${["Mosvogteren", "Krystalhjorten", "Den gamle vogter"][f.grotte]} hviler nu. ${flere ? `+${flere} ${flere === 1 ? "eliksir" : "eliksirer"}` : "Tasken er fuld af eliksirer"}`,
         7,
       );
       visFund(medOpgavebelønning(seglFund(f.grotte, flere), vogteropgave), {
@@ -1461,7 +1470,7 @@ function opdatérFjender(dt) {
     );
     f.stun = Math.max(0, f.stun - dt);
     f.timer -= dt;
-    f.obj.rotation.y = Math.atan2(-dx, -dz);
+    f.obj.rotation.y = Math.atan2(dx, dz);                     // fjendernes ansigt (+Z) vender mod spilleren
     animer(f.obj, tid + f.x, d < 18 ? 1 : 0, f.art);
     if (d > 18 && !f.boss) continue;
     if (d > 24) continue;
@@ -1616,7 +1625,7 @@ function opdatér(dt) {
     new THREE.Vector3(s.x - 1.4, 1.35 + Math.sin(tid * 2) * .2, s.z + 1.4),
     1 - Math.exp(-dt * 3),
   );
-  ven.rotation.y = helt.rotation.y;
+  ven.rotation.y = helt.rotation.y + Math.PI;                  // heltens forside er -Z, Lumens øjne sidder på +Z
   const mål = nærFjende(12);
   if (mål && venpause <= 0) {
     const a = mål.obj.position,
@@ -1962,6 +1971,8 @@ try {
   $("start").disabled = false;
   $("fortsæt").disabled = false;
   if (gemt) $("fortsæt").classList.remove("skjult");
+  // ?debug giver adgang til scenen i konsollen (til afprøvning)
+  if (location.search.includes("debug")) window.krystal = { scene, kamera, renderer, THREE, modeller, get s() { return s; }, get helt() { return helt; }, get fjender() { return fjender; } };
   requestAnimationFrame(loop);
 } catch (err) {
   console.error(err);
