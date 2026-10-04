@@ -1,20 +1,121 @@
-# Status: de tre forbedrede spil er udgivet; sidste serverrettelse afprøves
+# Krystaljægerne: synlige våben og frivillig øveplads
 
-4. oktober 2026. PR #6 er flettet, og spillenes forbedringer er på main i
-`e7f66956198dd0f98603b31d99e1559d90613da8`. Server 0.5.3 er udgivet til alle fem platforme,
-og Pi 192.168.0.26 kører den officielle ARM64-pakke. Far-verdenen starter, og alle syv verdens-/
-certifikatfiler har uændrede hashes. Privat Pi-backup: `/home/vindr1/BroekraftServer-053-4rv39v13/backup/`.
-GitHub Pages leverer alle 170 kontrollerede runtimefiler (36 GLB) præcis som udgivelsestagget.
+4. oktober 2026: ejeren har bedt Codex udvikle Krystaljægerne videre med synlige sværdslag og bue/pil.
+Arbejdet ligger isoleret på `codex/krystal-kamp`; Claudes fælles checkout og igangværende Sigtekorn-filer bevares.
 
-Den strengere kontrol af den officielle Windows-pakke fandt en lille HTTP-fejl:
-HEAD meldte filstørrelse 0, selv om GET leverede komplette, korrekte filer.
-Codex retter fil- og certifikatsvar til rigtig bytelængde i server 0.5.4 på
-`codex/server-filstoerrelse`. Rigtige HTTP/HTTPS-prøver og begge platformes pakketest kontrollerer nu længden.
-Dette ændrer ingen spil, gemmeformater, certifikater eller adgangsregler.
-0.5.4 er endnu ikke udgivet eller installeret på Pi. Codex fortsætter frem til ca. 02:33.
+- Ny original Blender-pakke `kamp.glb` med sværd, bue, pil, stav og træningsskive, samt `kamp.py`/`kamp.blend`.
+- Håndfæstede våben, skulder/albueled, to skiftende sværdslag, rigtig buestreng/nokket pil og synligt stavløft.
+  Skud/ramning sker ved animationens slip. Sigte følger målet under tilløbet; magi flyver fra krystallen mod målhøjde.
+- Frivillig øveplads syd for brønden: tre skiver kræver hvert sit våben, første runde giver 25 kobber og 15 erfaring.
+  V1-feltet `træning` bevarer engangsbelønningen; gamle saves fortsætter uden ændrede opgaver.
+- Kampknappen viser Slå/Skyd/Kast lys og en rolig tidsmåler. Kameraet starter tættere og kan zoome ind til afstand 10.
+- 88 spilprøver og 140 serverprøver består lokalt. GLB-rig og de faktiske kampfunktioner er omfattet.
+- Chrome-modelprøve viser de faktiske våben; isoleret HUD kontrolleret ved 320×566 og 740×370.
+  Ingen browserfejl under modellernes indlæsning. Fysisk iPad/Safari er ikke tilsluttet.
+- Manuel gennemspilning bag voksenlåsen mangler stadig: den eksisterende kode er efterspurgt, ikke gættet eller ændret.
 
-Ny manuel gennemspilning afventer ejerens eksisterende voksenkode; fysisk iPad/Safari er ikke tilsluttet.
-Voksenlåsen og alle gamle v1-gemninger er bevaret. De tre spilmapper er færdige; der arbejdes kun på serverrettelsen.
+Klar til pull request, server-v0.5.6 og opdatering af Pi efter grønne pakkeprøver. Udgivelsen er endnu ikke udført.
+README i Krystaljægerne beskriver styring, øveplads, gemning og afprøvning.
+Den tidligere afsluttede udgivelse 0.5.5 og dens kontrolresultater følger nedenfor som historik.
+
+---
+# Afsluttet: tre forbedrede 3D-spil, udgivet og installeret på Pi
+
+4. oktober 2026. Gennemgangen begyndte kl. 00:33 dansk tid og blev afrundet kl. 02:33 efter to timer.
+Codex har lavet flere Blender-detaljer og forbedret brugeroplevelsen. Spillene ligger stadig i voksenrummet med rolig
+mystik og uden blod, og styringen er lavet til pc, tablet og telefon.
+
+## Hvad er forbedret
+
+- Det Sidste Lys: havn, have og landsby med flere originale Blender-detaljer, animerede måger,
+  fire valgfrie stednoter, analog fingerpind, større tekst, foldbart mål og trinvise gådevink.
+- Skrotstorm: åbne værksteder, flere bro-/vejdetaljer og en rolig depotbil; GPS følger vejnettet,
+  rampen forklares under kørslen, og garagen viser de reelle gevinster ved opgraderinger.
+  Kamera, grafik, lyd og touchrat/pile huskes. Lange hjælpevinduer åbner nu øverst.
+- Krystaljægerne: 13 Blender-landmærker, rejsekort, gyldent spor, stabilt autosigte,
+  våbenråd og bossvarsler. Vogtere og grotter har sikre ruter, og små skærmes beskeder overlapper ikke.
+- Alle tre: bevaret v1-fremgang, tydelig besked hvis browseren ikke kan gemme, bedre fokus og
+  samtidig fingerstyring, skærmudskæringer respekteres, lydfejl stopper ikke spillet.
+  Skjulte faner tegner intet, og menuer begrænser tegningen til 20 billeder/sekund.
+- Fælles opstart kan genprøves ved manglende modeller/import eller tabt WebGL-kontekst.
+  Offline-cache v67 gemmer ikke fejlsvar og rydder kun gamle Spilkassen-cacher.
+
+## Udgivelse og hjemmets server
+
+Forbedringer: PR #6. Korrekt HEAD-filstørrelse: PR #7. Den sidste menujustering: PR #8.
+Alt er flettet gennem pull requests; der er ikke pushet direkte til main.
+Den endelige pakke er server-v0.5.5, commit `9b50ac9942c32d71c174c5e55264f3eeb70bdcbb`, med Windows, Mac Intel/Apple Silicon
+og Linux x64/ARM64 samt checksums:
+https://github.com/FreddyBJ95/boernespil/releases/tag/server-v0.5.5
+
+Pi 192.168.0.26 kører den checksumkontrollerede officielle ARM64-pakke 0.5.5.
+Far-verdenen er startet, og alle syv verdens-/certifikatfiler er byte-uændrede.
+Privat backup før sidste opdatering: `/home/vindr1/BroekraftServer-055-05oadsk5/backup/` (mappe 700, filer 600).
+Backup-arkivets syv datafiler er læst tilbage og matcher hashmanifestet. Brugerens systemd-service
+er aktiv og aktiveret, og `Linger=yes` holder den kørende uden en åben SSH-session.
+HTTPS er kontrolleret med rigtig CA-validering på både localhost og Pi-adressen.
+Spilsiden er https://192.168.0.26:8443/index.html .
+Kontrolpanelets eksisterende SSH-tunnel er bevaret på http://127.0.0.1:18080/kontrol .
+Familiedata og adgangskoder er aldrig lagt i repoet.
+
+Familieserveren inkluderer også det main-indhold, der var med ved udgivelsen.
+Claude kan fortsætte med nyere Sigtekorn-indhold; efterfølgende webændringer kræver en senere
+serverpakke, før de kommer til Pi. Den fælles checkout er ajourført uden at ændre Claudes
+igangværende lokale filer.
+
+## Kontrol og kendt begrænsning
+
+44 spilprøver og 140 serverprøver består. CI bygger alle fem pakker og afprøver installation,
+opdatering og HTTPS på Linux x64 og ARM64. Den officielle Windows-pakke består også på denne pc
+med egne midlertidige data: netværk, gemning, privatfil-afskærmning og 171 runtimefiler.
+Den faktiske Pi-pakke og Windows-pakken leverer disse filer byte-identisk med taggets Git-objekter,
+med korrekt GET/HEAD. GitHub Pages er også godkendt med de samme 171 filer på 9b50ac9.
+Begge officielle Mac-downloads er checksumkontrolleret: program og vejledning findes, zip-filen
+bevarer udførselsrettighederne, og Mach-O-headeren angiver korrekt 64-bit Intel/ARM64.
+Formatkontrollen følger Apples offentlige [loader.h](https://github.com/apple-oss-distributions/xnu/blob/main/EXTERNAL_HEADERS/mach-o/loader.h)
+og [machine.h](https://github.com/apple-oss-distributions/xnu/blob/main/osfmk/mach/machine.h).
+Det er en kontrol af pakkernes indhold og arkitektur; programmerne er ikke kørt på en fysisk Mac.
+
+UI-komponenter er kontrolleret i Chrome på små stående og liggende skærme; herunder
+Hjælp/Køreskole/Kort ved 740×370 og Hjælp ved 320×566. De faktiske GLB-modeller er indlæst med
+GLTFLoader og vist i en ren modelscene. Logikprøver omfatter fuld fysisk bilkampagne, mange
+grottelayouts, navigation, gemning, frivillig lyd og input/fokus.
+
+Ny manuel gennemspilning af den forbedrede udgave bag voksenlåsen er ikke udført:
+ejerens eksisterende voksenkode mangler stadig i sessionen. Codex har spurgt én gang og hverken
+gættet, nulstillet eller læst den fra browserlageret. Fysisk iPad/Safari og Mac er ikke tilsluttet.
+De ældre 0.5.2-spil blev afprøvet manuelt før forbedringerne; det er ikke en manuel prøve af 0.5.5.
+README i hvert spil indeholder styring og gennemførelsesrute til næste menneskelige prøve.
+
+## Første menneskelige prøve
+
+Åbn Spilkassen, vælg Voksenspil og brug den eksisterende kode. Vælg Fortsæt, hvis der allerede
+er en gemt rejse. På en telefon kan Let grafik vælges i spillets indstillinger.
+
+- Det Sidste Lys: gå hen til den røde postkasse på kajen, og vælg Undersøg / E. Prøv at gå med
+  fingerpinden og se omkring med den anden hånd. Åbn dagbogen, fold målet sammen, og afprøv
+  større tekst i indstillingerne. De trinvise vink kan åbnes, når en gåde dukker op.
+- Skrotstorm: læs køreskolen, og kør mod de tre reservedele på skrotpladsen. Prøv GAS sammen
+  med styring, åbning af det store kort og valget mellem rat og pile. Åbn Hjælp på en liggende
+  telefon: overskriften og den første vejledning skal være synlige. Garagen viser prisen og
+  den konkrete forbedring, før man bruger skrot.
+- Krystaljægerne: tal med Mira ved brønden med Brug / E. Åbn Rejsekort og følg det gyldne spor.
+  Prøv at gå og dreje kameraet samtidig med to fingre. På pc: åbn pause, fortsæt, og afprøv
+  angreb med mellemrum. Taske, hjælp og kort skal standse kampen, mens de er åbne.
+
+Afprøv derefter skift mellem stående og liggende skærm, lyd til/fra samt at gå til en anden fane
+og vende tilbage. Se gemmestatus, luk siden og vælg Fortsæt igen; næste mål og optjent fremgang
+skal være bevaret. Notér enhed, browser, spil og præcis handling ved en fejl.
+
+Blender-kilder: `blender/tre-verdener/<spil>/`.
+Modelbevis: `output/tre-verdener-055/krystal-landsby-detaljer.png` i den fælles mappe.
+De tre spilmapper er nu fri til Claudes viderearbejde. Den følgende tekst er historiske arbejdsnoter;
+status ovenfor gælder.
+
+Prøveserveren og de midlertidige browserfaner er lukket. Den eksisterende Pi-tunnel er bevaret.
+Fire egne midlertidige `server/dist/test-tre-verdener-*`-mapper ligger fortsat i den adskilte worktree:
+automatisk sikkerhedskontrol afviste sletningen med `blocked by policy`, uden yderligere begrundelse.
+Ingen alternativ sletningsmetode er brugt. Mapperne er ignorerede prøvedata og ikke familiens Pi-data.
 
 ---
 

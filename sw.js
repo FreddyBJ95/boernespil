@@ -1,6 +1,6 @@
 // ===== Service Worker — gør spillene installerbare og tilgængelige offline =====
 // Bump dette tal når der ændres filer, så de gamle bliver hentet på ny.
-const CACHE = "boernespil-v67";
+const CACHE = "boernespil-v68";
 
 const SPIL = ["balloner", "byg-burger", "enhjoerning", "vask", "slange", "tegne", "piano", "fisk", "broekraft", "rulle-rasmus", "burgerloeb"];
 const VOKSENSPIL = ["det-sidste-lys", "skrotstorm", "krystaljaegerne"];
@@ -12,7 +12,7 @@ const EKSTRA = [
   ...["style.css", "komfort.css", "spil.js", "styring.js", "verden.js", "logik.js", "lyd.js", "oe.glb", "maage.glb", "forside.jpg"].map(f => `spil/det-sidste-lys/${f}`),
   ...["style.css", "spil.js", "styring.js", "missioner.js", "verden-data.js", "fysik.js", "fremgang.js", "lyd.js", "gps.js", "indstillinger.js", "brugerflade.js", "liv.js", "forside.jpg", "ikon.svg",
     "modeller/oerken.glb", "modeller/rotten.glb", "modeller/buggy.glb", "modeller/truck.glb"].map(f => `spil/skrotstorm/${f}`),
-  ...["style.css", "spil.js", "styring.js", "verden.js", "eventyr.js", "projektiler.js", "navigation.js", "kort.js", "lagring.js", "forside.jpg", "modeller/eventyr.glb", "modeller/detaljer.glb"].map(f => `spil/krystaljaegerne/${f}`),
+  ...["style.css", "spil.js", "styring.js", "verden.js", "eventyr.js", "projektiler.js", "navigation.js", "kort.js", "lagring.js", "kamp.js", "kampfigur.js", "kampstatus.js", "øveplads.js", "forside.jpg", "modeller/eventyr.glb", "modeller/detaljer.glb", "modeller/kamp.glb"].map(f => `spil/krystaljaegerne/${f}`),
   ...["three.js", "spil.js", "fisk.js", "staenger.js", "verden.js", "lyd.js", "modeller.js"].map(f => `spil/fisk/${f}`),
   ...["soe", "hav", "grej"].map(f => `spil/fisk/modeller/${f}.glb`),
   ...["three.js", "spil.js", "verden.js", "slange.js", "mad.js", "lyd.js", "modeller.js"].map(f => `spil/slange/${f}`),
