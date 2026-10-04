@@ -1,5 +1,10 @@
 Broekraft Server lader 1–8 børn bygge i samme Broekraft-verden på familiens eget wifi.
 
+**Nyt i 0.5.5**
+- Skrotstorms hjælp, køreskole og kort åbner ved begyndelsen på små skærme,
+  så tastaturfokus på knapperne ikke skjuler vejledningen.
+- De seneste Sigtekorn-filer, inklusive bombespillet og holdvalget, er med i familieserveren.
+
 **Nyt i 0.5.4**
 - Serveren oplyser den korrekte filstørrelse, når browseren spørger med HEAD, også for 3D-modeller,
   teksturer og hjemmecertifikatet. Selve filindholdet er uændret.

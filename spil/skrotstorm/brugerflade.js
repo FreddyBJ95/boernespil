@@ -13,7 +13,16 @@ export function brugerflade(api) {
     dialog.querySelector('h2')?.setAttribute('id', 'dialog-titel');
     dialog.classList.remove('skjult');
     dialog.querySelectorAll('[data-luk]').forEach(e => e.onclick = luk);
-    requestAnimationFrame(() => fokuserbare()[0]?.focus());
+    const kort = dialog.querySelector('.menu-kort');
+    const øverst = () => { dialog.scrollTop = 0; if (kort) kort.scrollTop = 0; };
+    øverst();
+    requestAnimationFrame(() => {
+      if (dialog.classList.contains('skjult') || !dialog.contains(kort)) return;
+      const første = fokuserbare()[0];
+      try { første?.focus({ preventScroll: true }); } catch { første?.focus(); }
+      // Ældre Safari kan ignorere preventScroll; begge rulbare lag skal stadig åbne øverst.
+      øverst();
+    });
   }
   function luk() {
     dialog.classList.add('skjult'); api.pause(false);
