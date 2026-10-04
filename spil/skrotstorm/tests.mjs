@@ -113,7 +113,7 @@ const brems = { ...nyBil(), x: -325, z: -100, fart: 20, vinkel: Math.PI };
 simulér(brems, nyFremgang(), 2, { ...input, gas: 0, bremse: true });
 assert.ok(Math.abs(brems.fart) < 1);
 const sving = simulér(lige(), nyFremgang(), 1, { ...input, drej: 1 });
-assert.ok(sving.vinkel > Math.PI);
+assert.ok(sving.vinkel < Math.PI, "Højre skal dreje mod skærmens højre (mindre vinkel)");
 const kampagne = nyFremgang();
 for (let i = 0; i < MISSIONER.length; i++) assert.ok(afslutMission(kampagne));
 assert.equal(kampagne.mission, 8);

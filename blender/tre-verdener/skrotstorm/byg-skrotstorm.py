@@ -130,7 +130,7 @@ for x in [-288,-272]:cube('Portstolpe',x,4.4,243,1,9,1,ORANGE)
 cube('Profileret tag',-280,12.3,256,32,1,29,RUST)
 for x in range(-295,-264,3):cube('Tagribbe',x,12.9,256,.3,.35,29,ORANGE)
 tekst('Garageskilt','SKROTSTORM',-280,10.4,242.55,2.4,CREME)
-tekst('Undertekst','DEN BLA GARAGE',-280,2,243,1.05,TURKIS)
+tekst('Undertekst','DEN BLÅ GARAGE',-280,2,243,1.05,TURKIS)
 cube('Garageplads',-275,.025,220,51,.05,40,MØRK)
 for x,z in [(-302,236),(-258,240),(-309,220)]:
   cyl('Tønde',x,1.1,z,1.1,2.2,ORANGE);cyl('Tøndelåg',x,2.25,z,1.15,.15,MØRK)
@@ -151,7 +151,8 @@ for x,z,sx,sz,h in [(-185,-182,31,27,15),(-115,-195,27,24,12),(15,-217,31,33,19)
   cube('Fabrikstag',x,h+.7,z,sx+2,1.4,sz+2,ORANGE)
   for xx in range(int(x-sx/2+3),int(x+sx/2-2),5):cube('Fabriksrude',xx,h*.7,z+sz/2+.1,2.8,3,.3,GLAS)
   for zz in [-7,0,7]:cube('Støttebjælke',x-sx/2-.3,h/2,z+zz,.6,h,.6,MØRK)
-for x,z in [(-28,-236),(46,-252),(-138,-224)]:
+# (Siloen ved x=46 stod midt på Ørkenringen; den står nu 30 m inde på fabriksgrunden.)
+for x,z in [(-28,-236),(46,-284),(-138,-224)]:
   cyl('Silo',x,13,z,8,26,STÅL,12)
   cyl('Silokant',x,22,z,8.25,.6,RUST,12)
   rør('Silorør',(x,18,z),(x+20,18,z+10),.8,TURKIS)
@@ -169,7 +170,7 @@ for x,z in [(-312,-183),(-264,-213)]:
   for zz in range(-7,8,3):cube('Containerprofil',x-4.1,2.5,z+zz,.2,5,.4,MØRK)
 for x,z in [(-286,-215),(-302,-189)]:
   cube('Gammelt chassis',x,1.3,z,5,1,9,ORANGE,random.random());cube('Gammel motor',x,2.2,z,3,1.8,3,MØRK)
-tekst('Skrotplads skilt','FIND · BYG · KOR',-278,5,-226,1.5,CREME)
+tekst('Skrotplads skilt','FIND · BYG · KØR',-278,5,-226,1.5,CREME)
 
 # Solstation og udsigtstårn er dalens to tydelige landemærker.
 cube('Solstation',-98,4,218,18,8,18,TURKIS)
@@ -339,10 +340,22 @@ for i in range(100):
   if vejafstand(x,z)<8 or min(math.hypot(x-cx,z-cz) for cx,cz in [(-275,220),(-285,-190),(-110,190)])<38:continue
   y=ter(x,z);bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1,radius=random.uniform(1.7,4.5),location=pos(x,y+1,z))
   o=bpy.context.object;o.name='Ørkensten';o.scale=(random.uniform(1,2),random.uniform(.7,1.6),random.uniform(.4,1));o.data.materials.append(KLIPPE)
-for x,z in [(-340,55),(-237,-226),(-60,-266),(205,-176),(270,150),(12,266),(-180,78)]:
-  y=min((a[1] for _,p in RUTER for a in p),default=0)
-  rør('Vejskiltstolpe',(x,0,z),(x,5,z),.16,MØRK)
-  cube('Turkis vejskilt',x,4.6,z,5,2,.25,TURKIS)
+# Vejskiltene står i vejkanten ved den nærmeste vej i jordhøjde (før stod nogle midt på vejen eller under bjergvejen).
+def ved_vejkant(x,z,luft=3):
+  bedste=None
+  for bredde,p in RUTER:
+    for a,b in zip(p,p[1:]):
+      if max(a[1],b[1])>1:continue
+      dx=b[0]-a[0];dz=b[2]-a[2];l2=dx*dx+dz*dz
+      t=max(0,min(1,((x-a[0])*dx+(z-a[2])*dz)/l2));px=a[0]+dx*t;pz=a[2]+dz*t;d=math.hypot(x-px,z-pz)
+      if bedste is None or d<bedste[0]:
+        l=math.sqrt(l2);nx=-dz/l;nz=dx/l;side=1 if (x-px)*nx+(z-pz)*nz>=0 else -1
+        bedste=(d,px+nx*side*(bredde/2+luft),pz+nz*side*(bredde/2+luft),math.atan2(dx,dz))
+  return bedste[1],bedste[2],bedste[3]
+for x,z in [(-340,55),(-237,-226),(-60,-266),(150,-60),(200,60),(12,266),(-180,78)]:
+  x,z,v=ved_vejkant(x,z)
+  rør('Vejskiltstolpe',(x,ter(x,z),z),(x,ter(x,z)+5,z),.16,MØRK)
+  cube('Turkis vejskilt',x,ter(x,z)+4.6,z,5,2,.25,TURKIS,v)
 verden=join_materialer([o for o in bpy.context.scene.objects if o not in rotorer],'Verden')+rotorer
 eksport('oerken',verden)
 
@@ -400,7 +413,9 @@ def bil(navn,farve,variant):
       for o in dele:o.select_set(True)
       bpy.context.view_layer.objects.active=d;bpy.ops.object.join();d=bpy.context.object;d.name='hjul_'+ende+('_venstre' if side<0 else '_hoejre')
       bpy.context.scene.cursor.location=pos(x,.48,z);bpy.ops.object.origin_set(type='ORIGIN_CURSOR');hjul.append(d)
-  objekter=krop+hjul;eksport(navn,objekter)
+  objekter=krop+hjul
+  # De kørebare biler laves nu af blender/skrotstorm_biler.py (runde former og bagte skygger).
+  # Disse enkle biler bruges kun til forsidebilledet.
   return objekter
 
 rotten=bil('rotten',ORANGE,'rotten')

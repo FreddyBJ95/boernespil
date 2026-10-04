@@ -38,7 +38,8 @@ export function kør(bil, input, fremgang, dt) {
   const boost = input.nitro && input.gas > 0 && bil.nitro > 0.02;
   const greb = e.greb * (før.vej ? 1 : 0.77);
   const top = e.topfart * (før.vej ? 1 : e.sand) * (boost ? 1.38 : 1);
-  bil.drej += (input.drej - bil.drej) * Math.min(1, dt * 7);
+  // Højre (D/→) skal dreje mod skærmens højre. Med kameraet bag bilen betyder det en mindre vinkel.
+  bil.drej += (-input.drej - bil.drej) * Math.min(1, dt * 7);
   if (bil.påJord) {
     const kraft = input.gas > 0 ? e.kraft * (boost ? 1.6 : 1) : input.gas < 0 ? -e.kraft * 0.68 : 0;
     bil.fart += kraft * dt;

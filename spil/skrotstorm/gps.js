@@ -23,7 +23,10 @@ const NET = vejnet();
 
 // Redning vælger samme niveau som GPS. Den flytter ikke en bil gennem et brodæk.
 export function redningspunkt(bil) {
-  const f = vejforbindelse(bil, bil.y - .8);
+  let f = vejforbindelse(bil, bil.y - .8);
+  // Oppe på en rampe (eller i luften) findes ingen vej i samme højde lige ved siden af:
+  // så vælges den nærmeste vej i jordhøjde i stedet for en fjern bro.
+  if (!f || afstand(bil, f.på) > 40) f = vejforbindelse(bil, 0) || f;
   if (!f) return undefined;
   const a = NET.knuder[f.kant.a], b = NET.knuder[f.kant.b];
   return { ...f.på, vinkel: Math.atan2(b.x - a.x, b.z - a.z) };
@@ -93,7 +96,7 @@ export function næsteVejpunkt(rute, bil) {
   let forskel = vinkel - bil.vinkel;
   while (forskel > Math.PI) forskel -= Math.PI * 2;
   while (forskel < -Math.PI) forskel += Math.PI * 2;
-  const tekst = Math.abs(forskel) > 2.1 ? 'Vend bilen' : forskel > .55 ? 'Hold til højre' : forskel < -.55 ? 'Hold til venstre' : 'Følg vejen';
+  const tekst = Math.abs(forskel) > 2.1 ? 'Vend bilen' : forskel > .55 ? 'Hold til venstre' : forskel < -.55 ? 'Hold til højre' : 'Følg vejen';   // en større vinkel ligger til venstre på skærmen
   return { ...mål, tekst, afstand: afstand(bil, mål), vinkel: forskel };
 }
 

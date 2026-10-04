@@ -273,6 +273,7 @@ a {
   align-items: center;
   justify-content: center;
   padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   z-index: 10;
   overflow-y: auto;
@@ -707,6 +708,10 @@ p {
   #bund {
     left: max(12px, env(safe-area-inset-left));
     bottom: 91px;
+  }
+  /* Med touchrattet fremme står knapperne over rattet i stedet for bag det */
+  body.med-rat #bund {
+    bottom: 136px;
   }
   .styr button {
     height: 62px;

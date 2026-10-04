@@ -11,6 +11,7 @@ import { planlægRute, næsteVejpunkt, rutemarkører, redningspunkt } from './gp
 import { hentValg, gemValg } from './indstillinger.js';
 import { brugerflade } from './brugerflade.js';
 import { skabLiv } from './liv.js';
+import { lavHimmel, lavMiljø, detaljerEfterNavn } from "../3d-faelles/pynt.js";
 
 const el = (id) => document.getElementById(id);
 const mobil = matchMedia("(pointer: coarse)").matches || innerWidth < 760;
@@ -30,10 +31,14 @@ renderer.toneMappingExposure = 1.25;
 renderer.shadowMap.enabled = !mobil;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xc2a987);
-scene.fog = new THREE.FogExp2(0xc2a987, .0017);
+scene.background = new THREE.Color(0xd8bf98);
+scene.fog = new THREE.FogExp2(0xd8bf98, .0017);
 const kamera = new THREE.PerspectiveCamera(58, 1, .15, 1250);
-scene.add(new THREE.HemisphereLight(0xe1e9dc, 0x8b613e, 2.2));
+// Himlen: støvet blå foroven, varm dis ved horisonten og solen samme sted som sollyset
+const himmel = lavHimmel({ top: "#6b97c6", horisont: "#dcc29a", bund: "#c9a87e", sol: [-130, 160, 75], solFarve: "#ffe0aa", dis: 0.55, skyer: 0.32, skyFarve: "#fff3e2" });
+scene.add(himmel);
+scene.environment = lavMiljø(renderer, himmel, "#9c7650");     // lak, glas og metal spejler himlen og sandet
+scene.add(new THREE.HemisphereLight(0xe1e9dc, 0x8b613e, 1.5));
 const sol = new THREE.DirectionalLight(0xffddb0, 3.1);
 sol.position.set(-130, 160, 75);
 scene.add(sol);
@@ -167,7 +172,7 @@ function opdaterBil(dt) {
   if (!bilModel) return;
   bilModel.position.set(bil.x, bil.y - .8, bil.z);
   bilModel.rotation.y = bil.vinkel;
-  bilModel.rotation.z = -bil.drej * Math.min(Math.abs(bil.fart) / 25, 1) * .04;
+  bilModel.rotation.z = bil.drej * Math.min(Math.abs(bil.fart) / 25, 1) * .04;      // karosseriet læner ud af svinget
   bilModel.rotation.x = bil.påJord ? Math.atan2(bil.vy, Math.max(4, Math.abs(bil.fart))) * .65 : -.07;
   for (const h of hjul) {
     h.rul += bil.fart * dt / .64;
@@ -175,7 +180,7 @@ function opdaterBil(dt) {
     h.o.rotation.y = h.forhjul ? bil.drej * .37 : 0;
   }
 }
-function gensæt(hjem = false) {
+function gensæt(hjem = false, stille = false) {
   const mål = hjem ? GARAGE : redningspunkt(bil) || GARAGE;
   bil = { ...nyBil(), x: mål.x, z: mål.z, y: gulv(mål.x, mål.z, (mål.y || 0) + .8).y + .8, vinkel: mål.vinkel ?? Math.PI, nitro: 1 };
   styr.ryd();
@@ -184,7 +189,9 @@ function gensæt(hjem = false) {
   løbende.rampeTilgang = false;
   ruteTid = 0;
   kamera.position.set(bil.x, bil.y + 7, bil.z + 15);
-  if (startet) besked(hjem ? "Bilen er tilbage ved den blå garage." : "Bilen står sikkert på vejen igen.");
+  // Hentes bilen hjem midt i ræset, starter ræset forfra (ellers var garagen en genvej til port 4)
+  if (hjem && fremgang.løbStart) { fremgang.port = 0; fremgang.løbStart = false; fremgang.løbTid = 0; if (startet) besked("Ræset starter forfra. Kør til den første port igen.", 5); return; }
+  if (startet && !stille) besked(hjem ? "Bilen er tilbage ved den blå garage." : "Bilen står sikkert på vejen igen.");
 }
 // Opgaver kræver, at bilen faktisk når frem, følger porte eller gennemfører et hop.
 function opdaterMission(dt) {
@@ -209,6 +216,10 @@ const vejvisere = new THREE.InstancedMesh(pilGeometri, new THREE.MeshBasicMateri
 vejvisere.frustumCulled = false; vejvisere.count = 0; scene.add(vejvisere);
 const markørMatrix = new THREE.Object3D();
 function opdaterRute() {
+  if (!aktuelMission()) {                                  // alle otte opgaver er klaret: fri kørsel uden rute
+    rute = null; navigation = null; vejvisere.visible = false;
+    return;
+  }
   const mål = næsteMål(), hop = aktuelMission()?.type === 'hop';
   if (hop && Math.hypot(bil.x - 28, bil.z + 34) < 20) løbende.rampeTilgang = true;
   if (hop && løbende.rampeTilgang && bil.x > 170 && bil.påJord) løbende.rampeTilgang = false;
@@ -233,7 +244,7 @@ function opdaterHud() {
   el("skrot").textContent = fremgang.skrot;
   el("mål-afstand").textContent = `${Math.round(rute?.længde || afstand)} m`;
   const retning = navigation?.vinkel ?? Math.atan2(mål.x - bil.x, mål.z - bil.z) - bil.vinkel;
-  el("pil").style.transform = `rotate(${retning}rad)`;
+  el("pil").style.transform = `rotate(${-retning}rad)`;                 // en større vinkel ligger til venstre på skærmen
   el("fart").textContent = Math.round(Math.abs(bil.fart) * 3.6);
   el("nitro-fyld").style.width = `${bil.nitro * 100}%`;
   el("mission-status").textContent = m?.type === "dele"
@@ -243,7 +254,7 @@ function opdaterHud() {
     : m?.type === "porte"
     ? `${fremgang.port}/3 signaler`
     : m?.type === 'hop'
-    ? (!bil.påJord && løbende.rampeForsøg ? `Hop ${bil.luftTid.toFixed(2)} / 0,55 s` : Math.abs(bil.fart) * 3.6 >= 55 ? 'Fart klar · hold lige' : 'Tilløb fra vest · mindst 55 km/t')
+    ? (!bil.påJord && løbende.rampeForsøg ? `Hop ${bil.luftTid.toFixed(2).replace('.', ',')} / 0,55 s` : Math.abs(bil.fart) * 3.6 >= 55 ? 'Fart klar · hold lige' : 'Tilløb fra vest · mindst 55 km/t')
     : m?.type === 'levering'
     ? `Last: ${m.id === 'levering' ? 'reservedele' : m.id === 'sol' ? 'batteri' : 'stormlygte'}`
     : m?.type === 'besøg'
@@ -257,7 +268,8 @@ function opdaterHud() {
     ? "DEN BLÅ GARAGE"
     : "ØRKENENS VEJE";
   målgruppe.position.set(mål.x, (mål.y || 0) + .3, mål.z);
-  målgruppe.visible = m?.type !== "dele";
+  målgruppe.visible = !!m && m.type !== "dele";
+  el("pil").style.visibility = m ? "" : "hidden";
   stormlys.visible = fremgang.mission === MISSIONER.length;
   delmodeller.forEach((g, i) => {
     g.visible = m?.type === "dele" && !fremgang.dele.includes(i);
@@ -340,8 +352,10 @@ function anvendValg() {
   const letGrafik = valg.grafik === 'let' || (valg.grafik === 'auto' && mobil);
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, letGrafik ? 1 : mobil ? 1.4 : 1.8));
   renderer.shadowMap.enabled = !letGrafik; sol.castShadow = !letGrafik;
-  scene.traverse(o => { if (o.isMesh && o !== vejvisere) { o.castShadow = !letGrafik; o.receiveShadow = !letGrafik; } });
+  // Himlen og de gennemsigtige lysstråler kaster ingen skygge
+  scene.traverse(o => { if (o.isMesh && o !== vejvisere && !o.userData.ingenSkygge && !o.material.transparent) { o.castShadow = !letGrafik; o.receiveShadow = !letGrafik; } });
   el('touch-rat').classList.toggle('skjult', valg.styring !== 'rat');
+  document.body.classList.toggle('med-rat', valg.styring === 'rat');
   document.querySelector('.styr').classList.toggle('skjult', valg.styring === 'rat');
   lyde.volumen(valg.lydstyrke);
   vejvisere.visible = valg.gps && startet;
@@ -360,7 +374,7 @@ el("start").onclick = () => {
   if (fremgang.position) {
     bil = { ...nyBil(), ...fremgang.position };
     kamera.position.set(bil.x, bil.y + 7, bil.z + 15);
-  } else gensæt(true);
+  } else gensæt(true, true);
   anvendValg(); opdaterRute(); opdaterHud();
   if (!valg.vistStart) ui.intro();
   else besked('Følg de blå vejvisere. Tryk på kortet for at læse opgaven.', 5);
@@ -377,7 +391,10 @@ el("lyd").onclick = () => {
   el("lyd").textContent = lyde.skift() ? "Lyd: fra" : "Lyd: til";
 };
 window.addEventListener("keydown", (e) => {
-  if (!startet) return;
+  if (!startet) {
+    if (e.key === "Escape" && !el("dialog").classList.contains("skjult")) { e.preventDefault(); lukDialog(); }
+    return;
+  }
   if (e.key === "Escape") {
     e.preventDefault();
     el("dialog").classList.contains("skjult") ? visPause() : lukDialog();
@@ -480,6 +497,11 @@ async function indlæs() {
     const data = await Promise.all(["oerken", "rotten", "buggy", "truck"].map((n) => loader.loadAsync(`modeller/${n}.glb`)));
     verden = data[0].scene;
     scene.add(verden);
+    // Fine mønstre: riller i sandet, korn i asfalten, lag i klipperne og slid på rusten
+    const fin = !(valg.grafik === 'let' || (valg.grafik === 'auto' && mobil));
+    detaljerEfterNavn(verden, [["sand", "sand", { styrke: 0.2, bump: 0.8, skala: 1 }], ["asfalt", "asfalt", { styrke: 0.3, bump: 0.4 }],
+      ["klippe", "klippe", { styrke: 0.3, bump: 1 }], ["rust", "sten", { styrke: 0.35, bump: 0.5 }], ["salvie", "græs", { styrke: 0.25, bump: 0.6 }],
+      ["emalje", "sten", { styrke: 0.12, bump: 0.25, skala: 2 }], ["jern", "sten", { styrke: 0.2, bump: 0.3, skala: 2 }], ["stål", "sten", { styrke: 0.12, bump: 0.2, skala: 3 }]], { fin });
     verden.traverse((o) => {
       if (o.isMesh) {
         o.receiveShadow = !mobil;
@@ -488,6 +510,10 @@ async function indlæs() {
     });
     verden.traverse(o => { if (o.name.startsWith('rotor_')) rotorer.push(o); });
     BILER.forEach((b, i) => modeller.set(b.id, data[i + 1].scene));
+    // Forlygter og lys på taget gløder (materialet "forlygte" fra blender/skrotstorm_biler.py)
+    for (const d of data.slice(1)) d.scene.traverse(o => {
+      if (o.isMesh && o.material.name === "forlygte") { o.material.emissive.set(0xffd98a); o.material.emissiveIntensity = 0.9; }
+    });
     depot = skabLiv(THREE, scene, modeller.get('truck'));
     sætBil(fremgang.bil);
     anvendValg();
@@ -510,3 +536,5 @@ async function indlæs() {
   }
 }
 indlæs();
+// ?debug giver adgang til scenen i konsollen (til afprøvning)
+if (location.search.includes("debug")) window.skrot = { scene, renderer, kamera, THREE, get bil() { return bil; }, get fremgang() { return fremgang; } };

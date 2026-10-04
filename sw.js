@@ -1,6 +1,6 @@
 // ===== Service Worker — gør spillene installerbare og tilgængelige offline =====
 // Bump dette tal når der ændres filer, så de gamle bliver hentet på ny.
-const CACHE = "boernespil-v70";
+const CACHE = "boernespil-v71";
 
 const SPIL = ["balloner", "byg-burger", "enhjoerning", "vask", "slange", "tegne", "piano", "fisk", "broekraft", "rulle-rasmus", "burgerloeb"];
 const VOKSENSPIL = ["det-sidste-lys", "skrotstorm", "krystaljaegerne"];
@@ -8,7 +8,7 @@ const VOKSENSPIL = ["det-sidste-lys", "skrotstorm", "krystaljaegerne"];
 // Spil der består af flere filer end index.html
 const EKSTRA = [
   "tilslut/", "tilslut/index.html", "tilslut/tilslut.css", "tilslut/tilslut.js", "tilslut/adresse.js", "tilslut/vendor/jsQR.js",
-  ...["three.module.js", "GLTFLoader.js", "BufferGeometryUtils.js", "start.js", "LICENSE-three.txt"].map(f => `spil/3d-faelles/${f}`),
+  ...["three.module.js", "GLTFLoader.js", "BufferGeometryUtils.js", "start.js", "pynt.js", "LICENSE-three.txt"].map(f => `spil/3d-faelles/${f}`),
   ...["style.css", "komfort.css", "spil.js", "styring.js", "verden.js", "logik.js", "lyd.js", "oe.glb", "maage.glb", "forside.jpg"].map(f => `spil/det-sidste-lys/${f}`),
   ...["style.css", "spil.js", "styring.js", "missioner.js", "verden-data.js", "fysik.js", "fremgang.js", "lyd.js", "gps.js", "indstillinger.js", "brugerflade.js", "liv.js", "forside.jpg", "ikon.svg",
     "modeller/oerken.glb", "modeller/rotten.glb", "modeller/buggy.glb", "modeller/truck.glb"].map(f => `spil/skrotstorm/${f}`),

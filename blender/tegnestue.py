@@ -384,8 +384,9 @@ def rens():
     for m in list(bpy.data.meshes): bpy.data.meshes.remove(m)
 
 
-def eksportér(rødder, sti):
-    """Gem figurerne (med alt hvad der hænger under dem) som én GLB-fil"""
+def eksportér(rødder, sti, normaler=False):
+    """Gem figurerne (med alt hvad der hænger under dem) som én GLB-fil.
+    normaler=True til spil, der indlæser med three.js' GLTFLoader (uden normaler bliver alt kantet dér)"""
     bpy.ops.object.select_all(action="DESELECT")
     def vælg(o):
         o.select_set(True)
@@ -393,7 +394,7 @@ def eksportér(rødder, sti):
     for r in rødder: vælg(r)
     os.makedirs(os.path.dirname(sti), exist_ok=True)
     bpy.ops.export_scene.gltf(filepath=sti, export_format="GLB", use_selection=True, export_yup=True,
-                              export_apply=True, export_vertex_color="ACTIVE", export_normals=False,
+                              export_apply=True, export_vertex_color="ACTIVE", export_normals=normaler,
                               export_texcoords=False, export_materials="EXPORT", export_animations=False)
     print("GEMT", os.path.relpath(sti, ROD), os.path.getsize(sti) // 1024, "kB")
 
