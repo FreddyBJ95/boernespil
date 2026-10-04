@@ -83,8 +83,8 @@ def firkant(cy, x0, x1, z0, z1):
     return [(x0, cy, z0), (x1, cy, z0), (x1, cy, z1), (x0, cy, z1)]
 
 
-def kugle(navn, c, r, mat, sx=1, sy=1, sz=1):
-    bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=16, v_segments=10, radius=r)
+def kugle(navn, c, r, mat, sx=1, sy=1, sz=1, u=16, v=10):
+    bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=u, v_segments=v, radius=r)
     for v in bm.verts: v.co = Vector((c[0] + v.co.x * sx, c[1] + v.co.y * sy, c[2] + v.co.z * sz))
     o = _obj(navn, bm, mat)
     for p in o.data.polygons: p.use_smooth = True

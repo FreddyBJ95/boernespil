@@ -64,17 +64,17 @@ def finger(navn, led, fr, M, bar=1, knoe=True):
     """En finger gennem leddene: rør mellem leddene, en kugle i hvert led — de sidste 'bar' led er hud.
     knoe: en lille polstret hætte på knoen (handskens beskyttelse)"""
     d = []
-    if knoe: d.append(kugle(f"{navn}knoe", tuple(led[0]), fr * 1.3, M["BESKYT"], 1, 1, 1))
+    if knoe: d.append(kugle(f"{navn}knoe", tuple(led[0]), fr * 1.3, M["BESKYT"], 1, 1, 1, 10, 6))
     for i in range(len(led) - 1):
         mat = M["HUD"] if i >= len(led) - 1 - bar else M["HANDSKE"]
         r = fr * (1 - 0.07 * i)
-        d.append(rør(f"{navn}{i}", tuple(led[i]), tuple(led[i + 1]), r, mat, 12, 0.0015))
-        d.append(kugle(f"{navn}led{i}", tuple(led[i]), r * 1.05, M["HANDSKE"] if i < len(led) - 1 - bar else M["HUD"]))
-    d.append(kugle(f"{navn}spids", tuple(led[-1]), fr * 0.88, M["HUD"] if bar else M["HANDSKE"]))
+        d.append(rør(f"{navn}{i}", tuple(led[i]), tuple(led[i + 1]), r, mat, 10, 0.0015))
+        d.append(kugle(f"{navn}led{i}", tuple(led[i]), r * 1.05, M["HANDSKE"] if i < len(led) - 1 - bar else M["HUD"], 1, 1, 1, 10, 7))
+    d.append(kugle(f"{navn}spids", tuple(led[-1]), fr * 0.88, M["HUD"] if bar else M["HANDSKE"], 1, 1, 1, 10, 7))
     return d
 
 
-def håndflade(navn, g, s0, s1, φa, φb, tyk, M, tyk_b=None, n_s=6, n_φ=9):
+def håndflade(navn, g, s0, s1, φa, φb, tyk, M, tyk_b=None, n_s=7, n_φ=11):
     """Håndfladen som en skal, der ligger tæt om grebet mellem vinklerne φa og φb (tykkelsen kan aftage mod φb)"""
     tyk_b = tyk if tyk_b is None else tyk_b
     snit = []
@@ -88,7 +88,8 @@ def håndflade(navn, g, s0, s1, φa, φb, tyk, M, tyk_b=None, n_s=6, n_φ=9):
             inde.append(tuple(g.punkt(s, φ, 0.001)))
         snit.append(ude + inde[::-1])
     o = løft(navn, snit, M["HANDSKE"], 0.004)
-    glat = o.modifiers.new("glat", "SUBSURF"); glat.levels = glat.render_levels = 2   # (rund og blød som en rigtig hånd)
+    o.modifiers.remove(o.modifiers["afrund"])                          # (ingen afrunding — den bliver glat af sig selv)
+    glat = o.modifiers.new("glat", "SUBSURF"); glat.levels = glat.render_levels = 1   # (rund og blød som en rigtig hånd)
     return o
 
 
