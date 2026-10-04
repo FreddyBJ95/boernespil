@@ -113,6 +113,8 @@ export class Hud {
   kikkert(til) { this.el.kikkert.classList.toggle("skjult", !til); }
   prik(til) { this.el.prik.classList.toggle("skjult", !til); }       // rødpunktet midt i rødpunktsigtet
   // Bomberunder: en bjælke, mens bomben lægges eller desarmeres, et ikon, når man selv har bomben, og et rødt ur
+  // Blod på skærmen (når en zombie bider en): kommer med det samme og falmer langsomt
+  blod(styrke = 1) { this.blodStyrke = Math.min(1, (this.blodStyrke || 0) + styrke * 0.7); }
   // En bjælke midt på skærmen med en tekst (fx: riv dig løs fra zombien)
   fremskridt(f) {
     const el = this.el.fremskridt; el.classList.toggle("skjult", !f);
@@ -136,6 +138,10 @@ export class Hud {
     this.el.tavle.innerHTML = ["ræve", "slanger"].map(h => `<div class="hold ${h}"><h2>${holdNavne[h]}</h2><table><tr><th>Navn</th><th>Drab</th><th>Død</th><th>Hoved</th></tr>${rækker(h)}</table></div>`).join("");
   }
   opdater(dt) {
+    if (this.blodStyrke > 0) {                                     // blodet på skærmen falmer
+      this.blodStyrke = Math.max(0, this.blodStyrke - dt * 0.35);
+      const el = document.getElementById("blodSkærm"); el.style.opacity = this.blodStyrke.toFixed(3);
+    }
     if (this.ramtTid > 0 && (this.ramtTid -= dt) <= 0) this.el.ramt.className = "";
     if (this.blændTid > 0) {
       this.blændTid -= dt;

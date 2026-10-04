@@ -60,6 +60,17 @@ export function zombie(pos) {
   o.connect(f); f.connect(g); g.connect(m); o.start(t); o.stop(t + 1.05);
   støjStød(m, t, 0.9, "bandpass", 700, 1.2, 0.15, 0.9);
 }
+// Et skrig (når en zombie river noget af): en stemme, der springer op og knækker over — pos = null er en selv
+export function skrig(pos, styrke = 1) {
+  if (!ctx) return;
+  const t = ctx.currentTime, m = kæde(pos, (pos ? 0.7 : 0.45) * styrke), o = ctx.createOscillator(), f1 = ctx.createBiquadFilter(), f2 = ctx.createBiquadFilter(), g = ctx.createGain();
+  const top = 620 + Math.random() * 260;
+  o.type = "sawtooth"; o.frequency.setValueAtTime(280, t); o.frequency.exponentialRampToValueAtTime(top, t + 0.12); o.frequency.exponentialRampToValueAtTime(top * 0.55, t + 0.75);
+  f1.type = "bandpass"; f1.frequency.value = 900; f1.Q.value = 4; f2.type = "bandpass"; f2.frequency.value = 2400; f2.Q.value = 5;   // (to "vokaler")
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.6, t + 0.05); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.85);
+  o.connect(f1); o.connect(f2); f1.connect(g); f2.connect(g); g.connect(m); o.start(t); o.stop(t + 0.9);
+  støjStød(m, t, 0.8, "bandpass", 1500, 1.2, 0.18, 0.75);
+}
 // En zombie får fat i nogen: et dybt, hæst brøl
 export function brøl(pos) {
   if (!ctx) return;

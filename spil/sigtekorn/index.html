@@ -73,6 +73,10 @@
   #skadeRetning i { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform: rotate(var(--v)); animation: fade 1.2s forwards; }
   #skadeRetning i::before { content: ""; position: absolute; left: -60px; top: -27vh; width: 120px; height: 12px; border-radius: 50% 50% 0 0; background: radial-gradient(ellipse at 50% 100%, rgba(255, 50, 30, 0.95), rgba(255, 50, 30, 0) 70%); }
   @keyframes fade { to { opacity: 0; } }
+  #blodSkærm { position: absolute; inset: 0; pointer-events: none; opacity: 0;
+    background: radial-gradient(ellipse 18% 14% at 12% 20%, rgba(120, 0, 0, 0.85), transparent 70%), radial-gradient(ellipse 12% 22% at 86% 30%, rgba(110, 0, 0, 0.8), transparent 70%),
+      radial-gradient(ellipse 22% 12% at 70% 88%, rgba(130, 4, 0, 0.8), transparent 70%), radial-gradient(ellipse 10% 9% at 30% 75%, rgba(120, 0, 0, 0.75), transparent 70%),
+      radial-gradient(circle, transparent 45%, rgba(110, 0, 0, 0.7)); }
   #rødKant { position: absolute; inset: 0; background: radial-gradient(circle, transparent 55%, rgba(200, 20, 10, 0.45)); opacity: 0; }
   #rødKant.vis { animation: rød 0.6s forwards; } @keyframes rød { 0% { opacity: 1; } 100% { opacity: 0; } }
   #fremskridt { position: absolute; left: 50%; top: 62%; width: 260px; margin-left: -130px; text-align: center; font: 600 14px system-ui; color: #fff; }
@@ -166,6 +170,7 @@
 
 <div id="hud" class="skjult">
   <div id="rødKant"></div>
+  <div id="blodSkærm"></div>
   <div id="kikkert" class="skjult"></div>
   <div id="prik" class="skjult"></div>
   <div id="fremskridt" class="skjult"><span></span><i></i></div>

@@ -247,6 +247,10 @@ export class Bot {
       return;
     }
     if (this.fanget) return this.æd(dt, nu);                          // den har fat i nogen: hold fast og æd
+    if (this.fig?.harArm() && !this.lemIHånd) {                       // en anden zombie har fat i nogen lige her: æd med
+      const o = this.s.spiseMed?.(this);
+      if (o) return this.ædMed(o, dt, nu);
+    }
     this.bid = Math.max(0, this.bid - dt * 2);
     let mål = null, bd = Infinity;
     for (const f of this.s.kampfolk()) if (!f.zombie && !f.død) { const d = f.a.pos.distanceTo(this.a.pos); if (d < bd) { bd = d; mål = f; } }
@@ -317,6 +321,14 @@ export class Bot {
     L.obj.matrix.compose(mund, q, new THREE.Vector3(krymp, krymp, krymp)).multiply(new THREE.Matrix4().makeTranslation(-L.c.x, -L.c.y, -L.c.z));
     L.obj.matrixWorldNeedsUpdate = true;
     return mund;
+  }
+  // Æd med: stå ved offeret (som en anden zombie holder fast) og riv også noget af
+  ædMed(o, dt, nu) {
+    const dx = o.a.pos.x - this.a.pos.x, dz = o.a.pos.z - this.a.pos.z, d = Math.hypot(dx, dz);
+    this.drejMod(Math.atan2(-dx, -dz), -0.3, dt);
+    bevæg(this.a, { frem: d > 0.95 ? 1 : 0, side: 0, hop: false, gå: true, duk: false }, dt, this.s.verden, 2.5);
+    this.bid = Math.max(0, this.bid - dt * 2.4);
+    if (d < 1.3 && (this.bidTid -= dt) <= 0) { this.bidTid = 1.2 + Math.random() * 0.6; this.bid = 1; this.s.bid?.(this, o); }
   }
   // Giv slip (offeret rev sig løs, døde — eller zombien mistede armene). skub: den tumler et stykke baglæns
   slip(skub = 0) {
