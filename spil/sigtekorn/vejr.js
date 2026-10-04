@@ -31,7 +31,7 @@ export function lavVejr(type, storm, k) {
   // ting langt væk uden tåge (fjeldene om Fjeldbyen): mørke om natten — og væk i stormen
   scene.traverse(x => { if (x.isMesh && x.material?.fog === false && x.material.emissive) { if (navn === "nat") { x.material.emissive.multiplyScalar(0.08); x.material.color.multiplyScalar(0.25); } else x.visible = false; } });
   const v = { ...tom, synsvidde: o.syn, nat: navn === "nat", lyd: navn === "regn" ? "regn" : navn === "nat" ? null : "vind", håndLys: navn === "nat" ? 0.22 : 0.7 };
-  himmel.material.uniforms.glød.value = navn === "nat" ? 0.12 : 0.35;      // (solens skær på himlen: svagt i storm, næsten væk om natten)
+  himmel.material.uniforms.glod.value = navn === "nat" ? 0.12 : 0.35;      // (solens skær på himlen: svagt i storm, næsten væk om natten)
   const dele = [];                                                 // ting, der skal opdateres hvert billede
 
   if (navn === "nat") {

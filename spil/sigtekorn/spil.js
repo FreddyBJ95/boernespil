@@ -79,11 +79,11 @@ scene.add(himmelLys);
 // himlen: en stor kugle med blå top, lys horisont og en sol
 const himmel = new THREE.Mesh(new THREE.SphereGeometry(500, 32, 16), new THREE.ShaderMaterial({
   side: THREE.BackSide, depthWrite: false, fog: false,
-  uniforms: { top: { value: new THREE.Color(0x3a78c8) }, midt: { value: new THREE.Color(0x8fbce8) }, bund: { value: new THREE.Color(0xf0dcbc) }, sol: { value: solRet }, glød: { value: 1 } },
+  uniforms: { top: { value: new THREE.Color(0x3a78c8) }, midt: { value: new THREE.Color(0x8fbce8) }, bund: { value: new THREE.Color(0xf0dcbc) }, sol: { value: solRet }, glod: { value: 1 } },   // (navnene i shaderen skal være uden æ, ø og å)
   vertexShader: "varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
-  fragmentShader: `uniform vec3 top; uniform vec3 midt; uniform vec3 bund; uniform vec3 sol; uniform float glød; varying vec3 vP;
+  fragmentShader: `uniform vec3 top; uniform vec3 midt; uniform vec3 bund; uniform vec3 sol; uniform float glod; varying vec3 vP;
     void main(){ float h = clamp(vP.y, -0.2, 1.0); vec3 c = mix(bund, midt, smoothstep(0.0, 0.22, h)); c = mix(c, top, smoothstep(0.22, 0.9, h));
-      float s = max(dot(normalize(vP), sol), 0.0); c += (vec3(1.0, 0.92, 0.75) * pow(s, 900.0) * 6.0 + vec3(1.0, 0.85, 0.6) * pow(s, 10.0) * 0.22) * glød;
+      float s = max(dot(normalize(vP), sol), 0.0); c += (vec3(1.0, 0.92, 0.75) * pow(s, 900.0) * 6.0 + vec3(1.0, 0.85, 0.6) * pow(s, 10.0) * 0.22) * glod;
       gl_FragColor = vec4(c, 1.0);
       #include <tonemapping_fragment>
       #include <colorspace_fragment>
