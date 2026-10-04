@@ -23,6 +23,7 @@ export const harLeddeløs = () => !!proto;
 const HOLDFARVER = {
   ræve: { uniform: 0xb89b6e, vest: 0x7e6644, kasket: 0xc8b08a, tørklæde: 0x9a3a2a, vis: ["kasket", "tørklæde"] },
   slanger: { uniform: 0x5b6a3e, vest: 0x363d26, hjelm: 0x4a5530, vis: ["hjelm", "briller"] },
+  zombier: { uniform: 0x5e5a50, vest: 0x3a3028, hud: 0x8aa06a, vis: [] },             // grå, laset tøj og grønlig hud
 };
 const HUDFARVER = [0xd9a877, 0xb9805a, 0x8a5a3a, 0xe8c09a];
 // materialerne deles af alle på samme hold (og hver hudfarve), så der ikke laves nye for hver soldat
@@ -32,7 +33,7 @@ function holdMat(hold, m, hud) {
   if (!matLager.has(nøgle)) {
     const ny = m.clone(), f = HOLDFARVER[hold][m.name];
     if (f !== undefined) ny.color.set(f);
-    if (m.name === "hud") ny.color.set(HUDFARVER[hud]);
+    if (m.name === "hud") ny.color.set(HOLDFARVER[hold].hud ?? HUDFARVER[hud]);
     matLager.set(nøgle, ny);
   }
   return matLager.get(nøgle);
@@ -148,7 +149,9 @@ export class Figur {
       vis.position.copy(midt); vis.quaternion.copy(sigteQ);
     }
     // arme uden våben: hænger ned (eller skubber fra, når den kravler)
+    // (zombier strækker armene frem)
     const fri = (sk, side) => kb > 0.5 ? new THREE.Vector3(side * 0.28, 0.05, hofte.z - 0.8 - Math.cos(ψ + (side > 0 ? 0 : Math.PI)) * 0.15)
+      : this.hold === "zombier" ? sk.clone().add(new THREE.Vector3(side * 0.03, -0.1 + Math.sin(ψ * 0.5 + side) * 0.05, -0.56))
       : sk.clone().add(new THREE.Vector3(side * 0.06, -0.55, 0.02 + Math.sin(ψ + (side > 0 ? Math.PI : 0)) * 0.12 * Math.min(1, fart / 3)));
     if (!M.armR) this.arm("overarmR", "underarmR", skR, håndR || fri(skR, 1), new THREE.Vector3(0.6, -1, 0.5).applyQuaternion(sigteQ), sigteQ);
     if (!M.armL) this.arm("overarmL", "underarmL", skL, håndL || fri(skL, -1), new THREE.Vector3(-0.7, -1, 0.3).applyQuaternion(sigteQ), sigteQ);

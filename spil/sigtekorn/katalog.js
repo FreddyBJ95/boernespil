@@ -129,6 +129,8 @@ export const ALLE = {};
 for (const gruppe of [PRIMÆR, SEKUNDÆR, KNIVE]) for (const [id, d] of Object.entries(gruppe)) {
   ALLE[id] = { ...d, fart: d.fart * U, kikkertFart: d.kikkertFart ? d.kikkertFart * U : undefined };
 }
+// Zombiernes kløer (kun til zombierne — ikke i udrustningen)
+ALLE.klo = { navn: "Zombieklør", klasse: "kniv", sjælden: "almindelig", nærkamp: true, kadence: 0.85, skade: 14, stik: 14, rækkevidde: 1.5, fart: 250 * U, træk: 0.3 };
 // Uden arme kan man ingenting holde
 ALLE.ingen = { navn: "Ingen arme", klasse: "ingen", sjælden: "almindelig", kadence: 99, magasin: 0, reserve: 0, fart: 230 * U, træk: 0.3, stå: 0, duk: 0, bevæg: 0, hop: 0 };
 // Granaterne er også "våben" i hånden (plads 4): venstre klik kaster langt, højre klik kaster kort

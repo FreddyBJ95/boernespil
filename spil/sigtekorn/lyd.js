@@ -36,6 +36,16 @@ function startVejr() {
   if (!regn) { const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 0.13; lg.gain.value = 0.09; lfo.connect(lg); lg.connect(g.gain); lfo.start(); }
   s.connect(f); f.connect(g); g.connect(ud); s.start(); vejrKilde = s;
 }
+// En zombie stønner (dybt og hæst, et sted i verdenen)
+export function zombie(pos) {
+  if (!ctx) return;
+  const t = ctx.currentTime, m = kæde(pos, 0.5), o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+  o.type = "sawtooth"; o.frequency.setValueAtTime(95 + Math.random() * 30, t); o.frequency.linearRampToValueAtTime(70 + Math.random() * 20, t + 0.9);
+  f.type = "bandpass"; f.frequency.value = 420; f.Q.value = 2.5;
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5, t + 0.15); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.0);
+  o.connect(f); f.connect(g); g.connect(m); o.start(t); o.stop(t + 1.05);
+  støjStød(m, t, 0.9, "bandpass", 700, 1.2, 0.15, 0.9);
+}
 export function torden(forsinkelse = 0.5) {
   if (!ctx) return;
   const t = ctx.currentTime + forsinkelse, m = kæde(null, 0.9);
