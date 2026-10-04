@@ -43,23 +43,25 @@ export function lavVejr(type, storm, k) {
     const måne = new THREE.Mesh(new THREE.SphereGeometry(9, 24, 16), new THREE.MeshBasicMaterial({ color: 0xe8ecf4, fog: false }));
     scene.add(stjerner, måne);
     dele.push((dt, kam) => { stjerner.position.copy(kam.position); måne.position.copy(kam.position).addScaledVector(solRet, 400); });
-    // din lommelygte (tast F) og botternes
+    // din lommelygte (tast F) og de nærmeste botters. Der er altid lige mange lys, og de slukkes ved at skrue
+    // ned for dem — skifter antallet af lys, skal alle materialer laves om, og så hakker spillet i flere sekunder
     v.lygte = lygte(scene, 3.2);
-    const lygter = new Map();
+    const botLygter = Array.from({ length: BOTLYGTER }, () => lygte(scene, 0));
+    const frem = new THREE.Vector3(), r = new THREE.Vector3(), skub = new THREE.Vector3(0.15, -0.18, 0);
     dele.push((dt, kam, folk, tændt) => {
       kam.updateMatrixWorld();
-      const frem = new THREE.Vector3(0, 0, -1).applyQuaternion(kam.quaternion);
-      v.lygte.visible = tændt; v.lygte.position.copy(kam.position).addScaledVector(frem, 0.3).add(new THREE.Vector3(0.15, -0.18, 0));
+      frem.set(0, 0, -1).applyQuaternion(kam.quaternion);
+      v.lygte.intensity = tændt ? 3.2 : 0; v.lygte.position.copy(kam.position).addScaledVector(frem, 0.3).add(skub);
       v.lygte.target.position.copy(kam.position).addScaledVector(frem, 10);
-      for (const f of folk) {
-        if (f.erSpiller) continue;
-        let l = lygter.get(f); if (!l) { l = lygte(scene, 2.2); lygter.set(f, l); }
-        l.visible = !f.død && f.model.visible;
-        if (!l.visible) continue;
-        const a = f.a, c = Math.cos(a.pitch), r = new THREE.Vector3(-Math.sin(a.yaw) * c, Math.sin(a.pitch), -Math.cos(a.yaw) * c);
+      // de nærmeste levende soldater (ikke zombier) får en lygte hver
+      const nær = folk.filter(f => !f.erSpiller && !f.zombie && !f.død && f.model.visible)
+        .sort((x, y) => x.a.pos.distanceToSquared(kam.position) - y.a.pos.distanceToSquared(kam.position));
+      botLygter.forEach((l, i) => {
+        const f = nær[i]; l.intensity = f ? 2.2 : 0; if (!f) return;
+        const a = f.a, c = Math.cos(a.pitch); r.set(-Math.sin(a.yaw) * c, Math.sin(a.pitch), -Math.cos(a.yaw) * c);
         l.position.set(a.pos.x, a.pos.y + 1.35 - 0.4 * a.duk, a.pos.z).addScaledVector(r, 0.45);
         l.target.position.copy(l.position).addScaledVector(r, 10);
-      }
+      });
     });
   } else {
     // vind og nedbør: partikler i en kasse rundt om kameraet (regn er streger, sne og sand er prikker)
@@ -107,6 +109,7 @@ function rundPrik() {
   g.fillStyle = r; g.fillRect(0, 0, 32, 32);
   return new THREE.CanvasTexture(c);
 }
+const BOTLYGTER = 4;                                                 // så mange af botterne har en tændt lygte ad gangen (de nærmeste)
 // En lommelygte: et lys, der lyser i en kegle frem
 function lygte(scene, styrke) {
   const l = new THREE.SpotLight(0xfff0d8, styrke, 45, 0.4, 0.6, 0.75);   // (blødt fald: ikke hvidt helt tæt på, men når stadig langt)

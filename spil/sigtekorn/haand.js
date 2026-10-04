@@ -149,6 +149,7 @@ export class Hånd {
       m.roterer = ny.getObjectByName("roterer");                     // minigunnens løb drejer rundt
       m.glb = true;
       skinPå(ny, this.skin);                                          // dit skin (profil.js)
+      this.vedHentet?.(m.holder);                                     // (spillet gør den klar på grafikkortet med det samme)
     }).catch(fejl => console.warn("Kunne ikke hente modellen til", id, fejl));
   }
   // Lyset på våbnet i hånden (1 = dag; mindre om natten og i storm)

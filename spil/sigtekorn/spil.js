@@ -26,7 +26,7 @@ import { Projektiler } from "./projektiler.js";
 import { Hånd } from "./haand.js";
 import { Effekter } from "./effekter.js";
 import { Bot, SVÆRHED, NAVNE, træfKrop, vinkel, hentSoldat, botVåben, botKanBruge } from "./bots.js";
-import { Figur, harLeddeløs, holdFarve } from "./leddeloes.js";
+import { Figur, harLeddeløs, holdFarve, sætVedVåben, forhåndshentVåben } from "./leddeloes.js";
 import { Bombe, visMærker } from "./bombe.js";
 import { Killcam } from "./killcam.js";
 import { lavVejr } from "./vejr.js";
@@ -1042,10 +1042,36 @@ function startKamp() {
   else if (onlineSpil()) { bombe.stop(); genopstå(); hud.besked(`🌐 Online holdkamp i rummet "${online.ønsket?.rum || ""}"`, 3000); }
   else { bombe.stop(); genopstå(); for (const b of bots) b.spawn(); }
   iGang = true; if (!træning()) stat.kampe++; gemStatistik(stat);
+  forvarm();
   $("hud").classList.remove("skjult"); $("fortsæt").classList.remove("skjult"); $("start").textContent = "↻ Ny kamp";
   if (!bombeSpil() && !zombieSpil() && !brSpil() && !onlineSpil()) hud.besked(ræs() ? `Våbenræs! Hvert drab giver dig et nyt våben — ${RÆKKE.length - 1} drab, og så vinder du med kniven`
     : træning() ? `Træning! Skyd ${TRÆNING} mål så hurtigt du kan` + (ind.sværhed === "let" ? "" : " — de bevæger sig") : "Holdkamp! Første hold til 50 drab", 3000);   // (bomben har sin egen besked)
 }
+// Gør alle materialer klar på grafikkortet med det samme — også dem, der først ses senere (zombierne, der venter
+// på at komme frem, blodet, effekterne og våbnene i hånden). Ellers hakker spillet, første gang noget nyt dukker op
+function forvarm() {
+  for (const [sc, kam] of [[scene, kamera], [hånd.scene, hånd.kamera], [killHånd.scene, killHånd.kamera]]) {
+    const skjulte = []; sc.traverse(o => { if (!o.visible) { skjulte.push(o); o.visible = true; } });
+    try { klargør(sc, kam); } finally { for (const o of skjulte) o.visible = false; }
+  }
+}
+// Oversæt materialerne i baggrunden (grafikkortet gør det, mens spillet kører videre) — eller med det samme
+function klargør(sc, kam) { if (renderer.compileAsync) renderer.compileAsync(sc, kam).catch(() => {}); else renderer.compile(sc, kam); }
+// En ting (fx en bots våben) er lige kommet: gør den klar, også selvom den eller dem, den sidder på, er skjult lige nu
+function klargørTing(obj) {
+  const skjulte = []; for (let o = obj; o; o = o.parent) if (!o.visible) { skjulte.push(o); o.visible = true; }
+  try { klargør(scene, kamera); } finally { for (const o of skjulte) o.visible = false; }
+}
+sætVedVåben(klargørTing);
+const klargørBillede = t => { try { renderer.initTexture(t); } catch (_) {} };
+setTimeout(() => forhåndshentVåben(Object.keys(VÅBEN), klargørBillede), 1500);   // (botternes våben hentes i baggrunden)
+// Et våben i hånden er hentet: gør det klar på grafikkortet med det samme (ikke først, når man tager det frem)
+const forvarmHånd = h => holder => {
+  holder.traverse(o => { if (o.isMesh) for (const t of [o.material.map, o.material.normalMap, o.material.roughnessMap, o.material.metalnessMap, o.material.emissiveMap]) if (t) klargørBillede(t); });
+  const v0 = holder.visible, r0 = h.rod.visible; holder.visible = true; h.rod.visible = true;
+  try { klargør(h.scene, h.kamera); } finally { holder.visible = v0; h.rod.visible = r0; }
+};
+hånd.vedHentet = forvarmHånd(hånd); killHånd.vedHentet = forvarmHånd(killHånd);
 function slutKamp() {
   if (!iGang) return;
   iGang = false; pause = true;

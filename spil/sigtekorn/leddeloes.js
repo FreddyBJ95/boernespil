@@ -19,6 +19,9 @@ export function hentLeddeløs() {
   }, undefined, e => { console.warn("Ingen leddeløs soldat", e); klar(false); }));
 }
 export const harLeddeløs = () => !!proto;
+// Når et våben i hænderne på en soldat er hentet første gang, kan spillet gøre det klar på grafikkortet
+let vedVåben = null; const klargjort = new Set();
+export function sætVedVåben(f) { vedVåben = f; }
 
 const HOLDFARVER = {
   ræve: { uniform: 0xb89b6e, vest: 0x7e6644, kasket: 0xc8b08a, tørklæde: 0x9a3a2a, vis: ["kasket", "tørklæde"] },
@@ -71,6 +74,14 @@ function hentTP(id) {
     return tpLager.get(fil);
   };
   return hent(`modeller/${d.model}.glb`).catch(() => hent(`modeller/${KLASSEFIL[d.klasse] || "gevaer"}.glb`)).catch(() => null);
+}
+// Hent soldaternes våben på forhånd (mens man står i menuen) og læg deres billeder på grafikkortet med det samme
+// — ellers hakker spillet, første gang en bot får en ny slags våben
+export function forhåndshentVåben(ids, klargørBillede) {
+  for (const id of ids) hentTP(id).then(m => m?.obj?.traverse(o => {
+    if (!o.isMesh) return;
+    for (const mat of [].concat(o.material)) for (const t of [mat.map, mat.normalMap, mat.roughnessMap, mat.metalnessMap, mat.aoMap, mat.emissiveMap]) if (t) klargørBillede(t);
+  })).catch(() => {});
 }
 const enkel = id => { const k = VÅBEN[id]?.klasse; return !k || k === "kniv" ? null : k === "snig" ? "snig" : k === "pistol" ? "pistol" : "gevær"; };
 
@@ -297,6 +308,7 @@ export class Figur {
         if (this.skin && this.skin !== "standard") skinPå(obj, this.skin);     // et skin på våbnet (se skins.js)
         this.våbenModeller[id] = { obj, roterer, greb: m.greb, forgreb: m.forgreb };
         this.d[`våben_${id}`] = obj;
+        if (!klargjort.has(id)) { klargjort.add(id); vedVåben?.(obj); }   // (første gang: spillet gør våbnet klar på grafikkortet)
       });
     }
     return null;

@@ -92,6 +92,7 @@ export class Bot {
   constructor(s, hold, navn) {
     this.s = s; this.hold = hold; this.navn = navn; this.erSpiller = false; this.zombie = hold === "zombier";
     this.fig = harLeddeløs() ? new Figur(hold) : null;
+    if (this.zombie) this.fig?.zombieØjne(0xd8ff40);                   // (øjnene laves med det samme, så de kan gøres klar på grafikkortet)
     this.model = this.fig ? this.fig.model : byggSoldat(hold); s.scene.add(this.model);
     this.drab = 0; this.dødsfald = 0; this.hoveder = 0;
     this.spawn();
@@ -499,7 +500,7 @@ export class Bot {
       return true;
     }
     if (this.fig && skud?.lem && skud.lem !== "hoved") this.mistLem(skud.lem, skud);
-    if (fra && !this.flygt && this.liv < 55 && Math.random() < 0.55) this.søgDækning(fra, this.s.nu());
+    if (fra && !this.flygt && !this.zombie && this.liv < 55 && Math.random() < 0.55) this.søgDækning(fra, this.s.nu());   // (zombier søger aldrig dækning)
     return false;
   }
   fart() { return new THREE.Vector3(this.a.vel.x, Math.max(-2, this.a.vel.y), this.a.vel.z); }
