@@ -32,6 +32,7 @@ import { Killcam } from "./killcam.js";
 import { lavVejr } from "./vejr.js";
 import { Zombier, MAKS_SAMTIDIG } from "./zombier.js";
 import { Køretøjer } from "./koeretoejer.js";
+import { Byggeri, DELE, PRIS } from "./byggeri.js";
 import { køb, drabPenge, giv as givPenge, tegnKøbsmenu, GRUPPER, nytUdstyr } from "./penge.js";
 import * as Lyd from "./lyd.js";
 import { Profil, UDFORDRINGER } from "./profil.js";
@@ -49,7 +50,7 @@ await lås($("lås"));
 
 // ---------- Indstillinger (gemmes på computeren) ----------
 const INDST = "sigtekorn-indstillinger";
-const ind = Object.assign({ sværhed: "normal", hold: 5, følsomhed: 2.0, synsfelt: 90, lydstyrke: 0.8, fart: false, fuldskærm: true, egneLemmer: true, killcam: true, vejr: "dag", spiltype: "hold", side: "ræve", skFarve: "#5dff6a" },
+const ind = Object.assign({ sværhed: "normal", hold: 5, følsomhed: 2.0, synsfelt: 90, lydstyrke: 0.8, fart: false, fuldskærm: true, egneLemmer: true, killcam: true, byg: true, vejr: "dag", spiltype: "hold", side: "ræve", skFarve: "#5dff6a" },
   (() => { try { return JSON.parse(localStorage.getItem(INDST) || "{}"); } catch (_) { return {}; } })());
 if (ind.primær && !ind.udrustning) ind.udrustning = { primær: ind.primær === "gevær" ? "storm" : ind.primær };   // fra før udrustningen
 delete ind.primær;
@@ -133,6 +134,7 @@ const projektiler = new Projektiler({
   skad: (offer, s, skytte, skud, navn, hoved) => skadFra(offer, s, skytte, skud, navn, hoved),
   blænd: pos => blænd(pos),
   ryst: (pos, styrke) => { const d = pos.distanceTo(kamera.position); if (d < 25) slag = Math.min(1.4, slag + styrke * (1 - d / 25)); },
+  byggeri: () => byggeri,
 }, t);
 
 // ---------- Spilleren ----------
@@ -191,6 +193,7 @@ function genopstå() {
   spiller.liv = 100; spiller.panser = bombeSpil() ? spiller.udstyr?.panser ?? 0 : 100; spiller.død = false; beskyttet = 1.5;
   spillerFig?.nulstil();
   if (køretøjer.kører) { køretøjer.stigUd(); Lyd.motorLyd(null); }
+  byggeri.aktiv = false;
   killcam.stop(); killcamVent = null; deleSynlige(true); hud.killcam(null);
   udrust(); hud.død(""); hud.kikkert(false);
 }
@@ -205,6 +208,7 @@ const botSpil = {
   kast: (bot, type, o, fart) => projektiler.granat(type, bot, o, fart),  // botterne kaster også granater
   ræsVåben: bot => ræs() ? ræsVåben(bot) : null,                     // våbenræs: botten får rækkens våben
   træning: () => træning(),                                       // træning: botterne er mål, der ikke skyder
+  get byggeri() { return byggeri; },                              // (vægge, der står i vejen, skyder eller hugger de i stykker)
   synsvidde: () => vejr.synsvidde,                                // (kortere om natten og i storm)
   spawnSted: bot => træning() ? målSted(bot) : bot.zombie ? zombier.sted() : null,
   zombie: () => ({ liv: zombier.liv, skade: zombier.skade }), zombieFart: () => zombier.fart,
@@ -252,6 +256,19 @@ const køretøjer = new Køretøjer({
   ramVæltet: (f, v) => skadFra(f, { liv: 400, panser: 0 }, spiller, { r: new THREE.Vector3(-Math.sin(v.yaw), 0.4, -Math.cos(v.yaw)), del: "krop", lem: null, kraft: 12 }, v.type === "snescooter" ? "Snescooter" : "Gaffeltruck"),
 });
 const førerPlads = new THREE.Vector3();
+// Byggeriet (byggeri.js): G for at bygge vægge, gulve og trapper af træ — ikke i Bombe og træningen
+const byggeri = new Byggeri({ scene, verden, kampfolk: () => kampfolk, effekter, lyd: Lyd });
+const bygTil = () => ind.byg && !bombeSpil() && !træning();
+const BYG_START = 300, BYG_DRAB = 30, BYG_MAKS = 999;
+const givTræ = n => { byggeri.træ = Math.min(BYG_MAKS, byggeri.træ + n); };
+// Byggetilstand til og fra: våbnet væk (og frem igen)
+function skiftByg(på) {
+  if (byggeri.aktiv === på) return;
+  byggeri.aktiv = på; byggeri.slip(); hud.kikkert(false);
+  const v = vb(); if (v) v.kikkert = 0;
+  if (!på && !spiller.død) hånd.vis(aktivt, 0.25);
+  Lyd.klik();
+}
 // På en bombeplads i Bombe er E til bomben (at lægge eller desarmere den) — ikke til køretøjerne
 const påBombeplads = () => bombeSpil() && Object.values(bane.steder).some(([x, z, r]) => Math.hypot(spiller.a.pos.x - x, spiller.a.pos.z - z) < r + 1);
 // Stig ind i eller ud af det nærmeste køretøj
@@ -261,7 +278,7 @@ function køretøjE() {
     Lyd.motorLyd(null); hånd.vis(aktivt, 0.3);
   } else {
     const v = køretøjer.nærmeste(spiller.a.pos);
-    if (v) { køretøjer.stigInd(v); spiller.a.kravl = false; hud.kikkert(false); }
+    if (v) { køretøjer.stigInd(v); spiller.a.kravl = false; hud.kikkert(false); skiftByg(false); }
   }
 }
 // En post tæt på spilleren (til holdkammeraterne i zombie-spillet)
@@ -346,6 +363,7 @@ function kugle(skytte, o, ret, v, spor) {
   if (ramt) return { hoved: ramt.del === "hoved", dræbt: træfOffer(skytte, ramt.k, ramt.del, ramt.lem, v, maks, r, slut) };
   if (væg) {
     if (!væg.kasse.ingenHul) effekter.hul(slut, væg.normal);
+    if (væg.kasse.byg) byggeri.skad(væg.kasse.byg, v.d.skade);       // (en bygget del tager skade)
     effekter.nedslag(slut, væg.normal, væg.kasse.mat, v.d.hagl ? 0.4 : 1);
     if (skytte !== spiller && slut.distanceTo(kamera.position) < 3) Lyd.nærSkud(slut);
   }
@@ -378,7 +396,7 @@ function spillerRamt(s, fra, skud = null) {
   Lyd.såret(); slag = Math.min(1, slag + 0.5); slagYaw = (Math.random() - 0.5) * 0.02;
   if (spiller.liv > 0) return false;
   if (køretøjer.kører) { spiller.a.pos.copy(køretøjer.stigUd()); spiller.a.forrige.copy(spiller.a.pos); Lyd.motorLyd(null); }   // (man falder ud af køretøjet)
-  spiller.død = true; spiller.dødsfald++; dødTid = tid; stime = 0; stat.død++;
+  spiller.død = true; spiller.dødsfald++; dødTid = tid; stime = 0; stat.død++; byggeri.aktiv = false;
   if (egneLemmer()) spillerFig.falder(skud, scene, verden, new THREE.Vector3(spiller.a.vel.x, 0, spiller.a.vel.z), botSpil.delLyd);   // du falder fra hinanden
   dræber = fra !== spiller ? fra : null; dødSyn = { yaw: spiller.a.yaw, pitch: spiller.a.pitch };
   killcamVent = ind.killcam && dræber && !træning() ? tid + 1.2 : null;
@@ -407,6 +425,7 @@ function drab(drabsmand, offer, v, hoved) {
   drabsmand.drab++; if (hoved) drabsmand.hoveder++;
   point[drabsmand.hold]++;
   hud.drabLinje(drabsmand, offer, v.d.navn, hoved, drabsmand === spiller || offer === spiller);
+  if (drabsmand === spiller && bygTil()) givTræ(BYG_DRAB);          // træ for hvert drab
   if (drabsmand === spiller && !træning()) {                         // (træningen tæller ikke med i statistikken)
     stat.drab++; if (hoved) stat.hoved++; stime++; stat.bedsteStime = Math.max(stat.bedsteStime, stime);
     if (stime >= 3 && stime % 1 === 0) hud.besked(stime >= 5 ? `🔥 ${stime} i træk!` : `${stime} i træk`, 1500);
@@ -454,7 +473,13 @@ function knivHug(stik) {
     if (h && (!bedst || h.t < bedst.t)) bedst = { k, ...h };
   }
   hånd.skud(); Lyd.kniv();
-  if (!bedst) { const væg = verden.stråle(o, r, v.d.rækkevidde); if (væg) effekter.nedslag(o.clone().addScaledVector(r, væg.t), væg.normal, væg.kasse.mat, 0.5); return; }
+  if (!bedst) {
+    const væg = verden.stråle(o, r, v.d.rækkevidde); if (!væg) return;
+    effekter.nedslag(o.clone().addScaledVector(r, væg.t), væg.normal, væg.kasse.mat, 0.5);
+    if (væg.kasse.byg) byggeri.skad(væg.kasse.byg, v.d.skade * 1.5);  // hug en bygget del i stykker
+    else if (bygTil()) givTræ(v.id === "hakke" ? 12 : 6);            // eller høst træ (som med hakken i Fortnite)
+    return;
+  }
   const s = skade(v, bedst.del, bedst.k, bedst.t, stik);
   hud.ramt(false, false); Lyd.ramt(false);
   effekter.blod(o.clone().addScaledVector(r, bedst.t), r, verden, 0.8);
@@ -484,7 +509,7 @@ function botHug(bot, o, ret, v) {
     if (h && (!bedst || h.t < bedst.t)) bedst = { k, ...h };
   }
   if (o.distanceTo(kamera.position) < 8) Lyd.kniv();
-  if (!bedst) return;
+  if (!bedst) { if (bot.blokeret && byggeri.afstand(bot.blokeret, bot.a.pos) < v.d.rækkevidde + 0.6) byggeri.skad(bot.blokeret, v.d.skade); return; }   // (en bygget væg i vejen)
   const s = skade(v, bedst.del, bedst.k, bedst.t, false), skud = { r, del: bedst.del, lem: bedst.lem, kniv: true, kraft: KRAFT.kniv };
   effekter.blod(o.clone().addScaledVector(r, bedst.t), r, verden, 0.8);
   if (bedst.k === spiller ? spillerRamt(s, bot, skud) : bedst.k.ramt(s, bot, skud)) drab(bot, bedst.k, v, false);
@@ -499,6 +524,9 @@ addEventListener("keydown", e => {
   if (e.repeat) return;
   taster.add(e.code);
   if (e.code === "KeyF" && vejr.nat) { lygteTændt = !lygteTændt; Lyd.klik(); }
+  if (e.code === "KeyG" && bygTil() && !spiller.død && !køretøjer.kører) { skiftByg(!byggeri.aktiv); return; }
+  if (byggeri.aktiv && /^Digit[123]$/.test(e.code)) { byggeri.valgt = DELE[+e.code.slice(5) - 1]; byggeri.slip(); Lyd.klik(); return; }
+  if (byggeri.aktiv && (e.code === "Digit4" || e.code === "KeyQ")) skiftByg(false);
   if (e.code === "KeyE" && !spiller.død && (køretøjer.kører || (køretøjer.nærmeste(spiller.a.pos) && !påBombeplads()))) { køretøjE(); return; }
   if (e.code === "KeyB" && bombeSpil() && !spiller.død) { visKøb(købGruppe === undefined ? null : undefined); return; }
   if (købGruppe !== undefined && /^Digit\d$/.test(e.code)) { vælgKøb(+e.code.slice(5)); return; }   // (købsmenuen er åben)
@@ -595,7 +623,8 @@ function tick(dt) {
     }
     if (spiller.a.landet) { spiller.a.landet = 0; Lyd.landing(); hånd.land = 1; }
     // skyd: aftrækkeren (automat, ét skud pr. klik, salver og minigunnens opspin står i vaaben.js)
-    if (v.d.klasse === "ingen" || frys || køretøjer.kører) { /* ingen arme, frysetid eller i et køretøj: intet at skyde med */ }
+    if (byggeri.aktiv) { if (skydHoldt && !frys) byggeri.prøvByg(spiller.a, tid); else byggeri.slip(); }   // byggetilstand: venstre klik bygger
+    else if (v.d.klasse === "ingen" || frys || køretøjer.kører) { /* ingen arme, frysetid eller i et køretøj: intet at skyde med */ }
     else if (v.d.nærkamp) { if (skydHoldt && v.klar <= 0) knivHug(false); }
     else if (v.d.granat) { if (skydHoldt && !skydLåst) { skydLåst = true; kastGranat(false); } }
     else {
@@ -705,6 +734,8 @@ function tegnBillede(nu) {
   vejr.opdater(dt, kamera, kampfolk, lygteTændt && !spiller.død);  // regn, sne eller sand — og lommelygterne om natten
   bombe.tegn(tid);                                                 // bombens lampe blinker
   køretøjer.tegn();
+  byggeri.tegn(dt, !spiller.død && iGang ? spiller.a : null);     // det, der vokser frem, og hvor den næste del kommer
+  hud.byg(bygTil() && iGang && !spiller.død, byggeri.aktiv, byggeri.valgt, byggeri.træ, PRIS);
   if (køretøjer.kører) Lyd.motorLyd(køretøjer.kører.fart, køretøjer.kører.type === "snescooter" ? 1.3 : 0.8);
   const nær = !spiller.død && !køretøjer.kører && !påBombeplads() && køretøjer.nærmeste(spiller.a.pos);
   hud.køreHjælp(køretøjer.kører ? `E: stig ud · W/S: gas og bremse · A/D: styr · ${Math.round(Math.abs(køretøjer.kører.fart) * 3.6)} km/t`
@@ -718,7 +749,7 @@ function tegnBillede(nu) {
     spillerFig.poser({ fart: Math.hypot(a.vel.x, a.vel.z), vx: c * a.vel.x - sn * a.vel.z, vz: sn * a.vel.x + c * a.vel.z, duk: a.duk, pitch: a.pitch, kravl: !!a.kravl, våben: aktivt, dt });
   }
   const fart = Math.hypot(a.vel.x, a.vel.z);
-  hånd.opdater(dt, { fart: v ? fart / v.d.fart : 0, jord: a.jord, musX, musY, duk: a.duk, skjul: kikkert || spiller.død || !!køretøjer.kører, sigte: zoomet && !kikkert, spin: v?.d.opspin ? v.spin / v.d.opspin : 0, landet: false });
+  hånd.opdater(dt, { fart: v ? fart / v.d.fart : 0, jord: a.jord, musX, musY, duk: a.duk, skjul: kikkert || spiller.død || !!køretøjer.kører || byggeri.aktiv, sigte: zoomet && !kikkert, spin: v?.d.opspin ? v.spin / v.d.opspin : 0, landet: false });
   musX = musY = 0;
   effekter.opdater(dt); hud.opdater(dt);
   // skærmen
@@ -756,6 +787,7 @@ function startKamp() {
   spiller.niveau = 0; vinder = null; træningTal = { skud: 0, træf: 0 }; profil.kampXp = 0;
   const hold = træning() ? "ræve" : ind.side;                        // det hold, man har valgt i menuen
   if (hold !== spiller.hold) { spiller.hold = hold; lavSpillerFig(hold); }
+  byggeri.ryd(); byggeri.træ = bygTil() ? BYG_START : 0;          // (alt det byggede fra sidste kamp forsvinder)
   lavBots(); botSpil.bombe = bombeSpil() ? bombe : null; visMærker(bombe, bombeSpil()); visKøb(undefined);
   if (bombeSpil()) bombe.startKamp();
   else if (zombieSpil()) { bombe.stop(); genopstå(); for (const b of bots) if (!b.zombie) b.spawn(); zombier.startKamp(); }
@@ -860,6 +892,7 @@ knapper("valgFart", [[false, "Nej"], [true, "Ja (u/s)"]], "fart");
 knapper("valgFuld", [[true, "Ja"], [false, "Nej"]], "fuldskærm");
 knapper("valgLemmer", [[true, "Ja"], [false, "Nej"]], "egneLemmer");
 knapper("valgKillcam", [[true, "Ja"], [false, "Nej"]], "killcam");
+knapper("valgByg", [[true, "Ja (G)"], [false, "Nej"]], "byg");
 knapper("valgVejr", [["dag", "☀️ Dag"], ["nat", "🌙 Nat"], ["storm", { sand: "🌪️ Sandstorm", regn: "🌧️ Regn og torden", sne: "❄️ Snestorm" }[bane.storm]]], "vejr", () => location.reload());
 skyder("følsomhed", "følsomhed", v => v.toFixed(2));
 skyder("synsfelt", "synsfelt", v => `${v}°`);
@@ -897,4 +930,4 @@ spiller.a = nyAktør(0, 6, 30, 0); spiller.a.pitch = -0.12;
 requestAnimationFrame(billede);
 if (location.search.includes("debug")) window.sk = { spiller, get bots() { return bots; }, verden, bane, kamera, ind, tick, skyd, startKamp, taster, hånd, scene, himmelLys, renderer,
   get vb() { return vb(); }, get point() { return point; }, kør() { pause = false; $("menu").classList.add("skjult"); }, stop() { pause = true; }, udrust, kast: kastGranat, vælg: id => skiftVåben(id), effekter, hud, spillerFig, get aktivt() { return aktivt; }, get projektiler() { return projektiler; },
-  steg(n) { for (let i = 0; i < n; i++) tick(TICK); }, tegn: nu => tegnBillede(nu), bombe, killcam, køretøjer, køretøjE, skydNu() { skydHoldt = true; spillerSkyder(); skydHoldt = false; skydLåst = false; } };
+  steg(n) { for (let i = 0; i < n; i++) tick(TICK); }, tegn: nu => tegnBillede(nu), bombe, killcam, køretøjer, køretøjE, byggeri, skiftByg: på => skiftByg(på), skydNu() { skydHoldt = true; spillerSkyder(); skydHoldt = false; skydLåst = false; } };

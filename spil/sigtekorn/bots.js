@@ -110,6 +110,7 @@ export class Bot {
       this.våben = nytVåben("klo"); this.våben.d = { ...this.våben.d, skade: z.skade, stik: z.skade };
       this.liv = z.liv; this.panser = 0; this.granater = []; this.sekundær = null;
     }
+    this.blokeret = null;
     this.mål = null; this.setFørst = 0; this.sidstSet = null; this.sidstSetTid = -99; this.vej = []; this.vejMål = null;
     this.tænkTid = Math.random() * 0.12; this.salve = 0; this.salvePause = 0; this.fejlYaw = 0; this.fejlPitch = 0;
     this.fastTid = 0; this.fastPos = this.a.pos.clone(); this.lytte = null; this.strafe = 0; this.strafeTid = 0; this.dukker = false;
@@ -203,6 +204,12 @@ export class Bot {
         this.drejMod(yaw, 0, dt); duk = this.holdDuk;
       }
       if (this.våben && this.våben.skud < this.våben.d.magasin * 0.4) genlad(this.våben);
+      if (this.blokeret && (this.blokeret.væk || this.blokeret.midt.distanceTo(this.a.pos) > 5)) this.blokeret = null;
+      if (this.blokeret && this.våben && !this.våben.d.granat) {     // en bygget del står i vejen: skyd (eller hug) den i stykker
+        this.sigtPå(this.blokeret.midt, dt);
+        frem = this.våben.d.nærkamp ? 1 : 0; hop = false; trykker = true;
+        if (this.våben.skud <= 0) genlad(this.våben);
+      }
     }
     const maks = this.våben ? (this.våben.kikkert && this.våben.d.kikkertFart) || this.våben.d.fart : 6.2;
     bevæg(this.a, { frem, side, hop, gå, duk }, dt, this.s.verden, maks);
@@ -232,6 +239,10 @@ export class Bot {
           if (b !== undefined && Math.hypot(kn[b].x - this.a.pos.x, kn[b].z - this.a.pos.z) < Math.hypot(kn[b].x - kn[a].x, kn[b].z - kn[a].z)) this.vej.shift();
         }
         const p = this.følgVej(); if (p) [frem, hop] = this.gåMod(p, dt);
+        // står mennesket oppe på noget bygget, som zombien ikke kan nå op til? så går den hen og slår løs på det nærmeste
+        if (!this.blokeret && !this.vej.length && Math.hypot(dx, dz) < 12 && mål.a.pos.y - this.a.pos.y > 1.2) this.blokeret = this.s.byggeri?.nærmeste(this.a.pos, 8) || null;
+        if (this.blokeret && (this.blokeret.væk || this.blokeret.midt.distanceTo(this.a.pos) > 10)) this.blokeret = null;
+        if (this.blokeret) { this.sigtPå(this.blokeret.midt, dt); frem = this.s.byggeri.afstand(this.blokeret, this.a.pos) > 1 ? 1 : 0; hop = false; trykker = true; }
       }
       this.mål = mål;
     }
@@ -254,13 +265,20 @@ export class Bot {
     this.a.yaw += Math.max(-maks, Math.min(maks, d * Math.min(1, dt * 14)));
     this.a.pitch += Math.max(-maks, Math.min(maks, (pitch - this.a.pitch) * Math.min(1, dt * 14)));
   }
+  // Drej hen mod et punkt (fx en bygget væg, der skal i stykker)
+  sigtPå(p, dt) {
+    const øje = this.øje();
+    this.drejMod(Math.atan2(-(p.x - øje.x), -(p.z - øje.z)), Math.atan2(p.y - øje.y, Math.hypot(p.x - øje.x, p.z - øje.z)), dt);
+  }
   // Gå mod et punkt — og hop, hvis den sidder fast (og find en ny vej, hvis det ikke hjælper). Svarer med [frem, hop]
   gåMod(p, dt) {
     const dx = p.x - this.a.pos.x, dz = p.z - this.a.pos.z, ønskYaw = Math.atan2(-dx, -dz);
     this.drejMod(ønskYaw, 0, dt);
     let hop = false;
     if ((this.fastTid += dt) > 0.9) {
-      if (this.a.pos.distanceTo(this.fastPos) < 0.5) { hop = true; if (this.fastTid > 2.2) { this.vej = []; this.vejMål = null; this.fastTid = 0; } }
+      const blok = this.a.pos.distanceTo(this.fastPos) < 0.5 && this.s.byggeri?.foran(this.a);
+      if (blok) { this.blokeret = blok; this.fastTid = 0; this.fastPos.copy(this.a.pos); }   // en bygget del i vejen: slå den i stykker
+      else if (this.a.pos.distanceTo(this.fastPos) < 0.5) { hop = true; if (this.fastTid > 2.2) { this.vej = []; this.vejMål = null; this.fastTid = 0; } }
       else { this.fastTid = 0; this.fastPos.copy(this.a.pos); }
     }
     return [Math.abs(vinkel(ønskYaw - this.a.yaw)) < 1.2 ? 1 : 0.2, hop];

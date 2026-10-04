@@ -63,6 +63,15 @@ export class Hud {
     if (el.innerHTML !== tekst) el.innerHTML = tekst;
     el.classList.toggle("skjult", !info);
   }
+  // Byggeriet: hvor meget træ man har — og i byggetilstand de tre dele (den valgte lyser)
+  byg(vis, aktiv, valgt, træ, pris) {
+    const boks = document.getElementById("bygBoks"), tal = document.getElementById("træ");
+    boks.classList.toggle("skjult", !vis || !aktiv);
+    if (vis && aktiv) for (const s of boks.children) s.classList.toggle("valgt", s.dataset.del === valgt);
+    const tekst = vis ? `🌲 ${træ}${aktiv ? "" : " · G: byg"}` : "";
+    if (tal.textContent !== tekst) tal.textContent = tekst;
+    tal.classList.toggle("skjult", !vis); tal.classList.toggle("lavt", træ < pris);
+  }
   // Hjælp til køretøjerne (tom tekst skjuler den)
   køreHjælp(tekst) {
     const el = document.getElementById("køreHjælp");

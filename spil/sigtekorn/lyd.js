@@ -172,6 +172,18 @@ export function dunk(pos, styrke = 1) {
   const t = ctx.currentTime, m = kæde(pos, 0.5 * styrke);
   støjStød(m, t, 0.12, "lowpass", 420 + Math.random() * 300, 1, 0.8, 0.09); tone(m, t, 140 + Math.random() * 60, 60, 0.08, "sine", 0.3);
 }
+// Byggeri: et hurtigt "bank-bank", når en del kommer op — og et knæk, når den går i stykker
+export function byg(pos) {
+  if (!ctx) return;
+  const t = ctx.currentTime, m = kæde(pos, 0.45);
+  for (const d of [0, 0.07]) { tone(m, t + d, 520 + Math.random() * 80, 260, 0.06, "triangle", 0.5); støjStød(m, t + d, 0.05, "bandpass", 1600, 1.5, 0.5, 0.04); }
+}
+export function knæk(pos) {
+  if (!ctx) return;
+  const t = ctx.currentTime, m = kæde(pos, 0.7);
+  støjStød(m, t, 0.35, "bandpass", 900 + Math.random() * 300, 0.9, 1, 0.3); støjStød(m, t + 0.04, 0.2, "highpass", 2600, 1, 0.5, 0.12);
+  tone(m, t, 120, 50, 0.2, "sine", 0.6);
+}
 // Man ramte nogen: et lille "tik" — og et klart "ting" ved hovedskud
 export function ramt(hoved) {
   if (!ctx) return;

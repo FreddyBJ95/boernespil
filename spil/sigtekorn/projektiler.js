@@ -113,6 +113,7 @@ export class Projektiler {
   eksplosion(pos, skytte, navn, maks, radius) {
     const { verden, effekter, lyd } = this.k;
     effekter.eksplosion(pos); lyd.eksplosion(pos); this.k.ryst(pos, 1);
+    this.k.byggeri?.().eksplosion(pos, maks, radius);                 // (byggede vægge, gulve og trapper går i stykker)
     const jord = verden.stråle(pos, NED, 2.5);
     if (jord) effekter.brændemærke(tmp.copy(pos).addScaledVector(NED, jord.t), jord.normal);
     for (const k of this.k.kampfolk()) {
