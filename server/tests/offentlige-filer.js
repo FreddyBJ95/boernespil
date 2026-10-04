@@ -81,6 +81,7 @@ export async function prøvOffentligeFiler(hent, læsKilde) {
     const head = await hent(sti, { method: "HEAD" }), tom = await head.arrayBuffer();
     assert.equal(head.status, 200, `${sti}: HEAD`);
     assert.equal(head.headers.get("content-type"), mime, `${sti}: HEAD MIME`);
+    assert.equal(head.headers.get("content-length"), String(data.byteLength), `${sti}: HEAD størrelse`);
     assert.equal(head.headers.get("x-content-type-options"), "nosniff", `${sti}: HEAD nosniff`);
     assert.equal(head.headers.get("cache-control"), svar.headers.get("cache-control"), `${sti}: HEAD cache`);
     assert.equal(tom.byteLength, 0, `${sti}: HEAD må ikke sende filen`);

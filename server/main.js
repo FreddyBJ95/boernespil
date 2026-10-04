@@ -172,7 +172,10 @@ export class BroekraftServer {
       if (this.certifikater && (sti === "/certifikat" || sti.startsWith("/certifikat/"))) {
         if (!["GET", "HEAD"].includes(req.method)) return new Response("Metoden er ikke tilladt", { status: 405 });
         const svar = certifikatSvar(sti, this.certifikater, `https://${url.hostname}:${this.httpsPort}/`);
-        return req.method === "HEAD" ? new Response(null, { status: svar.status, headers: svar.headers }) : svar;
+        // HEAD beskriver GET-indholdets UTF-8/binary-længde, selv om kroppen er tom.
+        const data = await svar.arrayBuffer(), headers = new Headers(svar.headers);
+        headers.set("content-length", String(data.byteLength));
+        return new Response(req.method === "HEAD" ? null : data, { status: svar.status, headers });
       }
       if (this.certifikater && url.protocol === "http:" && ["/", "/sammen", "/sammen/"].includes(sti)) {
         return new Response(null, { status: 307, headers: { location: `https://${url.hostname}:${this.httpsPort}${url.pathname}${url.search}`, "cache-control": "no-store" } });
@@ -263,7 +266,7 @@ export class BroekraftServer {
     const fil = resolve(ROD, relativ);
     if (!fil.startsWith(resolve(ROD) + sep) || !MIME[extname(fil)]) return new Response("Ikke fundet", { status: 404 });
     const data = await Deno.readFile(fil);
-    return new Response(kunHeader ? null : data, { headers: { "content-type": MIME[extname(fil)], "cache-control": "no-store", "x-content-type-options": "nosniff" } });
+    return new Response(kunHeader ? null : data, { headers: { "content-type": MIME[extname(fil)], "content-length": String(data.byteLength), "cache-control": "no-store", "x-content-type-options": "nosniff" } });
   }
 
   kørTimere() {

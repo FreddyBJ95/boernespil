@@ -85,6 +85,44 @@ Deno.test("HTTP: Spilkassens billeder, appikoner og Sigtekorns modeller virker m
   } finally { await v.luk(); }
 });
 
+// Den rigtige HTTP-transport må ikke omskrive HEAD-filens størrelse til nul.
+Deno.test("HTTP på nettet: HEAD bevarer GET-filens byteantal uden at sende en krop", async () => {
+  const v = await opsæt();
+  const filer = [
+    ["/spil/skrotstorm/spil.js", "spil/skrotstorm/spil.js", "text/javascript; charset=utf-8"],
+    ["/spil/skrotstorm/modeller/oerken.glb", "spil/skrotstorm/modeller/oerken.glb", "model/gltf-binary"],
+    ["/spil/sigtekorn/modeller/lys_fjeldbyen.bin", "spil/sigtekorn/modeller/lys_fjeldbyen.bin", "application/octet-stream"],
+    ["/spil/sigtekorn/modeller/lys_fjeldbyen.webp", "spil/sigtekorn/modeller/lys_fjeldbyen.webp", "image/webp"],
+    ["/index.html", "index.html", "text/html; charset=utf-8"],
+    ["/", "server/sammen/index.html", "text/html; charset=utf-8"],
+    ["/kontrol", "server/kontrol/index.html", "text/html; charset=utf-8"],
+    ["/kontrol/kontrol.js", "server/kontrol/kontrol.js", "text/javascript; charset=utf-8"],
+  ];
+  try {
+    for (const [sti, fil, mime] of filer) {
+      // Identisk, ukomprimeret repræsentation: fetch må ikke skjule gzip-længden.
+      const headers = { "accept-encoding": "identity" };
+      const get = await fetch(v.base + sti, { headers });
+      const data = new Uint8Array(await get.arrayBuffer());
+      const head = await fetch(v.base + sti, { method: "HEAD", headers });
+      const tom = await head.arrayBuffer();
+      assert.equal(get.status, 200, `${sti}: rigtig GET`);
+      assert.equal(head.status, 200, `${sti}: rigtig HEAD`);
+      assert.deepEqual(data, await Deno.readFile(new URL("../../" + fil, import.meta.url)), `${sti}: GET leverer hele kildefilen`);
+      assert.ok(data.byteLength > 0, `${sti}: filen er ikke tom`);
+      assert.equal(get.headers.get("content-encoding"), null, `${sti}: GET er ukomprimeret`);
+      assert.equal(head.headers.get("content-encoding"), null, `${sti}: HEAD beskriver samme repræsentation`);
+      assert.equal(get.headers.get("content-length"), String(data.byteLength), `${sti}: GET-længde svarer til de modtagne bytes`);
+      assert.equal(head.headers.get("content-length"), String(data.byteLength), `${sti}: HEAD-længde svarer til GET, også over Deno.serve`);
+      assert.equal(tom.byteLength, 0, `${sti}: HEAD sender ingen filkrop`);
+      for (const [navn, værdi] of [["content-type", mime], ["x-content-type-options", "nosniff"], ["cache-control", "no-store"]]) {
+        assert.equal(get.headers.get(navn), værdi, `${sti}: GET ${navn}`);
+        assert.equal(head.headers.get(navn), get.headers.get(navn), `${sti}: HEAD bevarer ${navn}`);
+      }
+    }
+  } finally { await v.luk(); }
+});
+
 Deno.test("Verdener, der kører, starter selv igen efter en genstart — stoppede forbliver stoppet", async () => {
   const v = await opsæt();
   const req = (sti, init = {}) => v.app.håndter(new Request(v.base + sti, init), { remoteAddr: { hostname: "127.0.0.1" } });
