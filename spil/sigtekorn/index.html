@@ -88,6 +88,8 @@
   #stormTekst { position: absolute; top: 54px; left: 50%; transform: translateX(-50%); padding: 3px 12px; border-radius: 8px; background: rgba(12, 10, 7, 0.5); font: 700 14px system-ui; color: #d8b8ff; white-space: nowrap; }
   #kort { position: absolute; top: 12px; left: 12px; width: 150px; height: 150px; border-radius: 10px; border: 2px solid rgba(255, 255, 255, 0.25); }
   .storm { color: #c08aff; }
+  .online input { width: 130px; padding: 6px 8px; border-radius: 8px; border: 1px solid #6a5434; background: #1a140c; color: #f0e0c0; font: 600 14px system-ui; }
+  .online button { padding: 6px 12px; } #onlineStatus { margin: 0; font-size: 13px; color: #c8b890; }
   #køreHjælp { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); padding: 6px 14px; border-radius: 8px; background: rgba(10, 8, 6, 0.7); font: 600 15px system-ui; }
   #penge { position: absolute; left: 20px; bottom: 98px; font: 700 20px system-ui; color: #8fe08a; }
   .xp.penge { color: #8fe08a; top: 59%; }
@@ -207,6 +209,8 @@
       <label>Dit hold</label><div class="knapper" id="valgSide"></div>
       <label>Vejr</label><div class="knapper" id="valgVejr"></div>
       <label>Byg som i Fortnite</label><div class="knapper" id="valgByg"></div>
+      <label class="kunOnline">Online</label><div class="række kunOnline online"><input id="onlineNavn" maxlength="16" placeholder="Dit navn"><input id="onlineRum" maxlength="20" placeholder="Rum"><button id="onlineForbind">Forbind</button></div>
+      <label class="kunOnline"></label><p class="kunOnline" id="onlineStatus"></p>
       <label>Udrustning</label><div class="udrustning" id="udrustning"></div>
       <label>Følsomhed</label><div class="række"><input type="range" id="følsomhed" min="0.3" max="6" step="0.05"><output id="følsomhedTal"></output></div>
       <label>Synsfelt</label><div class="række"><input type="range" id="synsfelt" min="80" max="110" step="1"><output id="synsfeltTal"></output></div>

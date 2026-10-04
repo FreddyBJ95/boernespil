@@ -34,6 +34,7 @@ import { Zombier, MAKS_SAMTIDIG } from "./zombier.js";
 import { Køretøjer } from "./koeretoejer.js";
 import { Byggeri, DELE, PRIS } from "./byggeri.js";
 import { BattleRoyale, sjældenFarve } from "./br.js";
+import { Online, Fjern, kanOnline } from "./online.js";
 import { køb, drabPenge, giv as givPenge, tegnKøbsmenu, GRUPPER, nytUdstyr } from "./penge.js";
 import * as Lyd from "./lyd.js";
 import { Profil, UDFORDRINGER } from "./profil.js";
@@ -100,7 +101,7 @@ const t = await lavTeksturer(fotoBrug(ind.udrustning.bane));         // kun de f
 const verden = new Kasseverden();
 const bane = lavBane(scene, verden, t, ind.udrustning.bane, ind.vejr);   // banen, man har valgt i udrustningen — og vejret
 const vejrNavn = { nat: " om natten", storm: { sand: " i sandstorm", regn: " i regnvejr", sne: " i snestorm" }[bane.storm] }[ind.vejr] || "";
-document.querySelector(".menu-kort h1 small").textContent = `${bane.navn}${vejrNavn} · Ørkenrævene mod Sandslangerne · mod bots`;
+document.querySelector(".menu-kort h1 small").textContent = `${bane.navn}${vejrNavn} · Ørkenrævene mod Sandslangerne · ${ind.spiltype === "online" ? "online mod familien" : "mod bots"}`;
 if (bane.vejr) {                                                  // banens vejr: tågen, solen og himlens farver
   const v = bane.vejr;
   if (v.tåge) { scene.fog.color.set(v.tåge[0]); scene.fog.near = v.tåge[1]; scene.fog.far = v.tåge[2]; }
@@ -163,6 +164,7 @@ const bombeSpil = () => ind.spiltype === "bombe";                  // bombe: run
 const zombieSpil = () => ind.spiltype === "zombier";               // zombier: overlev bølger sammen med botterne (se zombier.js)
 const brSpil = () => ind.spiltype === "br";                        // battle royale: alle mod alle, stormen og kisterne (se br.js)
 const medUdstyr = () => bombeSpil() || brSpil();                   // (våbnene er dem, man har købt eller fundet)
+const onlineSpil = () => ind.spiltype === "online";                // online: holdkamp mod familien over familiens server (se online.js)
 let følgNr = 0;                                                    // død i en bomberunde: hvilken holdkammerat man ser med hos
 let træningTal = { skud: 0, træf: 0 };                                // træningens skud og træffere (tæller ikke med i statistikken)
 // Plads 1, 2 og 3 (tasterne): i våbenræs er det rækkens våben, en pistol og kniven
@@ -214,6 +216,8 @@ const botSpil = {
   get byggeri() { return byggeri; },                              // (vægge, der står i vejen, skyder eller hugger de i stykker)
   efterSpawn: bot => { if (brSpil() && !bot.zombie) { bot.våben = nytVåben(bot.sekundær); bot.granater = []; bot.panser = 0; br.iLuften(bot, holdFarve(bot.hold)); } },
   svæv: (bot, dt) => br.svæv(bot, null, dt),                      // (battle royale: på vej ned i glideflyet)
+  sendTræf: (f, s, skud) => online.send({ k: "træf", liv: Math.round(s.liv), panser: Math.round(s.panser || 0), del: skud?.del || "krop", lem: skud?.lem || null,   // (online: til den, der blev ramt)
+    kniv: !!skud?.kniv, kraft: skud?.kraft || 3, r: skud?.r ? til3(skud.r) : null, våben: skud?.navn || vb()?.d.navn || "" }, f.id),
   synsvidde: () => vejr.synsvidde,                                // (kortere om natten og i storm)
   spawnSted: bot => træning() ? målSted(bot) : bot.zombie ? zombier.sted() : brSpil() ? br.himmelSted() : null,
   zombie: () => ({ liv: zombier.liv, skade: zombier.skade }), zombieFart: () => zombier.fart,
@@ -305,6 +309,68 @@ function brStart() {
   if (bygTil()) byggeri.træ = 100;
   hud.besked("🪂 Glid ned — find en kiste og åbn den med E. Bliv inde i cirklen!", 4000);
 }
+// ---------- Online mod familien (online.js): de andre spillere er "fjerne" botter uden hjerne ----------
+const ONLINE = "sigtekorn-online", ONLINE_IGEN = "sigtekorn-online-igen";
+const online = new Online({
+  lavFjern: (id, navn, hold) => { if (!onlineSpil()) return null; const f = new Fjern(botSpil, id, navn, hold); bots.push(f); kampfolk = [spiller, ...bots]; return f; },
+  fjernet: f => { scene.remove(f.model); bots = bots.filter(b => b !== f); kampfolk = [spiller, ...bots]; },
+  modtag: (f, d) => onlineBesked(f, d),
+  status: tekst => { $("onlineStatus").textContent = tekst; },
+  rumTilstand: data => { if (data?.bane && data.bane !== bane.id && onlineSpil()) skiftOnlineBane(data.bane); },
+  minTilstand: () => ({ bane: bane.id }),
+});
+const til3 = v => [Math.round(v.x * 100) / 100, Math.round(v.y * 100) / 100, Math.round(v.z * 100) / 100];
+// Ens egen tilstand til de andre (cirka 20 gange i sekundet)
+function minOnlineTilstand() {
+  const a = spiller.a, r = n => Math.round(n * 100) / 100;
+  return { k: "tilstand", p: til3(a.pos), v: til3(a.vel), yaw: r(a.yaw), pitch: r(a.pitch), duk: r(a.duk), kravl: !!a.kravl, jord: !!a.jord,
+    våben: aktivt, hold: spiller.hold, liv: Math.max(0, Math.round(spiller.liv)), panser: Math.round(spiller.panser), død: spiller.død, skin: profil.skin };
+}
+// Værten spiller på en anden bane: skift til den (siden hentes igen og forbinder af sig selv)
+function skiftOnlineBane(id) {
+  ind.udrustning.bane = id; gemIndst();
+  try { sessionStorage.setItem(ONLINE_IGEN, JSON.stringify(online.ønsket)); } catch (_) {}
+  online.luk(); planlagtGenstart = true; location.reload();
+}
+// En besked fra en anden spiller: et skud (spor og lyd), en granat, et træf på dig — eller et drab
+function onlineBesked(f, d) {
+  const V = a => new THREE.Vector3(a[0], a[1], a[2]);
+  if (d.k === "skud" && d.o && d.r) {
+    const v = nytVåben(d.v), o = V(d.o), r = retningsvektor(d.r[0], d.r[1], new THREE.Vector3());
+    if (v.d.projektil) v.d.projektil === "raket" ? projektiler.raket(f, o, r, v) : projektiler.pil(f, o, r, v);
+    else {
+      const væg = verden.stråle(o, r, 200), slut = o.clone().addScaledVector(r, væg ? væg.t : 200);
+      effekter.sporFra(o.clone().addScaledVector(r, 0.7).add(new THREE.Vector3(0, -0.15, 0)), slut);
+      if (væg) effekter.nedslag(slut, væg.normal, væg.kasse.mat, v.d.hagl ? 0.4 : 1);
+    }
+    Lyd.skud(v.d, o); f.fig?.skyd();
+  } else if (d.k === "granat" && d.o && d.fart) projektiler.granat(d.type, f, V(d.o), V(d.fart));
+  else if (d.k === "træf" && !spiller.død) {                          // du blev ramt af den andens skud
+    const skud = { r: d.r ? V(d.r) : new THREE.Vector3(0, 0, 1), del: d.del || "krop", lem: d.lem || null, kraft: d.kraft || 3, kniv: !!d.kniv, navn: d.våben || "" };
+    if (spillerRamt({ liv: +d.liv || 0, panser: +d.panser || 0 }, f, skud)) drab(f, spiller, { d: { navn: d.våben || "" } }, d.del === "hoved");
+  } else if (d.k === "død") {                                         // en anden døde: hvem, og med hvad
+    const dræber = d.af === online.dig ? spiller : online.fjerne.get(d.af) || f;
+    f.dø({ r: d.r ? V(d.r) : new THREE.Vector3(0, 0, 1), del: d.hoved ? "hoved" : "krop", lem: d.lem || null, kraft: 4 });
+    drab(dræber, f, { d: { navn: d.våben || "" } }, !!d.hoved);
+  }
+}
+// Siden hentes igen (fx ved et baneskifte): værten tager rummet med til den nye bane — og man forbinder selv igen bagefter
+function førGenstart() {
+  if (!online.forbundet || !onlineSpil()) return;
+  if (online.erVært && ind.udrustning.bane !== bane.id) online.sætTilstand({ bane: ind.udrustning.bane });
+  try { sessionStorage.setItem(ONLINE_IGEN, JSON.stringify(online.ønsket)); } catch (_) {}
+}
+let planlagtGenstart = false;
+const genstart = () => { førGenstart(); planlagtGenstart = true; setTimeout(() => location.reload(), 120); };   // (lidt tid til, at beskeden når ud)
+addEventListener("pagehide", førGenstart);                         // (også når man selv trykker F5)
+// Forbind (med navnet og rummet fra menuen)
+async function forbindOnline() {
+  if (!kanOnline()) { $("onlineStatus").textContent = "Åbn Sigtekorn fra familiens server for at spille online."; return false; }
+  const navn = $("onlineNavn").value.trim() || "Spiller", rum = ($("onlineRum").value.trim() || "familie").toLowerCase();
+  try { localStorage.setItem(ONLINE, JSON.stringify({ navn, rum })); } catch (_) {}
+  try { await online.forbind(navn, rum); return true; }
+  catch (e) { $("onlineStatus").textContent = `Kunne ikke forbinde: ${e.message}`; return false; }
+}
 // Byggetilstand til og fra: våbnet væk (og frem igen)
 function skiftByg(på) {
   if (byggeri.aktiv === på) return;
@@ -333,12 +399,14 @@ function nærSpilleren() {
 // Små grønne pile over ens holdkammerater, så man ikke skyder efter dem
 const pilTekstur = (() => { const c = document.createElement("canvas"); c.width = c.height = 64; const g = c.getContext("2d"); g.fillStyle = "#7dff6a"; g.strokeStyle = "#0a2a0a"; g.lineWidth = 4; g.beginPath(); g.moveTo(10, 14); g.lineTo(54, 14); g.lineTo(32, 50); g.closePath(); g.fill(); g.stroke(); return new THREE.CanvasTexture(c); })();
 function lavBots() {
+  const fjerne = bots.filter(b => b.fjern);                          // (de andre spillere online bliver, hvor de er)
   for (const b of bots) scene.remove(b.model);
   killcam.ryd();
   ryddDele(); effekter.ryd(); projektiler.ryd();
   const navne = [...NAVNE].sort(() => Math.random() - 0.5);
   bots = [];
-  if (træning()) for (let i = 0; i < 3; i++) bots.push(new Bot(botSpil, "slanger", navne.pop()));   // tre mål ad gangen
+  if (onlineSpil()) { bots = fjerne; for (const f of fjerne) scene.add(f.model); }   // online: kun de andre spillere — ingen botter
+  else if (træning()) for (let i = 0; i < 3; i++) bots.push(new Bot(botSpil, "slanger", navne.pop()));   // tre mål ad gangen
   else if (zombieSpil()) {                                          // holdkammeraterne — og zombierne, der venter på at komme frem
     for (let i = 0; i < ind.hold - 1; i++) bots.push(new Bot(botSpil, spiller.hold, navne.pop()));
     for (let i = 0; i < MAKS_SAMTIDIG; i++) { const z = new Bot(botSpil, "zombier", "Zombie"); z.død = true; z.dødTid = -99; z.model.visible = false; bots.push(z); }
@@ -350,8 +418,8 @@ function lavBots() {
     for (let i = 0; i < ind.hold; i++) bots.push(new Bot(botSpil, andet, navne.pop()));
   }
   const skins = Object.keys(SKINS).filter(id => id !== "standard");
-  for (const b of bots) if (b.fig) b.fig.skin = !b.zombie && Math.random() < 0.35 ? skins[Math.floor(Math.random() * skins.length)] : "standard";   // nogle botter har et skin
-  for (const b of bots) if (b.hold === spiller.hold) {
+  for (const b of bots) if (b.fig && !b.fjern) b.fig.skin = !b.zombie && Math.random() < 0.35 ? skins[Math.floor(Math.random() * skins.length)] : "standard";   // nogle botter har et skin
+  for (const b of bots) if (b.hold === spiller.hold && !b.fjern) {
     const pil = new THREE.Sprite(new THREE.SpriteMaterial({ map: pilTekstur, depthTest: false, transparent: true })); pil.scale.setScalar(0.32); pil.position.y = 2.25; pil.renderOrder = 5;
     b.model.add(pil);
   }
@@ -416,16 +484,18 @@ function kugle(skytte, o, ret, v, spor) {
 }
 // En kugle eller pil rammer en kæmper: skade, blod — og måske flyver en arm, et ben eller hovedet af
 function træfOffer(skytte, offer, del, lem, v, afstand, r, punkt) {
+  if (skytte?.fjern) return false;                                  // (online: en anden spillers skud gør kun skade over nettet)
   const s = skade(v, del, offer, afstand), hoved = del === "hoved";
   if (punkt) effekter.blod(punkt, r, verden, hoved ? 1.4 : 1);
-  const skud = { r: r.clone(), del, lem, kraft: (KRAFT[v.d.klasse] || 3) * (hoved ? 1.25 : 1) };
+  const skud = { r: r.clone(), del, lem, kraft: (KRAFT[v.d.klasse] || 3) * (hoved ? 1.25 : 1), navn: v.d.navn };
   const dræbt = offer === spiller ? spillerRamt(s, skytte, skud) : offer.ramt(s, skytte, skud);
   if (dræbt) drab(skytte, offer, v, hoved);
   return dræbt;
 }
 // Skade fra en eksplosion (eller andet uden kugle)
 function skadFra(offer, s, skytte, skud, navn, hoved = false) {
-  if (offer.død) return false;
+  if (offer.død || skytte?.fjern) return false;                     // (online: en anden spillers granat gør kun skade over nettet)
+  if (skud && !skud.navn) skud.navn = navn;
   const dræbt = offer === spiller ? spillerRamt(s, skytte, skud) : offer.ramt(s, skytte, skud);
   if (skytte === spiller && offer !== spiller) { hud.ramt(hoved, dræbt); Lyd.ramt(hoved); }
   if (dræbt) drab(skytte, offer, { d: { navn } }, hoved);
@@ -443,6 +513,7 @@ function spillerRamt(s, fra, skud = null) {
   if (køretøjer.kører) { spiller.a.pos.copy(køretøjer.stigUd()); spiller.a.forrige.copy(spiller.a.pos); Lyd.motorLyd(null); }   // (man falder ud af køretøjet)
   spiller.død = true; spiller.dødsfald++; dødTid = tid; stime = 0; stat.død++; byggeri.aktiv = false;
   if (brSpil()) { brPlads = br.tilbage() + 1; br.landet(spiller); }   // (battle royale: din placering)
+  if (onlineSpil()) online.send({ k: "død", af: fra?.fjern ? fra.id : null, våben: skud?.navn || "", hoved: skud?.del === "hoved", lem: skud?.lem || null, r: skud?.r ? til3(skud.r) : null });   // (online: alle får det at vide)
   if (egneLemmer()) spillerFig.falder(skud, scene, verden, new THREE.Vector3(spiller.a.vel.x, 0, spiller.a.vel.z), botSpil.delLyd);   // du falder fra hinanden
   dræber = fra !== spiller && !fra.storm ? fra : null; dødSyn = { yaw: spiller.a.yaw, pitch: spiller.a.pitch };
   killcamVent = ind.killcam && dræber && !træning() ? tid + 1.2 : null;
@@ -481,7 +552,7 @@ function drab(drabsmand, offer, v, hoved) {
   if (bombeSpil()) { givPenge(drabsmand, drabPenge(v.d)); if (drabsmand === spiller) hud.penge(drabPenge(v.d)); }   // penge for drabet
   if (ræs()) ræsDrab(drabsmand, offer, v);
   else if (træning()) { if (point.ræve >= TRÆNING) slutKamp(); }        // træning: efter 30 mål er det slut
-  else if (bombeSpil() || zombieSpil() || brSpil()) { /* runderne (bombe.js), bølgerne (zombier.js) eller den sidste tilbage (br.js) afgør det */ }
+  else if (bombeSpil() || zombieSpil() || brSpil() || onlineSpil()) { /* runderne (bombe.js), bølgerne (zombier.js) eller den sidste tilbage (br.js) afgør det */ }
   else if (point[drabsmand.hold] >= MÅL) slutKamp();
 }
 // XP og udfordringer: et lille "+100 XP" ved sigtekornet — og en besked, når man stiger et niveau eller klarer en udfordring
@@ -688,21 +759,23 @@ function tick(dt) {
   for (const b of bots) {
     if (!(bombeSpil() && bombe.fryser)) b.tick(dt);
     if (zombieSpil()) { if (b.zombie && b.død && tid - b.dødTid > 1.5 && zombier.måKomme()) b.spawn(); }   // zombierne kommer frem, så længe bølgen varer
-    else if (b.død && !bombeSpil() && !brSpil() && tid - b.dødTid > (træning() ? 0.6 : 3) && !(træning() && point.ræve + bots.filter(x => !x.død).length >= TRÆNING)) b.spawn();
+    else if (b.død && !b.fjern && !bombeSpil() && !brSpil() && tid - b.dødTid > (træning() ? 0.6 : 3) && !(træning() && point.ræve + bots.filter(x => !x.død).length >= TRÆNING)) b.spawn();
   }
   deleTrin(dt);                                                    // hoveder, arme og ben, der er skudt af, falder og bliver liggende
   projektiler.trin(dt);
   if (bombeSpil() && iGang) bombe.tick(dt, taster.has("KeyE") && !spiller.død);
   if (zombieSpil() && iGang) zombier.tick(dt);
   if (brSpil() && iGang) br.tick(dt);
+  if (onlineSpil() && iGang) online.tick(dt, minOnlineTilstand);     // (ens egen tilstand til de andre)
   killcam.optag(tid);
-  if (kampSlut <= 0 && !træning() && !bombeSpil() && !zombieSpil() && !brSpil()) slutKamp();
+  if (kampSlut <= 0 && !træning() && !bombeSpil() && !zombieSpil() && !brSpil() && !onlineSpil()) slutKamp();
 }
 function spillerSkyder() {
   const v = vb();
   const ret = skudRetning(v, spiller.a, spiller.a.yaw, spiller.a.pitch);
   efterSkud(v);
   skyd(spiller, kamera.position.clone(), ret, v);
+  if (onlineSpil()) online.skud({ k: "skud", o: til3(kamera.position), r: [ret.yaw, ret.pitch], v: v.id }, tid);   // (de andre ser sporet)
   hånd.skud(v.d); Lyd.skud(v.d); (træning() ? træningTal : stat).skud++;
   if (!v.d.lydløs && !v.d.projektil) effekter.mundingslys(hånd.munding(kamera, tmpM));
   if (v.d.zoom && v.d.kadence > 0.8) { slag = Math.min(1, slag + 0.35); hud.kikkert(false); }
@@ -717,6 +790,7 @@ function kastGranat(kort) {
   const o = kamera.position.clone().addScaledVector(r, 0.35).add(new THREE.Vector3(0, -0.12, 0));
   const fart = r.clone().multiplyScalar(kort ? 7 : 16).add(new THREE.Vector3(spiller.a.vel.x * 0.6, (kort ? 2.5 : 2.0) + Math.max(0, spiller.a.vel.y) * 0.5, spiller.a.vel.z * 0.6));
   projektiler.granat(v.d.granat, spiller, o, fart); Lyd.kast(); hånd.skud(v.d);
+  if (onlineSpil()) online.send({ k: "granat", type: v.d.granat, o: til3(o), fart: til3(fart) });
   if (v.skud <= 0) setTimeout(() => { if (vb() === v) skiftVåben(næsteGranat() || (forrige.startsWith("granat_") ? ind.udrustning.primær : forrige)); }, 250);
 }
 // En blændgranat springer: dem, der kigger på den, bliver blændet (også spilleren)
@@ -813,6 +887,7 @@ function tegnBillede(nu) {
       const st = bombe.status(); hud.stilling(st.ræve, st.slanger, st.ur); hud.bombe(st, spiller);
       if (købGruppe !== undefined && (!bombe.kanKøbe || spiller.død)) visKøb(undefined);
     }
+    else if (onlineSpil()) hud.stilling(point.ræve, point.slanger, tid);   // (online: ingen slut — uret tæller op)
     else if (brSpil()) { const st = br.stormTekst(); hud.stilling(`👤 ${br.tilbage()}`, `☠ ${spiller.drab}`, st.sek); }
     else hud.stilling(point.ræve, point.slanger, kampSlut);
     if (brSpil()) { hud.storm(br.stormTekst().tekst, !spiller.død && br.iStormen(spiller.a.pos)); br.tegnKort($("kort"), spiller.a); } else hud.storm(null, false);
@@ -847,10 +922,11 @@ function startKamp() {
   if (bombeSpil()) bombe.startKamp();
   else if (zombieSpil()) { bombe.stop(); genopstå(); for (const b of bots) if (!b.zombie) b.spawn(); zombier.startKamp(); }
   else if (brSpil()) { bombe.stop(); br.start(); brStart(); }
+  else if (onlineSpil()) { bombe.stop(); genopstå(); hud.besked(`🌐 Online holdkamp i rummet "${online.ønsket?.rum || ""}"`, 3000); }
   else { bombe.stop(); genopstå(); for (const b of bots) b.spawn(); }
   iGang = true; if (!træning()) stat.kampe++; gemStatistik(stat);
   $("hud").classList.remove("skjult"); $("fortsæt").classList.remove("skjult"); $("start").textContent = "↻ Ny kamp";
-  if (!bombeSpil() && !zombieSpil() && !brSpil()) hud.besked(ræs() ? `Våbenræs! Hvert drab giver dig et nyt våben — ${RÆKKE.length - 1} drab, og så vinder du med kniven`
+  if (!bombeSpil() && !zombieSpil() && !brSpil() && !onlineSpil()) hud.besked(ræs() ? `Våbenræs! Hvert drab giver dig et nyt våben — ${RÆKKE.length - 1} drab, og så vinder du med kniven`
     : træning() ? `Træning! Skyd ${TRÆNING} mål så hurtigt du kan` + (ind.sværhed === "let" ? "" : " — de bevæger sig") : "Holdkamp! Første hold til 50 drab", 3000);   // (bomben har sin egen besked)
 }
 function slutKamp() {
@@ -924,8 +1000,13 @@ document.addEventListener("pointerlockchange", () => {
   else if (iGang) { pause = true; skydHoldt = false; taster.clear(); visMenu(); }
 });
 // Lukker man fanen midt i en kamp (fx Ctrl+W uden fuld skærm), spørger browseren først
-addEventListener("beforeunload", e => { if (iGang) { e.preventDefault(); e.returnValue = ""; } });
-$("start").addEventListener("click", () => { gemIndst(); $("slut").classList.add("skjult"); startKamp(); lås_mus(); });
+addEventListener("beforeunload", e => { if (iGang && !planlagtGenstart) { e.preventDefault(); e.returnValue = ""; } });   // (ikke når banen skiftes med vilje)
+$("start").addEventListener("click", async () => {
+  gemIndst(); $("slut").classList.add("skjult");
+  if (onlineSpil() && !online.forbundet && !await forbindOnline()) return;   // online: forbind først
+  if (!onlineSpil() && online.ønsket) online.luk();
+  startKamp(); lås_mus();
+});
 $("fortsæt").addEventListener("click", () => { gemIndst(); lås_mus(); });
 $("igen").addEventListener("click", () => { $("slut").classList.add("skjult"); startKamp(); lås_mus(); });
 $("tilMenu").addEventListener("click", () => { $("slut").classList.add("skjult"); $("fortsæt").classList.add("skjult"); $("start").textContent = "▶ Start kamp"; visMenu(); });
@@ -933,6 +1014,19 @@ $("klik").addEventListener("click", lås_mus);
 hånd.sætSkin(profil.skin); tegnProfil();
 $("start").disabled = false; $("start").textContent = "▶ Start kamp";      // banen og modellerne er hentet: klar
 // ---------- Menuen ----------
+// Online-rækken i menuen: navn og rum (kun når "Online" er valgt)
+function visOnline() {
+  for (const el of document.querySelectorAll(".kunOnline")) el.classList.toggle("skjult", !onlineSpil());
+  if (!kanOnline()) $("onlineStatus").textContent = "Åbn Sigtekorn fra familiens server (fx https://192.168.0.26:8443/spil/sigtekorn/) for at spille online.";
+}
+{
+  const gemt = (() => { try { return JSON.parse(localStorage.getItem(ONLINE) || "{}"); } catch (_) { return {}; } })();
+  $("onlineNavn").value = gemt.navn || ""; $("onlineRum").value = gemt.rum || "familie";
+  $("onlineForbind").addEventListener("click", () => { forbindOnline(); });
+  visOnline();
+  let igen = null; try { igen = JSON.parse(sessionStorage.getItem(ONLINE_IGEN) || "null"); sessionStorage.removeItem(ONLINE_IGEN); } catch (_) {}
+  if (igen && onlineSpil()) { $("onlineNavn").value = igen.navn; $("onlineRum").value = igen.rum; forbindOnline(); }   // (efter et baneskifte)
+}
 function knapper(id, valg, nøgle, efter) {
   const rod = $(id); rod.innerHTML = "";
   for (const [værdi, tekst] of valg) {
@@ -948,7 +1042,7 @@ function skyder(id, nøgle, vis) {
 }
 knapper("valgSværhed", Object.entries(SVÆRHED).map(([k, v]) => [k, v.navn]), "sværhed");
 knapper("valgHold", [1, 2, 3, 4, 5].map(n => [n, `${n} mod ${n}`]), "hold");
-knapper("valgSpil", [["hold", "Holdkamp"], ["bombe", "Bombe"], ["ræs", "Våbenræs"], ["zombier", "🧟 Zombier"], ["br", "🪂 Battle royale"], ["træning", "Træning"]], "spiltype");
+knapper("valgSpil", [["hold", "Holdkamp"], ["bombe", "Bombe"], ["ræs", "Våbenræs"], ["zombier", "🧟 Zombier"], ["br", "🪂 Battle royale"], ["online", "🌐 Online"], ["træning", "Træning"]], "spiltype", visOnline);
 knapper("valgSide", [["ræve", "🦊 Ørkenrævene"], ["slanger", "🐍 Sandslangerne"]], "side");
 // sigtekornets farve (som i CS kan man vælge den, man bedst kan se)
 const sætSkFarve = () => document.documentElement.style.setProperty("--sk", ind.skFarve);
@@ -956,13 +1050,13 @@ const SK_FARVER = [["#5dff6a", "Grøn"], ["#ffe640", "Gul"], ["#40e8ff", "Cyan"]
 knapper("valgSkFarve", SK_FARVER, "skFarve", sætSkFarve);
 [...$("valgSkFarve").children].forEach((b, i) => { b.style.boxShadow = `inset 0 -4px 0 ${SK_FARVER[i][0]}`; });   // en streg i farven
 sætSkFarve();
-lavUdrustning($("udrustning"), $("vælger"), ind, gemIndst, () => Lyd.bip());
+lavUdrustning($("udrustning"), $("vælger"), ind, gemIndst, () => Lyd.bip(), genstart);
 knapper("valgFart", [[false, "Nej"], [true, "Ja (u/s)"]], "fart");
 knapper("valgFuld", [[true, "Ja"], [false, "Nej"]], "fuldskærm");
 knapper("valgLemmer", [[true, "Ja"], [false, "Nej"]], "egneLemmer");
 knapper("valgKillcam", [[true, "Ja"], [false, "Nej"]], "killcam");
 knapper("valgByg", [[true, "Ja (G)"], [false, "Nej"]], "byg");
-knapper("valgVejr", [["dag", "☀️ Dag"], ["nat", "🌙 Nat"], ["storm", { sand: "🌪️ Sandstorm", regn: "🌧️ Regn og torden", sne: "❄️ Snestorm" }[bane.storm]]], "vejr", () => location.reload());
+knapper("valgVejr", [["dag", "☀️ Dag"], ["nat", "🌙 Nat"], ["storm", { sand: "🌪️ Sandstorm", regn: "🌧️ Regn og torden", sne: "❄️ Snestorm" }[bane.storm]]], "vejr", genstart);
 skyder("følsomhed", "følsomhed", v => v.toFixed(2));
 skyder("synsfelt", "synsfelt", v => `${v}°`);
 skyder("lydstyrke", "lydstyrke", v => `${Math.round(v * 100)} %`);
@@ -999,4 +1093,4 @@ spiller.a = nyAktør(0, 6, 30, 0); spiller.a.pitch = -0.12;
 requestAnimationFrame(billede);
 if (location.search.includes("debug")) window.sk = { spiller, get bots() { return bots; }, verden, bane, kamera, ind, tick, skyd, startKamp, taster, hånd, scene, himmelLys, renderer,
   get vb() { return vb(); }, get point() { return point; }, kør() { pause = false; $("menu").classList.add("skjult"); }, stop() { pause = true; }, udrust, kast: kastGranat, vælg: id => skiftVåben(id), effekter, hud, spillerFig, get aktivt() { return aktivt; }, get projektiler() { return projektiler; },
-  steg(n) { for (let i = 0; i < n; i++) tick(TICK); }, tegn: nu => tegnBillede(nu), bombe, killcam, køretøjer, køretøjE, byggeri, br, skiftByg: på => skiftByg(på), skydNu() { skydHoldt = true; spillerSkyder(); skydHoldt = false; skydLåst = false; } };
+  steg(n) { for (let i = 0; i < n; i++) tick(TICK); }, tegn: nu => tegnBillede(nu), bombe, killcam, køretøjer, køretøjE, byggeri, br, online, genstart, skiftByg: på => skiftByg(på), skydNu() { skydHoldt = true; spillerSkyder(); skydHoldt = false; skydLåst = false; } };

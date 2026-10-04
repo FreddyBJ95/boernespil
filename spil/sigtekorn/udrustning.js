@@ -46,7 +46,7 @@ function kort(id, d, valgt, lille = false) {
 }
 
 // Tegn udrustningen i "rod" (i menuen). vælger = elementet til listen med valgmuligheder. gem() kaldes ved hver ændring
-export function lavUdrustning(rod, vælger, ind, gem, bip) {
+export function lavUdrustning(rod, vælger, ind, gem, bip, genstart = () => location.reload()) {
   const hent = p => p.nøgle.startsWith("granat") ? ind.udrustning.granater[+p.nøgle.slice(-1)] : ind.udrustning[p.nøgle];
   const tegn = () => {
     rod.innerHTML = PLADSER.map(p => `<div class="plads" data-plads="${p.nøgle}"><span class="pladsnavn">${p.tast ? `<kbd>${p.tast}</kbd> ` : ""}${p.navn}</span>${kort(hent(p), p.liste[hent(p)], false, true)}</div>`).join("");
@@ -61,7 +61,7 @@ export function lavUdrustning(rod, vælger, ind, gem, bip) {
       const nyBane = p.nøgle === "bane" && ind.udrustning.bane !== k.dataset.id;
       if (p.nøgle.startsWith("granat")) ind.udrustning.granater[+p.nøgle.slice(-1)] = k.dataset.id; else ind.udrustning[p.nøgle] = k.dataset.id;
       gem(); bip?.(); vælger.classList.add("skjult"); tegn();
-      if (nyBane) location.reload();                                  // en ny bane bygges, når siden starter
+      if (nyBane) genstart();                                         // en ny bane bygges, når siden starter
     }));
     vælger.querySelector(".luk").addEventListener("click", () => vælger.classList.add("skjult"));
   };
