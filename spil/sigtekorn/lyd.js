@@ -36,6 +36,20 @@ function startVejr() {
   if (!regn) { const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 0.13; lg.gain.value = 0.09; lfo.connect(lg); lg.connect(g.gain); lfo.start(); }
   s.connect(f); f.connect(g); g.connect(ud); s.start(); vejrKilde = s;
 }
+// Motoren, mens man kører: en brummen, der bliver lysere, jo stærkere man kører (fart = null slukker den)
+let motor = null;
+export function motorLyd(fart, lys = 1) {
+  if (!ctx) return;
+  if (fart === null) { if (motor) { motor.g.gain.setTargetAtTime(0, ctx.currentTime, 0.1); motor.o.stop(ctx.currentTime + 0.4); motor = null; } return; }
+  if (!motor) {
+    const o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    o.type = "sawtooth"; f.type = "lowpass"; f.frequency.value = 600; g.gain.value = 0;
+    o.connect(f); f.connect(g); g.connect(ud); o.start(); motor = { o, f, g };
+  }
+  const v = Math.abs(fart);
+  motor.o.frequency.setTargetAtTime((38 + v * 7) * lys, ctx.currentTime, 0.08);
+  motor.g.gain.setTargetAtTime(0.07 + Math.min(0.08, v * 0.008), ctx.currentTime, 0.1);
+}
 // En zombie stønner (dybt og hæst, et sted i verdenen)
 export function zombie(pos) {
   if (!ctx) return;

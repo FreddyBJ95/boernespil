@@ -31,6 +31,7 @@ import { Bombe, visMærker } from "./bombe.js";
 import { Killcam } from "./killcam.js";
 import { lavVejr } from "./vejr.js";
 import { Zombier, MAKS_SAMTIDIG } from "./zombier.js";
+import { Køretøjer } from "./koeretoejer.js";
 import { køb, drabPenge, giv as givPenge, tegnKøbsmenu, GRUPPER, nytUdstyr } from "./penge.js";
 import * as Lyd from "./lyd.js";
 import { Profil, UDFORDRINGER } from "./profil.js";
@@ -189,6 +190,7 @@ function genopstå() {
   spiller.a = nyAktør(bedst[0], 0.01, bedst[1], 0);
   spiller.liv = 100; spiller.panser = bombeSpil() ? spiller.udstyr?.panser ?? 0 : 100; spiller.død = false; beskyttet = 1.5;
   spillerFig?.nulstil();
+  if (køretøjer.kører) { køretøjer.stigUd(); Lyd.motorLyd(null); }
   killcam.stop(); killcamVent = null; deleSynlige(true); hud.killcam(null);
   udrust(); hud.død(""); hud.kikkert(false);
 }
@@ -244,6 +246,24 @@ const zombier = new Zombier({
   xp: bølge => belønning(100 * bølge, bølge >= 10 && ["zombier", 1]),
 });
 let zombieResultat = 0;
+// Køretøjerne på banen (koeretoejer.js): E for at stige ind og ud. Kører man stærkt ind i nogen, vælter de
+const køretøjer = new Køretøjer({
+  scene, verden, liste: bane.køretøjer, kampfolk: () => kampfolk, spiller,
+  ramVæltet: (f, v) => skadFra(f, { liv: 400, panser: 0 }, spiller, { r: new THREE.Vector3(-Math.sin(v.yaw), 0.4, -Math.cos(v.yaw)), del: "krop", lem: null, kraft: 12 }, v.type === "snescooter" ? "Snescooter" : "Gaffeltruck"),
+});
+const førerPlads = new THREE.Vector3();
+// På en bombeplads i Bombe er E til bomben (at lægge eller desarmere den) — ikke til køretøjerne
+const påBombeplads = () => bombeSpil() && Object.values(bane.steder).some(([x, z, r]) => Math.hypot(spiller.a.pos.x - x, spiller.a.pos.z - z) < r + 1);
+// Stig ind i eller ud af det nærmeste køretøj
+function køretøjE() {
+  if (køretøjer.kører) {
+    const ud = køretøjer.stigUd(); spiller.a.pos.copy(ud); spiller.a.forrige.copy(ud); spiller.a.vel.set(0, 0, 0);
+    Lyd.motorLyd(null); hånd.vis(aktivt, 0.3);
+  } else {
+    const v = køretøjer.nærmeste(spiller.a.pos);
+    if (v) { køretøjer.stigInd(v); spiller.a.kravl = false; hud.kikkert(false); }
+  }
+}
 // En post tæt på spilleren (til holdkammeraterne i zombie-spillet)
 function nærSpilleren() {
   const p = spiller.a.pos, nær = bane.poster.filter(q => Math.hypot(q[0] - p.x, q[1] - p.z) < 16);
@@ -325,7 +345,8 @@ function kugle(skytte, o, ret, v, spor) {
   }
   if (ramt) return { hoved: ramt.del === "hoved", dræbt: træfOffer(skytte, ramt.k, ramt.del, ramt.lem, v, maks, r, slut) };
   if (væg) {
-    effekter.hul(slut, væg.normal); effekter.nedslag(slut, væg.normal, væg.kasse.mat, v.d.hagl ? 0.4 : 1);
+    if (!væg.kasse.ingenHul) effekter.hul(slut, væg.normal);
+    effekter.nedslag(slut, væg.normal, væg.kasse.mat, v.d.hagl ? 0.4 : 1);
     if (skytte !== spiller && slut.distanceTo(kamera.position) < 3) Lyd.nærSkud(slut);
   }
   return null;
@@ -356,6 +377,7 @@ function spillerRamt(s, fra, skud = null) {
   hud.skadeFra(vinkel(Math.atan2(-(fra.a.pos.x - spiller.a.pos.x), -(fra.a.pos.z - spiller.a.pos.z)) - spiller.a.yaw));
   Lyd.såret(); slag = Math.min(1, slag + 0.5); slagYaw = (Math.random() - 0.5) * 0.02;
   if (spiller.liv > 0) return false;
+  if (køretøjer.kører) { spiller.a.pos.copy(køretøjer.stigUd()); spiller.a.forrige.copy(spiller.a.pos); Lyd.motorLyd(null); }   // (man falder ud af køretøjet)
   spiller.død = true; spiller.dødsfald++; dødTid = tid; stime = 0; stat.død++;
   if (egneLemmer()) spillerFig.falder(skud, scene, verden, new THREE.Vector3(spiller.a.vel.x, 0, spiller.a.vel.z), botSpil.delLyd);   // du falder fra hinanden
   dræber = fra !== spiller ? fra : null; dødSyn = { yaw: spiller.a.yaw, pitch: spiller.a.pitch };
@@ -477,6 +499,7 @@ addEventListener("keydown", e => {
   if (e.repeat) return;
   taster.add(e.code);
   if (e.code === "KeyF" && vejr.nat) { lygteTændt = !lygteTændt; Lyd.klik(); }
+  if (e.code === "KeyE" && !spiller.død && (køretøjer.kører || (køretøjer.nærmeste(spiller.a.pos) && !påBombeplads()))) { køretøjE(); return; }
   if (e.code === "KeyB" && bombeSpil() && !spiller.død) { visKøb(købGruppe === undefined ? null : undefined); return; }
   if (købGruppe !== undefined && /^Digit\d$/.test(e.code)) { vælgKøb(+e.code.slice(5)); return; }   // (købsmenuen er åben)
   if (e.code === "KeyR" && !spiller.død) { const v = vb(); if (genlad(v)) { hånd.genladStart(v.d.genlad); Lyd.genlad(v.d.genlad); hud.kikkert(false); } }
@@ -554,16 +577,25 @@ function tick(dt) {
     const gå = taster.has("ShiftLeft") || taster.has("ShiftRight"), duk = taster.has("KeyC") || taster.has("ControlLeft") || taster.has("ControlRight");
     const hop = taster.has("Space") || hjulHop > 0; if (hjulHop > 0) hjulHop--;
     const før = spiller.a.pos.clone(), frys = bombeSpil() && bombe.fryser;   // (i starten af en bomberunde står alle stille)
-    bevæg(spiller.a, frys ? { frem: 0, side: 0, hop: false, gå, duk } : { frem, side, hop, gå, duk }, dt, verden, maks);
+    if (køretøjer.kører) {                                         // i et køretøj: W/S er gas og bremse, A/D styrer — og man sidder i førersædet
+      const drejet = køretøjer.kører.yaw; køretøjer.tick(dt, frys ? 0 : frem, side);
+      spiller.a.yaw += køretøjer.kører.yaw - drejet;                // (man kigger med rundt, når køretøjet drejer)
+      const p = køretøjer.førerPos(førerPlads), t = køretøjer.kører.t;
+      spiller.a.forrige.copy(spiller.a.pos); spiller.a.pos.set(p.x, p.y + t.øje - øjeHøjde({ duk: 0, kravl: false }), p.z);
+      spiller.a.vel.set(-Math.sin(køretøjer.kører.yaw) * køretøjer.kører.fart, 0, -Math.cos(køretøjer.kører.yaw) * køretøjer.kører.fart); spiller.a.duk = 0; spiller.a.jord = true;
+    } else bevæg(spiller.a, frys ? { frem: 0, side: 0, hop: false, gå, duk } : { frem, side, hop, gå, duk }, dt, verden, maks);
     // fodtrin (kun når man løber — gå og duk er lydløst), og botterne kan høre dem
     const fart = Math.hypot(spiller.a.vel.x, spiller.a.vel.z);
-    if (spiller.a.jord && !gå && !duk && fart > maks * 0.55) {
+    if (køretøjer.kører && fart > 1) {                             // motoren kan høres langt væk
+      trinVej += før.distanceTo(spiller.a.pos);
+      if (trinVej > 4) { trinVej = 0; for (const b of bots) if (b.a.pos.distanceTo(spiller.a.pos) < 30) b.hør(spiller.a.pos, spiller); }
+    } else if (spiller.a.jord && !gå && !duk && fart > maks * 0.55 && !køretøjer.kører) {
       trinVej += før.distanceTo(spiller.a.pos);
       if (trinVej > 1.9) { trinVej = 0; Lyd.trin(null, 0.55); for (const b of bots) if (b.a.pos.distanceTo(spiller.a.pos) < 16) b.hør(spiller.a.pos, spiller); }
     }
     if (spiller.a.landet) { spiller.a.landet = 0; Lyd.landing(); hånd.land = 1; }
     // skyd: aftrækkeren (automat, ét skud pr. klik, salver og minigunnens opspin står i vaaben.js)
-    if (v.d.klasse === "ingen" || frys) { /* ingen arme (eller frysetid): intet at skyde med */ }
+    if (v.d.klasse === "ingen" || frys || køretøjer.kører) { /* ingen arme, frysetid eller i et køretøj: intet at skyde med */ }
     else if (v.d.nærkamp) { if (skydHoldt && v.klar <= 0) knivHug(false); }
     else if (v.d.granat) { if (skydHoldt && !skydLåst) { skydLåst = true; kastGranat(false); } }
     else {
@@ -672,6 +704,11 @@ function tegnBillede(nu) {
   bane.opdater?.(dt, kamera.position);                            // fx sneen, der falder
   vejr.opdater(dt, kamera, kampfolk, lygteTændt && !spiller.død);  // regn, sne eller sand — og lommelygterne om natten
   bombe.tegn(tid);                                                 // bombens lampe blinker
+  køretøjer.tegn();
+  if (køretøjer.kører) Lyd.motorLyd(køretøjer.kører.fart, køretøjer.kører.type === "snescooter" ? 1.3 : 0.8);
+  const nær = !spiller.død && !køretøjer.kører && !påBombeplads() && køretøjer.nærmeste(spiller.a.pos);
+  hud.køreHjælp(køretøjer.kører ? `E: stig ud · W/S: gas og bremse · A/D: styr · ${Math.round(Math.abs(køretøjer.kører.fart) * 3.6)} km/t`
+    : nær ? `E: stig ind i ${nær.type === "snescooter" ? "snescooteren" : "gaffeltrucken"}` : "");
   // botterne, hånden og effekterne
   for (const b of bots) b.tegn(Math.min(1, alfa), dt);
   deleTegn(); projektiler.tegn(dt);
@@ -681,7 +718,7 @@ function tegnBillede(nu) {
     spillerFig.poser({ fart: Math.hypot(a.vel.x, a.vel.z), vx: c * a.vel.x - sn * a.vel.z, vz: sn * a.vel.x + c * a.vel.z, duk: a.duk, pitch: a.pitch, kravl: !!a.kravl, våben: aktivt, dt });
   }
   const fart = Math.hypot(a.vel.x, a.vel.z);
-  hånd.opdater(dt, { fart: v ? fart / v.d.fart : 0, jord: a.jord, musX, musY, duk: a.duk, skjul: kikkert || spiller.død, sigte: zoomet && !kikkert, spin: v?.d.opspin ? v.spin / v.d.opspin : 0, landet: false });
+  hånd.opdater(dt, { fart: v ? fart / v.d.fart : 0, jord: a.jord, musX, musY, duk: a.duk, skjul: kikkert || spiller.død || !!køretøjer.kører, sigte: zoomet && !kikkert, spin: v?.d.opspin ? v.spin / v.d.opspin : 0, landet: false });
   musX = musY = 0;
   effekter.opdater(dt); hud.opdater(dt);
   // skærmen
@@ -860,4 +897,4 @@ spiller.a = nyAktør(0, 6, 30, 0); spiller.a.pitch = -0.12;
 requestAnimationFrame(billede);
 if (location.search.includes("debug")) window.sk = { spiller, get bots() { return bots; }, verden, bane, kamera, ind, tick, skyd, startKamp, taster, hånd, scene, himmelLys, renderer,
   get vb() { return vb(); }, get point() { return point; }, kør() { pause = false; $("menu").classList.add("skjult"); }, stop() { pause = true; }, udrust, kast: kastGranat, vælg: id => skiftVåben(id), effekter, hud, spillerFig, get aktivt() { return aktivt; }, get projektiler() { return projektiler; },
-  steg(n) { for (let i = 0; i < n; i++) tick(TICK); }, tegn: nu => tegnBillede(nu), bombe, killcam, skydNu() { skydHoldt = true; spillerSkyder(); skydHoldt = false; skydLåst = false; } };
+  steg(n) { for (let i = 0; i < n; i++) tick(TICK); }, tegn: nu => tegnBillede(nu), bombe, killcam, køretøjer, køretøjE, skydNu() { skydHoldt = true; spillerSkyder(); skydHoldt = false; skydLåst = false; } };

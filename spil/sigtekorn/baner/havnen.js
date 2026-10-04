@@ -127,4 +127,7 @@ const STEDER = { A: [6, -32, 8], B: [0, 41.5, 6] };
 const NATLAMPER = [[-40, -13.4, 6, 220], [-20, -13.4, 6, 220], [0, -13.4, 6, 220], [20, -13.4, 6, 220], [40, -13.4, 6, 220], [-36, 16.5, 6, 220], [-10, 16, 6, 220],
   [10, 16, 6, 220], [36, 16.5, 6, 220], [-30, -45, 6, 220], [0, -45, 6, 220], [30, -45, 6, 220], [-28, 46.5, 6, 220], [28, 46.5, 6, 220]];
 
-export default { navn: "Havnen", natLamper: NATLAMPER, storm: "regn", steder: STEDER, fotos: ["beton", "blik"], start: START, poster: POSTER, omveje: OMVEJE, postVægt, byg };
+// Gaffeltrucks: ved begge starter, på containerpladsen og i lagerhallen
+const KØRETØJER = [["gaffeltruck", -51, -18, Math.PI], ["gaffeltruck", 51, 18, 0], ["gaffeltruck", 14, -22, Math.PI], ["gaffeltruck", -9, 30, -Math.PI / 2]];
+
+export default { navn: "Havnen", køretøjer: KØRETØJER, natLamper: NATLAMPER, storm: "regn", steder: STEDER, fotos: ["beton", "blik"], start: START, poster: POSTER, omveje: OMVEJE, postVægt, byg };

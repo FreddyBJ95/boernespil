@@ -78,7 +78,7 @@ function påførBillede(orig, id) {
   const nøgle = orig.uuid + id;
   if (færdige.has(nøgle)) return færdige.get(nøgle);
   const img = orig.image, w = img.width, h = img.height, c = document.createElement("canvas"); c.width = w; c.height = h;
-  const g = c.getContext("2d");
+  const g = c.getContext("2d", { willReadFrequently: true });   // (billedet læses to gange)
   g.drawImage(img, 0, 0, w, h);
   const o = g.getImageData(0, 0, w, h), od = o.data;
   // gennemsnittet af lyset, så både sorte og lyse dele får mønsteret (skyggerne i krogene bliver)

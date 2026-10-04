@@ -272,4 +272,7 @@ const STEDER = { A: [36, -13, 6], B: [-38, -20, 7] };
 const NATLAMPER = [[-10, -8, 4, 120], [10, 8, 4, 120], [-10, 8, 4, 120], [10, -8, 4, 120], [-8, -44.5, 4, 120], [8, -44.5, 4, 120], [-8, 44.5, 4, 120], [8, 44.5, 4, 120],
   [32, -15, 4, 120], [32, 15, 4, 120], [-23, -14, 4, 120], [-23, 20, 4, 120], [23, -12, 4, 120], [23, 21, 4, 120], [-38, -9, 4, 120], [-38, 9, 4, 120]];
 
-export default { navn: "Fjeldbyen", natLamper: NATLAMPER, storm: "sne", steder: STEDER, fotos: ["sne", "klippe", "panel"], start: START, poster: POSTER, omveje: OMVEJE, postVægt, vejr, byg };
+// Snescootere: én ved hver start og én i skoven og ved savværket
+const KØRETØJER = [["snescooter", -21, 41, -Math.PI / 4], ["snescooter", 21, -41, 3 * Math.PI / 4], ["snescooter", -44, -32, Math.PI], ["snescooter", 31, 20, -Math.PI / 4]];
+
+export default { navn: "Fjeldbyen", køretøjer: KØRETØJER, natLamper: NATLAMPER, storm: "sne", steder: STEDER, fotos: ["sne", "klippe", "panel"], start: START, poster: POSTER, omveje: OMVEJE, postVægt, vejr, byg };

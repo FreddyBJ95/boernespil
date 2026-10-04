@@ -4,6 +4,7 @@
 // En ny bane: lav baner/<navn>.js (se stoevbyen.js), tilføj den i BANER herunder og i katalog.js.
 // steder i banens fil er bombepladserne A og B: [x, z, radius].
 // natLamper: gadelamper, der kun står der om natten: [x, z, højde, watt] — og storm: "sand", "regn" eller "sne".
+// køretøjer: [type, x, z, retning] (se koeretoejer.js).
 
 // Natten: månen og en næsten sort himmel (også til Blender, når natlyset bages)
 export const NAT = { sol: [-0.35, 0.62, -0.5], solStyrke: 0.32, solFarve: 0x8aa4d8, horisont: [0.012, 0.016, 0.03], zenit: [0.003, 0.005, 0.012], himmelLys: 0.04 };
@@ -154,7 +155,7 @@ export function lavBane(scene, verden, t, id = "stoevbyen", vejr = "dag") {
   const knuder = lavVejnet(verden, info.erFast || (() => false), info.grænse, info.ekstraKnuder || []);
   return { id: BANER[id] ? id : "stoevbyen", navn: def.navn, knuder, erFast: info.erFast, masker, start: def.start, poster: def.poster, omveje: def.omveje || [], steder: def.steder || {}, postVægt: def.postVægt || (() => 1), lamper: [...(info.lamper || []), ...natLamper], grænse: info.grænse,
     vejr: vejr === "nat" ? { ...(def.vejr?.lampeFarve ? { lampeFarve: def.vejr.lampeFarve } : {}), ...NAT } : def.vejr || null,
-    storm: def.storm || "regn", opdater: pynt?.opdater || null };
+    storm: def.storm || "regn", køretøjer: def.køretøjer || [], opdater: pynt?.opdater || null };
 }
 
 // Tønder: runde, med to ringe (kun til at se på — kollisionen er en kasse)

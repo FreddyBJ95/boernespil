@@ -79,6 +79,7 @@
   #fremskridt i { display: block; height: 8px; margin-top: 6px; border-radius: 4px; background: #e8b860; box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.6); width: 0; }
   #bombeIkon { position: absolute; left: 18px; bottom: 132px; padding: 6px 10px; border-radius: 8px; background: rgba(120, 20, 10, 0.75); font: 600 14px system-ui; color: #ffe0c0; }
   #ur.bombe { color: #ff5040; }
+  #køreHjælp { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); padding: 6px 14px; border-radius: 8px; background: rgba(10, 8, 6, 0.7); font: 600 15px system-ui; }
   #penge { position: absolute; left: 20px; bottom: 98px; font: 700 20px system-ui; color: #8fe08a; }
   .xp.penge { color: #8fe08a; top: 59%; }
   #købsmenu { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); min-width: 280px; padding: 12px 16px; border-radius: 12px; background: rgba(14, 11, 7, 0.88); border: 1px solid #6a5434; font: 600 15px system-ui; }
@@ -159,6 +160,7 @@
   <div id="fremskridt" class="skjult"><span></span><i></i></div>
   <div id="killcam" class="skjult"></div>
   <div id="penge" class="skjult"></div>
+  <div id="køreHjælp" class="skjult"></div>
   <div id="købsmenu" class="skjult"></div>
   <div id="bombeIkon" class="skjult">💣 Du har bomben — hold E inde på A eller B</div>
   <div id="sigte"><i class="t"></i><i class="b"></i><i class="v"></i><i class="h"></i></div>
@@ -206,7 +208,7 @@
       <a href="../../">← Tilbage til spillene</a>
     </div>
     <p id="statLinje"></p>
-    <p class="hjælp"><kbd>W A S D</kbd> gå · <kbd>Mus</kbd> sigt · <kbd>Venstre klik</kbd> skyd · <kbd>Højre klik</kbd> kikkert / stik · <kbd>R</kbd> genlad · <kbd>E</kbd> læg / desarmer bomben · <kbd>B</kbd> køb (i Bombe) · <kbd>F</kbd> lommelygte (om natten) ·
+    <p class="hjælp"><kbd>W A S D</kbd> gå · <kbd>Mus</kbd> sigt · <kbd>Venstre klik</kbd> skyd · <kbd>Højre klik</kbd> kikkert / stik · <kbd>R</kbd> genlad · <kbd>E</kbd> læg / desarmer bomben · <kbd>B</kbd> køb (i Bombe) · <kbd>F</kbd> lommelygte (om natten) · <kbd>E</kbd> stig ind/ud af køretøjer ·
       <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> våben · <kbd>4</kbd> granat (venstre klik: langt, højre: kort) · <kbd>Q</kbd> sidste våben · <kbd>Mellemrum</kbd> eller <kbd>musehjul</kbd> hop · <kbd>Shift</kbd> gå stille ·
       <kbd>Ctrl</kbd> eller <kbd>C</kbd> duk (også i luften: så kommer man højere op) · <kbd>Tab</kbd> pointtavle · <kbd>Esc</kbd> pause.<br>Stå stille, når du skyder — og træk musen ned imod rekylen. Første hold til 50 drab vinder.</p>
   </div>

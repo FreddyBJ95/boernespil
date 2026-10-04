@@ -63,6 +63,12 @@ export class Hud {
     if (el.innerHTML !== tekst) el.innerHTML = tekst;
     el.classList.toggle("skjult", !info);
   }
+  // Hjælp til køretøjerne (tom tekst skjuler den)
+  køreHjælp(tekst) {
+    const el = document.getElementById("køreHjælp");
+    if (el.textContent !== tekst) el.textContent = tekst;
+    el.classList.toggle("skjult", !tekst);
+  }
   // Pengene i Bombe (og en lille "B: køb", så længe man kan købe)
   pengeTal(penge, kanKøbe) {
     const el = document.getElementById("penge"), tekst = penge === null ? "" : `$${penge}${kanKøbe ? " · B: køb" : ""}`;

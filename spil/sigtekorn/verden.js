@@ -23,6 +23,12 @@ export class Kasseverden {
     return k;
   }
 
+  // Fjern en kasse igen (fx et køretøj, der kører væk)
+  fjern(k) {
+    const i = this.kasser.indexOf(k); if (i >= 0) this.kasser.splice(i, 1);
+    for (const liste of this.celler.values()) { const j = liste.indexOf(k); if (j >= 0) liste.splice(j, 1); }
+  }
+
   // Alle kasser i felterne, som firkanten rører (hver kasse kun én gang)
   nær(x0, z0, x1, z1) {
     const ud = [], mærke = ++this.besøgt;
