@@ -10,6 +10,7 @@ import { prøvOffentligeFiler, prøvPrivateFiler } from "./offentlige-filer.js";
 const base = Deno.args[0];
 if (!base || !/^http:\/\/127\.0\.0\.1:\d+$/.test(base)) throw new Error("Angiv den lokale testservers HTTP-adresse");
 const klienter = [], verdener = [], status = async () => await (await fetch(base + "/api/status")).json();
+const spilSockets = [];
 const { token, version } = await status(); assert.equal(version, UDGAVE);
 for (const id of VOKSENVERDENER) await prøvVoksenverden((sti, options) => fetch(base + sti, options), id);
 async function handling(navn, data) {
@@ -94,11 +95,59 @@ async function deltEffekt(afsender, modtager, position) {
     assert.equal(ekko.length, 0, "Afsenderen skal ikke se sin egen effekt igen");
   } finally { afsender.removeEventListener("effekt", lyt); }
 }
+
+// Den nye kanal skal også findes i begge officielle binære pakker, uafhængigt af Brøkrafts /ws.
+function spilBesked(socket, type, vælg = () => true) {
+  return new Promise((resolve, reject) => {
+    const lyt = e => {
+      const b = JSON.parse(e.data);
+      if (b.t !== type || !vælg(b)) return;
+      clearTimeout(timer); socket.removeEventListener("message", lyt); resolve(b);
+    };
+    const timer = setTimeout(() => { socket.removeEventListener("message", lyt); reject(new Error(`Spilrum mangler ${type}`)); }, 10000);
+    socket.addEventListener("message", lyt);
+  });
+}
+async function spilSocket() {
+  const socket = new WebSocket(base.replace("http:", "ws:") + "/ws/rum", { headers: { origin: base } });
+  spilSockets.push(socket);
+  await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Den pakkede spilkanal åbnede ikke")), 10000);
+    socket.addEventListener("open", () => { clearTimeout(timer); resolve(); }, { once: true });
+    socket.addEventListener("error", () => { clearTimeout(timer); reject(new Error("Den pakkede spilkanal fejlede")); }, { once: true });
+  });
+  return socket;
+}
+async function spilrum() {
+  const a = await spilSocket();
+  const velkommenA = spilBesked(a, "velkommen");
+  a.send(JSON.stringify({ t: "hej", spil: "sigtekorn", version: 1, navn: "Far", rum: "pakketest" }));
+  const vært = await velkommenA;
+  assert.equal(vært.vært, vært.dig);
+  a.send(JSON.stringify({ t: "tilstand", data: { bane: "havnen" } }));
+  const b = await spilSocket(), ind = spilBesked(a, "ind"), velkommenB = spilBesked(b, "velkommen");
+  b.send(JSON.stringify({ t: "hej", spil: "sigtekorn", version: 1, navn: "Far", rum: "pakketest" }));
+  const gæst = await velkommenB;
+  assert.equal(gæst.navn, "Far 2");
+  assert.deepEqual(gæst.tilstand, { bane: "havnen" });
+  assert.equal((await ind).id, gæst.dig);
+  const hosVært = spilBesked(a, "fra"), position = { k: "tilstand", p: [1, 0, 40.5], hold: "slanger" };
+  b.send(JSON.stringify({ t: "til", data: position }));
+  assert.deepEqual(await hosVært, { t: "fra", id: gæst.dig, data: position });
+  const hosGæst = spilBesked(b, "fra"), træf = { k: "træf", liv: 36 };
+  a.send(JSON.stringify({ t: "til", til: gæst.dig, data: træf }));
+  assert.deepEqual(await hosGæst, { t: "fra", id: vært.dig, data: træf });
+  const nyVært = spilBesked(b, "vært");
+  a.close();
+  assert.equal((await nyVært).id, gæst.dig);
+  b.close();
+}
 try {
   // Den kompilerede server skal medtage filernes bytes, ikke kun kende deres adresser.
   const hent = (sti, init) => fetch(base + sti, init);
   await prøvOffentligeFiler(hent);
   await prøvPrivateFiler(hent);
+  await spilrum();
   const finite = await opret("maane"), måne = await åbn(finite);
   assert.equal(måne.info.verden.bredde, 128);
   const måneVen = await åbn(finite), hjem = måne.info.spillere.find(p => p.id === måne.info.dig);
@@ -151,8 +200,9 @@ try {
   ny.luk(); ven.luk(); await handling("stop", { id }); await handling("start", { id });
   const efterBrag = await åbn(id), sprængt = await flyt(efterBrag);
   assert.equal(sprængt.data[indeks], 0, "Serverens store brag skal overleve genstart");
-  console.log("Færdig pakke: Spilkassens billeder, appikoner, Sigtekorns modeller/teksturer/lys, GET/HEAD og filafskærmning, begge workers, WebSocket, Enhjørningeland og nye blokke, delt ridning, delte effekter, almindeligt og stort brag, højt hjem, fjern bygning og gemning efter genstart består.");
+  console.log("Færdig pakke: Spilkassens billeder, appikoner, Sigtekorns modeller/teksturer/lys og online-spilrum, GET/HEAD og filafskærmning, begge workers, WebSocket, Enhjørningeland og nye blokke, delt ridning, delte effekter, almindeligt og stort brag, højt hjem, fjern bygning og gemning efter genstart består.");
 } finally {
+  for (const socket of spilSockets) socket.close();
   for (const f of klienter) f.luk();
   for (const id of verdener) await handling("stop", { id });
 }

@@ -1,5 +1,12 @@
 Broekraft Server lader 1–8 børn bygge i samme Broekraft-verden på familiens eget wifi.
 
+**Nyt i 0.6.0**
+- Sigtekorn kan spilles mod familien over jeres server. Op til otte spillere bruger samme rumnavn,
+  og den første spiller vælger banen. Når værten går, overtager den, der kom ind som den næste.
+- Spillerummene sender positioner, skud og træf videre mellem deltagere i samme spil og rum.
+  Rummene findes kun, mens nogen er tilsluttet; personnavne og spilbeskeder gemmes ikke på disken.
+- Brøkrafts verdener og gemninger virker som før. De to spilkanaler deler serverens loft på 128 forbindelser.
+
 **Nyt i 0.5.7**
 - Krystaljægernes skattekister åbner låget og viser de mønter og eliksirer, du faktisk finder.
   Lyskrystaller og bossegl løfter sig frem som originale Blender-genstande med glød og animation.
