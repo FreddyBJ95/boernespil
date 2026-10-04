@@ -126,6 +126,9 @@ const effekter = new Effekter(scene, t);
 const hånd = new Hånd(t);
 hånd.lysStyrke(vejr.håndLys);                                      // (våbnet i hånden er mørkere om natten og i storm)
 hånd.lavMiljø(renderer);
+// Killcammens egen hånd: drabsmandens våben (med hans skin), set gennem hans øjne
+const killHånd = new Hånd(t);
+killHånd.lysStyrke(vejr.håndLys); killHånd.lavMiljø(renderer);
 const hud = new Hud();
 let stat = læsStatistik();
 const profil = new Profil();                                       // XP, niveau, rang, udfordringer og skins (profil.js)
@@ -245,7 +248,11 @@ const bombe = new Bombe({
   },
 });
 // Killcam: de sidste sekunder, før du døde, set fra den, der dræbte dig (killcam.js)
-const killcam = new Killcam({ scene, kampfolk: () => kampfolk, spiller, effekter, øjeHøjde, aktivt: () => aktivt });
+const killcam = new Killcam({ scene, kampfolk: () => kampfolk, spiller, effekter, øjeHøjde, aktivt: () => aktivt,
+  dræberSkud: (id, til) => {                                       // drabsmanden skyder i afspilningen: hans våben sparker, og sporet går fra mundingen
+    if (!VÅBEN[id] || killHånd.aktiv !== id) return effekter.sporFra(kamera.position.clone().add(new THREE.Vector3(0, -0.15, 0)), til);
+    killHånd.skud(VÅBEN[id]); if (!VÅBEN[id].nærkamp && !VÅBEN[id].projektil) effekter.sporFra(killHånd.munding(kamera, new THREE.Vector3()), til);
+  } });
 let killcamVent = null;                                            // hvornår afspilningen skal starte (lidt efter, man døde)
 const genopståTid = () => ind.killcam && !træning() ? 6 : 3;       // med killcam venter man lidt længere
 // Zombierne: bølgerne (zombier.js). Mellem bølgerne kommer alle døde tilbage, og alle får fyldt patronerne op
@@ -471,7 +478,7 @@ function kugle(skytte, o, ret, v, spor) {
     const fra = o.clone().addScaledVector(r, 0.7).add(new THREE.Vector3(0, -0.15, 0));
     if (skytte === spiller) { if (Math.random() < 0.6) effekter.sporFra(hånd.munding(kamera, tmpM), slut); }
     else effekter.sporFra(fra, slut);
-    killcam.spor(fra, slut, tid);                                  // (så det også kan ses i killcam)
+    killcam.spor(fra, slut, tid, skytte);                          // (så det også kan ses i killcam)
   }
   if (ramt) return { hoved: ramt.del === "hoved", dræbt: træfOffer(skytte, ramt.k, ramt.del, ramt.lem, v, maks, r, slut) };
   if (væg) {
@@ -843,6 +850,12 @@ function tegnBillede(nu) {
     if (killcam.start(dræber, dødTid)) deleSynlige(false);
   }
   if (killcam.aktiv && !killcam.tegn(dt, kamera)) deleSynlige(true);  // (kameraet sidder i drabsmandens øjne)
+  const killVåben = killcam.aktiv && !killcam.aktiv.dræber.zombie ? killcam.aktiv.våben : null;
+  if (killVåben) {                                                 // drabsmandens våben i hånden (med hans skin)
+    if (killHånd.aktiv !== killVåben) { killHånd.vis(killVåben, 0.01); killHånd.træk = 0; }
+    const skin = killcam.aktiv.dræber.fig?.skin || "standard"; if (killHånd.skin !== skin) killHånd.sætSkin(skin);
+    killHånd.opdater(dt, { fart: (killcam.aktiv.fart || 0) / 6, jord: true, musX: 0, musY: 0, duk: 0, skjul: false, sigte: false, landet: false });
+  }
   hud.killcam(killcam.info);
   const venner = spiller.død && (bombeSpil() || zombieSpil()) && !killcam.aktiv && killcamVent === null && tid - dødTid > 2.2 ? bots.filter(b => b.hold === spiller.hold && !b.død) : [];
   if (venner.length) {                                             // død i en bomberunde: kameraet følger en holdkammerat bagfra
@@ -903,10 +916,11 @@ function tegnBillede(nu) {
   kamera.getWorldDirection(frem); Lyd.lytter(kamera.position, frem, op);
   renderer.clear(); renderer.render(scene, kamera);
   if (!kikkert && !spiller.død && iGang) { renderer.clearDepth(); renderer.render(hånd.scene, hånd.kamera); }
+  else if (killVåben) { renderer.clearDepth(); renderer.render(killHånd.scene, killHånd.kamera); }
 }
 function tilpas() {
   renderer.setSize(innerWidth, innerHeight, false);
-  kamera.aspect = innerWidth / innerHeight; kamera.updateProjectionMatrix(); hånd.tilpas(kamera.aspect);
+  kamera.aspect = innerWidth / innerHeight; kamera.updateProjectionMatrix(); hånd.tilpas(kamera.aspect); killHånd.tilpas(kamera.aspect);
 }
 addEventListener("resize", tilpas); tilpas();
 

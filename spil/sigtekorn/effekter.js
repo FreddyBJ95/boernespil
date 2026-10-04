@@ -119,12 +119,12 @@ export class Effekter {
     for (const s of this.spor) {
       if (!s.l.visible) continue;
       s.t += dt;
-      const hoved = Math.min(s.længde, s.t * 520), hale = Math.max(0, hoved - 4);
+      const hoved = Math.min(s.længde, s.t * 950), hale = Math.max(0, hoved - 2.5);   // (hurtigt og kort — og højst en tiendedel sekund)
       const p = s.l.geometry.attributes.position;
       p.setXYZ(0, s.fra.x + s.r.x * hale, s.fra.y + s.r.y * hale, s.fra.z + s.r.z * hale);
       p.setXYZ(1, s.fra.x + s.r.x * hoved, s.fra.y + s.r.y * hoved, s.fra.z + s.r.z * hoved);
       p.needsUpdate = true;
-      if (hale >= s.længde) s.l.visible = false;
+      if (hale >= s.længde || s.t > 0.1) s.l.visible = false;
     }
     if (this.lysTid > 0 && (this.lysTid -= dt) <= 0) this.lys.intensity = 0;
   }

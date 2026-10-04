@@ -28,8 +28,8 @@ export class Killcam {
     while (this.billeder.length && this.billeder[0].tid < tid - GEMMES) this.billeder.shift();
     while (this.skud.length && this.skud[0].tid < tid - GEMMES) this.skud.shift();
   }
-  // Et skud (lysspor) — så det også kan ses i afspilningen
-  spor(fra, til, tid) { this.skud.push({ fra: fra.clone(), til: til.clone(), tid }); }
+  // Et skud (lysspor) — så det også kan ses i afspilningen (og drabsmandens våben sparker, når han skyder)
+  spor(fra, til, tid, skytte = null) { this.skud.push({ fra: fra.clone(), til: til.clone(), tid, skytte }); }
   // Start afspilningen: de sidste sekunder op til tid (da du døde), set fra dræber
   start(dræber, tid) {
     if (!dræber || dræber.erSpiller || !this.billeder.length) return false;
@@ -64,12 +64,16 @@ export class Killcam {
       if (s1.f === a.dræber) {
         kamera.position.set(lerp(s0.x, s1.x), lerp(s0.y, s1.y) + this.k.øjeHøjde({ duk: s1.duk, kravl: s1.kravl }), lerp(s0.z, s1.z));
         kamera.rotation.set(lerp(s0.pitch, s1.pitch), yaw, 0);
-        a.liv = s1.liv; a.våben = s1.våben;
+        a.liv = s1.liv; a.våben = s1.våben; a.fart = s1.fart;
       }
     }
     for (const fig of this.figurer.values()) if (!brugt.has(fig)) fig.model.visible = false;
     // skuddene, der blev affyret i mellemtiden
-    while (a.skudNr >= 0 && a.skudNr < this.skud.length && this.skud[a.skudNr].tid <= a.t) { const s = this.skud[a.skudNr++]; this.k.effekter.sporFra(s.fra, s.til); }
+    while (a.skudNr >= 0 && a.skudNr < this.skud.length && this.skud[a.skudNr].tid <= a.t) {
+      const s = this.skud[a.skudNr++];
+      if (s.skytte === a.dræber && this.k.dræberSkud) this.k.dræberSkud(a.våben, s.til);   // (fra mundingen af våbnet i hans hånd)
+      else this.k.effekter.sporFra(s.fra, s.til);
+    }
     return true;
   }
   // En kopi af en soldat (med samme hold og skin) — kun til afspilningen
