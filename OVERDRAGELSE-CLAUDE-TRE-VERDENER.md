@@ -14,8 +14,7 @@ Fælles checkout og Claudes Sigtekorn-arbejde er bevaret.
   Belønninger og v1-save er uændrede. Eliksirgrænse 99; dublet-id giver ingen ekstra belønning.
 - Pause fryser tid, skjuler kortet og standser dets CSS-animation. Områdeskift/død/ny rejse rydder fund.
   Rolige effekter og `prefers-reduced-motion` standser spin/glimt, også på krystaller i verden.
-- Offline-cache v70 inkluderer alle tre nye moduler og GLB. Serverudgave er sat til 0.5.7;
-  offentlig udgivelse og Pi-opdatering følger efter komponent- og pakkekontrol.
+- Offline-cache v70 inkluderer alle tre nye moduler og GLB. Serverudgave 0.5.7 er udgivet og installeret på Pi.
 
 127 spilprøver og 140 serverprøver består. Modeller, faktisk Brug/boss-belønning, opgavebonusser,
 gemning, afbrydelser, figurens ejerskab og fundkø er prøvet uden adgang til familie-/browserdata.
@@ -23,8 +22,25 @@ Visuel komponentprøve: `server/tests/krystal-fund-modelvisning.html`, uden spil
 Chrome-modelprøven indlæser alle fem Blender-modeller uden fejl. Den faktiske HUD og fundtaske er afprøvet
 ved 320×566 og 740×370; navne/antal, bossvarsler og fingerknapper holder sig fri af hinanden.
 På korte skærme er den lange fundnote kun i engangsoplæsningen; alle genstandsnavne/antal er synlige.
-Udgivelse/pakkekontrol er endnu i gang. Den eksisterende voksenkode mangler stadig til manuel gennemspilning;
+Den eksisterende voksenkode mangler stadig til manuel gennemspilning;
 fysisk iPad/Safari og Mac/Gatekeeper er ikke tilsluttet.
+
+PR #12 er flettet. Server-v0.5.7 er udgivet fra `945129cf78d7776ccb27f6a7154c85e185abc3d7`:
+https://github.com/FreddyBJ95/boernespil/releases/tag/server-v0.5.7
+CI `37187661485` består alle fem builds og Linux x64/ARM64-installation, opdatering og HTTPS.
+Pi bruger den officielle checksumkontrollerede ARM64-pakke; Far-verdenen er startet og alle syv verdens-/certifikatfiler
+er byte-uændrede. Privat backup: `/home/vindr1/BroekraftServer-057-ap7y7x3j/backup/` (700/600).
+Backup-arkivets syv filer er læst tilbage og hashkontrolleret før installation. Servicen er aktiv/aktiveret;
+HTTPS består rigtig CA-kontrol ved localhost og Pi-IP. Den eksisterende kontrolpanel-tunnel er bevaret.
+
+Windows-downloaden (SHA256 `d19d76487aba9a7f92b966f569023f7b12f325aff4c66843570927f859c5bbb8`) er kørt
+med egne tomme prøvedata og består netværk, gemning, privatfil-afskærmning, workers og spilfiler.
+Windows, Pi og GitHub Pages leverede alle 201 runtimefiler/38 GLB byte-identisk med tagget, med korrekt GET/HEAD.
+Pages-kontrollen gælder udgivelsescommit 945129c; senere webændringer er ikke med i den fastlåste serverpakke.
+Begge officielle Mac-downloads består checksum, fuld zip-CRC, præcis program/vejledning, kørselsret 0755 og korrekt
+Mach-O 64-bit Intel/ARM64. Dette er statisk pakkekontrol, ikke en fysisk Mac-/Gatekeeper-prøve.
+Pakken inkluderer Claudes udgivne købsmenu, nat/storm og shaderrettelse til og med `13bf72c` samt det nye appikon.
+README beskriver fund og styring. De følgende afsnit er historik fra de afsluttede udgivelser 0.5.6 og 0.5.5.
 
 ---
 # Afsluttet: synlige våben og frivillig øveplads (0.5.6)
