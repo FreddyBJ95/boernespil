@@ -108,10 +108,14 @@ export class Bot {
     if (this.våben.d.zoom) this.våben.kikkert = 1;                     // botter med kikkert har den altid på
     this.blindTil = 0; this.næsteKast = 0;
     this.granater = !ræsId && Math.random() < 0.65 ? [lodtrækning([["he", 5], ["blænd", 3], ["røg", 2]])] : [];
+    this.model.scale.setScalar(1); this.fanget = null; this.ædeLig = null; this.bid = 0; this.bidTid = 0; this.grebPause = 0;
     if (this.zombie) {                                                 // en zombie: kløer, ingen vest og ingen granater (zombier.js)
-      const z = this.s.zombie(); this.navn = "Zombie";
+      const z = this.s.zombie(); this.zType = z.type; this.zFart = z.fart;
+      this.navn = z.type === "kæmpe" ? "Kæmpezombie" : z.type === "løber" ? "Løber" : "Zombie";
       this.våben = nytVåben("klo"); this.våben.d = { ...this.våben.d, skade: z.skade, stik: z.skade };
       this.liv = z.liv; this.panser = 0; this.granater = []; this.sekundær = null;
+      this.model.scale.setScalar(z.skala);
+      this.fig?.zombieØjne(z.type === "kæmpe" ? 0xff3a20 : z.type === "løber" ? 0xffb020 : 0xd8ff40);   // glødende øjne
     }
     this.blokeret = null;
     this.mål = null; this.setFørst = 0; this.sidstSet = null; this.sidstSetTid = -99; this.vej = []; this.vejMål = null;
@@ -160,6 +164,8 @@ export class Bot {
     if (this.a.svæver && this.s.svæv) return this.s.svæv(this, dt);   // (battle royale: i glideflyet på vej ned)
     if (this.s.træning?.()) return this.mål_(dt, nu);
     if (this.zombie) return this.zombieTick(dt, nu);
+    if (this.fanget && (this.fanget.død || this.fanget.fanget !== this)) this.fanget = null;
+    if (this.fanget) { this.mål = this.fanget; this.flygt = null; this.setFørst = Math.min(this.setFørst, nu); }   // (en zombie har fat: skyd den!)
     if (this.våben) opdaterVåben(this.våben, dt);
     if ((this.tænkTid -= dt) <= 0) { this.tænkTid = 0.1; this.tænk(nu); }
     if (this.handling && !this.mål) {                                // lægger eller desarmerer bomben: sid stille på hug
@@ -219,6 +225,7 @@ export class Bot {
       }
     }
     const maks = this.våben ? (this.våben.kikkert && this.våben.d.kikkertFart) || this.våben.d.fart : 6.2;
+    if (this.fanget) { frem = 0; side = 0; hop = false; duk = false; }   // (holdt fast af en zombie)
     bevæg(this.a, { frem, side, hop, gå, duk }, dt, this.s.verden, maks);
     if (this.våben && aftrækker(this.våben, trykker, dt, true)) this.skyd();   // salver, opspin og kadence styres af aftrækkeren
     // fodtrin, som de andre kan høre
@@ -227,8 +234,13 @@ export class Bot {
   }
   // Zombie: løb mod det nærmeste menneske — lige på, når den kan se det tæt på, ellers efter vej-nettet — og slå med kløerne
   zombieTick(dt, nu) {
+    if (this.fanget) return this.æd(dt, nu);                          // den har fat i nogen: hold fast og æd
+    this.bid = Math.max(0, this.bid - dt * 2);
     let mål = null, bd = Infinity;
     for (const f of this.s.kampfolk()) if (!f.zombie && !f.død) { const d = f.a.pos.distanceTo(this.a.pos); if (d < bd) { bd = d; mål = f; } }
+    // et lig i nærheden: gå hen og æd — medmindre et menneske er helt tæt på
+    if (this.ædeLig && (nu > this.ædeLig.til || bd < 4.5)) this.ædeLig = null;
+    if (this.ædeLig) return this.ædLig(dt, nu);
     let frem = 0, hop = false, trykker = false;
     if (mål) {
       const øje = this.øje(), dx = mål.a.pos.x - this.a.pos.x, dz = mål.a.pos.z - this.a.pos.z, dy = mål.a.pos.y + 1.1 - øje.y;
@@ -253,9 +265,36 @@ export class Bot {
       }
       this.mål = mål;
     }
-    bevæg(this.a, { frem, side: 0, hop, gå: false, duk: false }, dt, this.s.verden, this.s.zombieFart?.() ?? 4.5);
+    bevæg(this.a, { frem, side: 0, hop, gå: false, duk: false }, dt, this.s.verden, this.zFart ?? this.s.zombieFart?.() ?? 4.5);
     if (this.våben && aftrækker(this.våben, trykker, dt, true)) this.skyd();
     if (nu > (this.næsteStøn || 0)) { this.næsteStøn = nu + 3 + Math.random() * 6; this.s.zombieLyd?.(this.a.pos); }   // et støn en gang imellem
+  }
+  // Zombien har fat i nogen: stå tæt på, kig på dem — og bid (spil.js afgør, hvad den river af)
+  æd(dt, nu) {
+    const o = this.fanget;
+    if (o.død || o.fanget !== this || !this.fig?.harArm()) { this.slip(); return; }
+    const dx = o.a.pos.x - this.a.pos.x, dz = o.a.pos.z - this.a.pos.z, d = Math.hypot(dx, dz);
+    this.drejMod(Math.atan2(-dx, -dz), -0.25, dt);
+    bevæg(this.a, { frem: d > 0.85 ? 1 : 0, side: 0, hop: false, gå: true, duk: false }, dt, this.s.verden, 2.5);
+    this.bid = Math.max(0, this.bid - dt * 2.4);
+    if ((this.bidTid -= dt) <= 0) { this.bidTid = this.zType === "kæmpe" ? 0.8 : 1.05; this.bid = 1; this.s.bid?.(this, o); }
+  }
+  // Giv slip (offeret rev sig løs, døde — eller zombien mistede armene). skub: den tumler et stykke baglæns
+  slip(skub = 0) {
+    if (this.fanget?.fanget === this) this.fanget.fanget = null;
+    this.fanget = null; this.bid = 0; this.grebPause = this.s.nu() + 2.5;
+    if (skub) { this.a.vel.x += Math.sin(this.a.yaw) * skub; this.a.vel.z += Math.cos(this.a.yaw) * skub; this.a.vel.y = 2; this.a.jord = false; }
+  }
+  // Et lig: gå derhen, sæt dig på knæ og æd (et stykke tid)
+  ædLig(dt, nu) {
+    const p = this.ædeLig.pos, dx = p.x - this.a.pos.x, dz = p.z - this.a.pos.z, d = Math.hypot(dx, dz);
+    this.drejMod(Math.atan2(-dx, -dz), -0.5, dt);
+    this.ædeLig.nu = d < 1.1;
+    bevæg(this.a, { frem: this.ædeLig.nu ? 0 : 1, side: 0, hop: false, gå: false, duk: false }, dt, this.s.verden, this.zFart ?? 4.5);
+    if (this.ædeLig.nu) {
+      this.bid = Math.max(0, this.bid - dt * 1.8);
+      if ((this.bidTid -= dt) <= 0) { this.bidTid = 0.9 + Math.random() * 0.6; this.bid = 1; this.s.ædeLyd?.(this.a.pos); }
+    }
   }
   // Træning: botten er et mål. Den kigger på spilleren og skyder ikke — men bevæger sig, alt efter sværheden:
   // let står stille, normal går fra side til side, svær dukker sig også, og ekspert er hurtig og hopper
@@ -446,6 +485,7 @@ export class Bot {
     if (!this.mål && fra && !fra.død) { this.sidstSet = fra.a.pos.clone(); this.sidstSetTid = this.s.nu(); this.vej = []; this.vejMål = null;
       this.drejMod(Math.atan2(-(fra.a.pos.x - this.a.pos.x), -(fra.a.pos.z - this.a.pos.z)), 0, 0.15); }
     if (this.liv <= 0) {
+      if (this.zombie) this.slip?.(); else if (this.fanget) this.fanget.slip?.();
       this.død = true; this.dødTid = this.s.nu(); this.fald = 0; this.dødsfald++;
       for (const o of this.model.children) if (o.isSprite) o.visible = false;
       this.fig?.falder(skud, this.s.scene, this.s.verden, this.fart(), this.s.delLyd);
@@ -470,6 +510,7 @@ export class Bot {
     if (this.zombie) {                                                 // en zombie bliver ved: uden ben kravler den, uden arme bider den
       this.fig.skydAf(lem, skud, scene, verden, fart, delLyd);
       if (lem.startsWith("ben")) this.a.kravl = true;
+      if (!this.fig.harArm()) this.slip();                           // (uden arme kan den ikke holde fast)
       return;
     }
     if (lem.startsWith("arm") && this.våben) {
@@ -491,7 +532,8 @@ export class Bot {
     if (this.fig) {
       if (this.død) return;                                              // delene ligger på jorden (dele.js)
       const c = Math.cos(a.yaw), s = Math.sin(a.yaw);                    // farten set fra soldaten selv (x til højre, z bagud)
-      this.fig.poser({ fart, vx: c * a.vel.x - s * a.vel.z, vz: s * a.vel.x + c * a.vel.z, duk: a.duk, pitch: a.pitch, kravl: !!a.kravl, våben: this.våben?.id ?? null, spin: this.våben?.d.opspin ? this.våben.spin / this.våben.d.opspin : 0, dt });
+      this.fig.poser({ fart, vx: c * a.vel.x - s * a.vel.z, vz: s * a.vel.x + c * a.vel.z, duk: a.duk, pitch: a.pitch, kravl: !!a.kravl, våben: this.våben?.id ?? null, spin: this.våben?.d.opspin ? this.våben.spin / this.våben.d.opspin : 0, dt,
+        æder: !!this.fanget && this.zombie, lig: !!this.ædeLig?.nu || (this.zombie && !!this.fanget?.a.kravl), bid: this.bid, holdt: !!this.fanget && !this.zombie });
       return;
     }
     this.fase += dt * fart * 2.4;

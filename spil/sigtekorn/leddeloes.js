@@ -76,6 +76,15 @@ const enkel = id => { const k = VÅBEN[id]?.klasse; return !k || k === "kniv" ? 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _d = new THREE.Vector3(), _e = new THREE.Vector3();
 const _q = new THREE.Quaternion(), _m = new THREE.Matrix4(), _eu = new THREE.Euler();
 const OP = new THREE.Vector3(0, 1, 0), FREM = new THREE.Vector3(0, 0, -1), NED = new THREE.Vector3(0, -1, 0);
+// Et blødt lys til zombiernes øjne (tegnes én gang)
+let _glød = null;
+function glødTekstur() {
+  if (_glød) return _glød;
+  const c = document.createElement("canvas"); c.width = c.height = 64; const g = c.getContext("2d"), rg = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  rg.addColorStop(0, "rgba(255,255,255,1)"); rg.addColorStop(0.25, "rgba(255,255,255,0.5)"); rg.addColorStop(1, "rgba(255,255,255,0)");
+  g.fillStyle = rg; g.fillRect(0, 0, 64, 64);
+  return (_glød = new THREE.CanvasTexture(c));
+}
 
 export class Figur {
   constructor(hold) {
@@ -112,6 +121,19 @@ export class Figur {
     this.kb = 0; this.væk = false;
   }
   harArm() { return !this.mangler.armR || !this.mangler.armL; }
+  // Zombiens øjne gløder (i dens farve) — de sidder på hovedet og flyver med, hvis det ryger af
+  zombieØjne(farve) {
+    if (!this.øjne) {
+      this.øjne = [-1, 1].map(x => {
+        const g = new THREE.Group(); g.position.set(0.042 * x, 0.158, -0.104);
+        const kerne = new THREE.Mesh(new THREE.SphereGeometry(0.017, 10, 8), new THREE.MeshBasicMaterial({ color: farve }));
+        const glød = new THREE.Sprite(new THREE.SpriteMaterial({ map: glødTekstur(), color: farve, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+        glød.scale.setScalar(0.12); glød.material.opacity = 0.75; g.add(kerne, glød); this.d.hoved.add(g);
+        return { g, kerne, glød };
+      });
+    }
+    for (const ø of this.øjne) { ø.kerne.material.color.setHex(farve); ø.glød.material.color.setHex(farve); }
+  }
   manglerBen() { return this.mangler.benR || this.mangler.benL; }
   skyd() { this.kick = 1; }
 
@@ -121,18 +143,19 @@ export class Figur {
     const dt = t.dt, M = this.mangler;
     this.kb += ((t.kravl ? 1 : 0) - this.kb) * Math.min(1, dt * 6);
     this.kick *= Math.exp(-dt * 12);
-    const kb = this.kb, duk = t.duk * (1 - kb), fart = t.fart;
+    const kb = this.kb, duk = (t.lig ? 1 : t.duk) * (1 - kb), fart = t.fart, bid = t.bid || 0;
     this.fase += fart * dt / (kb > 0.5 ? 0.7 : 1.5) * Math.PI * 2;
     const ψ = this.fase, bob = Math.abs(Math.sin(ψ)) * Math.min(0.035, fart * 0.008) * (1 - kb);
     // kroppen: lidt foroverbøjet (mere, når den dukker sig eller løber) — og vandret, når den kravler
-    const lean = lerp(0.07 + 0.25 * duk + Math.min(0.12, fart * 0.02), 1.42, kb);
+    const lean = lerp(0.07 + 0.25 * duk + Math.min(0.12, fart * 0.02) + (t.æder ? 0.15 + 0.3 * bid : 0) + (t.lig ? 0.45 + 0.2 * bid : 0) - (t.holdt ? 0.15 : 0), 1.42, kb);
     const hofte = _a.set(0, lerp(0.93 - 0.36 * duk - bob, 0.24, kb), lerp(0.04 * duk, 0.3, kb));
     const kropQ = new THREE.Quaternion().setFromEuler(_eu.set(-lean, 0, Math.sin(ψ) * 0.04 * Math.min(1, fart / 3) * (1 - kb)));
     this.sæt("krop", hofte, kropQ);
     const iKrop = v => v.applyQuaternion(kropQ).add(hofte);
     const hals = iKrop(new THREE.Vector3(0, 0.62, 0.01)), bryst = iKrop(new THREE.Vector3(0, 0.42, 0));
     // hovedet kigger derhen, soldaten sigter
-    this.sæt("hoved", hals, _q.setFromEuler(_eu.set(t.pitch * 0.6, 0, 0)));
+    if (bid && (t.æder || t.lig)) this.sæt("hoved", iKrop(new THREE.Vector3(0, 0.62 - 0.05 * bid, 0.01 - 0.12 * bid)), _q.setFromEuler(_eu.set(t.pitch * 0.6 - 0.55 * bid, Math.sin(bid * 9) * 0.25 * bid, 0)));   // (et bid: hovedet farer frem)
+    else this.sæt("hoved", hals, _q.setFromEuler(_eu.set(t.pitch * 0.6, 0, 0)));
     // ---- våbnet og armene ----
     const sigteQ = new THREE.Quaternion().setFromEuler(_eu.set(t.pitch + this.kick * 0.12, 0, 0));
     const skR = iKrop(new THREE.Vector3(0.31, 0.47, 0)), skL = iKrop(new THREE.Vector3(-0.31, 0.47, 0));
@@ -161,6 +184,8 @@ export class Figur {
     // arme uden våben: hænger ned (eller skubber fra, når den kravler)
     // (zombier strækker armene frem)
     const fri = (sk, side) => kb > 0.5 ? new THREE.Vector3(side * 0.28, 0.05, hofte.z - 0.8 - Math.cos(ψ + (side > 0 ? 0 : Math.PI)) * 0.15)
+      : this.hold === "zombier" && t.lig ? sk.clone().add(new THREE.Vector3(side * 0.08, -0.62 + 0.12 * Math.sin(ψ * 3 + side), -0.32))   // (graver i liget — eller i den, der ligger ned)
+      : this.hold === "zombier" && t.æder ? sk.clone().add(new THREE.Vector3(-side * 0.07, -0.02 - 0.08 * bid, -0.42))     // (holder fast om skuldrene)
       : this.hold === "zombier" ? sk.clone().add(new THREE.Vector3(side * 0.03, -0.1 + Math.sin(ψ * 0.5 + side) * 0.05, -0.56))
       : sk.clone().add(new THREE.Vector3(side * 0.06, -0.55, 0.02 + Math.sin(ψ + (side > 0 ? Math.PI : 0)) * 0.12 * Math.min(1, fart / 3)));
     if (!M.armR) this.arm("overarmR", "underarmR", skR, håndR || fri(skR, 1), new THREE.Vector3(0.6, -1, 0.5).applyQuaternion(sigteQ), sigteQ);

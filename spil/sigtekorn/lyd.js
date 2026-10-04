@@ -60,6 +60,25 @@ export function zombie(pos) {
   o.connect(f); f.connect(g); g.connect(m); o.start(t); o.stop(t + 1.05);
   støjStød(m, t, 0.9, "bandpass", 700, 1.2, 0.15, 0.9);
 }
+// En zombie får fat i nogen: et dybt, hæst brøl
+export function brøl(pos) {
+  if (!ctx) return;
+  const t = ctx.currentTime, m = kæde(pos, 0.9), o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+  o.type = "sawtooth"; o.frequency.setValueAtTime(70, t); o.frequency.linearRampToValueAtTime(120, t + 0.25); o.frequency.linearRampToValueAtTime(55, t + 1.1);
+  f.type = "bandpass"; f.frequency.value = 520; f.Q.value = 1.6;
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.9, t + 0.12); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
+  o.connect(f); f.connect(g); g.connect(m); o.start(t); o.stop(t + 1.25);
+  støjStød(m, t, 1.1, "bandpass", 900, 0.8, 0.4, 1.1);
+}
+// Et bid: et vådt knas (højere, når det er en selv)
+export function bid(pos, styrke = 1) {
+  if (!ctx) return;
+  const t = ctx.currentTime, m = kæde(pos, 0.8 * styrke);
+  støjStød(m, t, 0.18, "bandpass", 650 + Math.random() * 250, 1.4, 1, 0.16);
+  støjStød(m, t + 0.05, 0.25, "lowpass", 380, 1, 0.8, 0.22);
+  tone(m, t, 160, 60, 0.15, "sine", 0.7);
+  støjStød(m, t + 0.09, 0.12, "highpass", 2800, 1, 0.3, 0.1);
+}
 export function torden(forsinkelse = 0.5) {
   if (!ctx) return;
   const t = ctx.currentTime + forsinkelse, m = kæde(null, 0.9);

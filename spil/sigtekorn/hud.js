@@ -113,6 +113,11 @@ export class Hud {
   kikkert(til) { this.el.kikkert.classList.toggle("skjult", !til); }
   prik(til) { this.el.prik.classList.toggle("skjult", !til); }       // rødpunktet midt i rødpunktsigtet
   // Bomberunder: en bjælke, mens bomben lægges eller desarmeres, et ikon, når man selv har bomben, og et rødt ur
+  // En bjælke midt på skærmen med en tekst (fx: riv dig løs fra zombien)
+  fremskridt(f) {
+    const el = this.el.fremskridt; el.classList.toggle("skjult", !f);
+    if (f) { el.firstElementChild.textContent = f.tekst; el.lastElementChild.style.width = `${Math.round(Math.min(1, f.andel) * 100)}%`; }
+  }
   bombe(st, spiller) {
     const f = st?.fremskridt, el = this.el.fremskridt;
     el.classList.toggle("skjult", !f);
