@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { Verdenslager, metadata, VERSION, UDGAVE } from "./verdener.js";
 import { Rum } from "./rum.js";
 import { UendeligtRum } from "./uendelig-rum.js";
+import { Spilrum } from "./spilrum.js";
 import { FIGURER, læsBesked, send } from "./protokol.js";
 import { hentCertifikater, certifikatSvar } from "./certifikat.js";
 import { Netværkstjek } from "./netvaerk.js";
@@ -28,6 +29,7 @@ export class BroekraftServer {
     Object.assign(this, { lager, adresser });
     this.netværkstjek = netværkstjek; this.tabletSet = false;
     this.rum = new Map(); this.job = new Map(); this.spillere = new Set(); this.låse = new Map();
+    this.spilrum = new Spilrum();
     this.token = crypto.randomUUID();
     this.værter = new Set(["localhost", "127.0.0.1", "[::1]", ...adresser]);
   }
@@ -184,11 +186,14 @@ export class BroekraftServer {
         if (req.method !== "GET" && (req.headers.get("origin") !== url.origin || req.headers.get("x-broekraft-token") !== this.token)) return new Response("Åbn kontrolpanelet igen", { status: 403 });
         return await this.api(req, sti);
       }
-      if (sti === "/ws") {
+      if (sti === "/ws" || sti === "/ws/rum") {
         if (req.headers.get("origin") && req.headers.get("origin") !== url.origin) return new Response("Forkert oprindelse", { status: 403 });
-        if (this.spillere.size >= 128) return new Response("For mange forbindelser", { status: 503 });
+        // Begge kanaler deler loftet, også mens en forbindelse venter på sit første hej.
+        if (this.spillere.size + this.spilrum.forbindelser.size >= 128) return new Response("For mange forbindelser", { status: 503 });
         const { socket, response } = Deno.upgradeWebSocket(req, { idleTimeout: 30 });
-        this.tilslut(socket); return response;
+        if (sti === "/ws/rum") this.spilrum.tilslut(socket);
+        else this.tilslut(socket);
+        return response;
       }
       if (sti === "/verdensliste") return json(this.liste());
       if (req.method !== "GET" && req.method !== "HEAD") return new Response("Metoden er ikke tilladt", { status: 405 });
@@ -207,6 +212,7 @@ export class BroekraftServer {
       certifikatAdresser: this.certifikater ? this.adresser.map(ip => `http://${ip}:${this.port}/certifikat`) : [], aftryk: this.certifikater?.aftryk,
       verdener: [...this.metadata.values()].map(m => ({ ...m, uendelig: m.type === "uendelig" && m.version === "0.2.0", startet: this.rum.has(m.id), spillere: this.rum.get(m.id)?.spillere.size || 0 })),
       spillere: [...this.spillere].filter(s => s.rum).map(s => ({ figur: s.figur, verden: s.rum.meta.navn })),
+      forbindelser: this.spillere.size + this.spilrum.forbindelser.size,
       job: [...this.job.values()].map(({ færdig: _, ...j }) => j),
     });
     if (req.method !== "POST") return json({ fejl: "Ukendt handling" }, 404);
@@ -278,6 +284,7 @@ export class BroekraftServer {
 
   async luk() {
     this.lukker = true; clearInterval(this.tickTimer); clearInterval(this.gemTimer);
+    this.spilrum.luk();
     await Promise.all([...this.spillere].map(s => s.kø));
     for (const s of this.spillere) s.socket.close(1001, "Serveren lukker");
     await Promise.all([...this.job.values()].map(j => j.færdig));

@@ -1,7 +1,8 @@
 # Broekraft Server til familien
 
 Med serveren kan 1–8 børn spille i samme verden på familiens wifi. Computeren gemmer verdenerne.
-Der er kun dyrefigurer og seks faste emoji; ingen personnavne eller fritekst-chat.
+I Brøkraft er der kun dyrefigurer og seks faste emoji; ingen personnavne eller fritekst-chat.
+Serveren kan også forbinde op til otte spillere i Sigtekorn i voksenrummet.
 
 ## Hent og start
 
@@ -108,6 +109,18 @@ ved første indlæsning. Selve serverprogrammet indeholder sin kopi af bibliotek
 **Sådan spiller børnene:** Tryk på "Spil sammen" i Børnespil-appen, og scan QR-koden fra kontrolpanelet.
 Vælg en verden og et dyr. Vand, lava, ild og TNT styres af serveren, så alle ser det samme.
 
+## Sigtekorn mod familien (0.6.0)
+
+Åbn `https://<ip>:8443/spil/sigtekorn/` på hver computer på hjemmets wifi. Udskift `<ip>` med
+serverens adresse fra kontrolpanelet, fx `https://192.168.0.26:8443/spil/sigtekorn/`.
+Brug Chrome eller Edge til Sigtekorn, og lås voksenrummet op med jeres eksisterende voksenkode.
+Hvis browseren advarer om certifikatet, gør enheden klar med vejledningen nedenfor.
+
+Vælg **🌐 Online**, udfyld **Dit navn** og brug samme **Rum** på alle enheder. Tryk **Forbind**.
+Der er plads til otte spillere i et rum. Den første bestemmer banen; når vedkommende går,
+overtager den næste. Spillet viser dit tildelte navn, hvis en anden allerede bruger det samme.
+Spillerum og deres beskeder gemmes ikke. Serverens gemte Brøkraft-verdener påvirkes ikke.
+
 ## Gør enhederne klar til mikrofon (0.2.0)
 
 En voksen gør dette én gang på hver enhed. Scan først koden under **Gør tabletten klar til mikrofon**.
@@ -167,7 +180,10 @@ Kun Linux: `deno task byg Linux-x64 Linux-ARM64`. Linux-pakker får `installer.s
 Release-workflowet laver zip-filer til Windows/Mac og `.tar.gz` til Linux. Installation, opdatering og
 HTTPS afprøves på både x64 og ARM64 Ubuntu, før pakkerne kan udgives. Begge baggrundsberegninger,
 `generator-worker.js` og `uendelig-worker.js`, medtages i de kompilerede programmer.
-Et tag som `server-v0.5.5` bygger pakkerne og udgiver dem på GitHub Releases.
+Et tag som `server-v0.6.0` bygger pakkerne og udgiver dem på GitHub Releases.
+Server 0.6.0 tilføjer en generel spilkanal på `/ws/rum`, som Sigtekorn bruger til familiespil.
+Den deler adgangsregler og de 128 forbindelser med Brøkrafts uændrede kanal på `/ws`.
+Status-API'ets felt `forbindelser` tæller begge kanaler, også før en spiller har valgt et rum.
 Server 0.5.5 medtager Spilkassens billeder og ikoner samt voksenrummets tre 3D-spil:
 Det Sidste Lys, Skrotstorm og Krystaljægerne. De har både tastatur- og touchstyring.
 Verdenerne har flere Blender-detaljer, bedre vejvisere, gemte komfortvalg og mere hjælp undervejs.

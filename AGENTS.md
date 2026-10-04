@@ -22,5 +22,5 @@ Filer der tilhører Claude må ikke ændres, bortset fra de små, præcist beskr
 - Nye blokke tilføjes altid **nederst** i `BLOKKE` i `spil/broekraft/blokke.js`, så gemte verdener passer.
 
 ## Aktuel opgave
-Se `OVERDRAGELSE-CODEX-SPILKASSEN.md` (opgave G: Spilkassens billeder og nye ikoner skal med i familieserverens pakke).
-Opgave A–F er færdige.
+Se `OVERDRAGELSE-CODEX-SIGTEKORN-ONLINE.md` (opgave H: generelle spillerum til Sigtekorn på familieserveren).
+Opgave A–G er færdige. Serverens næste udgave er 0.6.0 på grenen `codex/spilrum`.
