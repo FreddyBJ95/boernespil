@@ -57,6 +57,11 @@ export class Hud {
     this.el.besked.textContent = tekst; this.el.besked.classList.add("vis");
     clearTimeout(this.beskedT); this.beskedT = setTimeout(() => this.el.besked.classList.remove("vis"), ms);
   }
+  // XP: et lille tal, der svæver op ved sigtekornet
+  xp(n) {
+    const el = document.createElement("div"); el.className = "xp"; el.textContent = `+${n} XP`;
+    document.getElementById("hud").appendChild(el); setTimeout(() => el.remove(), 1300);
+  }
   død(tekst) { this.el.død.innerHTML = tekst; this.el.død.classList.toggle("skjult", !tekst); }
   // Granaterne: ikonet og hvor mange der er tilbage (den, man holder, lyser)
   granater(liste) {

@@ -85,6 +85,21 @@
   #kikkert::before { left: 0; right: 0; top: 50%; height: 1px; } #kikkert::after { top: 0; bottom: 0; left: 50%; width: 1px; }
   #besked { position: absolute; top: 22%; left: 50%; transform: translateX(-50%); font-size: 26px; font-weight: 800; opacity: 0; transition: opacity 0.3s; text-align: center; }
   #besked.vis { opacity: 1; }
+  .xp { position: absolute; left: 50%; top: 56%; transform: translateX(-50%); font: 700 15px system-ui; color: #ffe08a; animation: xpOp 1.2s ease-out forwards; }
+  @keyframes xpOp { from { opacity: 1; margin-top: 0; } to { opacity: 0; margin-top: -40px; } }
+  #profil { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 4px 0 14px; padding: 10px 12px; border-radius: 10px; background: rgba(232, 184, 96, 0.08); border: 1px solid #4a3a22; }
+  #profil .rang { font-weight: 600; } #profil .rang b { color: #e8b860; }
+  #profil .xpBjælke { flex: 1; min-width: 120px; height: 8px; border-radius: 4px; background: #2a2116; overflow: hidden; } #profil .xpBjælke b { display: block; height: 100%; background: #e8b860; }
+  #profil .xpTal { font-size: 13px; opacity: 0.8; } #profil .stor { font-size: 14px; padding: 6px 12px; }
+  .xpLinje { color: #ffe08a; font-weight: 600; }
+  .udfordringer { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; margin-bottom: 14px; }
+  .udfordring { padding: 8px 10px; border-radius: 8px; background: #2a2116; color: #f3e7cf; display: grid; gap: 3px; font-size: 13px; }
+  .udfordring.klaret { background: #2a3216; } .udfordring i { height: 6px; border-radius: 3px; background: #14100a; overflow: hidden; } .udfordring i b { display: block; height: 100%; background: #e8b860; }
+  .udfordring small { opacity: 0.75; }
+  .skins { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; margin-bottom: 14px; }
+  .skin { display: grid; gap: 4px; justify-items: center; padding: 6px; border-radius: 10px; border: 2px solid var(--s); background: #1a140c; color: #f3e7cf; cursor: pointer; font: 600 13px system-ui; }
+  .skin img, .skin .ingen { width: 72px; height: 72px; border-radius: 6px; display: grid; place-items: center; background: #3a3a3a; }
+  .skin.valgt { box-shadow: 0 0 0 3px #e8b860; } .skin.låst { opacity: 0.45; cursor: not-allowed; } .skin.låst img { filter: grayscale(1); }
   #fart { position: absolute; left: 50%; top: calc(50% + 46px); transform: translateX(-50%); font-size: 15px; color: #e8cf9c; }
   #død { position: absolute; bottom: 24%; left: 50%; transform: translateX(-50%); background: rgba(12, 10, 7, 0.7); padding: 12px 22px; border-radius: 12px; font-size: 20px; text-align: center; }
   #tavle { position: absolute; top: 12%; left: 50%; transform: translateX(-50%); display: flex; gap: 18px; background: rgba(12, 10, 7, 0.85); padding: 16px 20px; border-radius: 14px; }
@@ -157,6 +172,7 @@
 <div id="menu" class="lag skjult">
   <div class="menu-kort">
     <h1>Sigtekorn <small>Støvbyen · Ørkenrævene mod Sandslangerne · mod bots</small></h1>
+    <div id="profil"></div>
     <div class="valg">
       <label>Sværhed</label><div class="knapper" id="valgSværhed"></div>
       <label>Hold</label><div class="knapper" id="valgHold"></div>

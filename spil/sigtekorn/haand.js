@@ -2,6 +2,7 @@
 // Våbnet tegnes i sin egen lille scene oven på verdenen (så det aldrig stikker ind i en mur).
 
 import * as THREE from "./three.js";
+import { sætSkin as skinPå } from "./skins.js";
 import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
 import { RoomEnvironment } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/environments/RoomEnvironment.js";
 import { VÅBEN } from "./vaaben.js";
@@ -120,7 +121,7 @@ export class Hånd {
     this.modeller = {};
     const glimtMat = new THREE.MeshBasicMaterial({ map: t.glimt, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
     this.glimt = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 0.16), glimtMat); this.glimt.visible = false; this.scene.add(this.glimt);
-    Object.assign(this, { aktiv: null, træk: 0, spark: 0, sparkRot: 0, fase: 0, svajX: 0, svajY: 0, glimtTid: 0, genlad: 0, genladTid: 1, hug: 0, land: 0, sigte: 0 });
+    Object.assign(this, { skin: "standard", aktiv: null, træk: 0, spark: 0, sparkRot: 0, fase: 0, svajX: 0, svajY: 0, glimtTid: 0, genlad: 0, genladTid: 1, hug: 0, land: 0, sigte: 0 });
   }
   // Gør modellerne klar til disse våben (en klodsmodel med det samme — og Blender-modellen, når den er hentet)
   forbered(ids) {
@@ -146,7 +147,13 @@ export class Hånd {
       m.sigte = øje ? øje.position.clone().add(ny.position).negate().toArray() : null;
       m.roterer = ny.getObjectByName("roterer");                     // minigunnens løb drejer rundt
       m.glb = true;
+      skinPå(ny, this.skin);                                          // dit skin (profil.js)
     }).catch(fejl => console.warn("Kunne ikke hente modellen til", id, fejl));
+  }
+  // Skift skin på alle våbnene (også dem, der allerede er hentet)
+  sætSkin(id) {
+    this.skin = id;
+    for (const m of Object.values(this.modeller)) if (m.glb) skinPå(m.g, id);
   }
   lavMiljø(renderer) {                                              // et blødt spejlbillede af et rum, så metallet skinner
     const pm = new THREE.PMREMGenerator(renderer);
