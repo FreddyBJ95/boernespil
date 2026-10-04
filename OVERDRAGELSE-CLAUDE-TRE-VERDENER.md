@@ -4,7 +4,7 @@
 Implementeringen ligger på `codex/krystal-fund` i det eksisterende isolerede worktree.
 Fælles checkout og Claudes Sigtekorn-arbejde er bevaret.
 
-- Original `fund.glb` fra Blender (129.892 bytes), med `fund.py`/`fund.blend`: facetteret lyskrystal,
+- Original `fund.glb` fra Blender (129.940 bytes), med `fund.py`/`fund.blend`: facetteret lyskrystal,
   kobbermønt, eliksir, segl og en hul skattekiste med ægte låghængsel.
 - Kisten åbner på 0,6 sekunder, og faktiske modelgenstande løfter sig frem. Krystaller og bossegl
   får glødende fundforløb. Lokale materialer frigives; det delte modelbibliotek bevares.

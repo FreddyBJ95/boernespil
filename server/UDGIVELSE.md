@@ -5,7 +5,7 @@ Broekraft Server lader 1–8 børn bygge i samme Broekraft-verden på familiens 
   Lyskrystaller og bossegl løfter sig frem som originale Blender-genstande med glød og animation.
 - Store genstandskort viser fundenes navn og antal. Rejsetasken viser billeder af beholdningen og
   krystalopgavens fremgang. Rolige effekter og enhedens valg om mindre bevægelse understøttes.
-- De udgivne Sigtekorn-ændringer med købsmenu og det nye Spilkassen-appikon følger med i pakken.
+- De udgivne Sigtekorn-ændringer med købsmenu, nat-/stormvalg og det nye Spilkassen-appikon følger med i pakken.
 
 **Nyt i 0.5.6**
 - Krystaljægeren slår synligt med sværd, spænder sin bue med pil og løfter staven ved magi.
