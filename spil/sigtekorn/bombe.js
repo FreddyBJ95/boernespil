@@ -24,6 +24,8 @@ export class Bombe {
     this.runder = { ræve: 0, slanger: 0 };
     this.startRunde();
   }
+  // En anden spiltype: ingen bombe på jorden
+  stop() { this.tilstand = "færdig"; this.lagt = false; this.handling = null; this.model.visible = false; }
   // En ny runde: alle får liv igen, en af Ørkenrævene får bomben, og holdet vælger en plads (A eller B)
   startRunde() {
     this.k.nyRunde();

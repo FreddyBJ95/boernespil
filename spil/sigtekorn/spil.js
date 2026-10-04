@@ -607,7 +607,7 @@ function startKamp() {
   const hold = træning() ? "ræve" : ind.side;                        // det hold, man har valgt i menuen
   if (hold !== spiller.hold) { spiller.hold = hold; lavSpillerFig(hold); }
   lavBots(); botSpil.bombe = bombeSpil() ? bombe : null; visMærker(bombe, bombeSpil());
-  if (bombeSpil()) bombe.startKamp(); else { genopstå(); for (const b of bots) b.spawn(); }
+  if (bombeSpil()) bombe.startKamp(); else { bombe.stop(); genopstå(); for (const b of bots) b.spawn(); }
   iGang = true; if (!træning()) stat.kampe++; gemStatistik(stat);
   $("hud").classList.remove("skjult"); $("fortsæt").classList.remove("skjult"); $("start").textContent = "↻ Ny kamp";
   if (!bombeSpil()) hud.besked(ræs() ? `Våbenræs! Hvert drab giver dig et nyt våben — ${RÆKKE.length - 1} drab, og så vinder du med kniven`
