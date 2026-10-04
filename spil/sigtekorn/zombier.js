@@ -7,18 +7,20 @@
 // meget stærke — to i hver femte bølge, og en gang imellem senere). Får en zombie fat i nogen, holder den
 // fast og æder: en arm, en arm, et ben, et ben — og hovedet (bots.js og spil.js).
 
-export const MAKS_SAMTIDIG = 12;                                  // så mange zombier på banen ad gangen
+// Så mange zombier er der på banen ad gangen: 12 — og flere, når der kommer mange i hver bølge (højst 30, så det ikke hakker)
+export const samtidig = start => Math.min(30, Math.max(12, Math.round(start * 0.3)));
 const PAUSE = 8;
 
 export class Zombier {
-  // k: { kampfolk(), knuder, hud, lyd, nyBølge() (alle døde kommer tilbage), slut(bølger), xp(bølge) }
+  // k: { kampfolk(), knuder, hud, lyd, nyBølge() (alle døde kommer tilbage), slut(bølger), xp(bølge), start() (zombier i første bølge) }
   constructor(k) { this.k = k; this.bølge = 0; this.tilbage = 0; this.pause = 0; this.færdig = false; this.nåbare = null; }
   startKamp() { this.bølge = 0; this.færdig = false; this.næsteBølge(); }
   // En ny bølge: flere zombier, hurtigere og stærkere
   næsteBølge() {
     this.bølge++;
-    this.tilbage = 6 + 3 * (this.bølge - 1);                       // zombier, der endnu ikke er kommet frem
-    this.kæmper = this.bølge % 5 === 0 ? 2 : 0;                     // (hver femte bølge: to kæmper)
+    const start = this.k.start?.() ?? 6;                             // (menuen: 6, 20, 50, 100 …)
+    this.tilbage = Math.round(start * (1 + 0.5 * (this.bølge - 1)));  // zombier, der endnu ikke er kommet frem (halvt så mange flere for hver bølge)
+    this.kæmper = this.bølge % 5 === 0 ? Math.max(2, Math.round(this.tilbage * 0.07)) : 0;   // (hver femte bølge: kæmper — mindst to)
     this.pause = 0;
     this.k.nyBølge();
     this.k.hud.besked(this.kæmper ? `🧟 Bølge ${this.bølge} — kæmperne kommer!` : `🧟 Bølge ${this.bølge} — ${this.tilbage} zombier`, 2600);

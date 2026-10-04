@@ -87,6 +87,8 @@ const enkel = id => { const k = VÅBEN[id]?.klasse; return !k || k === "kniv" ? 
 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _d = new THREE.Vector3(), _e = new THREE.Vector3();
 const _q = new THREE.Quaternion(), _m = new THREE.Matrix4(), _eu = new THREE.Euler();
+export const RYK = 0.55;                                               // et lem, en zombie river i, giver efter her (andel af rykket)
+const glat = x => x * x * (3 - 2 * x);
 const OP = new THREE.Vector3(0, 1, 0), FREM = new THREE.Vector3(0, 0, -1), NED = new THREE.Vector3(0, -1, 0);
 // Zombiernes tøj og hud: snavs, flænger og blod — huden med årer og sår (tegnes én gang pr. slags)
 function zombieTekstur(navn, farve) {
@@ -186,11 +188,14 @@ export class Figur {
     const dt = t.dt, M = this.mangler;
     this.kb += ((t.kravl ? 1 : 0) - this.kb) * Math.min(1, dt * 6);
     this.kick *= Math.exp(-dt * 12);
-    const kb = this.kb, duk = (t.lig ? 1 : t.duk) * (1 - kb), fart = t.fart, bid = t.bid || 0;
+    // (en zombie river i et lem: hvor langt den rækker ud efter det — og rykket, når det giver efter)
+    const R = t.riv, ræk = R ? (R.k < RYK ? glat(R.k / RYK) : 1 - glat((R.k - RYK) / (1 - RYK))) : 0;
+    const ryk = R && R.k > RYK ? Math.sin(Math.PI * (R.k - RYK) / (1 - RYK)) : 0, lavt = R && R.p.y < 0.9;
+    const kb = this.kb, duk = Math.max(t.lig ? 1 : t.duk, lavt ? ræk * 0.7 : 0) * (1 - kb), fart = t.fart, bid = t.bid || 0;
     this.fase += fart * dt / (kb > 0.5 ? 0.7 : 1.5) * Math.PI * 2;
     const ψ = this.fase, bob = Math.abs(Math.sin(ψ)) * Math.min(0.035, fart * 0.008) * (1 - kb);
     // kroppen: lidt foroverbøjet (mere, når den dukker sig eller løber) — og vandret, når den kravler
-    const lean = lerp(0.07 + 0.25 * duk + Math.min(0.12, fart * 0.02) + (t.æder ? 0.15 + 0.3 * bid : 0) + (t.lig ? 0.45 + 0.2 * bid : 0) - (t.holdt ? 0.15 : 0), 1.42, kb);
+    const lean = lerp(0.07 + 0.25 * duk + Math.min(0.12, fart * 0.02) + (t.æder ? 0.15 + 0.3 * bid : 0) + (t.lig ? 0.45 + 0.2 * bid : 0) - (t.holdt ? 0.15 : 0) + ræk * (lavt ? 0.5 : 0.22) - ryk * 0.25, 1.42, kb);
     const hofte = _a.set(0, lerp(0.93 - 0.36 * duk - bob, 0.24, kb), lerp(0.04 * duk, 0.3, kb));
     const kropQ = new THREE.Quaternion().setFromEuler(_eu.set(-lean, 0, Math.sin(ψ) * 0.04 * Math.min(1, fart / 3) * (1 - kb)));
     this.sæt("krop", hofte, kropQ);
@@ -226,11 +231,19 @@ export class Figur {
     }
     // arme uden våben: hænger ned (eller skubber fra, når den kravler)
     // (zombier strækker armene frem)
+    const mund = (sk, side) => sk.clone().add(new THREE.Vector3(-side * 0.13, 0.12 - 0.06 * bid, -0.3));
+    const zombieHånd = (sk, side) => t.spiser ? mund(sk, side)                                                    // (holder noget op til munden)
+      : t.greb ? t.greb.clone().add(new THREE.Vector3(side * 0.2, 0.1, 0.12))                                   // (holder fast om offerets skuldre)
+      : t.lig ? sk.clone().add(new THREE.Vector3(side * 0.08, -0.62 + 0.12 * Math.sin(ψ * 3 + side), -0.32))   // (graver i liget)
+      : t.æder ? sk.clone().add(new THREE.Vector3(-side * 0.07, -0.02 - 0.08 * bid, -0.42))                     // (holder fast)
+      : sk.clone().add(new THREE.Vector3(side * 0.03, -0.1 + Math.sin(ψ * 0.5 + side) * 0.05, -0.56));
+    // (river i et lem: begge hænder rækker ud og tager fat om det — og rykker det op til munden)
+    const rivHånd = (sk, side) => {
+      const fat = R.p.clone().add(new THREE.Vector3(side * 0.06, 0, 0.05));
+      return R.k < RYK ? zombieHånd(sk, side).lerp(fat, ræk) : fat.lerp(mund(sk, side), 1 - ræk);
+    };
     const fri = (sk, side) => kb > 0.5 ? new THREE.Vector3(side * 0.28, 0.05, hofte.z - 0.8 - Math.cos(ψ + (side > 0 ? 0 : Math.PI)) * 0.15)
-      : this.hold === "zombier" && t.spiser ? sk.clone().add(new THREE.Vector3(-side * 0.13, 0.12 - 0.06 * bid, -0.3))   // (holder noget op til munden)
-      : this.hold === "zombier" && t.lig ? sk.clone().add(new THREE.Vector3(side * 0.08, -0.62 + 0.12 * Math.sin(ψ * 3 + side), -0.32))   // (graver i liget — eller i den, der ligger ned)
-      : this.hold === "zombier" && t.æder ? sk.clone().add(new THREE.Vector3(-side * 0.07, -0.02 - 0.08 * bid, -0.42))     // (holder fast om skuldrene)
-      : this.hold === "zombier" ? sk.clone().add(new THREE.Vector3(side * 0.03, -0.1 + Math.sin(ψ * 0.5 + side) * 0.05, -0.56))
+      : this.hold === "zombier" ? (R ? rivHånd(sk, side) : zombieHånd(sk, side))
       : sk.clone().add(new THREE.Vector3(side * 0.06, -0.55, 0.02 + Math.sin(ψ + (side > 0 ? Math.PI : 0)) * 0.12 * Math.min(1, fart / 3)));
     if (!M.armR) this.arm("overarmR", "underarmR", skR, håndR || fri(skR, 1), new THREE.Vector3(0.6, -1, 0.5).applyQuaternion(sigteQ), sigteQ);
     if (!M.armL) this.arm("overarmL", "underarmL", skL, håndL || fri(skL, -1), new THREE.Vector3(-0.7, -1, 0.3).applyQuaternion(sigteQ), sigteQ);

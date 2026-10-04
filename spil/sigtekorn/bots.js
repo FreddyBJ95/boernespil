@@ -11,7 +11,7 @@ import { nyAktør, bevæg, øjeHøjde, KROP, U } from "./bevaegelse.js";
 import { nytVåben, aftrækker, efterSkud, opdaterVåben, skudRetning, genlad, VÅBEN } from "./vaaben.js";
 import { findVej, nærmesteKnude } from "./bane.js";
 import { ramKasse } from "./verden.js";
-import { Figur, hentLeddeløs, harLeddeløs } from "./leddeloes.js";
+import { Figur, hentLeddeløs, harLeddeløs, RYK } from "./leddeloes.js";
 
 // Soldaterne er leddeløse (leddeloes.js): hovedet, armene og benene kan skydes af hver for sig
 export { hentLeddeløs as hentSoldat };
@@ -21,8 +21,13 @@ const G = Math.PI / 180;
 const BOTVÅBEN = [["storm", 14], ["taktisk", 10], ["salve", 6], ["kamp", 5], ["mp", 9], ["sprøjte", 6], ["pump", 6], ["hagl", 4],
   ["snig", 3], ["jagt", 3], ["spejder", 4], ["lmg", 4], ["minigun", 1.5], ["raket", 1.5], ["armbrøst", 2]];
 const BOTPISTOL = [["pistol", 5], ["lydløs", 2], ["automat", 2], ["revolver", 1.5]];
-const OPSTÅ = 1.4;
-const OP_ = new THREE.Vector3(0, 1, 0);                                                    // så længe er en zombie om at kravle op af jorden
+const OPSTÅ = 1.4;                                                                         // så længe er en zombie om at kravle op af jorden
+const OP_ = new THREE.Vector3(0, 1, 0);
+const RIV = 0.65;                                                                          // så længe er en zombie om at rive et lem af (sek.)
+// Hvor en zombie tager fat, når den river: om albuen, om knæet — eller om halsen
+const DEL = { armL: "underarmL", armR: "underarmR", benL: "skinnebenL", benR: "skinnebenR", hoved: "hoved" };
+const STED = { armL: [-0.3, 1.15, 0], armR: [0.3, 1.15, 0], benL: [-0.12, 0.5, 0], benR: [0.12, 0.5, 0], hoved: [0, 1.62, 0] };   // (uden figur: cirka her)
+const _p0 = new THREE.Vector3(), _q0 = new THREE.Quaternion(), _s0 = new THREE.Vector3(), _s1 = new THREE.Vector3(), _m = new THREE.Matrix4();
 // Battle royale: kan en bot bruge våbnet fra kisten? (ellers får den et af sine egne)
 export const botKanBruge = id => [...BOTVÅBEN, ...BOTPISTOL].some(([v]) => v === id);
 export const botVåben = () => lodtrækning(BOTVÅBEN);
@@ -113,6 +118,7 @@ export class Bot {
     this.granater = !ræsId && Math.random() < 0.65 ? [lodtrækning([["he", 5], ["blænd", 3], ["røg", 2]])] : [];
     this.model.scale.setScalar(1); this.fanget = null; this.ædeLig = null; this.bid = 0; this.bidTid = 0; this.grebPause = 0;
     if (this.lemIHånd) { this.s.scene.remove(this.lemIHånd.obj); this.lemIHånd = null; }
+    this.riv = null;
     if (this.zombie) {                                                 // en zombie: kløer, ingen vest og ingen granater (zombier.js)
       const z = this.s.zombie(); this.zType = z.type; this.zFart = z.fart;
       this.navn = z.type === "kæmpe" ? "Kæmpezombie" : z.type === "løber" ? "Løber" : "Zombie";
@@ -204,12 +210,13 @@ export class Bot {
       const tolerance = Math.max(1.2 * G, Math.atan2(0.3, l));
       // står stille for at ramme (eller strafer lidt mellem salverne, hvis den er god)
       if (this.salvePause > 0) { this.salvePause -= dt; if (sv.strafe > Math.random() * 1.5) side = this.strafe; }
-      else if (nu >= this.setFørst && afvig < tolerance * 2.5 && l > 1) {          // først når botten har nået at reagere
+      else if (nu >= this.setFørst && afvig < tolerance * 2.5 && (l > 1 || f.zombie)) {   // først når botten har nået at reagere (en zombie også helt tæt på)
         const fart = Math.hypot(this.a.vel.x, this.a.vel.z);
-        if (fart < d.fart * 0.36 || d.klasse === "mp" || d.nærkamp) trykker = true;
+        if (fart < d.fart * 0.36 || d.klasse === "mp" || d.nærkamp || f.zombie) trykker = true;
       }
       if ((d.klasse === "hagl" && l > 9) || (d.projektil === "raket" && l < 6)) { frem = d.klasse === "hagl" ? 1 : -1; trykker = trykker && d.klasse !== "hagl"; }   // haglgevær: storm frem · raket: træd tilbage
       if (d.nærkamp) { frem = l > d.rækkevidde * 0.7 ? 1 : 0; trykker = l < d.rækkevidde + 0.25 && afvig < 0.6; }   // kniv: løb hen og hug
+      else if (f.zombie && l < 3.5) frem = -1;                          // en zombie tæt på: gå baglæns og bliv ved med at skyde
       if ((this.strafeTid -= dt) <= 0) { this.strafeTid = 0.3 + Math.random() * 0.5; this.strafe = Math.random() < 0.5 ? -1 : 1; }
       duk = this.dukker && !d.nærkamp;
       if (this.våben.skud <= 0 && !genlad(this.våben) && this.våben.reserve <= 0 && !this.våben.d.nærkamp) this.våben.reserve = this.våben.d.reserve ?? 60;   // (en bot, der lever længe, løber ikke tør)
@@ -240,6 +247,7 @@ export class Bot {
   // Zombie: løb mod det nærmeste menneske — lige på, når den kan se det tæt på, ellers efter vej-nettet — og slå med kløerne
   zombieTick(dt, nu) {
     if (this.våben) opdaterVåben(this.våben, dt);                     // (kløerne bliver klar til næste slag)
+    if (this.riv) this.rivTick(dt);                                   // (i gang med at rive et lem af)
     if (this.lemIHånd && this.spis(dt)) return;                       // et lem i hånden: stå og spis det
     if (this.opstår > 0) {                                           // på vej op af jorden: den kan ikke noget endnu
       const før = this.opstår; this.opstår -= dt; this.a.vel.set(0, 0, 0);
@@ -285,22 +293,44 @@ export class Bot {
     if (this.våben && aftrækker(this.våben, trykker, dt, true)) this.skyd();
     if (nu > (this.næsteStøn || 0)) { this.næsteStøn = nu + 3 + Math.random() * 6; this.s.zombieLyd?.(this.a.pos); }   // et støn en gang imellem
   }
-  // Zombien har fat i nogen: stå tæt på, kig på dem — og bid (spil.js afgør, hvad den river af)
+  // Zombien har fat i nogen: stå tæt på, hold fast — og riv dem i stykker, en arm, en arm, et ben … (spil.js afgør hvad)
   æd(dt, nu) {
     const o = this.fanget;
     if (o.død || o.fanget !== this || !this.fig?.harArm()) { this.slip(); return; }
-    if (this.lemIHånd) { this.bidTid = Math.max(this.bidTid, 0.35); return; }   // (først spiser den det, den har revet af)
     const dx = o.a.pos.x - this.a.pos.x, dz = o.a.pos.z - this.a.pos.z, d = Math.hypot(dx, dz);
     this.drejMod(Math.atan2(-dx, -dz), -0.25, dt);
     bevæg(this.a, { frem: d > 0.85 ? 1 : 0, side: 0, hop: false, gå: true, duk: false }, dt, this.s.verden, 2.5);
     this.bid = Math.max(0, this.bid - dt * 2.4);
-    if ((this.bidTid -= dt) <= 0) { this.bidTid = this.zType === "kæmpe" ? 0.8 : 1.05; this.bid = 1; this.s.bid?.(this, o); }
+    if (this.riv || this.lemIHånd) return;                              // (river — eller gnaver lidt i det, den lige har revet af)
+    if ((this.bidTid -= dt) <= 0) { this.bidTid = this.zType === "kæmpe" ? 0.25 : 0.4; this.rivFat(o); }
   }
+  // Riv: tag fat om lemmet med begge hænder og ryk (posen står i leddeloes.js) — når det giver efter, rives det af (spil.js)
+  rivFat(o) { this.riv = { o, k: 0, tid: this.zType === "kæmpe" ? RIV * 0.8 : RIV, lem: this.s.næsteLem?.(o) ?? null, revet: false }; }
+  rivTick(dt) {
+    const R = this.riv, o = R.o; R.k = Math.min(1, R.k + dt / R.tid);
+    if (!R.revet && R.k >= RYK) {
+      R.revet = true; this.bid = 1;
+      if (!o.død && o.fanget && Math.hypot(o.a.pos.x - this.a.pos.x, o.a.pos.z - this.a.pos.z) < 1.5) this.s.bid?.(this, o);   // (er offeret ikke sluppet fri)
+    }
+    if (R.k >= 1) this.riv = null;
+  }
+  // Hvor sidder offerets arm, ben eller hoved (i verden)? lem null: brystet
+  sted(o, lem) {
+    const fig = this.s.figur?.(o) ?? o.fig, del = DEL[lem];
+    if (fig && del && !fig.mangler[lem]) return fig.d[del].getWorldPosition(new THREE.Vector3());
+    const [x, y, z] = STED[lem] ?? [0, 1.25, -0.05], lav = o.a.kravl ? 0.35 : 1;
+    return new THREE.Vector3(x, y * lav, z).applyAxisAngle(OP_, o.a.yaw).add(o.a.pos);
+  }
+  // Et punkt i verden, set fra zombiens egen krop (dens model)
+  iMig(p) { return p.sub(this.model.position).applyAxisAngle(OP_, -this.a.yaw).divideScalar(this.model.scale.x); }
   // Zombien tager et lem i hænderne (revet af nogen — eller samlet op fra jorden) og spiser det
   tagLem(obj) {
     if (this.lemIHånd) this.s.slipLem?.(this, this.lemIHånd.obj);
+    obj.updateMatrixWorld(true);
     const c = new THREE.Box3().setFromObject(obj).getCenter(new THREE.Vector3());
-    this.lemIHånd = { obj, c, yaw0: this.a.yaw, t: 0, bidt: 0, tid: 1.9 + Math.random() * 0.9, bidTid: 0.3 };
+    const fra = obj.matrix.clone(), lok = c.clone().applyMatrix4(fra.clone().invert());   // (midten i tingens egne koordinater)
+    // (har den fat i nogen, gnaver den kun lidt — og river så det næste af)
+    this.lemIHånd = { obj, c, lok, fra, yaw0: this.a.yaw, t: 0, bidt: 0, tid: this.fanget ? 0.75 + Math.random() * 0.4 : 1.9 + Math.random() * 0.9, bidTid: 0.3 };
   }
   // Stå (eller sid på knæ) og gnav — hvert bid gør lemmet lidt mindre. Til sidst smides resten. Svarer true, mens den spiser
   spis(dt) {
@@ -318,7 +348,10 @@ export class Bot {
     const mund = new THREE.Vector3(0, (lav ? 1.02 : 1.5) * sk, -0.3 * sk).applyAxisAngle(OP_, a.yaw).add(this.model.position);
     const krymp = Math.max(0.35, 1 - L.bidt * 0.13);
     const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.25 + this.bid * 0.25, a.yaw - L.yaw0, 1.35 + Math.sin(L.t * 7) * 0.08, "YXZ"));
-    L.obj.matrix.compose(mund, q, new THREE.Vector3(krymp, krymp, krymp)).multiply(new THREE.Matrix4().makeTranslation(-L.c.x, -L.c.y, -L.c.z));
+    const f = Math.min(1, L.t / 0.22), g = f * f * (3 - 2 * f);       // (det første øjeblik flyver lemmet fra kroppen op til munden)
+    if (g < 1) { L.fra.decompose(_p0, _q0, _s0); L.obj.matrix.compose(L.c.clone().lerp(mund, g), _q0.slerp(q, g), _s0.lerp(_s1.setScalar(krymp), g)); }
+    else L.obj.matrix.compose(mund, q, _s1.setScalar(krymp));
+    L.obj.matrix.multiply(_m.makeTranslation(-L.lok.x, -L.lok.y, -L.lok.z));
     L.obj.matrixWorldNeedsUpdate = true;
     return mund;
   }
@@ -328,12 +361,12 @@ export class Bot {
     this.drejMod(Math.atan2(-dx, -dz), -0.3, dt);
     bevæg(this.a, { frem: d > 0.95 ? 1 : 0, side: 0, hop: false, gå: true, duk: false }, dt, this.s.verden, 2.5);
     this.bid = Math.max(0, this.bid - dt * 2.4);
-    if (d < 1.3 && (this.bidTid -= dt) <= 0) { this.bidTid = 1.2 + Math.random() * 0.6; this.bid = 1; this.s.bid?.(this, o); }
+    if (d < 1.3 && !this.riv && (this.bidTid -= dt) <= 0) { this.bidTid = 1.2 + Math.random() * 0.6; this.rivFat(o); }
   }
   // Giv slip (offeret rev sig løs, døde — eller zombien mistede armene). skub: den tumler et stykke baglæns
   slip(skub = 0) {
     if (this.fanget?.fanget === this) this.fanget.fanget = null;
-    this.fanget = null; this.bid = 0; this.grebPause = this.s.nu() + 2.5;
+    this.fanget = null; this.bid = 0; this.riv = null; this.grebPause = this.s.nu() + 2.5;
     if (skub) { this.a.vel.x += Math.sin(this.a.yaw) * skub; this.a.vel.z += Math.cos(this.a.yaw) * skub; this.a.vel.y = 2; this.a.jord = false; }
   }
   // Et lig: gå derhen, sæt dig på knæ og æd (et stykke tid)
@@ -576,6 +609,12 @@ export class Bot {
     if (lem.startsWith("ben")) { this.a.kravl = true; this.dukker = false; }
   }
 
+  // Kaster botten skygge? (langt væk: nej — det sparer meget, når der er mange zombier på banen)
+  skygge(ja) {
+    if (this.harSkygge === ja) return;
+    this.harSkygge = ja;
+    this.model.traverse(o => { if (o.isMesh) { o.userData.skygge0 ??= o.castShadow; o.castShadow = ja && o.userData.skygge0; } });
+  }
   // ---------- Hvert billede: flyt modellen og lad den gå, sigte og falde ----------
   tegn(alfa, dt) {
     const a = this.a, u = this.model.userData;
@@ -588,7 +627,8 @@ export class Bot {
       const c = Math.cos(a.yaw), s = Math.sin(a.yaw);                    // farten set fra soldaten selv (x til højre, z bagud)
       this.fig.poser({ fart, vx: c * a.vel.x - s * a.vel.z, vz: s * a.vel.x + c * a.vel.z, duk: a.duk, pitch: a.pitch, kravl: !!a.kravl, våben: this.våben?.id ?? null, spin: this.våben?.d.opspin ? this.våben.spin / this.våben.d.opspin : 0, dt,
         æder: !!this.fanget && this.zombie, lig: !!this.ædeLig?.nu || (this.zombie && !!this.fanget?.a.kravl), bid: this.bid, holdt: !!this.fanget && !this.zombie,
-        spiser: !!this.lemIHånd });
+        spiser: !!this.lemIHånd, greb: this.zombie && this.fanget ? this.iMig(this.sted(this.fanget, null)) : null,   // (hænderne om offeret)
+        riv: this.riv ? { k: this.riv.k, p: this.iMig(this.sted(this.riv.o, this.riv.lem)) } : null });
       if (this.lemIHånd) this.holdLem();
       return;
     }

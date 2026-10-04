@@ -30,7 +30,7 @@ import { Figur, harLeddeløs, holdFarve, sætVedVåben, forhåndshentVåben } fr
 import { Bombe, visMærker } from "./bombe.js";
 import { Killcam } from "./killcam.js";
 import { lavVejr } from "./vejr.js";
-import { Zombier, MAKS_SAMTIDIG } from "./zombier.js";
+import { Zombier, samtidig } from "./zombier.js";
 import { Køretøjer } from "./koeretoejer.js";
 import { Byggeri, DELE, PRIS } from "./byggeri.js";
 import { BattleRoyale, sjældenFarve, lavKiste } from "./br.js";
@@ -52,7 +52,7 @@ await lås($("lås"));
 
 // ---------- Indstillinger (gemmes på computeren) ----------
 const INDST = "sigtekorn-indstillinger";
-const ind = Object.assign({ sværhed: "normal", hold: 5, følsomhed: 2.0, synsfelt: 90, lydstyrke: 0.8, fart: false, fuldskærm: true, egneLemmer: true, killcam: true, byg: true, vejr: "dag", spiltype: "hold", side: "ræve", skFarve: "#5dff6a" },
+const ind = Object.assign({ sværhed: "normal", hold: 5, følsomhed: 2.0, synsfelt: 90, lydstyrke: 0.8, fart: false, fuldskærm: true, egneLemmer: true, killcam: true, byg: true, vejr: "dag", spiltype: "hold", zombieStart: 6, side: "ræve", skFarve: "#5dff6a" },
   (() => { try { return JSON.parse(localStorage.getItem(INDST) || "{}"); } catch (_) { return {}; } })());
 if (ind.primær && !ind.udrustning) ind.udrustning = { primær: ind.primær === "gevær" ? "storm" : ind.primær };   // fra før udrustningen
 delete ind.primær;
@@ -240,7 +240,9 @@ const botSpil = {
   synsvidde: () => vejr.synsvidde,                                // (kortere om natten og i storm)
   spawnSted: bot => træning() ? målSted(bot) : bot.zombie ? zombier.sted() : brSpil() ? br.himmelSted() : null,
   zombie: () => zombier.nyZombie(), zombieFart: () => zombier.fart,
-  bid: (z, o) => zombieBid(z, o),                                 // (en zombie bider den, den har fat i)
+  bid: (z, o) => zombieBid(z, o),                                 // (en zombie river noget af den, den har fat i)
+  figur: o => o === spiller ? (egneLemmer() ? spillerFig : null) : o.fig,
+  næsteLem: o => { const fig = botSpil.figur(o); return fig ? BID.find(l => !fig.mangler[l]) : null; },   // (det, zombien river af næste gang)
   spiseMed: z => { const o = kampfolk.find(f => !f.zombie && !f.død && f.fanget && f.fanget !== z && Math.hypot(f.a.pos.x - z.a.pos.x, f.a.pos.z - z.a.pos.z) < 1.6); return o || null; },   // (en anden zombie har fat: æd med)
   tygge: z => { const m = z.holdLem(); effekter.blod(m, new THREE.Vector3(0, -1, 0.2), verden, 0.9); if (m.distanceTo(kamera.position) < 20) Lyd.bid(m, 0.55); },   // (gnav: blod fra munden)
   slipLem: (z, obj) => slipDel(obj, verden, new THREE.Vector3(Math.sin(z.a.yaw) * -1.2, 1, Math.cos(z.a.yaw) * -1.2), new THREE.Vector3(Math.random() * 4 - 2, Math.random() * 4 - 2, Math.random() * 4 - 2), botSpil.delLyd),
@@ -292,6 +294,7 @@ const zombier = new Zombier({
   },
   slut: bølger => { zombieResultat = bølger; zombieSlut = tid + 5; },   // (først ser man zombierne æde — så kommer resultatet)
   forsyning: () => lavForsyning(),
+  start: () => ind.zombieStart,                                   // (zombier i første bølge — menuen)
   xp: bølge => belønning(100 * bølge, bølge >= 10 && ["zombier", 1]),
 });
 let zombieResultat = 0, zombieSlut = 0;
@@ -445,7 +448,7 @@ function lavBots() {
   else if (træning()) for (let i = 0; i < 3; i++) bots.push(new Bot(botSpil, "slanger", navne.pop()));   // tre mål ad gangen
   else if (zombieSpil()) {                                          // holdkammeraterne — og zombierne, der venter på at komme frem
     for (let i = 0; i < ind.hold - 1; i++) bots.push(new Bot(botSpil, spiller.hold, navne.pop()));
-    for (let i = 0; i < MAKS_SAMTIDIG; i++) { const z = new Bot(botSpil, "zombier", "Zombie"); z.død = true; z.dødTid = -99; z.model.visible = false; bots.push(z); }
+    for (let i = 0; i < samtidig(ind.zombieStart); i++) { const z = new Bot(botSpil, "zombier", "Zombie"); z.død = true; z.dødTid = -99; z.model.visible = false; bots.push(z); }
   }
   else if (brSpil()) for (let i = 1; i <= ind.hold * 2 + 1; i++) bots.push(new Bot(botSpil, `br${i}`, navne.pop() || `Soldat ${i}`));   // alle mod alle
   else {
@@ -698,7 +701,7 @@ const BID = ["armL", "armR", "benL", "benR", "hoved"], LØS = 7;
 let løsriv = 0;
 function prøvGreb(z, o) {
   if (o.død || o.fanget || z.fanget || z.død || tid < z.grebPause || !(z.fig?.harArm() ?? true) || o.zombie) return;
-  if (Math.random() > (z.zType === "kæmpe" ? 0.6 : 0.3)) return;
+  if (Math.random() > (o !== spiller ? 1 : z.zType === "kæmpe" ? 0.6 : 0.3)) return;   // (en bot får den altid fat i — dig kun nogle gange)
   z.fanget = o; o.fanget = z; z.bidTid = 0.55;
   Lyd.brøl(z.a.pos);
   if (o === spiller) { løsriv = 0; hud.besked("🧟 En zombie har fat i dig! Tryk E hurtigt for at rive dig løs", 2200); skiftByg(false); if (køretøjer.kører) køretøjE(); }
@@ -711,13 +714,14 @@ function zombieBid(z, o) {
   effekter.blod(mund, r.clone().negate(), verden, 1.8);
   Lyd.bid(mund, o === spiller ? 1.4 : 1);
   const sidste = lem === "hoved" || (!lem && o.liv <= z.våben.d.skade);
+  const skade = o === spiller || !lem ? z.våben.d.skade : Math.min(z.våben.d.skade, Math.max(0, o.liv - 1));   // (en bot rives i stykker, før den dør: til sidst hovedet)
   const skud = { r, del: lem === "hoved" ? "hoved" : lem ? (lem.startsWith("arm") ? "arm" : "ben") : "krop", lem, kraft: 1.4, navn: "Tænder",
     tilMund: lem && lem !== "hoved" ? g => z.tagLem(g) : null };            // (armen eller benet rives af — og zombien spiser det)
   if (lem && lem !== "hoved") {                                        // stumpen sprøjter blod
     const stump = o.a.pos.clone().add(new THREE.Vector3(0, lem.startsWith("arm") ? 1.35 : 0.85, 0));
     for (let i = 0; i < 3; i++) setTimeout(() => effekter.blod(stump, new THREE.Vector3(Math.random() - 0.5, 0.6, Math.random() - 0.5).normalize(), verden, 1.4), i * 180);
   }
-  const dræbt = o === spiller ? spillerRamt({ liv: sidste ? 999 : z.våben.d.skade, panser: 0 }, z, skud) : o.ramt({ liv: sidste ? 999 : z.våben.d.skade, panser: 0 }, z, skud);
+  const dræbt = o === spiller ? spillerRamt({ liv: sidste ? 999 : skade, panser: 0 }, z, skud) : o.ramt({ liv: sidste ? 999 : skade, panser: 0 }, z, skud);
   Lyd.skrig(o === spiller ? null : o.a.pos, lem === "hoved" ? 1.3 : 1);   // (offeret skriger)
   if (o === spiller) {                                                 // dig: kameraet rykker, og skærmen bliver blodig
     slag = Math.min(1.4, slag + 1.1); spiller.a.yaw += (Math.random() - 0.5) * 0.22; spiller.a.pitch += 0.05 + Math.random() * 0.06;
@@ -1026,7 +1030,7 @@ function tegnBillede(nu) {
   hud.køreHjælp(spiller.a.svæver && !spiller.død ? "🪂 W: hurtigere frem og ned · S: bremse · musen styrer" : kiste ? "E: åbn kisten" : vedForsyning() ? "E: åbn forsyningskassen" : køretøjer.kører ? `E: stig ud · W/S: gas og bremse · A/D: styr · ${Math.round(Math.abs(køretøjer.kører.fart) * 3.6)} km/t`
     : nær ? `E: stig ind i ${nær.type === "snescooter" ? "snescooteren" : "gaffeltrucken"}` : "");
   // botterne, hånden og effekterne
-  for (const b of bots) b.tegn(Math.min(1, alfa), dt);
+  for (const b of bots) { b.tegn(Math.min(1, alfa), dt); b.skygge(b.model.position.distanceToSquared(kamera.position) < 22 * 22); }   // (kun de nære kaster skygge)
   deleTegn(); projektiler.tegn(dt);
   if (spillerFig && !spiller.død) {                                // den usynlige figur følger spilleren (til at blive ramt)
     spillerFig.model.position.set(p.x, p.y, p.z); spillerFig.model.rotation.y = a.yaw;
@@ -1205,6 +1209,7 @@ $("start").disabled = false; $("start").textContent = "▶ Start kamp";      // 
 // Online-rækken i menuen: navn og rum (kun når "Online" er valgt)
 function visOnline() {
   for (const el of document.querySelectorAll(".kunOnline")) el.classList.toggle("skjult", !onlineSpil());
+  for (const el of document.querySelectorAll(".kunZombie")) el.classList.toggle("skjult", !zombieSpil());   // (og zombie-rækken, kun når "Zombier" er valgt)
   if (!kanOnline()) $("onlineStatus").textContent = "Åbn Sigtekorn fra familiens server (fx https://192.168.0.26:8443/spil/sigtekorn/) for at spille online.";
 }
 {
@@ -1232,6 +1237,7 @@ knapper("valgSværhed", Object.entries(SVÆRHED).map(([k, v]) => [k, v.navn]), "
 knapper("valgHold", [1, 2, 3, 4, 5].map(n => [n, `${n} mod ${n}`]), "hold");
 knapper("valgSpil", [["hold", "Holdkamp"], ["bombe", "Bombe"], ["ræs", "Våbenræs"], ["zombier", "🧟 Zombier"], ["br", "🪂 Battle royale"], ["online", "🌐 Online"], ["træning", "Træning"]], "spiltype", visOnline);
 knapper("valgSide", [["ræve", "🦊 Ørkenrævene"], ["slanger", "🐍 Sandslangerne"]], "side");
+knapper("valgZombier", [6, 20, 50, 100, 200, 500].map(n => [n, n === 6 ? "6 (normal)" : `${n}`]), "zombieStart");
 // sigtekornets farve (som i CS kan man vælge den, man bedst kan se)
 const sætSkFarve = () => document.documentElement.style.setProperty("--sk", ind.skFarve);
 const SK_FARVER = [["#5dff6a", "Grøn"], ["#ffe640", "Gul"], ["#40e8ff", "Cyan"], ["#ff4fd8", "Lyserød"], ["#ffffff", "Hvid"]];
