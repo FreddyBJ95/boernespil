@@ -167,8 +167,8 @@ Kun Linux: `deno task byg Linux-x64 Linux-ARM64`. Linux-pakker får `installer.s
 Release-workflowet laver zip-filer til Windows/Mac og `.tar.gz` til Linux. Installation, opdatering og
 HTTPS afprøves på både x64 og ARM64 Ubuntu, før pakkerne kan udgives. Begge baggrundsberegninger,
 `generator-worker.js` og `uendelig-worker.js`, medtages i de kompilerede programmer.
-Et tag som `server-v0.5.4` bygger pakkerne og udgiver dem på GitHub Releases.
-Server 0.5.4 medtager Spilkassens billeder og ikoner samt voksenrummets tre 3D-spil:
+Et tag som `server-v0.5.5` bygger pakkerne og udgiver dem på GitHub Releases.
+Server 0.5.5 medtager Spilkassens billeder og ikoner samt voksenrummets tre 3D-spil:
 Det Sidste Lys, Skrotstorm og Krystaljægerne. De har både tastatur- og touchstyring.
 Verdenerne har flere Blender-detaljer, bedre vejvisere, gemte komfortvalg og mere hjælp undervejs.
 Tidligere gemte rejser i de tre spil virker stadig.
