@@ -15,7 +15,7 @@
     <div id="blink" aria-hidden="true"></div>
     <div id="laas" class="lås skjult"></div>
     <div id="indlaeser"
-      class="indlaeser"><span class="maerke">SPILKASSEN · ET FYSISK EKSPERIMENT</span><h1>BRUD<span>PUNKT</span></h1><p id="indlaesning">Gør prøvefeltet klar …</p><div class="laesestreg"></div></div>
+      class="indlaeser"><span class="maerke">SPILKASSEN · ET FYSISK EKSPERIMENT</span><h1>BRUD<span>PUNKT</span></h1><p id="indlaesning" role="status">Åbner prøvefeltet …</p><div class="laesestreg"></div><div id="opstartsfejl" class="opstartsfejl" hidden><p id="opstartsvejledning">Spillets filer kunne ikke hentes. Prøv at åbne spillet igen fra Spilkassen.</p><button type="button" onclick="location.reload()">Prøv igen</button><a href="../../index.html">Til Spilkassen ↗</a></div><noscript>Slå JavaScript til i browseren for at spille.</noscript></div>
     <main id="app" hidden>
       <header class="toplinje">
         <a class="hjem" href="../../index.html"
@@ -70,7 +70,20 @@
     </main>
     <dialog
       id="vejledning"><div class="dialogtop"><span class="maerke">VELKOMMEN TIL PRØVEFELTET</span><button id="lukhjaelp" aria-label="Luk hjælp">×</button></div><h2>Små årsager.<br>Store konsekvenser.</h2><p>Placér biler, huse, tårne og fiktive energiceller. Den første celle starter testen. De næste reagerer, når en puls eller et vragstykke rammer dem.</p><ol><li><b>Byg:</b> Vælg en ting, og tryk på feltet. Træk den for at flytte, og brug ↻ til at dreje.</li><li><b>Se:</b> Træk i tomrummet for at dreje kameraet. To fingre drejer og zoomer; på PC kan du bruge musehjulet.</li><li><b>Eksperimentér:</b> Tryk Start test. Prøv slowmotion, følg et objekt, eller kom tæt på — objektivet kan få revner.</li></ol><label class="rolig"><input type="checkbox" id="rolig"> Rolige kameraeffekter med mindre rystelse og lysglimt</label><button id="forstaaet" class="fuldknap">Ind på feltet ↗</button><small>Din opstilling gemmes automatisk på denne enhed.</small></dialog>
-    <script type="module" src="../3d-faelles/start.js"
-      data-spil="./spil.js"></script>
+    <script id="spilstart" type="module" data-spil="./spil.js">
+      // Start udtrykkeligt; også en manglende opstartsfil skal give en vej videre.
+      try {
+        const { startSpil } = await import("../3d-faelles/start.js");
+        await startSpil(document.getElementById("spilstart"));
+      } catch {
+        document.getElementById("indlaesning").textContent = "Spillet kunne ikke åbnes.";
+        document.querySelector(".laesestreg").hidden = true;
+        document.getElementById("opstartsfejl").hidden = false;
+        if (location.protocol === "file:") {
+          document.getElementById("opstartsvejledning").textContent =
+            "Åbn spillet via Spilkassen på serveren. Browseren kan ikke hente spillets moduler fra en løs HTML-fil.";
+        }
+      }
+    </script>
   </body>
 </html>

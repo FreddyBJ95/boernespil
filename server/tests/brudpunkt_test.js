@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { runInNewContext } from "node:vm";
+import { createContext, runInNewContext, SourceTextModule, SyntheticModule } from "node:vm";
 import { basename, resolve, sep } from "node:path";
 import { BroekraftServer } from "../main.js";
 import { Verdenslager } from "../verdener.js";
@@ -7,6 +7,57 @@ import { spilfiler } from "./tre-verdener-filer.js";
 
 const projekt = new URL("../../", import.meta.url);
 const læs = (sti) => Deno.readTextFile(new URL(sti, projekt));
+
+// Den faktiske HTML-indgang skal starte spillet én gang eller vise hjælp ved manglende moduler.
+Deno.test("Brudpunkt: HTML-opstart kalder startlaget og viser en synlig fejl ved fil- og netværksfejl", async () => {
+  const html = await læs("spil/brudpunkt/index.html");
+  const kode = html.match(/<script id="spilstart"[^>]*>([\s\S]*?)<\/script>/)?.[1];
+  assert.ok(kode, "Den normale indgang skal selv starte spillet");
+  for (const protocol of ["http:", "file:"]) {
+    for (const fejl of [false, true]) {
+      const elementer = {
+        spilstart: { dataset: { spil: "./spil.js" } },
+        indlaesning: { textContent: "Åbner prøvefeltet …" },
+        opstartsfejl: { hidden: true },
+        opstartsvejledning: { textContent: "Spillets filer kunne ikke hentes." },
+        streg: { hidden: false },
+      };
+      const kontekst = createContext({
+        document: {
+          getElementById: (id) => elementer[id],
+          querySelector: (s) => s === ".laesestreg" ? elementer.streg : null,
+        },
+        location: { protocol },
+      });
+      let starter = 0;
+      const modul = new SourceTextModule(kode, {
+        context: kontekst,
+        importModuleDynamically: async (sti) => {
+          assert.equal(sti, "../3d-faelles/start.js");
+          if (fejl) throw new TypeError("Modulet kunne ikke hentes");
+          const start = new SyntheticModule(["startSpil"], function () {
+            this.setExport("startSpil", (script) => {
+              assert.equal(script, elementer.spilstart);
+              starter++;
+            });
+          }, { context: kontekst });
+          await start.link(() => {});
+          await start.evaluate();
+          return start;
+        },
+      });
+      await modul.link(() => {});
+      await modul.evaluate();
+      assert.equal(starter, fejl ? 0 : 1);
+      assert.equal(elementer.opstartsfejl.hidden, !fejl);
+      assert.equal(elementer.streg.hidden, fejl);
+      if (fejl) {
+        assert.equal(elementer.indlaesning.textContent, "Spillet kunne ikke åbnes.");
+        assert.match(elementer.opstartsvejledning.textContent, protocol === "file:" ? /serveren/ : /kunne ikke hentes/);
+      }
+    }
+  }
+});
 
 // Offline-prøven finder spillets faktiske filer; en ny lyd kan dermed ikke glemmes.
 Deno.test("Brudpunkt: alle 27 lyde, fysik og modeller er på offline-listen", async () => {

@@ -182,9 +182,27 @@ function dokumentFraHTML(tekst) {
   return dokument;
 }
 
-async function startPrøve({ gemning = {}, nægtGemning = false } = {}) {
+async function startPrøve({ gemning = {}, nægtGemning = false, holdLås = false } = {}) {
   const dokument = dokumentFraHTML(html), vindue = new Hændelser(), gemt = new Map(Object.entries(gemning));
-  const log = { lås: 0, lyde: [], stoppet: 0, tegninger: 0 }, simuleringer = [], rammer = [];
+  const log = {
+      lås: 0,
+      lyde: [],
+      stoppet: 0,
+      tegninger: 0,
+      renderere: 0,
+      modelhentninger: 0,
+      opskrifthentninger: 0,
+      fysikstarter: 0,
+    },
+    simuleringer = [],
+    rammer = [];
+  let frigivPrøvelås, meldLåsVist;
+  const prøvelås = new Promise((løs) => {
+    frigivPrøvelås = løs;
+  });
+  const låsVist = new Promise((løs) => {
+    meldLåsVist = løs;
+  });
   let tid = 0, sim, sidsteScene, sidsteKamera, afvisGemning = nægtGemning;
   const lagring = {
     getItem(nøgle) {
@@ -211,6 +229,7 @@ async function startPrøve({ gemning = {}, nægtGemning = false } = {}) {
     requestAnimationFrame: (fn) => rammer.push(fn),
     fetch: (url) => {
       assert.equal(String(url), new URL("modeller/opskrifter.json", rod).href);
+      log.opskrifthentninger++;
       return Promise.resolve({ ok: true, json: () => Promise.resolve(kopi(opskrifter)) });
     },
   });
@@ -223,6 +242,7 @@ async function startPrøve({ gemning = {}, nægtGemning = false } = {}) {
     ...THREE,
     WebGLRenderer: class {
       constructor() {
+        log.renderere++;
         this.shadowMap = {};
       }
       setPixelRatio() {}
@@ -247,6 +267,10 @@ async function startPrøve({ gemning = {}, nægtGemning = false } = {}) {
     lås: async (element) => {
       assert.equal(element.id, "laas");
       log.lås++;
+      element.classList.remove("skjult");
+      meldLåsVist();
+      if (holdLås) await prøvelås;
+      element.classList.add("skjult");
     },
   });
   const moduler = new Map([
@@ -257,6 +281,7 @@ async function startPrøve({ gemning = {}, nægtGemning = false } = {}) {
         GLTFLoader: class {
           loadAsync(url) {
             assert.equal(url, new URL("modeller/brudpunkt.glb", rod).href);
+            log.modelhentninger++;
             return Promise.resolve({ scene: gltf.scene.clone(true) });
           }
         },
@@ -268,6 +293,7 @@ async function startPrøve({ gemning = {}, nægtGemning = false } = {}) {
       new URL("./simulering.js", rod).href,
       syntetisk({
         opretSimulering: async (...args) => {
+          log.fysikstarter++;
           sim = await opretSimulering(...args);
           simuleringer.push(sim);
           return sim;
@@ -314,12 +340,18 @@ async function startPrøve({ gemning = {}, nægtGemning = false } = {}) {
     if (!moduler.has(url)) throw new Error("Uventet import i Brudpunkts UI-prøve: " + url);
     return moduler.get(url);
   });
-  try {
-    await program.evaluate();
-  } catch (e) {
+  const klar = program.evaluate().catch((e) => {
     simuleringer.forEach((s) => s.frigiv());
     throw e;
-  }
+  });
+  if (holdLås) {
+    await Promise.race([
+      låsVist,
+      klar.then(() => {
+        throw new Error("Spillet blev færdigt uden at afvente prøvens voksenlås");
+      }),
+    ]);
+  } else await klar;
   const $ = (id) => {
     const e = dokument.getElementById(id);
     assert.ok(e, "Mangler HTML-elementet " + id);
@@ -328,7 +360,14 @@ async function startPrøve({ gemning = {}, nægtGemning = false } = {}) {
   return {
     $,
     log,
-    sim,
+    get sim() {
+      return sim;
+    },
+    klar,
+    frigivLås() {
+      frigivPrøvelås();
+      return klar;
+    },
     gemt,
     dokument,
     vindue,
@@ -370,6 +409,43 @@ async function startPrøve({ gemning = {}, nægtGemning = false } = {}) {
     },
   };
 }
+
+Deno.test("Brudpunkt: ventende syntetisk voksenlås forhindrer GPU-, model- og fysikstart, og frigivelse starter normalt", async () => {
+  const p = await startPrøve({ holdLås: true, gemning: { "brudpunkt-hjaelp": "1" } });
+  try {
+    let startet = false;
+    p.klar.then(() => {
+      startet = true;
+    });
+    await Promise.resolve();
+    assert.equal(p.log.lås, 1);
+    assert.equal(startet, false);
+    assert.equal(p.$("laas").classList.contains("skjult"), false);
+    assert.equal(p.$("app").hidden, true);
+    assert.equal(p.$("indlaeser").hidden, false);
+    assert.match(p.$("indlaesning").textContent, /Venter på voksenkoden/);
+    assert.equal(p.log.renderere, 0, "En GPU-kontekst må først bygges, når den syntetiske lås er frigivet");
+    assert.equal(p.log.modelhentninger, 0);
+    assert.equal(p.log.opskrifthentninger, 0);
+    assert.equal(p.log.fysikstarter, 0);
+    assert.equal(p.sim, undefined);
+    assert.throws(() => p.frame(), /bestille næste frame/);
+    await p.frigivLås();
+    assert.equal(p.$("laas").classList.contains("skjult"), true);
+    assert.equal(p.$("app").hidden, false);
+    assert.equal(p.$("indlaeser").hidden, true);
+    assert.equal(p.log.renderere, 1);
+    assert.equal(p.log.modelhentninger, 1);
+    assert.equal(p.log.opskrifthentninger, 1);
+    assert.equal(p.log.fysikstarter, 1);
+    assert.equal(p.sim.hentStatus().objekter, 5);
+    p.frame();
+    assert.ok(p.log.tegninger > 0);
+  } finally {
+    await p.frigivLås();
+    p.luk();
+  }
+});
 
 Deno.test("Brudpunkt: faktisk HTML, Three og Rapier starter; placering, træk, kopi, drejning og sletning gemmer samme opstilling", async () => {
   const p = await startPrøve();

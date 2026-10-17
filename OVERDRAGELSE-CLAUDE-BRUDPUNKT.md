@@ -39,7 +39,7 @@ samtidige lyde og replay er begrænset. Den detaljerede geometri deles mellem kl
 Gemninger hedder `brudpunkt-opstilling-v1` og `brudpunkt-valg-v1`. De indeholder kun egne opstillinger
 og komfortvalg på enheden. Voksenlåsen og Brøkrafts verdener har deres eksisterende formater.
 
-Forsiden har ét nyt kort. Offline-cache v75 indeholder alle runtimefiler. Familieserverens `.mjs`-MIME
+Forsiden har ét nyt kort. Offline-cache v76 indeholder alle runtimefiler. Familieserverens `.mjs`-MIME
 er tilføjet, så den indbyggede fysikmotor kan leveres. Pakke- og byggeprøver inkluderer nu Brudpunkt.
 Serverens planlagte udgave er fortsat 0.6.0; tagget oprettes først efter ejerens fletning og godkendelse.
 
@@ -48,6 +48,9 @@ Serverens planlagte udgave er fortsat 0.6.0; tagget oprettes først efter ejeren
 Automatiske prøver bruger faktisk Rapier-WASM, Three og de originale GLB-modeller. Integrationstesten
 `server/tests/brudpunkt-ui_test.js` kører faktisk `spil.js` med isolerede test-erstatninger for GPU,
 adgangslås og lydsideeffekter. Den bruger ingen rigtig browserlagring eller voksenkode.
+HTML-opstarten kalder nu fælles startlag udtrykkeligt og viser en synlig fejl, hvis startfilen ikke kan hentes.
+En holdt syntetisk lås kontrollerer, at ingen GPU, modelhentning eller fysik starter før frigivelsen.
+Ventestatus siger udtrykkeligt, når spillet afventer voksenkoden.
 
 Browserens særskilte komponentvisning har vist en fysisk kæde med tre pulser, 82 løsrevne dele,
 revnet objektiv og efterfølgende nulstilling uden grafikfejl. Geometritallet forblev 286 efter nulstilling.

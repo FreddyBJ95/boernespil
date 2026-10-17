@@ -660,6 +660,24 @@ h3 span {
   color: #acbbae;
   font-size: 13px;
 }
+.opstartsfejl {
+  width: min(420px,calc(100% - 40px));
+  text-align: center;
+}
+.opstartsfejl p {
+  line-height: 1.6;
+}
+.opstartsfejl button,
+.opstartsfejl a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 10px 16px;
+  margin: 6px;
+  border: 1px solid var(--kant);
+  border-radius: 5px;
+}
 .laesestreg {
   width: 150px;
   height: 2px;

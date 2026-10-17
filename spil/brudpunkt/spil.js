@@ -32,6 +32,7 @@ try {
 } catch { /* Browseren kan afslå at huske valg. */ }
 
 // Spillet bruger den samme voksenlås som Spilkassens øvrige store 3D-spil.
+$("indlaesning").textContent = "Venter på voksenkoden …";
 await lås($("laas"));
 $("indlaesning").textContent = "Bygger modeller, lys og fysik …";
 const renderer = new THREE.WebGLRenderer({
