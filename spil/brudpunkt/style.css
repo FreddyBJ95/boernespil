@@ -1,0 +1,1044 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter,"Segoe UI",system-ui,sans-serif;
+  --gul: #f2bd5b;
+  --bag: #18242b;
+  --tekst: #f3eee0;
+  --kant: #87928b38;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  overflow: hidden;
+  background: #b2b7a8;
+  color: var(--tekst);
+  font-size: 14px;
+}
+button,
+input,
+select {
+  font: inherit;
+}
+button,
+a,
+select,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  cursor: pointer;
+  min-height: 44px;
+  border: 1px solid var(--kant);
+  color: inherit;
+  background: #ffffff08;
+  border-radius: 5px;
+}
+button:hover {
+  background: #ffffff14;
+  border-color: #c4cec078;
+}
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: 3px solid var(--gul);
+  outline-offset: 3px;
+}
+button:disabled {
+  opacity: .4;
+  cursor: default;
+}
+button:active {
+  transform: translateY(1px);
+}
+[hidden],
+.skjult {
+  display: none!important;
+}
+input[type=range] {
+  accent-color: var(--gul);
+  width: 100%;
+  min-height: 28px;
+  cursor: pointer;
+}
+input[type=number],
+select {
+  background: #142028;
+  color: #eee8d9;
+  border: 1px solid var(--kant);
+  border-radius: 4px;
+  padding: 7px;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+#verden {
+  position: fixed;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+#objektiv,
+#blink {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 4;
+}
+#blink {
+  background: radial-gradient(ellipse at 50% 45%,#fff9dbed,#cf9a6322
+    65%,transparent);
+  opacity: 0;
+}
+#app {
+  position: fixed;
+  inset: env(safe-area-inset-top,0px) env(safe-area-inset-right,0px)
+    env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);
+  pointer-events: none;
+  z-index: 5;
+}
+#app button,
+#app input,
+#app a,
+#app select,
+.panel,
+.resultat {
+  pointer-events: auto;
+}
+.toplinje {
+  height: 78px;
+  position: absolute;
+  inset: 0 0 auto;
+  display: flex;
+  align-items: center;
+  padding: 12px 26px;
+  gap: 18px;
+  background: linear-gradient(#142027ed,#142027b5);
+  border-bottom: 1px solid #d9d4bc30;
+  backdrop-filter: blur(12px);
+}
+.hjem {
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  width: 42px;
+  height: 44px;
+  border-right: 1px solid var(--kant);
+  padding-right: 12px;
+}
+.identitet b {
+  font-size: 23px;
+  letter-spacing: .04em;
+  font-weight: 850;
+}
+.identitet b span {
+  color: var(--gul);
+  font-weight: 400;
+}
+.identitet small {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 9px;
+  letter-spacing: .18em;
+  margin-top: 4px;
+  color: #c8cec6;
+}
+.identitet i {
+  height: 3px;
+  width: 3px;
+  border-radius: 50%;
+  background: var(--gul);
+}
+.topvalg {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.topvalg > button {
+  font-size: 20px;
+  width: 43px;
+  height: 43px;
+  background: #15232c77;
+}
+.kvalitet {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-left: 9px;
+  font-size: 11px;
+  letter-spacing: .06em;
+  color: #c5cdc7;
+}
+.kvalitet select {
+  min-height: 43px;
+  width: 88px;
+}
+.mobilknap {
+  display: none;
+}
+.panel {
+  position: absolute;
+  top: 96px;
+  bottom: 106px;
+  left: 22px;
+  width: 258px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid #d6cfb445;
+  border-radius: 8px;
+  background: #18252af0;
+  box-shadow: 0 14px 35px #17242432;
+  backdrop-filter: blur(15px);
+  scrollbar-width: thin;
+  scrollbar-color: #b8ae9066 transparent;
+}
+.panelhoved {
+  padding: 23px 21px 17px;
+  border-bottom: 1px solid var(--kant);
+}
+.maerke {
+  font-size: 9px;
+  letter-spacing: .15em;
+  font-weight: 700;
+  color: var(--gul);
+}
+.panelhoved h2 {
+  font-size: 21px;
+  letter-spacing: -.04em;
+  margin: 9px 0 6px;
+}
+.panelhoved p,
+.lilletip {
+  font-size: 11px;
+  line-height: 1.6;
+  color: #b8c4bb;
+  margin: 0;
+}
+.panel section {
+  padding: 17px 20px;
+  border-bottom: 1px solid var(--kant);
+}
+h3 {
+  margin: 0 0 14px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .08em;
+  color: var(--gul);
+}
+h3 span {
+  margin-left: 8px;
+  color: #d3d8cd;
+}
+.objekter {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+.objekter button {
+  min-height: 91px;
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  text-align: left;
+  padding: 10px 12px;
+  background: #ffffff04;
+}
+.objekter button[aria-pressed=true] {
+  background: #e9b65b1c;
+  border-color: var(--gul);
+}
+.objektikon {
+  font-size: 26px;
+  line-height: 1.15;
+  color: #d7dfd2;
+  margin-bottom: 6px;
+}
+.objektikon.energi {
+  color: var(--gul);
+}
+.objekter b {
+  font-weight: 600;
+  font-size: 11px;
+}
+.objekter small {
+  font-size: 9px;
+  color: #9fafa7;
+  margin-top: 3px;
+}
+.lilletip {
+  margin-top: 11px;
+  font-size: 10px;
+}
+.diskret {
+  border: 0;
+  background: none;
+  min-height: 36px;
+  font-size: 11px;
+  color: #c5cabe;
+}
+.skydernavn {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+}
+.skydernavn output {
+  color: var(--gul);
+}
+.skala {
+  display: flex;
+  justify-content: space-between;
+  color: #91a198;
+  font-size: 9px;
+}
+.forsinkelsesvalg {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  margin-top: 16px;
+}
+.forsinkelsesvalg select {
+  font-size: 10px;
+  max-width: 106px;
+}
+.forsoeg {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.forsoeg button {
+  min-height: 40px;
+  border: 0;
+  border-bottom: 1px solid var(--kant);
+  border-radius: 0;
+  text-align: left;
+  font-size: 11px;
+  padding: 4px 0;
+  background: none;
+}
+.forsoeg span {
+  float: right;
+  color: var(--gul);
+  font-size: 17px;
+}
+.gemning {
+  padding: 12px 20px;
+  color: #8ba196;
+  font-size: 9px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.gemning span {
+  line-height: 1.6;
+  flex: 1;
+}
+.gemning button {
+  flex-shrink: 0;
+  color: #c7b39c;
+  font-size: 10px;
+}
+.feltinfo {
+  position: absolute;
+  top: 104px;
+  right: 28px;
+  display: flex;
+  gap: 27px;
+  text-shadow: 0 2px 10px #0e282b80;
+}
+.feltinfo > div {
+  min-width: 65px;
+}
+.feltinfo span {
+  display: block;
+  font-size: 9px;
+  letter-spacing: .17em;
+  color: #f3f0d4;
+}
+.feltinfo b {
+  font: 400 31px/1.3 "Segoe UI",system-ui,sans-serif;
+  letter-spacing: -.04em;
+}
+.feltinfo small {
+  display: block;
+  font-size: 9px;
+  color: #e9edda;
+}
+.bundlinje {
+  position: absolute;
+  inset: auto 22px 20px;
+  min-height: 69px;
+  border: 1px solid #ddd5b436;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 11px 13px 11px 19px;
+  background: #18252af0;
+  backdrop-filter: blur(15px);
+}
+.bundstatus {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.bundstatus > i {
+  width: 7px;
+  height: 7px;
+  background: #a2cfa4;
+  border-radius: 50%;
+  box-shadow: 0 0 10px #9adea64d;
+  flex-shrink: 0;
+}
+.bundstatus > i.korer {
+  background: var(--gul);
+}
+.bundstatus strong {
+  display: block;
+  font-weight: 600;
+  font-size: 12px;
+}
+.bundstatus span {
+  display: block;
+  color: #9eafa4;
+  font-size: 10px;
+  line-height: 1.5;
+  margin-top: 5px;
+  max-width: 465px;
+}
+.afspilning {
+  display: flex;
+  gap: 7px;
+  flex-shrink: 0;
+}
+.afspilning button {
+  padding: 9px 13px;
+  min-height: 46px;
+}
+.sekundaer {
+  font-size: 17px;
+}
+.sekundaer span {
+  font-size: 10px;
+  margin-left: 4px;
+}
+.sekundaer[aria-pressed=true] {
+  border-color: var(--gul);
+  color: var(--gul);
+}
+.start {
+  background: var(--gul);
+  border-color: var(--gul);
+  color: #18242b;
+  font-weight: 750;
+  font-size: 12px;
+  min-width: 127px;
+}
+.start:hover {
+  background: #ffd489;
+}
+.start span {
+  margin-left: 12px;
+  font-size: 20px;
+}
+.kameravalg {
+  position: absolute;
+  right: 25px;
+  bottom: 108px;
+  display: flex;
+  gap: 5px;
+}
+.kameravalg button {
+  padding: 4px 12px;
+  background: #18252ae6;
+  border-color: #ccd4c540;
+  font-size: 17px;
+}
+.kameravalg span {
+  font-size: 10px;
+  margin-left: 6px;
+}
+.valg {
+  position: absolute;
+  left: calc(50% + 110px);
+  top: 100px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  padding: 9px 11px;
+  background: #18252aeb;
+  border: 1px solid var(--kant);
+  border-radius: 6px;
+  box-shadow: 0 5px 20px #26342c29;
+}
+.valg > div {
+  min-width: 92px;
+  padding-right: 9px;
+}
+.valg .maerke {
+  font-size: 7px;
+  display: block;
+}
+.valg b {
+  font-size: 12px;
+  display: block;
+  margin-top: 3px;
+}
+.valg label {
+  font-size: 9px;
+}
+.valg input {
+  display: block;
+  width: 55px;
+  margin-top: 3px;
+  padding: 4px;
+  font-size: 11px;
+  min-height: 26px;
+}
+.valg button {
+  min-width: 37px;
+  padding: 4px 8px;
+  font-size: 21px;
+}
+.valg button small {
+  font-size: 8px;
+}
+.kameraskade {
+  position: absolute;
+  bottom: 163px;
+  right: 25px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 10px;
+  border-radius: 4px;
+  background: #192328e3;
+  border: 1px solid #d9ab7966;
+}
+.kameraskade span {
+  font-size: 8px;
+  letter-spacing: .12em;
+  color: #e2a16a;
+}
+.kameraskade button {
+  min-height: 32px;
+  font-size: 10px;
+  padding: 5px 9px;
+}
+.besked {
+  position: absolute;
+  left: 50%;
+  bottom: 110px;
+  transform: translateX(-50%);
+  background: #17242af2;
+  border: 1px solid #e8c27166;
+  padding: 11px 17px;
+  border-radius: 6px;
+  max-width: min(490px,80vw);
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity .2s;
+}
+.besked.vis {
+  opacity: 1;
+}
+.resultat {
+  position: absolute;
+  top: 180px;
+  right: 25px;
+  width: 295px;
+  max-height: calc(100% - 295px);
+  overflow: auto;
+  padding: 21px;
+  background: #17242af5;
+  border: 1px solid #dfc18d6b;
+  border-radius: 8px;
+  box-shadow: 0 15px 40px #1c251c44;
+  backdrop-filter: blur(15px);
+}
+.resultattop,
+.dialogtop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.resultattop button,
+.dialogtop button {
+  border: 0;
+  font-size: 22px;
+  min-height: 32px;
+  min-width: 32px;
+}
+.resultat h2 {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -.04em;
+  margin: 10px 0 17px;
+}
+.resultatraekke {
+  margin: 10px 0;
+}
+.resultatraekke div {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  gap: 10px;
+}
+.resultatraekke progress {
+  height: 4px;
+  accent-color: var(--gul);
+  width: 100%;
+  border: 0;
+  margin-top: 6px;
+}
+.replay {
+  border-top: 1px solid var(--kant);
+  margin-top: 18px;
+  padding-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.replay button {
+  padding: 4px 10px;
+  font-size: 11px;
+}
+.replay label {
+  font-size: 10px;
+  color: #b7c1b7;
+}
+.replay input {
+  flex: 1;
+  min-width: 90px;
+}
+.fuldknap {
+  display: block;
+  background: var(--gul);
+  border-color: var(--gul);
+  color: #17242a;
+  width: 100%;
+  min-height: 45px;
+  font-weight: 650;
+  font-size: 12px;
+  margin-top: 15px;
+}
+.fuldknap:hover {
+  background: #ffd48b;
+}
+.indlaeser {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  background: radial-gradient(ellipse at 65% 40%,#435850,#17242c 70%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+.indlaeser h1 {
+  font-size: clamp(38px,8vw,84px);
+  letter-spacing: -.04em;
+  margin: 15px 0;
+}
+.indlaeser h1 span {
+  font-weight: 250;
+  color: var(--gul);
+}
+.indlaeser p {
+  color: #acbbae;
+  font-size: 13px;
+}
+.opstartsfejl {
+  width: min(420px,calc(100% - 40px));
+  text-align: center;
+}
+.opstartsfejl p {
+  line-height: 1.6;
+}
+.opstartsfejl button,
+.opstartsfejl a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 10px 16px;
+  margin: 6px;
+  border: 1px solid var(--kant);
+  border-radius: 5px;
+}
+.laesestreg {
+  width: 150px;
+  height: 2px;
+  background: linear-gradient(90deg,transparent,var(--gul),transparent);
+  animation: laes 2s infinite;
+}
+@keyframes laes {
+  50% {
+    opacity: .25;
+    transform: scaleX(.55);
+  }
+}
+dialog {
+  color: var(--tekst);
+  max-width: 500px;
+  width: calc(100% - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  background: #192830;
+  border: 1px solid #d0be925e;
+  border-radius: 10px;
+  padding: 27px;
+  box-shadow: 0 25px 100px #03191b88;
+}
+dialog::backdrop {
+  background: #0e1b2488;
+  backdrop-filter: blur(6px);
+}
+dialog h2 {
+  font-size: 36px;
+  font-weight: 450;
+  letter-spacing: -.06em;
+  line-height: 1.12;
+  margin: 13px 0 18px;
+}
+dialog p,
+dialog li {
+  font-size: 12px;
+  line-height: 1.75;
+  color: #bcc9bf;
+}
+dialog ol {
+  padding-left: 19px;
+}
+dialog li {
+  margin-bottom: 8px;
+}
+dialog small {
+  display: block;
+  font-size: 10px;
+  color: #9daf9f;
+  margin-top: 13px;
+  text-align: center;
+}
+.rolig {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border-top: 1px solid var(--kant);
+  margin-top: 15px;
+  padding-top: 15px;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.rolig input {
+  min-width: 20px;
+  min-height: 20px;
+  accent-color: var(--gul);
+}
+.lås {
+  position: fixed;
+  inset: 0;
+  z-index: 12;
+  background: #162530;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+@media (max-width:1050px) {
+  .bundstatus span {
+    max-width: 260px;
+  }
+  .panel {
+    width: 235px;
+  }
+  .valg {
+    left: calc(50% + 100px);
+  }
+  .feltinfo {
+    gap: 18px;
+  }
+  .afspilning .sekundaer span {
+    display: none;
+  }
+  .kvalitet > span {
+    display: none;
+  }
+}
+@media (max-width:760px),(max-height:610px) {
+  .toplinje {
+    height: 58px;
+    padding: 7px 13px;
+    gap: 9px;
+  }
+  .identitet b {
+    font-size: 19px;
+  }
+  .identitet small {
+    font-size: 7px;
+    letter-spacing: .12em;
+  }
+  .hjem {
+    width: 33px;
+    font-size: 21px;
+    padding-right: 7px;
+  }
+  .topvalg > button {
+    width: 38px;
+    height: 40px;
+    min-height: 40px;
+  }
+  .topvalg {
+    gap: 4px;
+  }
+  .kvalitet {
+    margin-left: 2px;
+  }
+  .kvalitet select {
+    font-size: 10px;
+    width: 64px;
+    min-height: 40px;
+    padding: 4px;
+  }
+  .mobilknap {
+    display: block;
+  }
+  .panel {
+    display: none;
+    top: 68px;
+    left: 10px;
+    bottom: 90px;
+    width: 238px;
+    z-index: 2;
+  }
+  .panel.ouvert {
+    display: block;
+  }
+  .panelhoved {
+    padding: 16px 17px;
+  }
+  .panel section {
+    padding: 14px 17px;
+  }
+  .objekter button {
+    min-height: 80px;
+  }
+  .bundlinje {
+    inset: auto 10px 10px;
+    min-height: 63px;
+    padding: 8px 9px;
+    gap: 8px;
+  }
+  .bundstatus span {
+    display: none;
+  }
+  .bundstatus strong {
+    font-size: 10px;
+    max-width: 150px;
+  }
+  .bundstatus {
+    gap: 7px;
+  }
+  .afspilning button {
+    padding: 7px 10px;
+    min-height: 44px;
+  }
+  .afspilning .sekundaer span {
+    display: none;
+  }
+  .start {
+    min-width: 108px;
+    font-size: 11px;
+  }
+  .feltinfo {
+    top: 73px;
+    right: 16px;
+    gap: 16px;
+  }
+  .feltinfo > div {
+    min-width: 50px;
+  }
+  .feltinfo b {
+    font-size: 24px;
+  }
+  .feltinfo span {
+    font-size: 7px;
+  }
+  .feltinfo small {
+    font-size: 8px;
+  }
+  .kameravalg {
+    bottom: 88px;
+    right: 11px;
+  }
+  .kameravalg button {
+    padding: 4px 10px;
+  }
+  .kameravalg span {
+    font-size: 9px;
+  }
+  .kameraskade {
+    bottom: 143px;
+    right: 11px;
+  }
+  .valg {
+    left: 12px;
+    top: 69px;
+    transform: none;
+    padding: 5px 7px;
+    gap: 4px;
+    max-width: calc(100% - 24px);
+  }
+  .valg > div {
+    min-width: 75px;
+    padding-right: 4px;
+  }
+  .valg button {
+    min-width: 35px;
+  }
+  .besked {
+    bottom: 142px;
+    max-width: 80vw;
+    font-size: 11px;
+  }
+  .resultat {
+    top: 135px;
+    right: 11px;
+    width: 265px;
+    max-height: calc(100% - 225px);
+    padding: 17px;
+  }
+  .resultat h2 {
+    font-size: 20px;
+  }
+  .maerke {
+    font-size: 8px;
+  }
+  dialog {
+    padding: 22px;
+  }
+  .topvalg #hjaelp {
+    display: none;
+  }
+}
+@media (max-width:420px) {
+  .toplinje {
+    gap: 7px;
+  }
+  .identitet b {
+    font-size: 17px;
+  }
+  .identitet small {
+    font-size: 6px;
+  }
+  .topvalg > button {
+    width: 34px;
+  }
+  .kvalitet select {
+    width: 59px;
+  }
+  .bundstatus strong {
+    max-width: 86px;
+    line-height: 1.5;
+  }
+  .bundstatus > i {
+    display: none;
+  }
+  .afspilning {
+    gap: 4px;
+  }
+  .afspilning button {
+    padding: 6px 9px;
+  }
+  .start {
+    min-width: 97px;
+  }
+  .kameravalg span {
+    display: none;
+  }
+  .feltinfo {
+    top: 76px;
+  }
+  .valg {
+    top: 150px;
+  }
+}
+@media (prefers-reduced-motion:reduce) {
+  * {
+    animation: none!important;
+    transition: none!important;
+  }
+}
+.lås-kort {
+  width: min(340px,92vw);
+  padding: 25px;
+  background: #1b2b33;
+  border: 1px solid #c8b27c66;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 20px 70px #0006;
+}
+.lås-ikon {
+  font-size: 35px;
+}
+.lås-kort h1 {
+  font-size: 27px;
+  font-weight: 550;
+}
+.lås-tekst {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #c2ccbf;
+  min-height: 43px;
+}
+.lås-prikker {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin: 17px;
+}
+.lås-prikker i {
+  width: 14px;
+  height: 14px;
+  border: 1px solid #c5bf9a;
+  border-radius: 50%;
+}
+.lås-prikker .fyldt {
+  background: var(--gul);
+}
+.lås-taster {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 7px;
+}
+.lås-taster button {
+  height: 50px;
+  font-size: 21px;
+}
+.lås-hjem {
+  display: block;
+  margin-top: 19px;
+  font-size: 12px;
+}
+.ryst {
+  animation: ryst .25s;
+}
+@keyframes ryst {
+  25% {
+    transform: translateX(-7px);
+  }
+  75% {
+    transform: translateX(7px);
+  }
+}

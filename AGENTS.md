@@ -22,5 +22,6 @@ Filer der tilhører Claude må ikke ændres, bortset fra de små, præcist beskr
 - Nye blokke tilføjes altid **nederst** i `BLOKKE` i `spil/broekraft/blokke.js`, så gemte verdener passer.
 
 ## Aktuel opgave
-Se `OVERDRAGELSE-CODEX-SIGTEKORN-ONLINE.md` (opgave H: generelle spillerum til Sigtekorn på familieserveren).
-Opgave A–G er færdige. Serverens næste udgave er 0.6.0 på grenen `codex/spilrum`.
+Se `OVERDRAGELSE-CLAUDE-BRUDPUNKT.md`: ejeren har bestilt et selvstændigt Codex-spil med egne Blender-modeller,
+grafik, fysik og kædereaktioner på grenen `codex/brudpunkt`. Kun lyde genbruges fra den separate Nedrivning-opgave.
+Opgave H med spillerum er færdig. Serverens næste udgave er fortsat 0.6.0; udgivelse afventer ejerens fletning.

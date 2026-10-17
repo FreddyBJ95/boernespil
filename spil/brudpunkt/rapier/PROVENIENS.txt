@@ -1,0 +1,10 @@
+Rapier 3D JavaScript compatibility build, version 0.21.0
+Copyright 2020 Dimforge EURL. Apache-2.0; see LICENSE-RAPIER.txt.
+
+Source: https://github.com/dimforge/rapier.js
+Official package: https://registry.npmjs.org/@dimforge/rapier3d-compat/-/rapier3d-compat-0.21.0.tgz
+Package integrity: sha512-tCl1HPGwOhn5aCQbgqWbOH+Nx/5fnr3IPAnzQuR7zIhC/raqi2yxC6LhvZqjdI2El5hQgY5RDAwDrAjAi2FdPA==
+rapier.mjs SHA-256: 02dc6a4e2fffc013bab08fbb44fa68f501d8303615e9afe4c7d89ad4eedda0d0
+
+rapier.mjs is copied byte-for-byte from package/dist/rapier.mjs in the official npm package.
+Its WebAssembly program is embedded; no CDN or separate WASM request is needed.

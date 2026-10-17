@@ -1,9 +1,9 @@
 // ===== Service Worker — gør spillene installerbare og tilgængelige offline =====
 // Bump dette tal når der ændres filer, så de gamle bliver hentet på ny.
-const CACHE = "boernespil-v75";
+const CACHE = "boernespil-v77";
 
 const SPIL = ["balloner", "byg-burger", "enhjoerning", "vask", "slange", "tegne", "piano", "fisk", "broekraft", "rulle-rasmus", "burgerloeb"];
-const VOKSENSPIL = ["det-sidste-lys", "skrotstorm", "krystaljaegerne", "nedrivning"];
+const VOKSENSPIL = ["det-sidste-lys", "skrotstorm", "krystaljaegerne", "nedrivning", "brudpunkt"];
 
 // Spil der består af flere filer end index.html
 const EKSTRA = [
@@ -20,6 +20,11 @@ const EKSTRA = [
     ...["tnt", "bjerg", "mine", "minesprengning", "dynamit", "knald", "fjern", "stor", "kontrolleret", "styrt_kort", "styrt", "traehus", "nedrivning", "brokker_stor", "brokker",
       "stenskred", "beton", "slag", "glas_fald", "glas", "glas2", "metal_fald", "metal", "trae_knaek", "ild", "gas", "horn"].map(n => `lyde/${n}.mp3`)].map(f => `spil/nedrivning/${f}`),
   ...["teksturer.json", ...["beton", "sand", "planker", "panel", "metal", "blik", "puds", "klippe"].flatMap(n => ["farve", "normal", "arm"].map(k => `${n}_${k}.webp`))].map(f => `spil/sigtekorn/teksturer/${f}`),
+  ...["style.css", "spil.js", "kamera.js", "effekter.js", "lyd.js", "simulering.js", "opsaetning.js", "forside.jpg",
+    "modeller/brudpunkt.glb", "modeller/opskrifter.json", "rapier/rapier.mjs", "rapier/LICENSE-RAPIER.txt", "rapier/PROVENIENS.txt"].map(f => `spil/brudpunkt/${f}`),
+  ...["beton", "bjerg", "brokker", "brokker_stor", "dynamit", "fjern", "gas", "glas", "glas2", "glas_fald", "horn", "ild", "knald",
+    "kontrolleret", "metal", "metal_fald", "mine", "minesprengning", "nedrivning", "slag", "stenskred", "stor", "styrt", "styrt_kort", "tnt", "trae_knaek", "traehus"]
+    .map(f => `spil/brudpunkt/lyde/${f}.mp3`),
   ...["three.js", "spil.js", "fisk.js", "staenger.js", "verden.js", "lyd.js", "modeller.js"].map(f => `spil/fisk/${f}`),
   ...["soe", "hav", "grej"].map(f => `spil/fisk/modeller/${f}.glb`),
   ...["three.js", "spil.js", "verden.js", "slange.js", "mad.js", "lyd.js", "modeller.js"].map(f => `spil/slange/${f}`),

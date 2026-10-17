@@ -1,6 +1,11 @@
 Broekraft Server lader 1–8 børn bygge i samme Broekraft-verden på familiens eget wifi.
 
 **Nyt i 0.6.0**
+- Brudpunkt er en ny fysisk sandkasse i voksenrummet: byg et prøvefelt med servicebiler, huse, vandtårne
+  og fiktive energiceller. Løse dele kan vælte andre ting og udløse næste celle i en kædereaktion.
+  Egne Blender-modeller, materialelyde, slowmotion, replay og revnet kameraobjektiv følger med.
+  Spillet har tastatur/mus og touch, gemmer opstillingen lokalt og virker offline efter første indlæsning.
+- Serveren leverer nu også lokale `.mjs`-filer, så Brudpunkts indbyggede fysikmotor kan bruges på familieserveren.
 - Sigtekorn kan spilles mod familien over jeres server. Op til otte spillere bruger samme rumnavn,
   og den første spiller vælger banen. Når værten går, overtager den, der kom ind som den næste.
 - Spillerummene sender positioner, skud og træf videre mellem deltagere i samme spil og rum.
