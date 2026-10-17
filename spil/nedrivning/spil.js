@@ -5,7 +5,6 @@
 // effekter.js (ild, røg, støv), lyd.js, bygninger.js og baner.js (opgaverne).
 
 import * as THREE from "../3d-faelles/three.module.js";
-import { lås } from "../laas.js";
 import { startFysik, nyVerden, fysikTrin, stråle, fysik } from "./fysik.js";
 import { hentFotos, MATERIALER } from "./materialer.js";
 import { Dele } from "./dele.js";
@@ -55,8 +54,7 @@ addEventListener("resize", () => {
 let tilstand = "start", bane = null, valgt = null, forsinkelse = 0, lager = {}, slowmo = false, rolig = 0, sprængTid = 0, blink = 0, valgtLadning = null, menuVinkel = 0;
 let verden, ruder, dele, effekter, lyd, sprængstof, kam, zoneMesh = null, markør = null, ikoner = {};
 
-// ---------- Låsen og indlæsningen ----------
-await lås($("lås"), "../../index.html");
+// ---------- Indlæsningen ----------
 const status = t => { $("indlæser").textContent = t; };
 status("Henter fysikken…");
 await startFysik();

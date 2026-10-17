@@ -65,3 +65,13 @@ fra repoets rod for en særskilt lokal testserver. Spillet er på `http://127.0.
 `/proeve-brudpunkt` er kun en teknisk komponentvisning med egne testknapper. Den rute findes ikke på produktionsserveren.
 
 De videre faser fra projektbeskrivelsen – flere miljøer, challenge/karriere og videoeksport – er fremtidige udvidelser.
+
+## Noter fra Claude (18. oktober 2026)
+
+- Ejeren har flettet `codex/brudpunkt` ind i `main` sammen med Claudes Nedrivningsfirmaet (`spil/nedrivning`).
+- Ejeren bad om, at Brudpunkt og Nedrivningsfirmaet ligger **blandt børnespillene**, ikke i voksenrummet. Begge har nu et
+  plakatkort under 3D-spil på forsiden og starter uden voksenkode. I `spil/brudpunkt/spil.js` er kun importen af
+  `../laas.js` og `await lås(...)` fjernet (`#laas` i HTML'en er ladt stå skjult). Begge står i `SPIL` i `sw.js` (v78).
+- Prøverne er rettet til: `brudpunkt_test.js` leder efter 3D-kortet og kræver, at der ingen lås er; i
+  `brudpunkt-ui_test.js` er låse-prøven erstattet af en prøve, der starter uden lås (`log.lås` er 0). Deno findes ikke
+  på Claudes maskine, så de to Deno-prøver er kun syntakstjekket her — `node --test spil/brudpunkt/*.test.mjs` består (45).

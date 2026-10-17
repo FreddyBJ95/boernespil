@@ -1,6 +1,5 @@
 import * as THREE from "../3d-faelles/three.module.js";
 import { GLTFLoader } from "../3d-faelles/GLTFLoader.js";
-import { lås } from "../laas.js";
 import { BaneKamera } from "./kamera.js";
 import { BrudEffekter } from "./effekter.js";
 import { BrudLyd } from "./lyd.js";
@@ -31,9 +30,7 @@ try {
   if (typeof v.rolig === "boolean") indstillinger.rolig = v.rolig;
 } catch { /* Browseren kan afslå at huske valg. */ }
 
-// Spillet bruger den samme voksenlås som Spilkassens øvrige store 3D-spil.
-$("indlaesning").textContent = "Venter på voksenkoden …";
-await lås($("laas"));
+// Spillet ligger blandt børnespillene og starter uden voksenkode.
 $("indlaesning").textContent = "Bygger modeller, lys og fysik …";
 const renderer = new THREE.WebGLRenderer({
   canvas: $("verden"),

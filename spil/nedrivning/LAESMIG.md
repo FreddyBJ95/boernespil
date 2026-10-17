@@ -1,6 +1,6 @@
 # Nedrivningsfirmaet
 
-Et 3D-spil i voksenrummet (bag PIN-koden): sæt sprængstof på rigtige bygninger, og få dem til at styrte
+Et 3D-spil blandt Spilkassens 3D-spil (uden PIN-kode): sæt sprængstof på rigtige bygninger, og få dem til at styrte
 sammen. Otte opgaver (skur, murstenshus, fabriksskorsten, vandtårn, lagerhal med tønder, betonblok,
 gaslager om natten og et højhus mellem to naboer) og et frit område.
 

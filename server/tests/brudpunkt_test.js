@@ -74,12 +74,12 @@ Deno.test("Brudpunkt: alle 27 lyde, fysik og modeller er på offline-listen", as
   assert.ok(!aktuelle.some((f) => /(?:\.test\.mjs|\.blend|\/blender\/|\.py)$/.test(f)));
 });
 
-// Den voksenbeskyttede indgang ligger i det eksisterende rum og bruger samme lås.
-Deno.test("Brudpunkt: Spilkassens voksenrum linker til det nye spil", async () => {
+// Ejeren har flyttet spillet til børnespillenes 3D-kategori; det starter uden voksenkode.
+Deno.test("Brudpunkt: Spilkassens 3D-spil linker til spillet uden voksenlås", async () => {
   const html = await læs("index.html");
-  assert.match(html, /href="spil\/brudpunkt\/"[\s\S]*?src="spil\/brudpunkt\/forside\.jpg"[\s\S]*?BRUDPUNKT/);
-  assert.match(html, /Byg et prøvefelt, udløs fiktive energipulser/);
-  assert.match(await læs("spil/brudpunkt/spil.js"), /await\s+lås\(/);
+  assert.match(html, /data-kat="3d"[\s\S]*?href="spil\/brudpunkt\/"[\s\S]*?data-billede="spil\/brudpunkt\/forside\.jpg"[\s\S]*?Brudpunkt/);
+  assert.doesNotMatch(html, /voksen-kort" href="spil\/brudpunkt\//);
+  assert.doesNotMatch(await læs("spil/brudpunkt/spil.js"), /await\s+lås\(/);
 });
 
 // GET og HEAD skal levere en rigtig MJS-fil, ikke en HTML-fallback med forkert MIME.

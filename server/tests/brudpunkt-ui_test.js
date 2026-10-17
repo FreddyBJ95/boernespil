@@ -410,28 +410,11 @@ async function startPrøve({ gemning = {}, nægtGemning = false, holdLås = fals
   };
 }
 
-Deno.test("Brudpunkt: ventende syntetisk voksenlås forhindrer GPU-, model- og fysikstart, og frigivelse starter normalt", async () => {
-  const p = await startPrøve({ holdLås: true, gemning: { "brudpunkt-hjaelp": "1" } });
+// Spillet ligger blandt børnespillene: det starter med det samme, uden at spørge efter voksenkoden.
+Deno.test("Brudpunkt: starter uden voksenlås og bygger GPU, model og fysik med det samme", async () => {
+  const p = await startPrøve({ gemning: { "brudpunkt-hjaelp": "1" } });
   try {
-    let startet = false;
-    p.klar.then(() => {
-      startet = true;
-    });
-    await Promise.resolve();
-    assert.equal(p.log.lås, 1);
-    assert.equal(startet, false);
-    assert.equal(p.$("laas").classList.contains("skjult"), false);
-    assert.equal(p.$("app").hidden, true);
-    assert.equal(p.$("indlaeser").hidden, false);
-    assert.match(p.$("indlaesning").textContent, /Venter på voksenkoden/);
-    assert.equal(p.log.renderere, 0, "En GPU-kontekst må først bygges, når den syntetiske lås er frigivet");
-    assert.equal(p.log.modelhentninger, 0);
-    assert.equal(p.log.opskrifthentninger, 0);
-    assert.equal(p.log.fysikstarter, 0);
-    assert.equal(p.sim, undefined);
-    assert.throws(() => p.frame(), /bestille næste frame/);
-    await p.frigivLås();
-    assert.equal(p.$("laas").classList.contains("skjult"), true);
+    assert.equal(p.log.lås, 0);
     assert.equal(p.$("app").hidden, false);
     assert.equal(p.$("indlaeser").hidden, true);
     assert.equal(p.log.renderere, 1);
@@ -442,7 +425,6 @@ Deno.test("Brudpunkt: ventende syntetisk voksenlås forhindrer GPU-, model- og f
     p.frame();
     assert.ok(p.log.tegninger > 0);
   } finally {
-    await p.frigivLås();
     p.luk();
   }
 });
@@ -450,7 +432,7 @@ Deno.test("Brudpunkt: ventende syntetisk voksenlås forhindrer GPU-, model- og f
 Deno.test("Brudpunkt: faktisk HTML, Three og Rapier starter; placering, træk, kopi, drejning og sletning gemmer samme opstilling", async () => {
   const p = await startPrøve();
   try {
-    assert.equal(p.log.lås, 1);
+    assert.equal(p.log.lås, 0);
     assert.equal(p.$("indlaeser").hidden, true);
     assert.equal(p.$("app").hidden, false);
     assert.equal(p.$("vejledning").open, true);
