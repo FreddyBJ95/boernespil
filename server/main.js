@@ -11,7 +11,7 @@ import { Netværkstjek } from "./netvaerk.js";
 const ROD = fileURLToPath(new URL("../", import.meta.url));
 // Logoer og spillets billeder og 3D-modeller får den filtype, browseren forventer.
 const MIME = {
-  ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
+  ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
   ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp",
   ".ico": "image/x-icon", ".webmanifest": "application/manifest+json", ".mp3": "audio/mpeg", ".woff2": "font/woff2",
   ".glb": "model/gltf-binary", ".bin": "application/octet-stream",

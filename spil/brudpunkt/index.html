@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="da">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="theme-color" content="#18242b">
+    <title>Brudpunkt · Spilkassen</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <canvas id="verden"
+      aria-label="Brudpunkts tredimensionelle prøvefelt"></canvas>
+    <canvas id="objektiv" aria-hidden="true"></canvas>
+    <div id="blink" aria-hidden="true"></div>
+    <div id="laas" class="lås skjult"></div>
+    <div id="indlaeser"
+      class="indlaeser"><span class="maerke">SPILKASSEN · ET FYSISK EKSPERIMENT</span><h1>BRUD<span>PUNKT</span></h1><p id="indlaesning">Gør prøvefeltet klar …</p><div class="laesestreg"></div></div>
+    <main id="app" hidden>
+      <header class="toplinje">
+        <a class="hjem" href="../../index.html"
+          aria-label="Til Spilkassen">←</a>
+        <div
+          class="identitet"><b>BRUD<span>PUNKT</span></b><small>PRØVEFELT 07 <i></i> <span id="fase">OPSTILLING</span></small></div>
+        <div
+          class="topvalg"><button id="vaerktoej" class="mobilknap" aria-label="Vis eller skjul værktøjerne" aria-expanded="false">☷</button><button id="hjaelp" aria-label="Hjælp">?</button><button id="lyd" aria-label="Slå lyd fra" aria-pressed="true">♫</button><label class="kvalitet"><span>Grafik</span><select id="grafik" aria-label="Grafikkvalitet"><option value="auto">Auto</option><option value="let">Let</option><option value="flot">Flot</option></select></label></div>
+      </header>
+      <aside id="panel" class="panel" aria-label="Byg din opstilling">
+        <div
+          class="panelhoved"><span class="maerke">DIT EKSPERIMENT</span><h2>Hvad giver efter?</h2><p>Byg. Udløs. Se kæden tage form.</p></div>
+        <section
+          class="bygvalg"><h3>01 <span>Placér på feltet</span></h3><div class="objekter">
+        <button data-type="bil" aria-pressed="false"><span class="objektikon">▰</span><b>Bil</b><small>Metal & glas</small></button>
+        <button data-type="hus" aria-pressed="false"><span class="objektikon">⌂</span><b>Hus</b><small>Bjælker & beton</small></button>
+        <button data-type="taarn" aria-pressed="false"><span class="objektikon">♜</span><b>Vandtårn</b><small>Støtter & fald</small></button>
+        <button data-type="celle" aria-pressed="false"><span class="objektikon energi">◈</span><b>Energicelle</b><small>Starter en kæde</small></button>
+      </div><p class="lilletip" id="vaerktoejstip">Vælg en ting, og tryk på banen.</p><button id="afslutplacering" class="diskret" hidden>✓ Færdig med at placere</button></section>
+        <section
+          class="energivalg"><h3>02 <span>Indstil pulsen</span></h3><label class="skydernavn" for="styrke">Effektstyrke <output id="styrkevaerdi">3 / 5</output></label><input id="styrke" type="range" min="1" max="5" value="3" step="1"><div class="skala"><span>Et lille skub</span><span>Store følger</span></div><label class="forsinkelsesvalg" for="forsinkelse">Forsinkelse <select id="forsinkelse"><option value="0.3">Kort</option><option value="1">1 sekund</option><option value="2">2 sekunder</option><option value="3">3 sekunder</option></select></label></section>
+        <section>
+          <h3>03 <span>Prøv en opstilling</span></h3>
+          <div
+            class="forsoeg"><button data-forsoeg="vaerksted">Værkstedet <span>↗</span></button><button data-forsoeg="kaede">Kædereaktion <span>↗</span></button><button data-forsoeg="taarn">Det sidste tårn <span>↗</span></button></div>
+        </section>
+        <div
+          class="gemning"><span id="gemt" role="status">Opstillingen gemmes på din enhed</span><button id="toem" class="diskret">Ryd feltet</button></div>
+        <button id="panelhjaelp"
+          class="diskret">Betjening & kameraeffekter ?</button>
+      </aside>
+      <section class="feltinfo" aria-label="Forsøgets status">
+        <div><span>TID</span><b id="tid">00.0</b><small>sek.</small></div>
+        <div><span>KÆDE</span><b id="kaede">0</b><small>reaktioner</small></div>
+        <div><span>BRUD</span><b id="brud">0</b><small>dele løsnet</small></div>
+      </section>
+      <div id="valg" class="valg"
+        hidden><div><span class="maerke">VALGT OBJEKT</span><b id="valgnavn">Bil</b></div><button id="drej" title="Drej 15 grader · R" aria-label="Drej det valgte objekt">↻ <small>15°</small></button><label>Højde <input id="hoejde" type="number" min="0" max="8" step="0.25" value="0" aria-label="Objektets højde"></label><button id="kopier" title="Lav en kopi" aria-label="Kopiér objekt">⧉</button><button id="slet" title="Fjern objekt · Delete" aria-label="Fjern objekt">×</button></div>
+      <div
+        class="kameravalg"><button id="overblik" title="Se hele banen">⊞ <span>Overblik</span></button><button id="foelg" title="Følg det valgte objekt">◎ <span>Følg</span></button><button id="naer" title="Flyt kameraet tæt på den første energicelle">◉ <span>Tæt på</span></button></div>
+      <div id="kameraskade" class="kameraskade"
+        hidden><span>OBJEKTIV BESKADIGET</span><button id="nytobjektiv">Nyt objektiv ↗</button></div>
+      <footer class="bundlinje">
+        <div
+          class="bundstatus"><i id="statuslys"></i><div><strong id="status">Klar til første forsøg</strong><span id="tip">Træk en ting for at flytte den. Træk i det tomme felt for at dreje kameraet.</span></div></div>
+        <div
+          class="afspilning"><button id="tempo" class="sekundaer" aria-pressed="false">¼ <span>Slowmotion</span></button><button id="nulstil" class="sekundaer" title="Gendan den ubeskadigede opstilling">↶ <span>Nulstil</span></button><button id="start" class="start">Start test <span>↗</span></button></div>
+      </footer>
+      <section id="resultat" class="resultat" hidden
+        aria-label="Testresultater"><div class="resultattop"><span class="maerke">TESTENS AFTRYK</span><button id="lukresultat" aria-label="Luk testresultater">×</button></div><h2>Alt har et brudpunkt.</h2><div id="resultatliste"></div><div class="replay"><button id="genspil">↺ Gense</button><label for="tidslinje">Replay</label><input id="tidslinje" type="range" min="0" max="1" step="1" value="0" aria-label="Vælg et tidspunkt i testen"></div><button id="nytest" class="fuldknap">Tilbage til opstillingen ↗</button></section>
+      <div id="besked" class="besked" role="status" aria-live="polite"></div>
+    </main>
+    <dialog
+      id="vejledning"><div class="dialogtop"><span class="maerke">VELKOMMEN TIL PRØVEFELTET</span><button id="lukhjaelp" aria-label="Luk hjælp">×</button></div><h2>Små årsager.<br>Store konsekvenser.</h2><p>Placér biler, huse, tårne og fiktive energiceller. Den første celle starter testen. De næste reagerer, når en puls eller et vragstykke rammer dem.</p><ol><li><b>Byg:</b> Vælg en ting, og tryk på feltet. Træk den for at flytte, og brug ↻ til at dreje.</li><li><b>Se:</b> Træk i tomrummet for at dreje kameraet. To fingre drejer og zoomer; på PC kan du bruge musehjulet.</li><li><b>Eksperimentér:</b> Tryk Start test. Prøv slowmotion, følg et objekt, eller kom tæt på — objektivet kan få revner.</li></ol><label class="rolig"><input type="checkbox" id="rolig"> Rolige kameraeffekter med mindre rystelse og lysglimt</label><button id="forstaaet" class="fuldknap">Ind på feltet ↗</button><small>Din opstilling gemmes automatisk på denne enhed.</small></dialog>
+    <script type="module" src="../3d-faelles/start.js"
+      data-spil="./spil.js"></script>
+  </body>
+</html>

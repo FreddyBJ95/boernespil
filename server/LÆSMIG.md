@@ -121,6 +121,21 @@ Der er plads til otte spillere i et rum. Den første bestemmer banen; når vedko
 overtager den næste. Spillet viser dit tildelte navn, hvis en anden allerede bruger det samme.
 Spillerum og deres beskeder gemmes ikke. Serverens gemte Brøkraft-verdener påvirkes ikke.
 
+## Brudpunkt: byg et prøvefelt
+
+Åbn Spilkassens forside fra familieserveren med `https://<serverens-ip>:8443/index.html`.
+Lås **Voksenspil** op, og vælg **Brudpunkt**, eller gå direkte til `/spil/brudpunkt/` på samme server.
+Spillet kan også åbnes fra Spilkassens almindelige hjemmeside. Det bruger egne lokale 3D-modeller,
+lyde og en indbygget fysikmotor uden CDN. Både mus/tastatur og touch understøttes.
+
+Placér ting og energiceller, og tryk **Start test**. Kun første celle starter af sig selv; de øvrige
+udløses, når en puls eller et vragstykke når dem. Vælg **Tæt på** for at opleve kameraeffekterne,
+eller vælg roligere effekter under hjælp. **Nulstil** genskaber din ubeskadigede opstilling.
+Testresultater viser skaden på hvert objekt, og replay kan genses fra andre kameravinkler.
+
+Opstillingen og grafikvalget gemmes på den enhed og browseradresse, hvor du spiller. De ligger
+ikke i serverens Brøkraft-verdener. Spillet medtages i Spilkassens offline-cache efter indlæsning.
+
 ## Gør enhederne klar til mikrofon (0.2.0)
 
 En voksen gør dette én gang på hver enhed. Scan først koden under **Gør tabletten klar til mikrofon**.

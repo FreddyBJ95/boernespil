@@ -1,9 +1,10 @@
 import { strict as assert } from "node:assert";
 
-export const VOKSENVERDENER = ["det-sidste-lys", "skrotstorm", "krystaljaegerne"];
+export const VOKSENVERDENER = ["det-sidste-lys", "skrotstorm", "krystaljaegerne", "brudpunkt"];
 const projekt = new URL("../../", import.meta.url);
 const filtyper = {
   js: "text/javascript; charset=utf-8",
+  mjs: "text/javascript; charset=utf-8",
   css: "text/css; charset=utf-8",
   html: "text/html; charset=utf-8",
   json: "application/json",
@@ -12,6 +13,8 @@ const filtyper = {
   png: "image/png",
   webp: "image/webp",
   svg: "image/svg+xml",
+  mp3: "audio/mpeg",
+  txt: "text/plain; charset=utf-8",
 };
 
 // Find alle spillets faktiske browserfiler, så en ny model eller tekstur ikke bliver glemt i pakketesten.
@@ -25,7 +28,7 @@ export async function spilfiler(id) {
       if (fil.isDirectory) await gå(navn);
       else if (
         fil.isFile && filtyper[fil.name.split(".").at(-1)] &&
-        !/([._]test\.|^package\.json$)/.test(fil.name)
+        !/(?:[._](?:test|spec)\.|^tests?\.|^package\.json$)/.test(fil.name)
       ) filer.push(navn);
     }
   }
@@ -62,6 +65,10 @@ export async function prøvVoksenverden(hent, id, sammenlignKilde = false) {
     if (sammenlignKilde) assert.deepEqual(data, await Deno.readFile(new URL(sti, projekt)), sti);
     if (sti.endsWith(".glb")) prøvGLB(data, sti);
     if (sti.endsWith(".jpg")) assert.deepEqual([...data.subarray(0, 3)], [255, 216, 255], sti);
+    if (sti.endsWith(".mp3")) {
+      const id3 = new TextDecoder().decode(data.subarray(0, 3)) === "ID3";
+      assert.ok(data.length > 64 && (id3 || (data[0] === 255 && (data[1] & 224) === 224)), `${sti}: lydens filsignatur`);
+    }
     const head = await hent("/" + sti, { method: "HEAD" });
     assert.equal(head.status, 200, sti);
     assert.equal(head.headers.get("content-type"), svar.headers.get("content-type"), sti);

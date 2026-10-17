@@ -1,0 +1,1921 @@
+{
+  "bil": {
+    "navn": "Servicebil",
+    "dele": [
+      {
+        "id": "bund",
+        "p": [
+          0,
+          0.58,
+          0
+        ],
+        "halv": [
+          0.93,
+          0.16,
+          1.85
+        ],
+        "materiale": "metal",
+        "styrke": 0.75,
+        "masse": 3.5,
+        "fundament": false
+      },
+      {
+        "id": "kofanger_for",
+        "p": [
+          0,
+          0.57,
+          2.04
+        ],
+        "halv": [
+          1.05,
+          0.16,
+          0.16
+        ],
+        "materiale": "metal",
+        "styrke": 0.44,
+        "masse": 0.8,
+        "fundament": false
+      },
+      {
+        "id": "kofanger_bag",
+        "p": [
+          0,
+          0.57,
+          -2.04
+        ],
+        "halv": [
+          1.05,
+          0.16,
+          0.16
+        ],
+        "materiale": "metal",
+        "styrke": 0.44,
+        "masse": 0.8,
+        "fundament": false
+      },
+      {
+        "id": "motorhjelm",
+        "p": [
+          0,
+          1.03,
+          1.21
+        ],
+        "halv": [
+          0.92,
+          0.17,
+          0.67
+        ],
+        "materiale": "metal",
+        "styrke": 0.46,
+        "masse": 1.1,
+        "fundament": false
+      },
+      {
+        "id": "bagklap",
+        "p": [
+          0,
+          1.02,
+          -1.49
+        ],
+        "halv": [
+          0.92,
+          0.14,
+          0.41
+        ],
+        "materiale": "metal",
+        "styrke": 0.46,
+        "masse": 0.9,
+        "fundament": false
+      },
+      {
+        "id": "tag",
+        "p": [
+          0,
+          1.94,
+          -0.35
+        ],
+        "halv": [
+          0.95,
+          0.1,
+          0.97
+        ],
+        "materiale": "metal",
+        "styrke": 0.5,
+        "masse": 1.2,
+        "fundament": false
+      },
+      {
+        "id": "doer_v",
+        "p": [
+          -0.98,
+          1.32,
+          -0.3
+        ],
+        "halv": [
+          0.08,
+          0.53,
+          0.89
+        ],
+        "materiale": "metal",
+        "styrke": 0.46,
+        "masse": 1.0,
+        "fundament": false
+      },
+      {
+        "id": "doer_h",
+        "p": [
+          0.98,
+          1.32,
+          -0.3
+        ],
+        "halv": [
+          0.08,
+          0.53,
+          0.89
+        ],
+        "materiale": "metal",
+        "styrke": 0.46,
+        "masse": 1.0,
+        "fundament": false
+      },
+      {
+        "id": "forrude",
+        "p": [
+          0,
+          1.56,
+          0.57
+        ],
+        "halv": [
+          0.85,
+          0.27,
+          0.035
+        ],
+        "materiale": "glas",
+        "styrke": 0.16,
+        "masse": 0.2,
+        "fundament": false
+      },
+      {
+        "id": "bagrude",
+        "p": [
+          0,
+          1.55,
+          -1.29
+        ],
+        "halv": [
+          0.85,
+          0.27,
+          0.035
+        ],
+        "materiale": "glas",
+        "styrke": 0.16,
+        "masse": 0.2,
+        "fundament": false
+      },
+      {
+        "id": "hjul_v_for",
+        "p": [
+          -1.02,
+          0.43,
+          1.2
+        ],
+        "halv": [
+          0.22,
+          0.4,
+          0.4
+        ],
+        "materiale": "metal",
+        "styrke": 0.58,
+        "masse": 0.6,
+        "fundament": false
+      },
+      {
+        "id": "hjul_v_bag",
+        "p": [
+          -1.02,
+          0.43,
+          -1.2
+        ],
+        "halv": [
+          0.22,
+          0.4,
+          0.4
+        ],
+        "materiale": "metal",
+        "styrke": 0.58,
+        "masse": 0.6,
+        "fundament": false
+      },
+      {
+        "id": "hjul_h_for",
+        "p": [
+          1.02,
+          0.43,
+          1.2
+        ],
+        "halv": [
+          0.22,
+          0.4,
+          0.4
+        ],
+        "materiale": "metal",
+        "styrke": 0.58,
+        "masse": 0.6,
+        "fundament": false
+      },
+      {
+        "id": "hjul_h_bag",
+        "p": [
+          1.02,
+          0.43,
+          -1.2
+        ],
+        "halv": [
+          0.22,
+          0.4,
+          0.4
+        ],
+        "materiale": "metal",
+        "styrke": 0.58,
+        "masse": 0.6,
+        "fundament": false
+      }
+    ],
+    "baand": [
+      [
+        "bund",
+        "kofanger_for"
+      ],
+      [
+        "bund",
+        "kofanger_bag"
+      ],
+      [
+        "bund",
+        "motorhjelm"
+      ],
+      [
+        "bund",
+        "bagklap"
+      ],
+      [
+        "bund",
+        "doer_v"
+      ],
+      [
+        "bund",
+        "doer_h"
+      ],
+      [
+        "bund",
+        "hjul_v_for"
+      ],
+      [
+        "bund",
+        "hjul_h_for"
+      ],
+      [
+        "bund",
+        "hjul_v_bag"
+      ],
+      [
+        "bund",
+        "hjul_h_bag"
+      ],
+      [
+        "tag",
+        "doer_v"
+      ],
+      [
+        "tag",
+        "doer_h"
+      ],
+      [
+        "tag",
+        "forrude"
+      ],
+      [
+        "tag",
+        "bagrude"
+      ],
+      [
+        "doer_v",
+        "forrude"
+      ],
+      [
+        "doer_h",
+        "forrude"
+      ],
+      [
+        "doer_v",
+        "bagrude"
+      ],
+      [
+        "doer_h",
+        "bagrude"
+      ]
+    ]
+  },
+  "hus": {
+    "navn": "Værkstedsdepot",
+    "dele": [
+      {
+        "id": "sokkel_v_for",
+        "p": [
+          -1.75,
+          0.15,
+          1.25
+        ],
+        "halv": [
+          1.74,
+          0.15,
+          1.24
+        ],
+        "materiale": "beton",
+        "styrke": 0.91,
+        "masse": 5.0,
+        "fundament": true
+      },
+      {
+        "id": "stolpe_v_for",
+        "p": [
+          -3.28,
+          1.7,
+          2.28
+        ],
+        "halv": [
+          0.15,
+          1.4,
+          0.15
+        ],
+        "materiale": "trae",
+        "styrke": 0.66,
+        "masse": 1.2,
+        "fundament": false
+      },
+      {
+        "id": "sokkel_v_bag",
+        "p": [
+          -1.75,
+          0.15,
+          -1.25
+        ],
+        "halv": [
+          1.74,
+          0.15,
+          1.24
+        ],
+        "materiale": "beton",
+        "styrke": 0.91,
+        "masse": 5.0,
+        "fundament": true
+      },
+      {
+        "id": "stolpe_v_bag",
+        "p": [
+          -3.28,
+          1.7,
+          -2.28
+        ],
+        "halv": [
+          0.15,
+          1.4,
+          0.15
+        ],
+        "materiale": "trae",
+        "styrke": 0.66,
+        "masse": 1.2,
+        "fundament": false
+      },
+      {
+        "id": "sokkel_h_for",
+        "p": [
+          1.75,
+          0.15,
+          1.25
+        ],
+        "halv": [
+          1.74,
+          0.15,
+          1.24
+        ],
+        "materiale": "beton",
+        "styrke": 0.91,
+        "masse": 5.0,
+        "fundament": true
+      },
+      {
+        "id": "stolpe_h_for",
+        "p": [
+          3.28,
+          1.7,
+          2.28
+        ],
+        "halv": [
+          0.15,
+          1.4,
+          0.15
+        ],
+        "materiale": "trae",
+        "styrke": 0.66,
+        "masse": 1.2,
+        "fundament": false
+      },
+      {
+        "id": "sokkel_h_bag",
+        "p": [
+          1.75,
+          0.15,
+          -1.25
+        ],
+        "halv": [
+          1.74,
+          0.15,
+          1.24
+        ],
+        "materiale": "beton",
+        "styrke": 0.91,
+        "masse": 5.0,
+        "fundament": true
+      },
+      {
+        "id": "stolpe_h_bag",
+        "p": [
+          3.28,
+          1.7,
+          -2.28
+        ],
+        "halv": [
+          0.15,
+          1.4,
+          0.15
+        ],
+        "materiale": "trae",
+        "styrke": 0.66,
+        "masse": 1.2,
+        "fundament": false
+      },
+      {
+        "id": "vaeg_v_0",
+        "p": [
+          -3.27,
+          1.7,
+          1.5
+        ],
+        "halv": [
+          0.13,
+          1.38,
+          0.72
+        ],
+        "materiale": "trae",
+        "styrke": 0.4,
+        "masse": 1.4,
+        "fundament": false
+      },
+      {
+        "id": "vaeg_v_1",
+        "p": [
+          -3.27,
+          1.7,
+          0
+        ],
+        "halv": [
+          0.13,
+          1.38,
+          0.72
+        ],
+        "materiale": "trae",
+        "styrke": 0.4,
+        "masse": 1.4,
+        "fundament": false
+      },
+      {
+        "id": "vaeg_v_2",
+        "p": [
+          -3.27,
+          1.7,
+          -1.5
+        ],
+        "halv": [
+          0.13,
+          1.38,
+          0.72
+        ],
+        "materiale": "trae",
+        "styrke": 0.4,
+        "masse": 1.4,
+        "fundament": false
+      },
+      {
+        "id": "vaeg_h_0",
+        "p": [
+          3.27,
+          1.7,
+          1.5
+        ],
+        "halv": [
+          0.13,
+          1.38,
+          0.72
+        ],
+        "materiale": "trae",
+        "styrke": 0.4,
+        "masse": 1.4,
+        "fundament": false
+      },
+      {
+        "id": "vaeg_h_1",
+        "p": [
+          3.27,
+          1.7,
+          0
+        ],
+        "halv": [
+          0.13,
+          1.38,
+          0.72
+        ],
+        "materiale": "trae",
+        "styrke": 0.4,
+        "masse": 1.4,
+        "fundament": false
+      },
+      {
+        "id": "vaeg_h_2",
+        "p": [
+          3.27,
+          1.7,
+          -1.5
+        ],
+        "halv": [
+          0.13,
+          1.38,
+          0.72
+        ],
+        "materiale": "trae",
+        "styrke": 0.4,
+        "masse": 1.4,
+        "fundament": false
+      },
+      {
+        "id": "vaeg_bag_v",
+        "p": [
+          -1.65,
+          1.7,
+          -2.27
+        ],
+        "halv": [
+          1.48,
+          1.38,
+          0.13
+        ],
+        "materiale": "trae",
+        "styrke": 0.4,
+        "masse": 2.0,
+        "fundament": false
+      },
+      {
+        "id": "vaeg_for_v",
+        "p": [
+          -2.046,
+          1.7,
+          2.27
+        ],
+        "halv": [
+          1.1,
+          1.38,
+          0.13
+        ],
+        "materiale": "trae",
+        "styrke": 0.4,
+        "masse": 1.5,
+        "fundament": false
+      },
+      {
+        "id": "vaeg_bag_h",
+        "p": [
+          1.65,
+          1.7,
+          -2.27
+        ],
+        "halv": [
+          1.48,
+          1.38,
+          0.13
+        ],
+        "materiale": "trae",
+        "styrke": 0.4,
+        "masse": 2.0,
+        "fundament": false
+      },
+      {
+        "id": "vaeg_for_h",
+        "p": [
+          2.046,
+          1.7,
+          2.27
+        ],
+        "halv": [
+          1.1,
+          1.38,
+          0.13
+        ],
+        "materiale": "trae",
+        "styrke": 0.4,
+        "masse": 1.5,
+        "fundament": false
+      },
+      {
+        "id": "doer",
+        "p": [
+          0,
+          1.4,
+          2.3
+        ],
+        "halv": [
+          0.79,
+          1.08,
+          0.07
+        ],
+        "materiale": "trae",
+        "styrke": 0.32,
+        "masse": 0.7,
+        "fundament": false
+      },
+      {
+        "id": "overligger",
+        "p": [
+          0,
+          2.81,
+          2.27
+        ],
+        "halv": [
+          1.0,
+          0.28,
+          0.14
+        ],
+        "materiale": "trae",
+        "styrke": 0.58,
+        "masse": 0.8,
+        "fundament": false
+      },
+      {
+        "id": "rem_for",
+        "p": [
+          0,
+          3.13,
+          2.27
+        ],
+        "halv": [
+          3.45,
+          0.1,
+          0.16
+        ],
+        "materiale": "trae",
+        "styrke": 0.68,
+        "masse": 1.5,
+        "fundament": false
+      },
+      {
+        "id": "gavl_for",
+        "p": [
+          0,
+          3.71,
+          2.27
+        ],
+        "halv": [
+          3.32,
+          0.49,
+          0.1
+        ],
+        "materiale": "trae",
+        "styrke": 0.34,
+        "masse": 1.0,
+        "fundament": false
+      },
+      {
+        "id": "rem_bag",
+        "p": [
+          0,
+          3.13,
+          -2.27
+        ],
+        "halv": [
+          3.45,
+          0.1,
+          0.16
+        ],
+        "materiale": "trae",
+        "styrke": 0.68,
+        "masse": 1.5,
+        "fundament": false
+      },
+      {
+        "id": "gavl_bag",
+        "p": [
+          0,
+          3.71,
+          -2.27
+        ],
+        "halv": [
+          3.32,
+          0.49,
+          0.1
+        ],
+        "materiale": "trae",
+        "styrke": 0.34,
+        "masse": 1.0,
+        "fundament": false
+      },
+      {
+        "id": "rem_v",
+        "p": [
+          -3.27,
+          3.13,
+          0
+        ],
+        "halv": [
+          0.16,
+          0.1,
+          2.32
+        ],
+        "materiale": "trae",
+        "styrke": 0.68,
+        "masse": 1.3,
+        "fundament": false
+      },
+      {
+        "id": "rem_h",
+        "p": [
+          3.27,
+          3.13,
+          0
+        ],
+        "halv": [
+          0.16,
+          0.1,
+          2.32
+        ],
+        "materiale": "trae",
+        "styrke": 0.68,
+        "masse": 1.3,
+        "fundament": false
+      },
+      {
+        "id": "tag_v_0",
+        "p": [
+          -1.86,
+          3.79,
+          1.72
+        ],
+        "halv": [
+          1.95,
+          0.64,
+          0.85
+        ],
+        "materiale": "metal",
+        "styrke": 0.35,
+        "masse": 1.3,
+        "fundament": false
+      },
+      {
+        "id": "tag_v_1",
+        "p": [
+          -1.86,
+          3.79,
+          0
+        ],
+        "halv": [
+          1.95,
+          0.64,
+          0.85
+        ],
+        "materiale": "metal",
+        "styrke": 0.35,
+        "masse": 1.3,
+        "fundament": false
+      },
+      {
+        "id": "tag_v_2",
+        "p": [
+          -1.86,
+          3.79,
+          -1.72
+        ],
+        "halv": [
+          1.95,
+          0.64,
+          0.85
+        ],
+        "materiale": "metal",
+        "styrke": 0.35,
+        "masse": 1.3,
+        "fundament": false
+      },
+      {
+        "id": "tag_h_0",
+        "p": [
+          1.86,
+          3.79,
+          1.72
+        ],
+        "halv": [
+          1.95,
+          0.64,
+          0.85
+        ],
+        "materiale": "metal",
+        "styrke": 0.35,
+        "masse": 1.3,
+        "fundament": false
+      },
+      {
+        "id": "tag_h_1",
+        "p": [
+          1.86,
+          3.79,
+          0
+        ],
+        "halv": [
+          1.95,
+          0.64,
+          0.85
+        ],
+        "materiale": "metal",
+        "styrke": 0.35,
+        "masse": 1.3,
+        "fundament": false
+      },
+      {
+        "id": "tag_h_2",
+        "p": [
+          1.86,
+          3.79,
+          -1.72
+        ],
+        "halv": [
+          1.95,
+          0.64,
+          0.85
+        ],
+        "materiale": "metal",
+        "styrke": 0.35,
+        "masse": 1.3,
+        "fundament": false
+      },
+      {
+        "id": "kip_0",
+        "p": [
+          0,
+          4.46,
+          1.29
+        ],
+        "halv": [
+          0.13,
+          0.08,
+          1.29
+        ],
+        "materiale": "metal",
+        "styrke": 0.28,
+        "masse": 0.4,
+        "fundament": false
+      },
+      {
+        "id": "kip_1",
+        "p": [
+          0,
+          4.46,
+          -1.29
+        ],
+        "halv": [
+          0.13,
+          0.08,
+          1.29
+        ],
+        "materiale": "metal",
+        "styrke": 0.28,
+        "masse": 0.4,
+        "fundament": false
+      },
+      {
+        "id": "skorsten_0",
+        "p": [
+          -1.65,
+          1.21,
+          -1.25
+        ],
+        "halv": [
+          0.32,
+          0.9,
+          0.32
+        ],
+        "materiale": "beton",
+        "styrke": 0.48,
+        "masse": 1.2,
+        "fundament": false
+      },
+      {
+        "id": "skorsten_1",
+        "p": [
+          -1.65,
+          3.1,
+          -1.25
+        ],
+        "halv": [
+          0.32,
+          0.98,
+          0.32
+        ],
+        "materiale": "beton",
+        "styrke": 0.48,
+        "masse": 1.2,
+        "fundament": false
+      },
+      {
+        "id": "skorsten_2",
+        "p": [
+          -1.65,
+          4.62,
+          -1.25
+        ],
+        "halv": [
+          0.32,
+          0.53,
+          0.32
+        ],
+        "materiale": "beton",
+        "styrke": 0.48,
+        "masse": 1.2,
+        "fundament": false
+      }
+    ],
+    "baand": [
+      [
+        "sokkel_v_for",
+        "stolpe_v_for"
+      ],
+      [
+        "sokkel_v_bag",
+        "stolpe_v_bag"
+      ],
+      [
+        "sokkel_h_for",
+        "stolpe_h_for"
+      ],
+      [
+        "sokkel_h_bag",
+        "stolpe_h_bag"
+      ],
+      [
+        "sokkel_v_for",
+        "sokkel_h_for"
+      ],
+      [
+        "sokkel_v_bag",
+        "sokkel_h_bag"
+      ],
+      [
+        "sokkel_v_for",
+        "sokkel_v_bag"
+      ],
+      [
+        "sokkel_h_for",
+        "sokkel_h_bag"
+      ],
+      [
+        "vaeg_v_0",
+        "stolpe_v_for"
+      ],
+      [
+        "vaeg_v_0",
+        "sokkel_v_for"
+      ],
+      [
+        "vaeg_v_1",
+        "stolpe_v_for"
+      ],
+      [
+        "vaeg_v_1",
+        "sokkel_v_for"
+      ],
+      [
+        "vaeg_v_1",
+        "stolpe_v_bag"
+      ],
+      [
+        "vaeg_v_1",
+        "sokkel_v_bag"
+      ],
+      [
+        "vaeg_v_1",
+        "vaeg_v_0"
+      ],
+      [
+        "vaeg_v_2",
+        "stolpe_v_bag"
+      ],
+      [
+        "vaeg_v_2",
+        "sokkel_v_bag"
+      ],
+      [
+        "vaeg_v_2",
+        "vaeg_v_1"
+      ],
+      [
+        "vaeg_h_0",
+        "stolpe_h_for"
+      ],
+      [
+        "vaeg_h_0",
+        "sokkel_h_for"
+      ],
+      [
+        "vaeg_h_1",
+        "stolpe_h_for"
+      ],
+      [
+        "vaeg_h_1",
+        "sokkel_h_for"
+      ],
+      [
+        "vaeg_h_1",
+        "stolpe_h_bag"
+      ],
+      [
+        "vaeg_h_1",
+        "sokkel_h_bag"
+      ],
+      [
+        "vaeg_h_1",
+        "vaeg_h_0"
+      ],
+      [
+        "vaeg_h_2",
+        "stolpe_h_bag"
+      ],
+      [
+        "vaeg_h_2",
+        "sokkel_h_bag"
+      ],
+      [
+        "vaeg_h_2",
+        "vaeg_h_1"
+      ],
+      [
+        "vaeg_bag_v",
+        "sokkel_v_bag"
+      ],
+      [
+        "vaeg_bag_v",
+        "stolpe_v_bag"
+      ],
+      [
+        "vaeg_for_v",
+        "sokkel_v_for"
+      ],
+      [
+        "vaeg_for_v",
+        "stolpe_v_for"
+      ],
+      [
+        "vaeg_bag_h",
+        "sokkel_h_bag"
+      ],
+      [
+        "vaeg_bag_h",
+        "stolpe_h_bag"
+      ],
+      [
+        "vaeg_for_h",
+        "sokkel_h_for"
+      ],
+      [
+        "vaeg_for_h",
+        "stolpe_h_for"
+      ],
+      [
+        "doer",
+        "vaeg_for_v"
+      ],
+      [
+        "overligger",
+        "vaeg_for_v"
+      ],
+      [
+        "overligger",
+        "vaeg_for_h"
+      ],
+      [
+        "rem_for",
+        "stolpe_v_for"
+      ],
+      [
+        "rem_for",
+        "stolpe_h_for"
+      ],
+      [
+        "gavl_for",
+        "rem_for"
+      ],
+      [
+        "rem_bag",
+        "stolpe_v_bag"
+      ],
+      [
+        "rem_bag",
+        "stolpe_h_bag"
+      ],
+      [
+        "gavl_bag",
+        "rem_bag"
+      ],
+      [
+        "rem_v",
+        "stolpe_v_for"
+      ],
+      [
+        "rem_v",
+        "stolpe_v_bag"
+      ],
+      [
+        "rem_h",
+        "stolpe_h_for"
+      ],
+      [
+        "rem_h",
+        "stolpe_h_bag"
+      ],
+      [
+        "tag_v_0",
+        "rem_v"
+      ],
+      [
+        "tag_v_0",
+        "gavl_for"
+      ],
+      [
+        "tag_v_1",
+        "rem_v"
+      ],
+      [
+        "tag_v_1",
+        "gavl_for"
+      ],
+      [
+        "tag_v_1",
+        "tag_v_0"
+      ],
+      [
+        "tag_v_2",
+        "rem_v"
+      ],
+      [
+        "tag_v_2",
+        "gavl_bag"
+      ],
+      [
+        "tag_v_2",
+        "tag_v_1"
+      ],
+      [
+        "tag_h_0",
+        "rem_h"
+      ],
+      [
+        "tag_h_0",
+        "gavl_for"
+      ],
+      [
+        "tag_h_1",
+        "rem_h"
+      ],
+      [
+        "tag_h_1",
+        "gavl_for"
+      ],
+      [
+        "tag_h_1",
+        "tag_h_0"
+      ],
+      [
+        "tag_h_2",
+        "rem_h"
+      ],
+      [
+        "tag_h_2",
+        "gavl_bag"
+      ],
+      [
+        "tag_h_2",
+        "tag_h_1"
+      ],
+      [
+        "kip_0",
+        "tag_v_0"
+      ],
+      [
+        "kip_0",
+        "tag_v_1"
+      ],
+      [
+        "kip_0",
+        "tag_h_0"
+      ],
+      [
+        "kip_0",
+        "tag_h_1"
+      ],
+      [
+        "kip_1",
+        "tag_v_1"
+      ],
+      [
+        "kip_1",
+        "tag_v_2"
+      ],
+      [
+        "kip_1",
+        "tag_h_1"
+      ],
+      [
+        "kip_1",
+        "tag_h_2"
+      ],
+      [
+        "skorsten_0",
+        "sokkel_v_bag"
+      ],
+      [
+        "skorsten_1",
+        "skorsten_0"
+      ],
+      [
+        "skorsten_2",
+        "skorsten_1"
+      ]
+    ]
+  },
+  "taarn": {
+    "navn": "Vandtårn",
+    "dele": [
+      {
+        "id": "fod_v_for",
+        "p": [
+          -1.48,
+          0.15,
+          1.48
+        ],
+        "halv": [
+          0.42,
+          0.15,
+          0.42
+        ],
+        "materiale": "beton",
+        "styrke": 0.94,
+        "masse": 4.0,
+        "fundament": true
+      },
+      {
+        "id": "ben_v_for_0",
+        "p": [
+          -1.48,
+          2.04,
+          1.48
+        ],
+        "halv": [
+          0.15,
+          1.74,
+          0.15
+        ],
+        "materiale": "metal",
+        "styrke": 0.62,
+        "masse": 2.2,
+        "fundament": false
+      },
+      {
+        "id": "ben_v_for_1",
+        "p": [
+          -1.48,
+          5.55,
+          1.48
+        ],
+        "halv": [
+          0.15,
+          1.74,
+          0.15
+        ],
+        "materiale": "metal",
+        "styrke": 0.62,
+        "masse": 2.2,
+        "fundament": false
+      },
+      {
+        "id": "fod_v_bag",
+        "p": [
+          -1.48,
+          0.15,
+          -1.48
+        ],
+        "halv": [
+          0.42,
+          0.15,
+          0.42
+        ],
+        "materiale": "beton",
+        "styrke": 0.94,
+        "masse": 4.0,
+        "fundament": true
+      },
+      {
+        "id": "ben_v_bag_0",
+        "p": [
+          -1.48,
+          2.04,
+          -1.48
+        ],
+        "halv": [
+          0.15,
+          1.74,
+          0.15
+        ],
+        "materiale": "metal",
+        "styrke": 0.62,
+        "masse": 2.2,
+        "fundament": false
+      },
+      {
+        "id": "ben_v_bag_1",
+        "p": [
+          -1.48,
+          5.55,
+          -1.48
+        ],
+        "halv": [
+          0.15,
+          1.74,
+          0.15
+        ],
+        "materiale": "metal",
+        "styrke": 0.62,
+        "masse": 2.2,
+        "fundament": false
+      },
+      {
+        "id": "fod_h_for",
+        "p": [
+          1.48,
+          0.15,
+          1.48
+        ],
+        "halv": [
+          0.42,
+          0.15,
+          0.42
+        ],
+        "materiale": "beton",
+        "styrke": 0.94,
+        "masse": 4.0,
+        "fundament": true
+      },
+      {
+        "id": "ben_h_for_0",
+        "p": [
+          1.48,
+          2.04,
+          1.48
+        ],
+        "halv": [
+          0.15,
+          1.74,
+          0.15
+        ],
+        "materiale": "metal",
+        "styrke": 0.62,
+        "masse": 2.2,
+        "fundament": false
+      },
+      {
+        "id": "ben_h_for_1",
+        "p": [
+          1.48,
+          5.55,
+          1.48
+        ],
+        "halv": [
+          0.15,
+          1.74,
+          0.15
+        ],
+        "materiale": "metal",
+        "styrke": 0.62,
+        "masse": 2.2,
+        "fundament": false
+      },
+      {
+        "id": "fod_h_bag",
+        "p": [
+          1.48,
+          0.15,
+          -1.48
+        ],
+        "halv": [
+          0.42,
+          0.15,
+          0.42
+        ],
+        "materiale": "beton",
+        "styrke": 0.94,
+        "masse": 4.0,
+        "fundament": true
+      },
+      {
+        "id": "ben_h_bag_0",
+        "p": [
+          1.48,
+          2.04,
+          -1.48
+        ],
+        "halv": [
+          0.15,
+          1.74,
+          0.15
+        ],
+        "materiale": "metal",
+        "styrke": 0.62,
+        "masse": 2.2,
+        "fundament": false
+      },
+      {
+        "id": "ben_h_bag_1",
+        "p": [
+          1.48,
+          5.55,
+          -1.48
+        ],
+        "halv": [
+          0.15,
+          1.74,
+          0.15
+        ],
+        "materiale": "metal",
+        "styrke": 0.62,
+        "masse": 2.2,
+        "fundament": false
+      },
+      {
+        "id": "tvaer_for_0",
+        "p": [
+          0,
+          3.79,
+          1.48
+        ],
+        "halv": [
+          1.65,
+          0.1,
+          0.1
+        ],
+        "materiale": "metal",
+        "styrke": 0.5,
+        "masse": 1.2,
+        "fundament": false
+      },
+      {
+        "id": "tvaer_bag_0",
+        "p": [
+          0,
+          3.79,
+          -1.48
+        ],
+        "halv": [
+          1.65,
+          0.1,
+          0.1
+        ],
+        "materiale": "metal",
+        "styrke": 0.5,
+        "masse": 1.2,
+        "fundament": false
+      },
+      {
+        "id": "tvaer_v_0",
+        "p": [
+          -1.48,
+          3.79,
+          0
+        ],
+        "halv": [
+          0.1,
+          0.1,
+          1.65
+        ],
+        "materiale": "metal",
+        "styrke": 0.5,
+        "masse": 1.2,
+        "fundament": false
+      },
+      {
+        "id": "tvaer_h_0",
+        "p": [
+          1.48,
+          3.79,
+          0
+        ],
+        "halv": [
+          0.1,
+          0.1,
+          1.65
+        ],
+        "materiale": "metal",
+        "styrke": 0.5,
+        "masse": 1.2,
+        "fundament": false
+      },
+      {
+        "id": "tvaer_for_1",
+        "p": [
+          0,
+          7.29,
+          1.48
+        ],
+        "halv": [
+          1.65,
+          0.1,
+          0.1
+        ],
+        "materiale": "metal",
+        "styrke": 0.5,
+        "masse": 1.2,
+        "fundament": false
+      },
+      {
+        "id": "tvaer_bag_1",
+        "p": [
+          0,
+          7.29,
+          -1.48
+        ],
+        "halv": [
+          1.65,
+          0.1,
+          0.1
+        ],
+        "materiale": "metal",
+        "styrke": 0.5,
+        "masse": 1.2,
+        "fundament": false
+      },
+      {
+        "id": "tvaer_v_1",
+        "p": [
+          -1.48,
+          7.29,
+          0
+        ],
+        "halv": [
+          0.1,
+          0.1,
+          1.65
+        ],
+        "materiale": "metal",
+        "styrke": 0.5,
+        "masse": 1.2,
+        "fundament": false
+      },
+      {
+        "id": "tvaer_h_1",
+        "p": [
+          1.48,
+          7.29,
+          0
+        ],
+        "halv": [
+          0.1,
+          0.1,
+          1.65
+        ],
+        "materiale": "metal",
+        "styrke": 0.5,
+        "masse": 1.2,
+        "fundament": false
+      },
+      {
+        "id": "daek_v_for",
+        "p": [
+          -0.83,
+          7.31,
+          0.83
+        ],
+        "halv": [
+          0.82,
+          0.04,
+          0.82
+        ],
+        "materiale": "metal",
+        "styrke": 0.5,
+        "masse": 1.0,
+        "fundament": false
+      },
+      {
+        "id": "daek_v_bag",
+        "p": [
+          -0.83,
+          7.31,
+          -0.83
+        ],
+        "halv": [
+          0.82,
+          0.04,
+          0.82
+        ],
+        "materiale": "metal",
+        "styrke": 0.5,
+        "masse": 1.0,
+        "fundament": false
+      },
+      {
+        "id": "daek_h_for",
+        "p": [
+          0.83,
+          7.31,
+          0.83
+        ],
+        "halv": [
+          0.82,
+          0.04,
+          0.82
+        ],
+        "materiale": "metal",
+        "styrke": 0.5,
+        "masse": 1.0,
+        "fundament": false
+      },
+      {
+        "id": "daek_h_bag",
+        "p": [
+          0.83,
+          7.31,
+          -0.83
+        ],
+        "halv": [
+          0.82,
+          0.04,
+          0.82
+        ],
+        "materiale": "metal",
+        "styrke": 0.5,
+        "masse": 1.0,
+        "fundament": false
+      },
+      {
+        "id": "tank_bund",
+        "p": [
+          0,
+          7.7,
+          0
+        ],
+        "halv": [
+          1.82,
+          0.34,
+          1.82
+        ],
+        "materiale": "metal",
+        "styrke": 0.6,
+        "masse": 3.5,
+        "fundament": false
+      },
+      {
+        "id": "tank_midte",
+        "p": [
+          0,
+          8.7,
+          0
+        ],
+        "halv": [
+          1.82,
+          0.65,
+          1.82
+        ],
+        "materiale": "metal",
+        "styrke": 0.52,
+        "masse": 4.0,
+        "fundament": false
+      },
+      {
+        "id": "tank_top",
+        "p": [
+          0,
+          9.81,
+          0
+        ],
+        "halv": [
+          1.82,
+          0.45,
+          1.82
+        ],
+        "materiale": "metal",
+        "styrke": 0.46,
+        "masse": 3.0,
+        "fundament": false
+      },
+      {
+        "id": "tank_tag",
+        "p": [
+          0,
+          10.43,
+          0
+        ],
+        "halv": [
+          1.89,
+          0.16,
+          1.89
+        ],
+        "materiale": "metal",
+        "styrke": 0.4,
+        "masse": 2.0,
+        "fundament": false
+      }
+    ],
+    "baand": [
+      [
+        "ben_v_for_0",
+        "fod_v_for"
+      ],
+      [
+        "ben_v_for_1",
+        "ben_v_for_0"
+      ],
+      [
+        "ben_v_bag_0",
+        "fod_v_bag"
+      ],
+      [
+        "ben_v_bag_1",
+        "ben_v_bag_0"
+      ],
+      [
+        "ben_h_for_0",
+        "fod_h_for"
+      ],
+      [
+        "ben_h_for_1",
+        "ben_h_for_0"
+      ],
+      [
+        "ben_h_bag_0",
+        "fod_h_bag"
+      ],
+      [
+        "ben_h_bag_1",
+        "ben_h_bag_0"
+      ],
+      [
+        "tvaer_for_0",
+        "ben_v_for_0"
+      ],
+      [
+        "tvaer_for_0",
+        "ben_h_for_0"
+      ],
+      [
+        "tvaer_bag_0",
+        "ben_v_bag_0"
+      ],
+      [
+        "tvaer_bag_0",
+        "ben_h_bag_0"
+      ],
+      [
+        "tvaer_v_0",
+        "ben_v_for_0"
+      ],
+      [
+        "tvaer_v_0",
+        "ben_v_bag_0"
+      ],
+      [
+        "tvaer_h_0",
+        "ben_h_for_0"
+      ],
+      [
+        "tvaer_h_0",
+        "ben_h_bag_0"
+      ],
+      [
+        "tvaer_for_1",
+        "ben_v_for_1"
+      ],
+      [
+        "tvaer_for_1",
+        "ben_h_for_1"
+      ],
+      [
+        "tvaer_bag_1",
+        "ben_v_bag_1"
+      ],
+      [
+        "tvaer_bag_1",
+        "ben_h_bag_1"
+      ],
+      [
+        "tvaer_v_1",
+        "ben_v_for_1"
+      ],
+      [
+        "tvaer_v_1",
+        "ben_v_bag_1"
+      ],
+      [
+        "tvaer_h_1",
+        "ben_h_for_1"
+      ],
+      [
+        "tvaer_h_1",
+        "ben_h_bag_1"
+      ],
+      [
+        "daek_v_for",
+        "tvaer_v_1"
+      ],
+      [
+        "daek_v_for",
+        "tvaer_for_1"
+      ],
+      [
+        "daek_v_bag",
+        "tvaer_v_1"
+      ],
+      [
+        "daek_v_bag",
+        "tvaer_bag_1"
+      ],
+      [
+        "daek_h_for",
+        "tvaer_h_1"
+      ],
+      [
+        "daek_h_for",
+        "tvaer_for_1"
+      ],
+      [
+        "daek_h_bag",
+        "tvaer_h_1"
+      ],
+      [
+        "daek_h_bag",
+        "tvaer_bag_1"
+      ],
+      [
+        "tank_bund",
+        "daek_v_for"
+      ],
+      [
+        "tank_bund",
+        "daek_v_bag"
+      ],
+      [
+        "tank_bund",
+        "daek_h_for"
+      ],
+      [
+        "tank_bund",
+        "daek_h_bag"
+      ],
+      [
+        "tank_bund",
+        "tank_midte"
+      ],
+      [
+        "tank_midte",
+        "tank_top"
+      ],
+      [
+        "tank_top",
+        "tank_tag"
+      ]
+    ]
+  },
+  "celle": {
+    "navn": "Energicelle",
+    "dele": [
+      {
+        "id": "kerne",
+        "p": [
+          0,
+          0.65,
+          0
+        ],
+        "halv": [
+          0.49,
+          0.65,
+          0.49
+        ],
+        "materiale": "metal",
+        "styrke": 0.22,
+        "masse": 1.0,
+        "fundament": false
+      }
+    ],
+    "baand": []
+  }
+}

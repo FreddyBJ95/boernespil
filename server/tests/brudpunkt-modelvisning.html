@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="da">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>BRUDPUNKT · teknisk komponentprøve</title>
+    <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      background: #bac3b5;
+      color: #eef4ed;
+      font: 13px system-ui;
+    }
+    #verden {
+      width: 100vw;
+      height: 100dvh;
+      display: block;
+    }
+    #objektiv,
+    #blink {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 2;
+    }
+    #blink {
+      background: radial-gradient(ellipse,#fffbe3,#f6e0bb);
+      opacity: 0;
+    }
+    .panel {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      z-index: 3;
+      width: min(420px,calc(100vw - 24px));
+      background: #13252bed;
+      border: 1px solid #b6c9bf66;
+      padding: 14px;
+      border-radius: 8px;
+      max-height: 44dvh;
+      overflow: auto;
+    }
+    h1 {
+      font-size: 16px;
+      margin: 0 0 8px;
+    }
+    p {
+      font-size: 12px;
+      line-height: 1.5;
+      margin: 7px 0;
+      color: #c4d5c9;
+    }
+    .knapper {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin: 10px 0;
+    }
+    button {
+      font: 12px system-ui;
+      min-height: 44px;
+      background: #e8c98b;
+      color: #17272d;
+      border: 0;
+      border-radius: 4px;
+      padding: 9px 12px;
+      cursor: pointer;
+    }
+    button[disabled] {
+      opacity: .5;
+    }
+    button[aria-pressed=true] {
+      background: #83c3b6;
+    }
+    label {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      min-height: 40px;
+    }
+    input {
+      width: 20px;
+      height: 20px;
+    }
+    dl {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px 12px;
+      margin: 9px 0;
+    }
+    dt {
+      color: #b6c9bf;
+    }
+    dd {
+      font-variant-numeric: tabular-nums;
+      margin: 0;
+    }
+    #fejl {
+      color: #ffae9e;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    #skade {
+      color: #f6d48c;
+    }
+    .note {
+      position: fixed;
+      bottom: 10px;
+      left: 12px;
+      right: 12px;
+      z-index: 3;
+      background: #13252bd9;
+      border-radius: 5px;
+      padding: 8px;
+      font-size: 11px;
+      pointer-events: none;
+    }
+    @media (max-height:500px) {
+      .panel {
+        max-height: calc(100dvh - 62px);
+        width: 300px;
+      }
+      .note {
+        font-size: 10px;
+      }
+    }
+    </style>
+  </head>
+  <body>
+    <canvas id="verden"></canvas>
+    <canvas id="objektiv" aria-hidden="true"></canvas>
+    <div id="blink" aria-hidden="true"></div>
+    <section class="panel">
+      <h1>BRUDPUNKT · teknisk komponentprøve</h1>
+      <p>Kun egne 3D-modeller, fysik, lys, lyde og kameraeffekter. Denne prøve indlæser ingen spilmenu, voksenlås eller gemte oplysninger.</p>
+      <div
+        class="knapper"><button id="start" disabled>Start komponentprøve</button><button id="naer" aria-pressed="false">Nærkamera</button><button id="nulstil" disabled>Nulstil</button><button id="slowmo" aria-pressed="false">Slowmotion</button><button id="rent">Rent objektiv</button></div>
+      <label><input id="rolig" type="checkbox"> Rolige kameraeffekter</label>
+      <dl>
+        <dt>Indlæsning</dt>
+        <dd id="klar">Henter komponenter …</dd>
+        <dt>Fysiktid</dt>
+        <dd id="tid">0.00 s</dd>
+        <dt>Pulser / kæde</dt>
+        <dd id="pulser">0 / 0</dd>
+        <dt>Brud / fysiske dele</dt>
+        <dd id="brud">0 / 0</dd>
+        <dt>Afspilning</dt>
+        <dd id="lydstatus">Afventer klik</dd>
+        <dt>Lys</dt>
+        <dd id="lysstatus">Hemisfære 1.5 · sol 3.3</dd>
+        <dt>Grafik</dt>
+        <dd id="grafikstatus">Afventer første billede</dd>
+        <dt>Seneste 60 billeder</dt>
+        <dd id="frametid">—</dd>
+      </dl>
+      <p id="skade">Objektiv: rent</p>
+      <div id="fejl" role="alert"></div>
+    </section>
+    <div
+      class="note">Separat testvisning. Start viser en fysisk kæde med tre fiktive energiceller, en bil, et hus og et vandtårn. Vælg nærkamera før start for at prøve revnet glas.</div>
+    <script type="module">
+    import * as THREE from "/spil/3d-faelles/three.module.js";
+    import { GLTFLoader } from "/spil/3d-faelles/GLTFLoader.js";
+    import { opretSimulering } from "/spil/brudpunkt/simulering.js";
+    import { BrudEffekter } from "/spil/brudpunkt/effekter.js";
+    import { BrudLyd } from "/spil/brudpunkt/lyd.js";
+
+    const $ = (id) => document.getElementById(id);
+    const fejl = [];
+    function visFejl(tekst) {
+      if (fejl.length < 10) fejl.push(String(tekst).slice(0, 900));
+      $("fejl").textContent = fejl.join("\n");
+    }
+    window.addEventListener("error", (e) => visFejl(e.message));
+    window.addEventListener(
+      "unhandledrejection",
+      (e) => visFejl(e.reason?.message || e.reason),
+    );
+    const originalFejl = console.error;
+    console.error = (...args) => {
+      visFejl(args.map(String).join(" "));
+      originalFejl.apply(console, args);
+    };
+
+    try {
+      const renderer = new THREE.WebGLRenderer({
+        canvas: $("verden"),
+        antialias: true,
+      });
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.05;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color("#bfc9bb");
+      scene.fog = new THREE.Fog("#bfc9bb", 65, 150);
+      scene.add(new THREE.HemisphereLight("#d8e7ed", "#827456", 1.5));
+      const sol = new THREE.DirectionalLight("#ffe1a2", 3.3);
+      sol.position.set(-24, 36, 21);
+      sol.castShadow = true;
+      sol.shadow.mapSize.set(1024, 1024);
+      Object.assign(sol.shadow.camera, {
+        left: -30,
+        right: 30,
+        top: 30,
+        bottom: -30,
+        near: 1,
+        far: 100,
+      });
+      sol.shadow.bias = -.00025;
+      sol.shadow.normalBias = .045;
+      scene.add(sol);
+      const grund = new THREE.Mesh(
+        new THREE.PlaneGeometry(140, 140),
+        new THREE.MeshStandardMaterial({ color: "#9b9c8a", roughness: .95 }),
+      );
+      grund.rotation.x = -Math.PI / 2;
+      grund.position.y = -.015;
+      grund.receiveShadow = true;
+      scene.add(grund);
+      const gitter = new THREE.GridHelper(48, 24, "#d1b86e", "#8c9586");
+      gitter.position.y = .005;
+      scene.add(gitter);
+      const camera = new THREE.PerspectiveCamera(46, 1, .1, 200);
+      const lyd = new BrudLyd();
+      const fx = new BrudEffekter(scene, camera, {
+        canvas: $("objektiv"),
+        blink: $("blink"),
+        vedSkade: (skade) => {
+          $("skade").textContent = `Objektiv: ${
+            skade ? "revnet — Rent objektiv nulstiller kun glasset" : "rent"
+          }`;
+        },
+      });
+      let nær = false,
+        slowmo = false,
+        seneste = performance.now(),
+        hud = 0,
+        lukket = false;
+      const tider = [], retning = new THREE.Vector3();
+      const figurer = new Map(), wrappers = [];
+      const [gltf, opskrifter] = await Promise.all([
+        new GLTFLoader().loadAsync("/spil/brudpunkt/modeller/brudpunkt.glb"),
+        fetch("/spil/brudpunkt/modeller/opskrifter.json").then((r) => {
+          if (!r.ok) throw new Error("Modelopskrifter mangler");
+          return r.json();
+        }),
+      ]);
+      const simulering = await opretSimulering(opskrifter);
+      gltf.scene.updateMatrixWorld(true);
+      const oprindeligtMiljø = gltf.scene.getObjectByName("omgivelser");
+      if (oprindeligtMiljø) {
+        const miljø = oprindeligtMiljø.clone(true);
+        oprindeligtMiljø.matrixWorld.decompose(
+          miljø.position,
+          miljø.quaternion,
+          miljø.scale,
+        );
+        scene.add(miljø);
+      }
+      const objekter = [
+        { id: "kilde", type: "celle", x: 0, z: 0, styrke: 5 },
+        { id: "kaede2", type: "celle", x: 5, z: 0, styrke: 5, forsinkelse: .35 },
+        { id: "kaede3", type: "celle", x: 10, z: 0, styrke: 5, forsinkelse: .7 },
+        { id: "bil", type: "bil", x: 2, z: 4, vinkel: -.3 },
+        { id: "hus", type: "hus", x: 6, z: -3 },
+        { id: "taarn", type: "taarn", x: 10, z: 4 },
+      ];
+      function opstil() {
+        simulering.ryd();
+        fx.nulstil();
+        lyd.stop();
+        for (const wrapper of wrappers) scene.remove(wrapper);
+        wrappers.length = 0;
+        figurer.clear();
+        for (const spec of objekter) {
+          simulering.placér(spec);
+          for (const del of opskrifter[spec.type].dele) {
+            const original = gltf.scene.getObjectByName(`${spec.type}__${del.id}`);
+            if (!original) {
+              throw new Error(`Modeldel mangler: ${spec.type}/${del.id}`);
+            }
+            const figur = original.clone(true), wrapper = new THREE.Group();
+            original.matrixWorld.decompose(
+              figur.position,
+              figur.quaternion,
+              figur.scale,
+            );
+            figur.position.sub(new THREE.Vector3(...del.p));
+            figur.traverse((o) => {
+              if (o.isMesh) {
+                o.castShadow = true;
+                o.receiveShadow = true;
+              }
+            });
+            wrapper.add(figur);
+            scene.add(wrapper);
+            wrappers.push(wrapper);
+            figurer.set(`${spec.id}/${del.id}`, wrapper);
+          }
+        }
+        $("klar").textContent = "Klar — ingen gemte data indlæst";
+        $("start").disabled = false;
+      }
+      function kamera() {
+        camera.position.set(...(nær ? [2, 2, 5] : [24, 25, 30]));
+        camera.lookAt(...(nær ? [0, 1, 0] : [5, 1, 0]));
+        camera.updateMatrixWorld();
+      }
+      function resize() {
+        renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
+        renderer.setSize(innerWidth, innerHeight);
+        camera.aspect = innerWidth / innerHeight;
+        camera.updateProjectionMatrix();
+        fx.resize(innerWidth, innerHeight, Math.min(devicePixelRatio || 1, 1.5));
+      }
+      $("start").onclick = () => {
+        lyd.start().then((klar) => {
+          $("lydstatus").textContent = klar
+            ? "AudioContext kører"
+            : "Lyd er valgfri / ikke tilgængelig";
+        });
+        try {
+          simulering.start();
+          $("klar").textContent = "Prøver en virkelig fysisk kæde …";
+        } catch (e) {
+          visFejl(e.message);
+        }
+      };
+      $("naer").onclick = () => {
+        nær = !nær;
+        $("naer").setAttribute("aria-pressed", String(nær));
+        kamera();
+      };
+      $("slowmo").onclick = () => {
+        slowmo = !slowmo;
+        $("slowmo").setAttribute("aria-pressed", String(slowmo));
+      };
+      $("rolig").onchange = () => fx.saetRolig($("rolig").checked);
+      $("rent").onclick = () => fx.nulstilObjektiv();
+      $("nulstil").onclick = () => {
+        try {
+          opstil();
+        } catch (e) {
+          visFejl(e.message);
+        }
+      };
+      $("verden").addEventListener(
+        "webglcontextlost",
+        () => visFejl("WebGL-konteksten blev mistet"),
+      );
+      addEventListener("resize", resize);
+      opstil();
+      kamera();
+      resize();
+      $("nulstil").disabled = false;
+      function tegn(nu) {
+        if (lukket) return;
+        const rigtigDt = Math.min(.05, Math.max(0, (nu - seneste) / 1000));
+        seneste = nu;
+        const dt = rigtigDt * (slowmo ? .2 : 1);
+        tider.push(rigtigDt * 1000);
+        if (tider.length > 60) tider.shift();
+        try {
+          simulering.tick(dt);
+          for (const del of simulering.hentDele()) {
+            const figur = figurer.get(del.id);
+            figur.position.fromArray(del.p);
+            figur.quaternion.fromArray(del.q);
+          }
+          kamera();
+          for (const h of simulering.hentHaendelser()) {
+            fx.haendelse(h);
+            lyd.afspil(h);
+          }
+          const ryst = fx.tick(dt, rigtigDt);
+          camera.position.x += ryst[0];
+          camera.position.y += ryst[1];
+          camera.position.z += ryst[2];
+          camera.updateMatrixWorld();
+          lyd.opdaterKamera(
+            camera.position.toArray(),
+            camera.getWorldDirection(retning).toArray(),
+          );
+          renderer.render(scene, camera);
+          hud += rigtigDt;
+          if (hud > .2) {
+            hud = 0;
+            const status = simulering.hentStatus(),
+              resultater = simulering.hentResultater();
+            $("tid").textContent = `${status.tid.toFixed(2)} s`;
+            $("pulser").textContent = `${status.pulser} / ${status.kaede}`;
+            $("brud").textContent = `${
+              resultater.reduce((s, r) => s + r.brud, 0)
+            } / ${status.dele}`;
+            $("grafikstatus").textContent =
+              `${renderer.info.render.calls} tegn · ${fx.antal} partikler · ${renderer.info.memory.geometries} geometrier`;
+            $("frametid").textContent = `${
+              (tider.reduce((a, b) => a + b, 0) / tider.length).toFixed(1)
+            } ms`;
+            if (status.tid > 16) {
+              simulering.stop();
+              $("klar").textContent =
+                "Komponentprøve afsluttet — klar til nulstilling";
+            }
+          }
+        } catch (e) {
+          visFejl(e.stack || e.message);
+          return;
+        }
+        requestAnimationFrame(tegn);
+      }
+      seneste = performance.now();
+      requestAnimationFrame(tegn);
+      addEventListener("pagehide", () => {
+        lukket = true;
+        fx.frigiv();
+        lyd.frigiv();
+        simulering.frigiv();
+        renderer.dispose();
+      }, { once: true });
+    } catch (e) {
+      visFejl(e.stack || e.message);
+      $("klar").textContent = "Komponentprøven kunne ikke starte";
+    }
+    </script>
+  </body>
+</html>
