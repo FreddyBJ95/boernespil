@@ -1,0 +1,158 @@
+/* ===== Nedrivningsfirmaet: mørke paneler, gul/sort advarselsstribe og en stor rød tændingsknap ===== */
+:root {
+  --bund: #16191c;
+  --panel: rgba(22, 25, 28, 0.86);
+  --panel-lys: rgba(44, 48, 52, 0.92);
+  --kant: rgba(255, 255, 255, 0.12);
+  --tekst: #eef0ec;
+  --dæmpet: #a9b0b4;
+  --gul: #ffc629;
+  --rød: #d8341f;
+  --grøn: #5fd47c;
+  --skrift: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bund); color: var(--tekst); font-family: var(--skrift); overflow: hidden; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulation; }
+#spil { position: fixed; inset: 0; }
+#verden { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
+.skjult { display: none !important; }
+
+/* ---------- toppen ---------- */
+#top { position: absolute; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: max(12px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 0 max(14px, env(safe-area-inset-left)); pointer-events: none; }
+.opgave { display: flex; gap: 10px; background: var(--panel); border: 1px solid var(--kant); border-radius: 8px; padding: 10px 14px 10px 10px; pointer-events: auto; max-width: min(460px, 60vw); backdrop-filter: blur(6px); }
+.striber { width: 8px; border-radius: 3px; background: repeating-linear-gradient(-45deg, var(--gul) 0 7px, #111 7px 14px); flex: none; }
+.opgave small { display: block; color: var(--gul); letter-spacing: .14em; font-size: 11px; font-weight: 700; }
+.opgave b { display: block; font-size: 20px; letter-spacing: .02em; margin: 1px 0 3px; text-transform: uppercase; }
+#mål { margin: 0; padding: 0 0 0 16px; color: var(--dæmpet); font-size: 14px; line-height: 1.35; }
+.top-knapper { display: flex; gap: 8px; pointer-events: auto; flex-wrap: wrap; justify-content: flex-end; }
+.top-knapper button { background: var(--panel); border: 1px solid var(--kant); border-radius: 7px; padding: 9px 13px; font-size: 15px; font-weight: 700; letter-spacing: .04em; min-height: 42px; backdrop-filter: blur(6px); }
+.top-knapper button[aria-pressed="true"] { background: var(--gul); color: #111; }
+#menuKnap { font-size: 20px; min-width: 46px; }
+
+/* ---------- bunden: sprængstoffet ---------- */
+#bund { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: flex-end; gap: 12px; padding: 0 max(14px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); pointer-events: none; }
+#værktøj { display: flex; gap: 8px; overflow-x: auto; pointer-events: auto; padding: 4px 2px; scrollbar-width: none; flex: 1 1 auto; min-width: 0; }
+#værktøj::-webkit-scrollbar { display: none; }
+.ting { position: relative; display: flex; align-items: center; gap: 8px; background: var(--panel); border: 2px solid var(--kant); border-radius: 9px; padding: 6px 12px 6px 6px; min-width: 196px; text-align: left; backdrop-filter: blur(6px); flex: none; }
+.ting img { width: 54px; height: 54px; border-radius: 6px; background: radial-gradient(circle at 50% 40%, #4a5056, #24282c); flex: none; }
+.ting b { display: block; font-size: 16px; letter-spacing: .02em; }
+.ting small { display: block; color: var(--dæmpet); font-size: 12.5px; line-height: 1.2; }
+.ting i { position: absolute; top: -8px; right: -6px; font-style: normal; background: var(--gul); color: #111; font-weight: 800; border-radius: 99px; min-width: 26px; height: 26px; display: grid; place-items: center; font-size: 14px; padding: 0 6px; }
+.ting.valgt { border-color: var(--gul); background: var(--panel-lys); box-shadow: 0 0 0 3px rgba(255, 198, 41, .25); }
+.ting:disabled { opacity: .4; }
+.forsinkelse { pointer-events: auto; background: var(--panel); border: 1px solid var(--kant); border-radius: 9px; padding: 6px 8px 8px; flex: none; backdrop-filter: blur(6px); }
+.forsinkelse small, #pop small { display: block; font-size: 11px; letter-spacing: .14em; color: var(--dæmpet); margin: 0 0 5px 2px; font-weight: 700; }
+#forsinkelser, .pop-f { display: flex; gap: 4px; }
+#forsinkelser button, .pop-f button { background: #2b3034; border: 1px solid var(--kant); border-radius: 6px; padding: 7px 9px; font-size: 14px; font-weight: 700; min-width: 46px; }
+#forsinkelser button.valgt, .pop-f button.valgt { background: var(--gul); color: #111; }
+
+/* den røde tændingsboks */
+#tænd { pointer-events: auto; flex: none; width: 118px; height: 118px; border-radius: 16px; border: 3px solid #2a0c08; background: radial-gradient(circle at 50% 35%, #ff5a3c, var(--rød) 55%, #8a1a0c); box-shadow: 0 6px 0 #5a120a, 0 10px 24px rgba(0, 0, 0, .5); display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 12px; transition: transform .08s, box-shadow .08s, filter .2s; }
+#tænd b { font-size: 22px; letter-spacing: .12em; text-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
+#tænd .boks { position: relative; width: 52px; height: 30px; margin-bottom: 8px; }
+#tænd .håndtag { position: absolute; left: 50%; bottom: 0; width: 6px; height: 30px; background: #222; transform: translateX(-50%); border-radius: 2px; transition: height .25s; }
+#tænd .håndtag::before { content: ""; position: absolute; top: -4px; left: -21px; width: 48px; height: 8px; background: #222; border-radius: 3px; }
+#tænd:disabled { filter: grayscale(.85) brightness(.6); cursor: default; }
+#tænd:not(:disabled):active, #tænd.trykket { transform: translateY(5px); box-shadow: 0 1px 0 #5a120a, 0 4px 10px rgba(0, 0, 0, .5); }
+#tænd.trykket .håndtag { height: 10px; }
+
+/* ---------- beskeder ---------- */
+#tip { position: absolute; left: 50%; bottom: 158px; transform: translate(-50%, 10px); max-width: min(560px, calc(100vw - 32px)); background: var(--panel); border: 1px solid var(--kant); border-left: 4px solid var(--gul); border-radius: 8px; padding: 10px 16px; font-size: 16px; line-height: 1.35; opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; text-align: center; backdrop-filter: blur(6px); }
+#tip.vis { opacity: 1; transform: translate(-50%, 0); }
+#nedtælling { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); font-size: min(30vh, 220px); font-weight: 800; color: var(--gul); text-shadow: 0 6px 30px rgba(0, 0, 0, .6); pointer-events: none; }
+#nedtælling.puls { animation: puls .9s ease-out; }
+@keyframes puls { from { transform: translate(-50%, -50%) scale(1.35); opacity: 0; } 20% { opacity: 1; } to { transform: translate(-50%, -50%) scale(1); opacity: .85; } }
+#kæde { position: absolute; right: max(18px, env(safe-area-inset-right)); top: 50%; transform: translateY(-50%); text-align: center; opacity: 0; transition: opacity .3s; pointer-events: none; }
+#kæde.vis { opacity: 1; }
+#kæde b { display: block; font-size: 64px; line-height: 1; color: var(--gul); text-shadow: 0 4px 18px rgba(0, 0, 0, .7); }
+#kæde b.puls { animation: kædepuls .35s ease-out; }
+@keyframes kædepuls { from { transform: scale(1.5); } to { transform: scale(1); } }
+#kæde small { font-size: 12px; letter-spacing: .16em; font-weight: 700; text-shadow: 0 2px 8px #000; }
+#etiketter span { position: absolute; left: 0; top: 0; background: var(--gul); color: #111; font-weight: 800; font-size: 12px; padding: 2px 6px; border-radius: 99px; pointer-events: none; white-space: nowrap; }
+#pop { position: absolute; z-index: 5; background: var(--panel-lys); border: 1px solid var(--kant); border-radius: 10px; padding: 9px; width: 190px; box-shadow: 0 10px 30px rgba(0, 0, 0, .5); }
+#popFjern { margin-top: 8px; width: 100%; background: #3a1d18; border: 1px solid #7a2c20; border-radius: 6px; padding: 8px; font-weight: 700; }
+
+/* ---------- menuerne ---------- */
+.lag { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px; background: linear-gradient(90deg, rgba(10, 12, 14, .82), rgba(10, 12, 14, .35) 60%, rgba(10, 12, 14, .1)); overflow-y: auto; }
+#menu { justify-content: flex-start; padding-left: max(5vw, 20px); }
+.kort { width: 100%; max-width: 470px; background: var(--panel); border: 1px solid var(--kant); border-radius: 12px; padding: 26px 26px 22px; box-shadow: 0 20px 60px rgba(0, 0, 0, .45); backdrop-filter: blur(8px); position: relative; overflow: hidden; }
+.kort::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 7px; background: repeating-linear-gradient(-45deg, var(--gul) 0 12px, #111 12px 24px); }
+.kort.bred { max-width: 620px; }
+.mærke { color: var(--gul); font-size: 12px; letter-spacing: .18em; font-weight: 800; margin: 4px 0 10px; }
+h1 { font-size: clamp(40px, 7vw, 62px); line-height: .92; margin: 0 0 14px; letter-spacing: .01em; }
+h1 span { display: block; color: var(--gul); }
+h2 { font-size: 30px; margin: 0 0 10px; text-transform: uppercase; letter-spacing: .02em; }
+.intro { font-size: 18px; line-height: 1.45; color: #d6dadc; margin: 0 0 14px; }
+.konto { margin: 0 0 18px; color: var(--dæmpet); font-size: 16px; }
+.konto b { color: var(--tekst); }
+.knapper { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.knapper button { flex: 1 1 140px; min-height: 50px; border-radius: 8px; border: 1px solid var(--kant); background: #2b3034; font-size: 18px; font-weight: 800; letter-spacing: .04em; padding: 10px 16px; }
+.knapper button.primær { background: var(--gul); color: #111; border-color: transparent; }
+.knapper button:disabled { opacity: .5; }
+.lille { color: var(--dæmpet); font-size: 14px; margin: 14px 0 6px; min-height: 1.2em; }
+.hjem { color: var(--dæmpet); font-size: 15px; text-decoration: none; display: inline-block; margin-top: 6px; }
+.tilbage { margin-top: 14px; background: transparent; border: 1px solid var(--kant); border-radius: 8px; padding: 10px 16px; font-size: 16px; font-weight: 700; color: var(--dæmpet); }
+#baneliste { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.banekort { display: flex; align-items: center; gap: 12px; text-align: left; background: #262b2f; border: 1px solid var(--kant); border-radius: 9px; padding: 12px; min-height: 66px; }
+.banekort .nr { width: 34px; height: 34px; border-radius: 6px; background: #111; color: var(--gul); display: grid; place-items: center; font-weight: 800; font-size: 18px; flex: none; }
+.banekort .tekst { flex: 1; min-width: 0; }
+.banekort b { display: block; font-size: 17px; }
+.banekort small { color: var(--dæmpet); font-size: 13px; }
+.banekort .st { color: var(--gul); font-size: 15px; letter-spacing: 1px; flex: none; }
+.banekort .st i { font-style: normal; color: #4a5054; }
+.banekort.låst { opacity: .45; }
+#briefTekst { font-size: 18px; line-height: 1.45; color: #d6dadc; margin: 0 0 12px; }
+.målliste { margin: 0 0 12px; padding: 0; list-style: none; }
+.målliste li { padding: 8px 10px; border-radius: 6px; background: #22272b; margin-bottom: 6px; font-size: 16px; display: flex; justify-content: space-between; gap: 10px; }
+.målliste li::before { content: "▸"; color: var(--gul); margin-right: 8px; }
+.målliste li.ekstra { color: var(--dæmpet); }
+.målliste li.ok::before { content: "✓"; color: var(--grøn); }
+.målliste li.nej::before { content: "✗"; color: #ff6a50; }
+.målliste li small { color: var(--dæmpet); margin-left: auto; white-space: nowrap; }
+.tipboks { background: #2b2414; border-left: 4px solid var(--gul); padding: 10px 12px; border-radius: 6px; font-size: 15px; line-height: 1.4; color: #e8dcc0; margin: 0; }
+.tipboks:empty { display: none; }
+#stjerner { font-size: 54px; letter-spacing: 6px; color: #3a4044; margin: 0 0 8px; }
+#stjerner .fuld { color: var(--gul); text-shadow: 0 0 18px rgba(255, 198, 41, .5); }
+#resTal { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 6px 0 0; font-size: 16px; }
+#resTal dt { color: var(--dæmpet); }
+#resTal dd { margin: 0; font-weight: 700; }
+#resultat { background: linear-gradient(90deg, rgba(10, 12, 14, .7), rgba(10, 12, 14, .2) 70%); justify-content: flex-start; padding-left: max(5vw, 20px); }
+
+/* ---------- låsen (fælles for voksenspillene) ---------- */
+#lås { background: var(--bund); z-index: 50; }
+.lås-kort { background: var(--panel); border: 1px solid var(--kant); border-radius: 12px; padding: 24px; text-align: center; width: min(340px, 92vw); }
+.lås-kort h1 { font-size: 28px; }
+.lås-ikon { font-size: 34px; }
+.lås-tekst { color: var(--dæmpet); min-height: 2.6em; }
+.lås-prikker { display: flex; justify-content: center; gap: 12px; margin: 10px 0 16px; }
+.lås-prikker i { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--dæmpet); }
+.lås-prikker i.fyldt { background: var(--gul); border-color: var(--gul); }
+.lås-taster { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.lås-taster button { min-height: 54px; border-radius: 8px; border: 1px solid var(--kant); background: #2b3034; font-size: 22px; font-weight: 700; }
+.lås-hjem { display: inline-block; margin-top: 14px; color: var(--dæmpet); text-decoration: none; background: none; border: 0; }
+.ryst { animation: ryst .35s; }
+@keyframes ryst { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
+
+/* ---------- små skærme ---------- */
+@media (max-width: 760px) {
+  .ting { min-width: 0; padding: 5px 8px 5px 5px; }
+  .ting img { width: 46px; height: 46px; }
+  .ting span { display: none; }
+  .opgave { max-width: calc(100vw - 150px); padding: 8px 10px 8px 8px; }
+  .opgave b { font-size: 16px; }
+  #mål { font-size: 13px; }
+  .top-knapper button { padding: 8px 10px; font-size: 13px; min-height: 38px; }
+  #slowmo { display: none; }
+  #bund { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "værktøj værktøj" "forsinkelse tænd"; gap: 8px; align-items: end; }
+  #værktøj { grid-area: værktøj; }
+  .forsinkelse { grid-area: forsinkelse; justify-self: start; }
+  #forsinkelser button { min-width: 0; padding: 7px 8px; }
+  #tænd { grid-area: tænd; width: 86px; height: 86px; padding-bottom: 8px; }
+  #tænd b { font-size: 17px; }
+  #tænd .boks { margin-bottom: 4px; }
+  #tip { bottom: 200px; font-size: 15px; }
+  #baneliste { grid-template-columns: 1fr; }
+  #menu, #resultat { justify-content: center; padding-left: 16px; }
+  .lag { background: rgba(10, 12, 14, .6); }
+}

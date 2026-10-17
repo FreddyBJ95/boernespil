@@ -1,9 +1,9 @@
 // ===== Service Worker — gør spillene installerbare og tilgængelige offline =====
 // Bump dette tal når der ændres filer, så de gamle bliver hentet på ny.
-const CACHE = "boernespil-v73";
+const CACHE = "boernespil-v75";
 
 const SPIL = ["balloner", "byg-burger", "enhjoerning", "vask", "slange", "tegne", "piano", "fisk", "broekraft", "rulle-rasmus", "burgerloeb"];
-const VOKSENSPIL = ["det-sidste-lys", "skrotstorm", "krystaljaegerne"];
+const VOKSENSPIL = ["det-sidste-lys", "skrotstorm", "krystaljaegerne", "nedrivning"];
 
 // Spil der består af flere filer end index.html
 const EKSTRA = [
@@ -13,6 +13,13 @@ const EKSTRA = [
   ...["style.css", "spil.js", "styring.js", "missioner.js", "verden-data.js", "fysik.js", "fremgang.js", "lyd.js", "gps.js", "indstillinger.js", "brugerflade.js", "liv.js", "forside.jpg", "ikon.svg",
     "modeller/oerken.glb", "modeller/rotten.glb", "modeller/buggy.glb", "modeller/truck.glb"].map(f => `spil/skrotstorm/${f}`),
   ...["style.css", "spil.js", "styring.js", "verden.js", "eventyr.js", "projektiler.js", "navigation.js", "kort.js", "lagring.js", "kamp.js", "kampfigur.js", "kampstatus.js", "øveplads.js", "fund.js", "fundfigur.js", "fundkort.js", "forside.jpg", "modeller/eventyr.glb", "modeller/detaljer.glb", "modeller/kamp.glb", "modeller/fund.glb"].map(f => `spil/krystaljaegerne/${f}`),
+  // Nedrivningsfirmaet: koden, fysikken (Rapier), modellerne, murstenene og de optagede lyde
+  ...["style.css", "spil.js", "fysik.js", "materialer.js", "dele.js", "ruder.js", "effekter.js", "efterbehandling.js", "lyd.js", "sprængstof.js", "verden.js", "styring.js", "baner.js", "bygninger.js", "forside.jpg",
+    "rapier/rapier.js", "teksturer/mursten.json", "teksturer/mursten_farve.webp", "teksturer/mursten_normal.webp", "teksturer/mursten_arm.webp",
+    ...["tonde", "gasflaske", "gastank", "tntkasse", "skurvogn", "gravko"].map(n => `modeller/${n}.glb`),
+    ...["tnt", "bjerg", "mine", "minesprengning", "dynamit", "knald", "fjern", "stor", "kontrolleret", "styrt_kort", "styrt", "traehus", "nedrivning", "brokker_stor", "brokker",
+      "stenskred", "beton", "slag", "glas_fald", "glas", "glas2", "metal_fald", "metal", "trae_knaek", "ild", "gas", "horn"].map(n => `lyde/${n}.mp3`)].map(f => `spil/nedrivning/${f}`),
+  ...["teksturer.json", ...["beton", "sand", "planker", "panel", "metal", "blik", "puds", "klippe"].flatMap(n => ["farve", "normal", "arm"].map(k => `${n}_${k}.webp`))].map(f => `spil/sigtekorn/teksturer/${f}`),
   ...["three.js", "spil.js", "fisk.js", "staenger.js", "verden.js", "lyd.js", "modeller.js"].map(f => `spil/fisk/${f}`),
   ...["soe", "hav", "grej"].map(f => `spil/fisk/modeller/${f}.glb`),
   ...["three.js", "spil.js", "verden.js", "slange.js", "mad.js", "lyd.js", "modeller.js"].map(f => `spil/slange/${f}`),
