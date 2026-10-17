@@ -362,6 +362,11 @@ button.voksne-link { margin: 8px 0 0 6px; font: inherit; font-size: 15px; font-w
 .voksen-tekst span { font-size: 14.5px; font-weight: 600; color: rgba(241,234,255,0.8); }
 .voksen-tekst .voksen-fakta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 .voksen-fakta small { padding: 4px 8px; border: 1px solid #bdf2ff30; border-radius: 20px; color: #c2e7e9; font-size: 11px; line-height: 1.45; }
+/* Hvilke enheder spillet virker på: lyse = ja, svage og overstregede = nej */
+.voksen-tekst .enheder { display: inline-flex; flex-wrap: wrap; gap: 4px; font-size: 11px; }
+.enheder i { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px 3px 6px; border-radius: 20px; font-style: normal; font-size: 11px; font-weight: 800; line-height: 1.45; color: #0d2a31; background: #bdf2ff; }
+.enheder svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.enheder i.nej { color: rgba(194,231,233,0.4); background: transparent; border: 1px dashed #bdf2ff2e; padding: 2px 8px 2px 5px; text-decoration: line-through; }
 
 /* Mindre bevægelse, hvis enheden beder om det */
 @media (prefers-reduced-motion: reduce) {

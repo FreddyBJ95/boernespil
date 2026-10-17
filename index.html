@@ -16,6 +16,12 @@
   <meta name="apple-mobile-web-app-title" content="Spilkassen">
 </head>
 <body>
+  <!-- Enhederne på voksenkortene: computer, tablet og telefon -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="enhed-pc" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M9 20h6M12 16v4"/></symbol>
+    <symbol id="enhed-tablet" viewBox="0 0 24 24"><rect x="4.5" y="3" width="15" height="18" rx="2"/><path d="M11 17.8h2"/></symbol>
+    <symbol id="enhed-telefon" viewBox="0 0 24 24"><rect x="7.5" y="2.5" width="9" height="19" rx="2"/><path d="M11 18.3h2"/></symbol>
+  </svg>
   <!-- Baggrunden: billeder fra spillene, der ruller langsomt forbi (som på Netflix). Rækkerne laves nederst i scriptet. -->
   <div class="billedvaeg" id="billedvaeg" aria-hidden="true"></div>
   <div class="vaeg-skygge" aria-hidden="true"></div>
@@ -126,27 +132,27 @@
         <div class="voksen-liste">
         <a class="voksen-kort" href="spil/sigtekorn/">
           <img src="billeder/sigtekorn.jpg" alt="" width="800" height="450">
-          <span class="voksen-tekst"><b>🎯 Sigtekorn</b><span>3D-skydespil mod bots i ørkenbyen Støvbyen — i stil med Counter-Strike. Kun på computer med mus og tastatur.</span></span>
+          <span class="voksen-tekst"><b>🎯 Sigtekorn</b><span>3D-skydespil mod bots i ørkenbyen Støvbyen — i stil med Counter-Strike. Kun på computer med mus og tastatur.</span><span class="voksen-fakta"><span class="enheder" role="img" aria-label="Kun på PC"><i class="ja" title="PC"><svg aria-hidden="true"><use href="#enhed-pc"/></svg>PC</i><i class="nej" title="Ikke på tablet"><svg aria-hidden="true"><use href="#enhed-tablet"/></svg>Tablet</i><i class="nej" title="Ikke på telefon"><svg aria-hidden="true"><use href="#enhed-telefon"/></svg>Telefon</i></span><small>Mus og tastatur</small></span></span>
         </a>
         <a class="voksen-kort" href="spil/det-sidste-lys/">
           <img src="spil/det-sidste-lys/forside.jpg" alt="" width="800" height="450" loading="lazy">
-          <span class="voksen-tekst"><b>✦ Det Sidste Lys</b><span>Et stille mysterium på en ø. Udforsk landsbyen, find de skjulte spor, og tænd fyrtårnets lys.</span><span class="voksen-fakta"><small>PC · tablet · telefon</small><small>8 kapitler · gemt rejse</small></span></span>
+          <span class="voksen-tekst"><b>✦ Det Sidste Lys</b><span>Et stille mysterium på en ø. Udforsk landsbyen, find de skjulte spor, og tænd fyrtårnets lys.</span><span class="voksen-fakta"><span class="enheder" role="img" aria-label="Spilles på PC, tablet og telefon"><i class="ja" title="PC"><svg aria-hidden="true"><use href="#enhed-pc"/></svg>PC</i><i class="ja" title="Tablet"><svg aria-hidden="true"><use href="#enhed-tablet"/></svg>Tablet</i><i class="ja" title="Telefon"><svg aria-hidden="true"><use href="#enhed-telefon"/></svg>Telefon</i></span><small>8 kapitler · gemt rejse</small></span></span>
         </a>
         <a class="voksen-kort" href="spil/skrotstorm/">
           <img src="spil/skrotstorm/forside.jpg" alt="" width="800" height="450" loading="lazy">
-          <span class="voksen-tekst"><b>⚙ Skrotstorm</b><span>Byg din skrotbil, opgrader garagen, og tag ud på løb, leveringer og stunts i en stor ørkenverden.</span><span class="voksen-fakta"><small>PC · tablet · telefon</small><small>8 opgaver · fri kørsel</small></span></span>
+          <span class="voksen-tekst"><b>⚙ Skrotstorm</b><span>Byg din skrotbil, opgrader garagen, og tag ud på løb, leveringer og stunts i en stor ørkenverden.</span><span class="voksen-fakta"><span class="enheder" role="img" aria-label="Spilles på PC, tablet og telefon"><i class="ja" title="PC"><svg aria-hidden="true"><use href="#enhed-pc"/></svg>PC</i><i class="ja" title="Tablet"><svg aria-hidden="true"><use href="#enhed-tablet"/></svg>Tablet</i><i class="ja" title="Telefon"><svg aria-hidden="true"><use href="#enhed-telefon"/></svg>Telefon</i></span><small>8 opgaver · fri kørsel</small></span></span>
         </a>
         <a class="voksen-kort" href="spil/krystaljaegerne/">
           <img src="spil/krystaljaegerne/forside.jpg" alt="" width="800" height="450" loading="lazy">
-          <span class="voksen-tekst"><b>◇ Krystaljægerne</b><span>Et fantasyeventyr med magi, skatte og en lille følgesvend. Udforsk grotter og væk verdens krystaller.</span><span class="voksen-fakta"><small>PC · tablet · telefon</small><small>8 opgaver · nye grotter</small></span></span>
+          <span class="voksen-tekst"><b>◇ Krystaljægerne</b><span>Et fantasyeventyr med magi, skatte og en lille følgesvend. Udforsk grotter og væk verdens krystaller.</span><span class="voksen-fakta"><span class="enheder" role="img" aria-label="Spilles på PC, tablet og telefon"><i class="ja" title="PC"><svg aria-hidden="true"><use href="#enhed-pc"/></svg>PC</i><i class="ja" title="Tablet"><svg aria-hidden="true"><use href="#enhed-tablet"/></svg>Tablet</i><i class="ja" title="Telefon"><svg aria-hidden="true"><use href="#enhed-telefon"/></svg>Telefon</i></span><small>8 opgaver · nye grotter</small></span></span>
         </a>
         <a class="voksen-kort" href="spil/nedrivning/">
           <img src="spil/nedrivning/forside.jpg" alt="" width="800" height="450" loading="lazy">
-          <span class="voksen-tekst"><b>💥 Nedrivningsfirmaet</b><span>Sæt sprængstof på rigtige bygninger, og få dem til at styrte sammen. Skorstene, højhuse og kædereaktioner af tønder og gasflasker.</span><span class="voksen-fakta"><small>PC · tablet</small><small>8 opgaver · frit område</small></span></span>
+          <span class="voksen-tekst"><b>💥 Nedrivningsfirmaet</b><span>Sæt sprængstof på rigtige bygninger, og få dem til at styrte sammen. Skorstene, højhuse og kædereaktioner af tønder og gasflasker.</span><span class="voksen-fakta"><span class="enheder" role="img" aria-label="Spilles på PC og tablet"><i class="ja" title="PC"><svg aria-hidden="true"><use href="#enhed-pc"/></svg>PC</i><i class="ja" title="Tablet"><svg aria-hidden="true"><use href="#enhed-tablet"/></svg>Tablet</i><i class="nej" title="Ikke på telefon"><svg aria-hidden="true"><use href="#enhed-telefon"/></svg>Telefon</i></span><small>8 opgaver · frit område</small></span></span>
         </a>
         <a class="voksen-kort" href="spil/brudpunkt/">
           <img src="spil/brudpunkt/forside.jpg" alt="" width="800" height="450" loading="lazy">
-          <span class="voksen-tekst"><b>◈ BRUDPUNKT</b><span>Byg et prøvefelt, udløs fiktive energipulser, og følg kædereaktionerne gennem biler, huse og tårne.</span><span class="voksen-fakta"><small>PC · tablet · telefon</small><small>Fri opbygning · gemte forsøg</small></span></span>
+          <span class="voksen-tekst"><b>◈ BRUDPUNKT</b><span>Byg et prøvefelt, udløs fiktive energipulser, og følg kædereaktionerne gennem biler, huse og tårne.</span><span class="voksen-fakta"><span class="enheder" role="img" aria-label="Spilles på PC, tablet og telefon"><i class="ja" title="PC"><svg aria-hidden="true"><use href="#enhed-pc"/></svg>PC</i><i class="ja" title="Tablet"><svg aria-hidden="true"><use href="#enhed-tablet"/></svg>Tablet</i><i class="ja" title="Telefon"><svg aria-hidden="true"><use href="#enhed-telefon"/></svg>Telefon</i></span><small>Fri opbygning · gemte forsøg</small></span></span>
         </a>
         </div>
       </div>
