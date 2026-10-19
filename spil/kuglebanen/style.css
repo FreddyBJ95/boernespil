@@ -1,0 +1,189 @@
+/* ===== Kuglebanen ===== */
+:root { --farve: #ff9f1c; --tekst: #1f2340; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; }
+body {
+  font-family: ui-rounded, "SF Pro Rounded", "Baloo 2", "Arial Rounded MT Bold", system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: #a6dbf7; color: var(--tekst);
+  -webkit-user-select: none; user-select: none;
+  -webkit-tap-highlight-color: transparent; touch-action: none;
+}
+#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.skjult { display: none !important; }
+button { font: inherit; color: inherit; cursor: pointer; border: none; }
+
+/* sort/hvid toning når kuglen falder og kommer igen */
+.fade { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity .35s; z-index: 5; }
+.fade.vis { opacity: .85; }
+
+/* ---------- runde knapper og piller ---------- */
+.rund {
+  font-size: 26px; text-decoration: none; background: rgba(255,255,255,.92); border-radius: 50%;
+  width: 58px; height: 58px; min-width: 58px; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 5px 16px rgba(0,0,0,.22), inset 0 -3px 0 rgba(0,0,0,.08); padding: 0;
+}
+.rund:active { transform: scale(.9); }
+.pille {
+  display: flex; align-items: center; gap: 6px; height: 58px; padding: 0 20px 0 10px; border-radius: 29px;
+  background: rgba(255,255,255,.93); box-shadow: 0 5px 16px rgba(0,0,0,.22); font-weight: 900; font-size: 28px;
+}
+
+/* ---------- HUD ---------- */
+.hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+.hud > *, .hud-top > * { pointer-events: auto; }
+.hud-top {
+  position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: flex-start; justify-content: space-between;
+  padding: max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+  pointer-events: none;
+}
+.tal img { width: 46px; height: 46px; }
+.tal .af { opacity: .45; margin: 0 1px; }
+.tal #total { opacity: .6; }
+.navn {
+  flex-direction: column; justify-content: center; gap: 4px; height: auto; min-height: 58px; padding: 6px 26px 8px;
+  background: var(--farve); color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.15); font-size: 26px; line-height: 1;
+  pointer-events: none;
+}
+.prikker { display: flex; gap: 7px; }
+.prikker span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,.5); }
+.prikker span.nu { background: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,.35); }
+.pause-ikon { width: 20px; height: 22px; border-left: 7px solid #2b2b3a; border-right: 7px solid #2b2b3a; border-radius: 2px; }
+
+/* vippe-måleren: prikken viser hvordan man styrer. Tryk på den for at nulstille vip */
+.vipmaaler {
+  position: absolute; right: max(18px, env(safe-area-inset-right)); bottom: max(18px, env(safe-area-inset-bottom));
+  width: 104px; height: 104px; border-radius: 50%; padding: 0;
+  background: radial-gradient(circle, rgba(255,255,255,.55) 0 38%, rgba(255,255,255,.88) 39%);
+  box-shadow: 0 5px 16px rgba(0,0,0,.22);
+}
+.vipmaaler .kryds { position: absolute; inset: 18px; border-radius: 50%; border: 3px solid rgba(43,43,58,.15); }
+.vipmaaler .kryds::before, .vipmaaler .kryds::after { content: ""; position: absolute; background: rgba(43,43,58,.15); }
+.vipmaaler .kryds::before { left: 50%; top: -12px; bottom: -12px; width: 3px; margin-left: -1.5px; }
+.vipmaaler .kryds::after { top: 50%; left: -12px; right: -12px; height: 3px; margin-top: -1.5px; }
+.vipmaaler .prik {
+  position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%;
+  background: var(--farve); border: 4px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.25);
+}
+.vipmaaler.nulstil { animation: puls .5s; }
+@keyframes puls { 50% { transform: scale(1.15); } }
+
+/* finger-joysticket */
+.pind { position: fixed; left: 0; top: 0; z-index: 9; pointer-events: none; opacity: 0; transition: opacity .15s; }
+.pind.vis { opacity: 1; }
+.pind .ring { position: absolute; left: -72px; top: -72px; width: 144px; height: 144px; border-radius: 50%; border: 5px solid rgba(255,255,255,.75); background: rgba(255,255,255,.18); box-shadow: 0 4px 18px rgba(0,0,0,.15); }
+.pind .knop { position: absolute; left: -30px; top: -30px; width: 60px; height: 60px; border-radius: 50%; background: rgba(255,255,255,.95); box-shadow: 0 4px 12px rgba(0,0,0,.25); }
+
+.besked {
+  position: fixed; left: 50%; bottom: max(26px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 11;
+  background: rgba(255,255,255,.94); border-radius: 26px; padding: 12px 22px; font-weight: 800; font-size: 22px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.2); max-width: calc(100vw - 180px); text-align: center; pointer-events: none;
+}
+
+/* ---------- menuen ---------- */
+.menu {
+  position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; justify-content: space-between;
+  padding: max(12px, env(safe-area-inset-top)) 16px max(14px, env(safe-area-inset-bottom)); pointer-events: none;
+}
+.menu > * { pointer-events: auto; }
+.menu-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.menu-top .plads { width: 58px; }
+.titel {
+  margin: 0; text-align: center; flex: 1; font-weight: 900; line-height: 1; font-size: clamp(42px, 8.5vw, 88px); letter-spacing: -1px;
+  filter: drop-shadow(0 3px 0 #ff7a1a) drop-shadow(0 6px 0 #c2410c) drop-shadow(0 12px 16px rgba(0,0,0,.35));
+  pointer-events: none;
+}
+.titel span {
+  display: inline-block; animation: hoppe 1.8s ease-in-out infinite; padding: 0 1px;
+  background: linear-gradient(180deg, #ffffff 0%, #fff6b0 45%, #ffc93c 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.titel span:nth-child(2n) { animation-delay: -.3s; }
+.titel span:nth-child(3n) { animation-delay: -.6s; }
+@keyframes hoppe { 50% { transform: translateY(-7px) scale(1.04, .96); } }
+.henter { text-align: center; font-size: 22px; font-weight: 800; color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,.4); }
+.menu.klar .henter { display: none; }
+
+.panel {
+  margin: 0 auto; width: min(960px, 100%);
+  background: linear-gradient(180deg, rgba(255,255,255,.84), rgba(255,255,255,.72));
+  -webkit-backdrop-filter: blur(14px) saturate(1.3); backdrop-filter: blur(14px) saturate(1.3);
+  border-radius: 30px; padding: 14px; box-shadow: 0 18px 50px rgba(20,20,60,.35), inset 0 1px 0 rgba(255,255,255,.9);
+  opacity: 0; transform: translateY(30px); transition: opacity .5s, transform .6s cubic-bezier(.2,1.3,.4,1);
+}
+.menu.klar .panel { opacity: 1; transform: none; }
+
+.verdener { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.verden {
+  position: relative; border-radius: 24px; padding: 10px 8px 12px; background: #fff; text-align: center; font-weight: 900;
+  box-shadow: 0 6px 14px rgba(0,0,0,.14), inset 0 -4px 0 rgba(0,0,0,.08); transition: transform .15s;
+  border: 4px solid transparent;
+}
+.verden .dyr { display: block; font-size: 52px; line-height: 1.05; filter: drop-shadow(0 3px 3px rgba(0,0,0,.2)); }
+.verden .vnavn { display: block; font-size: 21px; margin-top: 2px; }
+.verden .vstjerner { display: block; font-size: 15px; opacity: .75; margin-top: 2px; }
+.verden.valgt { border-color: var(--vfarve); background: color-mix(in srgb, var(--vfarve) 16%, #fff); transform: translateY(-3px); }
+.verden:active { transform: scale(.96); }
+
+.baner { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 12px; }
+.bane {
+  border-radius: 20px; padding: 8px 4px 9px; background: var(--vfarve, #ff9f1c); color: #fff; font-weight: 900; text-align: center;
+  box-shadow: 0 6px 12px rgba(0,0,0,.18), inset 0 -5px 0 rgba(0,0,0,.15); text-shadow: 0 2px 0 rgba(0,0,0,.18);
+}
+.bane .nr { display: block; font-size: 34px; line-height: 1; }
+.bane .bnavn { display: block; font-size: 13px; margin-top: 3px; opacity: .95; }
+.bane .bstjerner { display: block; font-size: 15px; letter-spacing: 1px; margin-top: 2px; }
+.bane .bstjerner i { font-style: normal; opacity: .35; }
+.bane:active { transform: scale(.95); }
+
+.indstillinger { display: flex; justify-content: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+.valg {
+  background: #fff; border-radius: 22px; padding: 9px 16px; font-weight: 800; font-size: 19px;
+  box-shadow: 0 4px 10px rgba(0,0,0,.14), inset 0 -3px 0 rgba(0,0,0,.07);
+}
+.valg:active { transform: scale(.95); }
+
+/* ---------- pause og mål ---------- */
+.overlay {
+  position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center;
+  background: rgba(20, 24, 60, .35); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+}
+.kort {
+  background: linear-gradient(180deg, #ffffff, #fff6e6); border-radius: 34px; padding: 20px 26px 22px; text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,.35); min-width: min(440px, 92vw); animation: ind .5s cubic-bezier(.2,1.4,.4,1);
+}
+@keyframes ind { from { transform: scale(.6); opacity: 0; } }
+.kort h2 { margin: 4px 0 10px; font-size: 40px; font-weight: 900; }
+.maal-tal { margin: 0 0 14px; font-size: 22px; font-weight: 800; opacity: .75; }
+.knaprække { display: flex; justify-content: center; align-items: center; gap: 14px; }
+.knap {
+  width: 74px; height: 74px; border-radius: 50%; font-size: 32px; background: #fff; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 14px rgba(0,0,0,.2), inset 0 -4px 0 rgba(0,0,0,.08);
+}
+.knap.stor { width: 104px; height: 104px; font-size: 48px; background: #34c759; color: #fff; box-shadow: 0 8px 18px rgba(0,0,0,.25), inset 0 -6px 0 rgba(0,0,0,.15); }
+.knap:active { transform: scale(.92); }
+.kort .indstillinger { margin-top: 16px; }
+.stjerner { font-size: 64px; line-height: 1; letter-spacing: 6px; }
+.stjerner span { display: inline-block; filter: grayscale(1) opacity(.3); transform: scale(.6); }
+.stjerner span.fuld { animation: stjerne .5s cubic-bezier(.2,1.6,.4,1) forwards; }
+@keyframes stjerne { to { filter: none; transform: scale(1); } }
+
+/* små og lave skærme (telefon på langs) */
+@media (max-height: 560px) {
+  .titel { font-size: 40px; }
+  .verden .dyr { font-size: 36px; }
+  .verden .vnavn { font-size: 17px; }
+  .bane .nr { font-size: 26px; }
+  .bane .bnavn { display: none; }
+  .panel { padding: 10px; }
+  .baner, .indstillinger { margin-top: 8px; }
+}
+@media (max-width: 600px) {
+  .baner { grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .bane .bnavn { display: none; }
+  .verden .dyr { font-size: 40px; }
+  .verden .vnavn { font-size: 15px; }
+  .pille { font-size: 22px; height: 50px; }
+  .navn { font-size: 20px; }
+  .tal img { width: 38px; height: 38px; }
+  .vipmaaler { width: 86px; height: 86px; }
+}
