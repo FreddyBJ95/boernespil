@@ -6,9 +6,10 @@
 import { mobil } from "./enhed.js";
 
 const FILER = ["tnt", "bjerg", "mine", "minesprengning", "dynamit", "knald", "fjern", "stor", "kontrolleret", "styrt_kort", "styrt", "traehus",
-  "nedrivning", "brokker_stor", "brokker", "stenskred", "beton", "slag", "glas_fald", "glas", "glas2", "metal_fald", "metal", "trae_knaek", "ild", "gas", "horn"];
+  "nedrivning", "brokker_stor", "brokker", "stenskred", "beton", "slag", "glas_fald", "glas", "glas2", "metal_fald", "metal", "trae_knaek", "ild", "gas", "horn",
+  "plask", "raket", "floejt", "fyrvaerkeri", "lavine", "sneskred", "jordskred", "gnist"];
 // Udsnit af optagelser med flere slag i (start, længde i sekunder)
-const UDSNIT = { beton: [[0.15, 1.4], [1.9, 1.5], [4.85, 1.6]] };
+const UDSNIT = { beton: [[0.15, 1.4], [1.9, 1.5], [4.85, 1.6]], fyrvaerkeri: [[1.15, 1.8], [3.9, 1.6], [5.65, 1.4], [6.95, 1.5], [9.35, 1.6]] };
 const vælg = l => l[Math.floor(Math.random() * l.length)];
 
 export class Lyd {
@@ -42,7 +43,7 @@ export class Lyd {
     };
     if (mobil) for (const navn of FILER) await hent(navn);           // én ad gangen, så hukommelsen ikke topper
     else await Promise.all(FILER.map(hent));
-    for (const navn of ["ild", "gas"]) if (this.b[navn]) this.b[navn] = this.løkkebar(this.b[navn], 0.6);
+    for (const navn of ["ild", "gas", "lavine", "gnist"]) if (this.b[navn]) this.b[navn] = this.løkkebar(this.b[navn], 0.6);
   }
   // To kanaler bliver til én (stereo fra panoreringen kommer alligevel bagefter)
   mono(buf) {
@@ -141,6 +142,8 @@ export class Lyd {
     else if (masse > 600) { if (this.må("styrtS", 0.12)) this.spil(vælg(["brokker", "brokker_stor"]), { p, styrke: 0.45, tone: 1.1, rækkevidde: 28 }); }
   }
   knus(p, lyd, vol) {
+    if (lyd === "sne") { if (this.må("sne", 0.25)) this.spil("sneskred", { p, start: Math.random() * 2.5, længde: 1.6, styrke: 0.35 + Math.min(0.4, vol * 0.05), tone: 0.8, rækkevidde: 40 }); return; }
+    if (lyd === "sten") { if (this.må("sten", 0.12)) this.spil(vælg(["stenskred", "brokker_stor", "brokker"]), { p, styrke: 0.5 + Math.min(0.4, vol * 0.05), tone: 0.85, rækkevidde: 40 }); return; }
     if (lyd === "metal") { if (this.må("metal", 0.15)) this.spil(vol > 0.3 ? "metal_fald" : "metal", { p, styrke: 0.6, rækkevidde: 30 }); return; }
     if (lyd === "træ") { if (this.må("træ", 0.15)) this.spil(vol > 1 ? "traehus" : "trae_knaek", { p, styrke: 0.7, rækkevidde: 30 }); return; }
     if (!this.må("beton", 0.07)) return;
@@ -154,6 +157,17 @@ export class Lyd {
     else this.spil("slag", { p, styrke: 0.35 * styrke, tone: 0.9 + Math.random() * 0.3, rækkevidde: 20 });
   }
   glas(p) { if (this.må("glas", 0.06)) this.spil(vælg(["glas", "glas2", "glas_fald"]), { p, styrke: 0.45, rækkevidde: 25 }); }
+  // Fyrværkeri: raketten suser op (af og til med fløjt), og braget og knitren deroppe
+  raket(p) { if (this.må("raket", 0.08)) this.spil(Math.random() < 0.35 ? "floejt" : "raket", { p, styrke: 0.45, tone: 0.9 + Math.random() * 0.25, rækkevidde: 40 }); }
+  fyrværkeriBrag(p) {
+    if (!this.må("fyrbrag", 0.07)) return;
+    const [start, længde] = vælg(UDSNIT.fyrvaerkeri);
+    this.spil("fyrvaerkeri", { p, start, længde, styrke: 0.7, tone: 0.9 + Math.random() * 0.2, rækkevidde: 70, rum: 0.5 });
+  }
+  plask(p, vol) { if (this.må("plask", 0.12)) this.spil("plask", { p, styrke: 0.4 + Math.min(0.6, vol * 0.08), tone: vol > 4 ? 0.75 : 1.05, rækkevidde: 40 }); }
+  // Et skred begynder: dybt drøn fra sne eller sten
+  skred(p, sne) { if (this.må("skred", 4)) this.spil(sne ? "sneskred" : "jordskred", { p, styrke: 1, tone: sne ? 0.75 : 0.9, rækkevidde: 90, rum: 0.5 }); }
+  termit(p) { this.spil("gnist", { p, styrke: 1.2, tone: 1.3, længde: 2.8, rækkevidde: 30 }); this.spil("ild", { p, styrke: 0.5, tone: 1.6, længde: 2.8, rækkevidde: 30 }); }
   horn() { this.spil("horn", { styrke: 0.6, udenForsinkelse: true, rum: 0.5 }); }
   // Et lille mekanisk klik (når noget sættes på plads) — laves direkte, uden optagelse
   klik(høj = 1) {
@@ -164,11 +178,11 @@ export class Lyd {
     o.connect(g); g.connect(this.komp); o.start(); o.stop(c.currentTime + 0.07);
   }
   // Løkker: ild og gas, der suser. styrke 0 = stille
-  løkke(navn, styrke, p = null) {
-    const c = this.ctx; if (!c || !this.b[navn]) return;
+  løkke(navn, styrke, p = null, kilde = navn, tone = 1) {
+    const c = this.ctx; if (!c || !this.b[kilde]) return;
     let l = this.løkker[navn];
     if (!l) {
-      const k = c.createBufferSource(); k.buffer = this.b[navn]; k.loop = true;
+      const k = c.createBufferSource(); k.buffer = this.b[kilde]; k.loop = true; k.playbackRate.value = tone;
       const g = c.createGain(); g.gain.value = 0;
       const pan = c.createStereoPanner ? c.createStereoPanner() : null;
       k.connect(g); (pan ? (g.connect(pan), pan) : g).connect(this.komp); k.start();

@@ -42,12 +42,19 @@ export class Verden {
   sætTid(navn) {
     const t = TIDER[navn] || TIDER.dag;
     this.tid = t;
-    if (this.himmel) { this.scene.remove(this.himmel); this.himmel.material.dispose(); }
-    this.himmel = lavHimmel({ top: t.top, horisont: t.horisont, bund: t.bund, sol: t.sol, solFarve: t.solFarve, solStyrke: navn === "nat" ? 0.15 : 1, dis: 0.4, skyer: t.skyer, stjerner: t.stjerner, skyFarve: navn === "aften" ? "#f6d2b8" : navn === "nat" ? "#202838" : "#f4f6f8" });
-    this.scene.add(this.himmel);
-    this.scene.environment?.dispose?.();
-    this.scene.environment = lavMiljø(this.renderer, this.himmel, t.jord);
-    this.scene.fog = new THREE.FogExp2(t.tåge, t.tæthed);
+    // hver tid på døgnet laves kun én gang (himlen og spejlingerne genbruges, når man skifter opgave)
+    this.tider ??= {};
+    let c = this.tider[navn];
+    if (!c) {
+      const himmel = lavHimmel({ top: t.top, horisont: t.horisont, bund: t.bund, sol: t.sol, solFarve: t.solFarve, solStyrke: navn === "nat" ? 0.15 : 1, dis: 0.4, skyer: t.skyer, stjerner: t.stjerner, skyFarve: navn === "aften" ? "#f6d2b8" : navn === "nat" ? "#202838" : "#f4f6f8" });
+      c = this.tider[navn] = { himmel, miljø: lavMiljø(this.renderer, himmel, t.jord) };
+    }
+    if (this.himmel && this.himmel !== c.himmel) this.scene.remove(this.himmel);
+    this.himmel = c.himmel;
+    if (!this.himmel.parent) this.scene.add(this.himmel);
+    this.scene.environment = c.miljø;
+    if (!this.scene.fog) this.scene.fog = new THREE.FogExp2(t.tåge, t.tæthed);
+    this.scene.fog.color.set(t.tåge); this.scene.fog.density = t.tæthed;
     this.sol.color.set(t.solFarve); this.sol.intensity = t.solStyrke;
     this.solRetning = new THREE.Vector3(...t.sol).normalize();
     this.sol.position.copy(this.solRetning).multiplyScalar(110);
@@ -63,6 +70,7 @@ export class Verden {
     const jord = new THREE.Mesh(new THREE.PlaneGeometry(str, str).rotateX(-Math.PI / 2), jordMateriale(this.fotos, str));
     jord.receiveShadow = true;
     this.scene.add(jord);
+    this.jord = jord; this.underlag = { sand: jord.material }; this.jordStr = str;
     // vejen langs pladsen og fortovet
     const asfalt = detaljer(new THREE.MeshStandardMaterial({ color: 0x3a3b3d, roughness: 0.95 }), "asfalt", { styrke: 0.35, bump: 0.5 });
     const vej = new THREE.Mesh(new THREE.PlaneGeometry(str, 9).rotateX(-Math.PI / 2), asfalt);
@@ -158,6 +166,11 @@ export class Verden {
     kroner.count = stammer.count = i;
     kroner.castShadow = stammer.castShadow = true; kroner.receiveShadow = true;
     this.scene.add(kroner, stammer);
+  }
+  // Grus eller sne på pladsen (sneen laves først, når en opgave skal bruge den)
+  sætUnderlag(navn) {
+    if (!this.underlag[navn]) this.underlag[navn] = jordMateriale(this.fotos, this.jordStr, navn);
+    this.jord.material = this.underlag[navn];
   }
   // Skurvognen og gravkoen ved indkørslen (modeller fra Blender)
   async pynt() {

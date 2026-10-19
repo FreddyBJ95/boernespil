@@ -23,7 +23,8 @@ export const MATERIALER = {
   rødstål: { foto: "metal",   tone: 0xa8402c, afmæt: 1,    vægt: 1500, brud: 0.3,  brok: 0,    lyd: "metal", ru: 0.9, metal: 0.55, sejt: true },
   blik:    { foto: "blik",    tone: 0xd8dcde, afmæt: 0,    vægt: 260,  brud: 0.9,  brok: 0,    lyd: "metal", ru: 1.0, metal: 0.25, sejt: true },
   tag:     { foto: "blik",    tone: 0x8a8f96, afmæt: 0,    vægt: 260,  brud: 0.9,  brok: 0,    lyd: "metal", ru: 1.0, metal: 0.3, sejt: true },
-  klippe:  { foto: "klippe",  tone: 0xb0aaa0, afmæt: 0.2,  vægt: 2600, brud: 0.5,  brok: 0.7,  lyd: "beton", ru: 1.0 },
+  klippe:  { foto: "klippe",  tone: 0xb0aaa0, afmæt: 0.2,  vægt: 2600, brud: 0.5,  brok: 1.1,  lyd: "sten",  ru: 1.0, σ: 45000, friktion: 0.45, skred: true, spredning: 0.8 },
+  sne:     { foto: "sne",     tone: 0xffffff, afmæt: 0.1,  kontrast: 0.35,  vægt: 420,  brud: 3,    brok: 1.7,  lyd: "sne",   ru: 1.0, σ: 7000, friktion: 0.08, skred: true, spredning: 0.6 },
 };
 
 // ---------- Hent fotoene ----------
@@ -59,7 +60,7 @@ export async function hentFotos(renderer) {
   const info = await fetch(FOTO + "teksturer.json").then(s => s.json());
   let egne = {};
   try { egne = { mursten: await fetch(EGNE + "mursten.json").then(s => s.json()) }; } catch (_) { /* murstenene er ikke lavet endnu */ }
-  const navne = new Set(Object.entries(MATERIALER).filter(([n]) => n !== "klippe").flatMap(([, m]) => [m.foto, !egne[m.foto] && m.reserve]).filter(Boolean));
+  const navne = new Set(Object.values(MATERIALER).flatMap(m => [m.foto, !egne[m.foto] && m.reserve]).filter(Boolean));
   navne.add("sand");
   const fotos = {};
   await Promise.all([...navne].map(async navn => {
@@ -170,12 +171,13 @@ export function lavMateriale(navn, fotos) {
 }
 
 // Jorden på byggepladsen: grus med pletter af jord, gentaget i verdens-meter (almindelige UV'er)
-export function jordMateriale(fotos, størrelse) {
-  const f = fotos.sand;
-  const m = new THREE.MeshStandardMaterial({ color: 0x9c9890, roughness: 1 });
+export function jordMateriale(fotos, størrelse, foto = "sand") {
+  const f = fotos[foto];
+  const m = new THREE.MeshStandardMaterial({ color: foto === "sne" ? 0xf4f6f8 : 0x9c9890, roughness: 1 });
   if (f) {
-    for (const t of [f.farve, f.normal, f.arm]) { t.repeat.set(størrelse / f.meter, størrelse / f.meter); }
-    m.map = f.farve; m.normalMap = f.normal; m.roughnessMap = f.arm; m.aoMap = f.arm; m.aoMapIntensity = 0.7;
+    // kopier, så gentagelsen ikke ændrer de billeder, bygningerne og terrænet bruger
+    const [farve, normal, arm] = [f.farve, f.normal, f.arm].map(t => { const k = t.clone(); k.repeat.set(størrelse / f.meter, størrelse / f.meter); k.needsUpdate = true; return k; });
+    m.map = farve; m.normalMap = normal; m.roughnessMap = arm; m.aoMap = arm; m.aoMapIntensity = 0.7;
   }
   return m;
 }

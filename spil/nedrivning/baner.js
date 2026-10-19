@@ -3,7 +3,7 @@
 // ★ = opgaven er løst · ★★ = løst inden for budgettet · ★★★ = også det ekstra mål.
 
 import * as THREE from "../3d-faelles/three.module.js";
-import { betonblok, skorsten, vandtårn, lagerhal, murstenshus, træskur } from "./bygninger.js";
+import { betonblok, skorsten, vandtårn, lagerhal, murstenshus, træskur, skråning, bro } from "./bygninger.js";
 
 const række = (antal, x0, z0, dx, dz) => Array.from({ length: antal }, (_, i) => [x0 + dx * i, z0 + dz * i]);
 
@@ -54,7 +54,7 @@ export const BANER = [
     id: "hal", navn: "Lagerhallen", kunde: "Fragtfirmaet Nord", tid: "dag",
     tekst: "Lagerhallen skal ned — og den er fuld af gamle benzintønder og gasflasker. Skær stålsøjlerne over og få tønderne med i kæden.",
     tip: "Stål knuses ikke af dynamit: brug skæreladninger på søjlerne. Tønderne springer, når ild eller tryk når dem.",
-    værktøj: { skær: 8, dynamit: 4, tønde: 4 }, budget: 6000, honorar: 48000,
+    værktøj: { skær: 8, termit: 2, dynamit: 4, tønde: 4 }, budget: 6000, honorar: 48000,
     kamera: { mål: [0, 3, 0], yaw: 0.6, pitch: 0.36, afstand: 34 },
     byg({ dele, ruder, sprængstof }) {
       lagerhal(dele, ruder, { x: 0, z: 0 });
@@ -105,13 +105,68 @@ export const BANER = [
     mål: [{ type: "højde", bygning: "Højhuset", maks: 6, tekst: "Intet står over 6 m" }],
     ekstra: { type: "skån", bygning: ["Nabo vest", "Nabo øst"], maks: 0.02, tekst: "Naboerne er hele" },
   },
+  {
+    id: "stenbrud", navn: "Stenbruddet", kunde: "Granitbruddet ved Åen", tid: "dag", terræn: "stenbrud",
+    tekst: "Den løse klippe på væggen skal sprænges ned i graven, før den falder ned af sig selv. Værktøjsskuret må ikke blive ramt.",
+    tip: "Bjergladningen er kæmpestor. Sæt den øverst på væggen — de løse blokke glider ned og river naboerne med sig.",
+    værktøj: { bjerg: 3, dynamit: 8 }, budget: 7000, honorar: 70000,
+    kamera: { mål: [0, 7, -6], yaw: 0.35, pitch: 0.22, afstand: 46 },
+    byg({ dele, ruder, terræn }) {
+      skråning(dele, ruder, { højde: (x, z) => terræn.højde(x, z), x0: -15, x1: 15, z0: -17.4, z1: -10.6, flage: 2.4, tyk: 1.6, mat: "klippe", navn: "Klippen" });
+      træskur(dele, ruder, { x: 21, z: 7, yaw: -0.4, navn: "Værktøjsskuret" });
+    },
+    mål: [{ type: "højde", bygning: "Klippen", maks: 4.5, tekst: "Al klippen er nede i graven (under 4,5 m)" }],
+    ekstra: { type: "skån", bygning: "Værktøjsskuret", maks: 0.02, tekst: "Skuret er helt" },
+  },
+  {
+    id: "lavine", navn: "Lavinen", kunde: "Skiliften Hvidetop", tid: "dag", terræn: "bjerg", underlag: "sne",
+    tekst: "Der ligger alt for meget sne på bjerget. Udløs en lavine, så den river den gamle, tomme skihytte med sig — men liftstationen skal stå.",
+    tip: "Sneen ligger i flager. Sprænger du én, glider den og river naboerne med sig. Start højt oppe på midten.",
+    værktøj: { dynamit: 6, bjerg: 1 }, budget: 4000, honorar: 50000,
+    kamera: { mål: [0, 12, -16], yaw: 0.12, pitch: 0.2, afstand: 62 },
+    byg({ dele, ruder, terræn }) {
+      skråning(dele, ruder, { højde: (x, z) => terræn.højde(x, z), x0: -22, x1: 22, z0: -44, z1: -14, flage: 3.4, tyk: 1.3, mat: "sne", navn: "Sneen" });
+      træskur(dele, ruder, { x: 0, z: 3.5, W: 5, D: 4, navn: "Den gamle skihytte" });
+      murstenshus(dele, ruder, { x: 30, z: 14, W: 7, D: 6, etager: 1, yaw: -0.3, navn: "Liftstationen" });
+    },
+    mål: [{ type: "højde", bygning: "Den gamle skihytte", maks: 1.2, tekst: "Skihytten er væk" }],
+    ekstra: { type: "skån", bygning: "Liftstationen", maks: 0.02, tekst: "Liftstationen er helt" },
+  },
+  {
+    id: "bro", navn: "Den gamle bro", kunde: "Vejdirektoratet", tid: "aften", terræn: "kløft",
+    tekst: "Den gamle bro over floden skal ned, nu hvor den nye bro står færdig ved siden af. Den nye bro må ikke få en ridse.",
+    tip: "Fagene hviler på pillerne. Tager du begge søjler i en pille, falder fagene på hver side ned i floden.",
+    værktøj: { c4: 8, dynamit: 6, termit: 4 }, budget: 6000, honorar: 80000,
+    kamera: { mål: [0, 4, 8], yaw: 0.85, pitch: 0.22, afstand: 46 },
+    byg({ dele, ruder }) {
+      bro(dele, ruder, { z: 0, navn: "Den gamle bro", tone: 0xc8c0b4 });
+      bro(dele, ruder, { z: 22, navn: "Den nye bro", tone: 0xf0eee8 });
+    },
+    mål: [{ type: "højde", bygning: "Den gamle bro", maks: 3, tekst: "Broen ligger i floden" }],
+    ekstra: { type: "skån", bygning: "Den nye bro", maks: 0.02, tekst: "Den nye bro er helt" },
+  },
+  {
+    id: "fyrvaerkeri", navn: "Fyrværkerifabrikken", kunde: "Nytårsfabrikken Stjerneskud", tid: "nat",
+    tekst: "Den gamle fyrværkerifabrik skal ryddes — og lageret er stadig fyldt med raketter. Få det hele til at gå af i én lang kæde.",
+    tip: "Træk en lunte fra tændingen hen til kasserne. Raketterne flyver alle vegne og tænder det, de lander ved.",
+    værktøj: { lunte: 40, skær: 4, dynamit: 2, fyrværkeri: 2 }, budget: 6000, honorar: 55000,
+    kamera: { mål: [0, 2, 0], yaw: 0.6, pitch: 0.42, afstand: 34 },
+    byg({ dele, ruder, sprængstof }) {
+      lagerhal(dele, ruder, { x: 0, z: 0, fagX: 3, navn: "Fabrikken" });
+      for (const [x, z] of række(4, -5, -3, 2.2, 0)) sprængstof.stil("fyrværkeri", new THREE.Vector3(x, 0, z), { spiller: false, yaw: 0 });
+      for (const [x, z] of række(4, -4, 3, 2.4, 0)) sprængstof.stil("fyrværkeri", new THREE.Vector3(x, 0, z), { spiller: false, yaw: 0 });
+      for (const [x, z] of række(3, 4, 0, 0, 1.3)) sprængstof.stil("tønde", new THREE.Vector3(x, 0, z), { spiller: false });
+    },
+    mål: [{ type: "alle", ting: "fyrværkeri", tekst: "Alt fyrværkeriet er gået af" }, { type: "højde", bygning: "Fabrikken", maks: 2.5, tekst: "Fabrikken er revet ned" }],
+    ekstra: { type: "kæde", min: 12, tekst: "Mindst 12 i kæden" },
+  },
 ];
 
 // Det frie område: alle slags bygninger og ubegrænset sprængstof
 export const FRIT = {
   id: "frit", navn: "Frit område", kunde: "Bare for sjov", tid: "dag", frit: true,
   tekst: "Her er alt tilladt. Spræng, hvad du vil — og tryk på ↺ for at bygge det hele op igen.",
-  værktøj: { dynamit: Infinity, c4: Infinity, skær: Infinity, tnt: Infinity, tønde: Infinity, gas: Infinity }, budget: Infinity, honorar: 0,
+  værktøj: { dynamit: Infinity, c4: Infinity, skær: Infinity, termit: Infinity, bjerg: Infinity, tnt: Infinity, tønde: Infinity, gas: Infinity, fyrværkeri: Infinity, lunte: Infinity }, budget: Infinity, honorar: 0,
   kamera: { mål: [0, 4, 0], yaw: 0.6, pitch: 0.42, afstand: 72 },
   byg({ dele, ruder, sprængstof }) {
     betonblok(dele, ruder, { x: -24, z: -18, etager: 3, fagX: 3, fagZ: 2 });

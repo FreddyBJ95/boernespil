@@ -210,4 +210,41 @@ export function træskur(dele, ruder, { x = 0, z = 0, yaw = 0, W = 4.2, D = 3, H
   return færdig(dele, b);
 }
 
-export const BYGNINGER = { betonblok, skorsten, vandtårn, lagerhal, murstenshus, træskur };
+// ---------- Sne eller løse klipper på en skråning: flager, der ligger på terrænet ----------
+// højde(x, z): terrænets højde · flage: hvor stor hver flage er · tyk: hvor tyk sneen er
+export function skråning(dele, ruder, { højde, x0, x1, z0, z1, flage = 3, tyk = 1.2, mat = "sne", navn = "Sneen", tone } = {}) {
+  const b = ny(navn, 0, 0, 0, { båndHøjde: 99 });
+  const op = new THREE.Vector3(0, 1, 0), e = 0.4;
+  for (let x = x0 + flage / 2; x < x1; x += flage) for (let z = z0 + flage / 2; z < z1; z += flage) {
+    const jx = x + (Math.random() - 0.5) * 0.3, jz = z + (Math.random() - 0.5) * 0.3;
+    // fladens retning: hældningen i begge retninger
+    const n = new THREE.Vector3(højde(jx - e, jz) - højde(jx + e, jz), 2 * e, højde(jx, jz - e) - højde(jx, jz + e)).normalize();
+    const kvat = new THREE.Quaternion().setFromUnitVectors(op, n);
+    const t = tyk * (0.8 + Math.random() * 0.4), p = n.clone().multiplyScalar(t / 2 + 0.03).add(new THREE.Vector3(jx, højde(jx, jz), jz));
+    dele.lav({ mat, str: [flage * 0.985, t, flage * 0.985], pos: [p.x, p.y, p.z], kvat, fast: true, bygning: b, grund: true, spænd: true, tone: tone ?? (mat === "sne" ? 0xf2f4f6 : undefined), visSkala: [1.1, 1, 1.1] });
+  }
+  return færdig(dele, b);
+}
+
+// ---------- Broen: landfæster på brinkerne, to piller i floden, tre store fag og rækværk ----------
+// z: hvor broen ligger (den går fra vest til øst over kløften) · dæk: højden af kørebanen
+export function bro(dele, ruder, { z = 0, dæk = 8.6, navn = "Broen", tone } = {}) {
+  const b = ny(navn, 0, z, 0, { båndHøjde: 99 });
+  const B = 8, t = 0.8, brink = 8.2;
+  // landfæsterne står på brinkerne (de hviler på terrænet)
+  for (const s of [-1, 1]) del(dele, b, { mat: "råbeton", str: [5, dæk - t - brink + 0.6, B + 0.6], pos: [s * 21.5, brink - 0.6 + (dæk - t - brink + 0.6) / 2, 0], grund: true, krav: 0.3, tone });
+  // pillerne: to søjler pr. pille, en tværbjælke ovenpå
+  for (const px of [-6, 6]) {
+    for (const pz of [-2.6, 2.6]) del(dele, b, { mat: "råbeton", str: [1.3, dæk - t - 0.9, 1.3], pos: [px, (dæk - t - 0.9) / 2, pz], krav: 0.3, bærer: true, tone });
+    del(dele, b, { mat: "beton", str: [1.8, 0.9, B + 0.4], pos: [px, dæk - t - 0.45, 0], krav: 0.4, tone });
+  }
+  // fagene (de hviler på tværbjælkerne og landfæsterne)
+  for (const [a, c] of [[-20.5, -6], [-6, 6], [6, 20.5]]) {
+    const L = c - a - 0.02;
+    del(dele, b, { mat: "beton", str: [L, t, B], pos: [(a + c) / 2, dæk - t / 2, 0], krav: 0.65, tone });
+    for (const s of [-1, 1]) del(dele, b, { mat: "stål", str: [L - 0.1, 1.0, 0.09], pos: [(a + c) / 2, dæk + 0.5, s * (B / 2 - 0.15)], krav: 0.3, tone: 0x6a7a6a });
+  }
+  return færdig(dele, b);
+}
+
+export const BYGNINGER = { betonblok, skorsten, vandtårn, lagerhal, murstenshus, træskur, skråning, bro };

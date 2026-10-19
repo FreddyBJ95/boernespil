@@ -222,9 +222,12 @@ const GNIST_VERTEX = `
 attribute vec3 iPos;
 attribute vec3 iFart;
 attribute vec4 iD;
+attribute vec3 iFarve;
 varying vec2 vQ;
 varying vec4 vD;
+varying vec3 vFarve;
 void main() {
+  vFarve = iFarve;
   vec4 a = viewMatrix * vec4(iPos, 1.0);
   vec4 b = viewMatrix * vec4(iPos - iFart * iD.y, 1.0);
   vec2 sa = a.xy / -a.z, sb = b.xy / -b.z;
@@ -240,9 +243,10 @@ void main() {
 const GNIST_FRAGMENT = `
 varying vec2 vQ;
 varying vec4 vD;
+varying vec3 vFarve;
 void main() {
   float a = smoothstep(1.0, 0.0, abs(vQ.y)) * smoothstep(1.0, 0.6, abs(vQ.x));
-  vec3 c = mix(vec3(1.0, 0.35, 0.05), vec3(1.0, 0.85, 0.55), vD.z) * vD.w;
+  vec3 c = (vFarve.r < 0.0 ? mix(vec3(1.0, 0.35, 0.05), vec3(1.0, 0.85, 0.55), vD.z) : mix(vFarve, vec3(1.0), vD.z * 0.35)) * vD.w;
   gl_FragColor = vec4(c * a, 0.0);
 }`;
 class Gnister {
@@ -253,31 +257,34 @@ class Gnister {
     this.aPos = new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3).setUsage(THREE.DynamicDrawUsage);
     this.aFart = new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3).setUsage(THREE.DynamicDrawUsage);
     this.aD = new THREE.InstancedBufferAttribute(new Float32Array(n * 4), 4).setUsage(THREE.DynamicDrawUsage);
-    geo.setAttribute("iPos", this.aPos); geo.setAttribute("iFart", this.aFart); geo.setAttribute("iD", this.aD);
+    this.aF = new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3).setUsage(THREE.DynamicDrawUsage);
+    geo.setAttribute("iPos", this.aPos); geo.setAttribute("iFart", this.aFart); geo.setAttribute("iD", this.aD); geo.setAttribute("iFarve", this.aF);
     geo.instanceCount = 0;
     const mat = new THREE.ShaderMaterial({ vertexShader: GNIST_VERTEX, fragmentShader: GNIST_FRAGMENT, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
     this.mesh = new THREE.Mesh(geo, mat); this.mesh.frustumCulled = false; this.mesh.renderOrder = 11;
     scene.add(this.mesh);
   }
-  nyt(p, v, liv, tyk = 1.5, varm = 1, lys = 6) {
+  // farve: [r, g, b] (fyrværkeri) · tyngde og bremse: fyrværkeriets gnister svæver længere
+  nyt(p, v, liv, tyk = 1.5, varm = 1, lys = 6, farve = null, tyngde = 9.8, bremse = 0.6) {
     if (this.liste.length >= this.n) this.liste.shift();
-    this.liste.push({ p: p.clone(), v: v.clone(), liv, alder: 0, tyk, varm, lys });
+    this.liste.push({ p: p.clone(), v: v.clone(), liv, alder: 0, tyk, varm, lys, farve, tyngde, bremse });
   }
   opdater(dt) {
-    const P = this.aPos.array, V = this.aFart.array, D = this.aD.array;
+    const P = this.aPos.array, V = this.aFart.array, D = this.aD.array, F = this.aF.array;
     let n = 0;
     this.liste = this.liste.filter(g => (g.alder += dt) < g.liv);
     for (const g of this.liste) {
-      g.v.y -= 9.8 * dt; g.v.multiplyScalar(Math.exp(-0.6 * dt));
+      g.v.y -= g.tyngde * dt; g.v.multiplyScalar(Math.exp(-g.bremse * dt));
       g.p.addScaledVector(g.v, dt);
       if (g.p.y < 0.02) { g.p.y = 0.02; g.v.y *= -0.35; g.v.x *= 0.6; g.v.z *= 0.6; }
       const l = 1 - g.alder / g.liv;
       P.set([g.p.x, g.p.y, g.p.z], n * 3); V.set([g.v.x, g.v.y, g.v.z], n * 3);
       D[n * 4] = g.tyk; D[n * 4 + 1] = 0.035; D[n * 4 + 2] = g.varm * l; D[n * 4 + 3] = g.lys * l * l;
+      if (g.farve) F.set(g.farve, n * 3); else F[n * 3] = -1;
       n++;
     }
     this.mesh.geometry.instanceCount = n;
-    this.aPos.needsUpdate = this.aFart.needsUpdate = this.aD.needsUpdate = true;
+    this.aPos.needsUpdate = this.aFart.needsUpdate = this.aD.needsUpdate = this.aF.needsUpdate = true;
   }
   tøm() { this.liste.length = 0; this.mesh.geometry.instanceCount = 0; }
 }
@@ -495,6 +502,32 @@ export class Effekter {
       this.pust.nyt({ p: tmp2.copy(p).addScaledVector(d, r(0, 0.6) * S), v: d.clone().multiplyScalar(r(0.5, 1.5) * fart), str: r(0.6, 1.1) * S + 0.3, slut: r(2, 3.4) * S + 1, vækst: r(0.7, 1.3),
         liv: r(7, 14), tæt: r(0.32, 0.55), farve: farve.map(x => x * r(0.85, 1.1)), vind: 0.8, bremse: 1.2, løft: 0.25, indfas: 0.15 });
     }
+  }
+  // En fyrværkeriraket springer: en kugle af farvede gnister, et farvet glimt og lidt røg
+  fyrværkeri(p, farve, stor = 1) {
+    const n = Math.round((mobil ? 40 : 80) * stor), c = new THREE.Color(...farve);
+    for (let i = 0; i < n; i++) {
+      const d = tmp.set(r(-1, 1), r(-1, 1), r(-1, 1)).normalize();
+      this.gnister.nyt(p, d.multiplyScalar(r(9, 15) * stor), r(1.2, 2.2), r(1.6, 2.6), Math.random(), r(10, 18), farve, 2.2, 1.6);
+    }
+    this.glimt.nyt(p, 9 * stor, 14, 0.25, c.getHex());
+    this.lysBlink(p, 600 * stor * stor, 0.6, 0.3).l.color.copy(c);
+    for (let i = 0; i < 3; i++) this.pust.nyt({ p: tmp2.copy(p).add(tmp.set(r(-1, 1), r(-1, 1), r(-1, 1))), str: 1.2, slut: 3.5, vækst: 1, liv: r(5, 8), tæt: 0.3, farve: grå(0.55), vind: 1, løft: 0.2, bremse: 1 });
+  }
+  // Noget plasker i floden: et sprøjt af hvidt vand
+  plask(p, vol = 1, vandY = 0.5) {
+    const S = Math.min(2.5, Math.cbrt(vol)), n = Math.round(4 + 6 * S);
+    for (let i = 0; i < n; i++) {
+      const d = tmp.set(r(-0.6, 0.6), r(0.8, 1.6), r(-0.6, 0.6)).normalize();
+      this.pust.nyt({ p: tmp2.set(p.x, vandY + 0.2, p.z), v: d.clone().multiplyScalar(r(4, 9) * S), str: r(0.4, 0.8) * S, slut: r(1.6, 2.6) * S, vækst: 2, liv: r(1.2, 2.2), tæt: 0.7, farve: [0.85, 0.9, 0.92], vind: 0.5, løft: -3, bremse: 1.2, indfas: 0.02 });
+    }
+    for (let i = 0; i < 8 * S; i++) this.gnister.nyt(tmp2.set(p.x, vandY + 0.2, p.z), tmp.set(r(-1, 1), r(1, 3), r(-1, 1)).normalize().multiplyScalar(r(4, 10)), r(0.5, 1.1), r(1.2, 2), 1, 2.5, [0.7, 0.8, 0.85]);
+  }
+  // Pudersne fra en lavine, der glider (lav og bred, hvid)
+  pudder(p, fart) {
+    if (this.pust.antal > this.pust.n * 0.85) return;
+    this.pust.nyt({ p: tmp2.copy(p).add(tmp.set(r(-1, 1), r(0, 0.6), r(-1, 1))), v: tmp.set(r(-1, 1), r(0.5, 1.5), r(-1, 1)).multiplyScalar(Math.min(4, fart * 0.3)), str: r(1.2, 2), slut: r(4, 7), vækst: 0.9,
+      liv: r(6, 11), tæt: r(0.35, 0.55), farve: [0.93, 0.95, 0.98], vind: 1, bremse: 1, løft: 0.35, indfas: 0.2 });
   }
   // Grus fra en knust del (farven fra materialet)
   smågrus(p, n, farve, fart = 3) {

@@ -1,8 +1,10 @@
 # Nedrivningsfirmaet
 
 Et 3D-spil blandt Spilkassens 3D-spil (uden PIN-kode): sæt sprængstof på rigtige bygninger, og få dem til at styrte
-sammen. Otte opgaver (skur, murstenshus, fabriksskorsten, vandtårn, lagerhal med tønder, betonblok,
-gaslager om natten og et højhus mellem to naboer) og et frit område.
+sammen. Tolv opgaver (skur, murstenshus, fabriksskorsten, vandtårn, lagerhal med tønder, betonblok,
+gaslager om natten, et højhus mellem to naboer, et stenbrud, en lavine, en gammel bro over en flod og en
+fyrværkerifabrik) og et frit område. Sprængstof: dynamit, C4, skæreladning, termit, bjergladning, TNT,
+benzintønder, gasflasker, fyrværkeri og lunter, man trækker med fingeren.
 
 ## Filerne
 
@@ -18,6 +20,9 @@ gaslager om natten og et højhus mellem to naboer) og et frit område.
 | `materialer.js` | Fotoene af beton, mursten, træ og stål lagt på delene i deres egne meter |
 | `fysik.js` | Rapier (fysikmotoren) |
 | `baner.js` | Opgaverne og hvordan de bedømmes |
+| `terraen.js` | Bjerget (lavinen), stenbruddets klippevæg og kløften med floden — samme trekanter til tegning og fysik |
+| `lunte.js` | Lunterne: tegnes med fingeren, gnisten løber langs dem og tænder det, den når |
+| `enhed.js` | Den lette udgave til tablets og telefoner (`?mobil` / `?pc` til afprøvning) |
 | `verden.js`, `styring.js`, `ruder.js` | Pladsen og byen, kameraet, vinduerne |
 
 `?debug` i adressen giver `window.nd` (fx `nd.bane("skorsten")`, `nd.tænd()`, `nd.spol(2)`).
@@ -58,3 +63,11 @@ gaslager om natten og et højhus mellem to naboer) og et frit område.
 | ild | [Crackling Fire](https://freesound.org/s/414767/) · samarobryn |
 | gas | [FOL-gas-leak-01](https://freesound.org/s/615668/) · henrikcederblad |
 | horn | [Industrial Air Horn](https://freesound.org/s/131930/) · mcpable |
+| plask | [Big Water Splash](https://freesound.org/s/442773/) · qubodup |
+| raket | [firework_rocket_ignition](https://freesound.org/s/587173/) · derplayer |
+| floejt | [Firework Whistlers](https://freesound.org/s/588199/) · el_boss |
+| fyrvaerkeri | [Fireworks #1](https://freesound.org/s/569846/) · danlucaz |
+| lavine | [Avalanche, snowstorm, huge, low frequency](https://freesound.org/s/702903/) · FALL-E |
+| sneskred | [avl05](https://freesound.org/s/162674/) · blaukreuz |
+| jordskred | [S24-18 Landslide](https://freesound.org/s/675736/) · craigsmith |
+| gnist | [1.5_sparkler](https://freesound.org/s/461085/) · 15GKovacovaJulie |

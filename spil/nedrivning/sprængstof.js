@@ -6,7 +6,7 @@
 
 import * as THREE from "../3d-faelles/three.module.js";
 import { GLTFLoader } from "../3d-faelles/GLTFLoader.js";
-import { RAPIER, fysik } from "./fysik.js";
+import { RAPIER, fysik, stråle } from "./fysik.js";
 import { MATERIALER, mindre } from "./materialer.js";
 import { mobil } from "./enhed.js";
 
@@ -19,7 +19,12 @@ export const SPRÆNGSTOF = {
   tønde:   { navn: "Benzintønde", W: 3, pris: 150, fast: false, model: "tonde", art: "benzin", krop: "cylinder", str: [0.58, 0.88, 0.58], masse: 190, tekst: "Ildkugle — starter kæden" },
   gas:     { navn: "Gasflaske", W: 1.4, pris: 250, fast: false, model: "gasflaske", art: "gas", krop: "cylinder", str: [0.3, 0.58, 0.3], masse: 24, raket: true, tekst: "Kan flyve af sted" },
   gastank: { navn: "Gastank", W: 30, pris: 0, fast: false, model: "gastank", art: "gas", krop: "kasse", str: [6, 2.6, 1.9], masse: 9000, tekst: "Kæmpe ildkugle" },
+  termit:  { navn: "Termit", W: 0, pris: 700, fast: true, model: "termit", art: "termit", termit: true, tekst: "Brænder sig gennem stål" },
+  bjerg:   { navn: "Bjergladning", W: 14, pris: 3000, fast: true, model: "bjergladning", art: "høj", tekst: "Kæmpestor — til klipper og sne" },
+  fyrværkeri: { navn: "Fyrværkeri", W: 0.5, pris: 300, fast: false, model: "fyrvaerkeri", art: "høj", krop: "kasse", str: [0.6, 0.45, 0.45], masse: 18, tænder: true, fyrværkeri: true, tekst: "Raketter, der tænder alt" },
+  lunte:   { navn: "Lunte", pris: 25, lunte: true, model: "lunte", tekst: "Træk den hen over jorden" },
 };
+const FARVER = [[1, 0.22, 0.18], [0.3, 1, 0.35], [0.35, 0.55, 1], [1, 0.82, 0.25], [1, 0.35, 1], [1, 1, 1], [0.3, 1, 1]];
 
 const tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3(), tmpQ = new THREE.Quaternion(), Y = new THREE.Vector3(0, 1, 0);
 const r = (a, b) => a + Math.random() * (b - a);
@@ -50,6 +55,28 @@ function lille(navn) {
     tilføj(geo, m(0xb87333, 0.35, 0.9), 0, 0, 0, 0, Math.PI / 2, 0);
     tilføj(new THREE.BoxGeometry(0.035, 0.022, 0.03), m(0x151515, 0.4), 0.27, 0.011);
     ledning(0xc81e1e, [[0.29, 0.015, 0], [0.33, 0.02, 0.02], [0.38, 0.01, 0.03]]);
+  } else if (navn === "termit") {
+    tilføj(new THREE.CylinderGeometry(0.045, 0.05, 0.16, 16), m(0x8c9096, 0.4, 0.8), 0, 0.08);
+    tilføj(new THREE.CylinderGeometry(0.052, 0.052, 0.05, 16), m(0xc23a1a, 0.6), 0, 0.09);
+    tilføj(new THREE.CylinderGeometry(0.012, 0.012, 0.05, 8), m(0x222222, 0.5), 0, 0.185);
+    ledning(0xe8c21c, [[0, 0.21, 0], [0.04, 0.24, 0.02], [0.09, 0.22, 0.05]]);
+  } else if (navn === "bjergladning") {
+    tilføj(new THREE.CylinderGeometry(0.06, 0.06, 0.55, 16), m(0xe0701c, 0.55), 0, 0.06, 0, 0, 0, Math.PI / 2);
+    for (const x of [-0.2, 0.2]) tilføj(new THREE.CylinderGeometry(0.063, 0.063, 0.04, 16), m(0x2a2a2a, 0.5), x, 0.06, 0, 0, 0, Math.PI / 2);
+    ledning(0xf0d020, [[0.28, 0.06, 0], [0.34, 0.08, 0.04], [0.42, 0.03, 0.08], [0.5, 0.02, 0.06]]);
+  } else if (navn === "fyrvaerkeri") {
+    const c = document.createElement("canvas"); c.width = 256; c.height = 128;
+    const gc = c.getContext("2d");
+    gc.fillStyle = "#1b2a6b"; gc.fillRect(0, 0, 256, 128);
+    for (let i = 0; i < 26; i++) { gc.fillStyle = ["#ffd23a", "#ff4a6a", "#5ad2ff", "#8aff6a"][i % 4]; gc.beginPath(); const x = (i * 53) % 256, y = (i * 37) % 128, s = 4 + (i % 4) * 3; for (let k = 0; k < 10; k++) { const v = k * Math.PI / 5, rr = k % 2 ? s / 2 : s; gc.lineTo(x + Math.cos(v) * rr, y + Math.sin(v) * rr); } gc.fill(); }
+    gc.fillStyle = "#ffd23a"; gc.font = "bold 30px sans-serif"; gc.fillText("RAKETTER", 46, 74);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+    tilføj(new THREE.BoxGeometry(0.6, 0.45, 0.45), m(0xffffff, 0.7, 0, { map: t }), 0, 0.225);
+    for (let i = 0; i < 9; i++) tilføj(new THREE.CylinderGeometry(0.025, 0.025, 0.08, 10), m([0xd8341f, 0xffd23a, 0x2a8ad8][i % 3], 0.5), -0.18 + (i % 3) * 0.18, 0.49, -0.13 + Math.floor(i / 3) * 0.13);
+  } else if (navn === "lunte") {
+    const pkt = []; for (let i = 0; i <= 60; i++) { const v = i * 0.42, rr = 0.05 + i * 0.0018; pkt.push(new THREE.Vector3(Math.cos(v) * rr, 0.012 + (i % 12 === 0 ? 0.002 : 0), Math.sin(v) * rr)); }
+    tilføj(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pkt), 120, 0.009, 5), m(0x3b2c1e, 0.85));
+    tilføj(new THREE.CylinderGeometry(0.018, 0.018, 0.04, 10), m(0xd06a1a, 0.5), Math.cos(25.2) * 0.158, 0.02, Math.sin(25.2) * 0.158);
   } else {
     // reserve, hvis en model fra Blender ikke kan hentes
     if (navn === "tonde") tilføj(new THREE.CylinderGeometry(0.29, 0.29, 0.88, 28), m(0x9a2418, 0.5, 0.4), 0, 0.44);
@@ -82,12 +109,12 @@ export async function hentModeller() {
 export class Sprængstof {
   constructor(ctx, modeller) {
     this.ctx = ctx; this.modeller = modeller;
-    this.alle = []; this.venter = []; this.raketter = [];
+    this.alle = []; this.venter = []; this.raketter = []; this.termitter = []; this.fyr = []; this.skud = [];
     this.kæde = 0; this.sprængninger = 0; this.forbrug = 0; this.sidsteBrag = -99;
   }
   tøm() {
     for (const l of this.alle) this.fjernVisning(l);
-    this.alle = []; this.venter = []; this.raketter = []; this.kæde = 0; this.sprængninger = 0; this.forbrug = 0;
+    this.alle = []; this.venter = []; this.raketter = []; this.termitter = []; this.fyr = []; this.skud = []; this.kæde = 0; this.sprængninger = 0; this.forbrug = 0;
   }
   model(def) {
     const m = this.modeller[def.model].clone(true);
@@ -161,6 +188,7 @@ export class Sprængstof {
   tænd() {
     let n = 0;
     for (const l of this.alle) if (l.spiller && (l.def.fast || l.def.tænder) && !l.tændt) { this.planlæg(l, l.forsinkelse, false); n++; }
+    n += this.ctx.lunter?.tændAlle() ?? 0;
     return n;
   }
   planlæg(l, om, kæde) {
@@ -179,6 +207,8 @@ export class Sprængstof {
   // ---------- En ladning går af ----------
   brag(l) {
     if (l.væk) return;
+    if (l.def.termit) { this.startTermit(l); return; }
+    if (l.def.fyrværkeri && !l.affyret) { l.affyret = true; this.fyr.push({ l, tilbage: mobil ? 9 : 14, t: 0.4 }); this.sidsteBrag = performance.now(); if (l.kæde) this.kæde++; return; }
     l.væk = true;
     const { dele, effekter, lyd, ruder, kamera } = this.ctx, def = l.def;
     const p = this.stedFor(l, new THREE.Vector3());
@@ -187,8 +217,9 @@ export class Sprængstof {
     const del = l.del && !l.del.væk ? l.del : null;
     this.fjernVisning(l);
     if (l.del) { l.del.ladninger = l.del.ladninger.filter(x => x !== l); l.del = null; }   // delen skal ikke længere flytte ladningen
-    this.sprængninger++; if (l.kæde) this.kæde++;
+    this.sprængninger++; if (l.kæde && !l.affyret) this.kæde++;
     this.sidsteBrag = performance.now();
+    this.ctx.lunter?.nærPunkt(p, 1.2 * S + 0.8);
     // ildkuglen, lyden og trykbølgen
     effekter.eksplosion(p, W, def.art, { kamera, jord: p.y < 1.5 });
     lyd.eksplosion(p, W, def.art);
@@ -214,6 +245,7 @@ export class Sprængstof {
       else if (x.type === "gas" && a < 5.5 * S) this.punktér(x);
       else if (x.type === "gastank" && a < 3 * S) this.planlæg(x, r(0.4, 0.9), true);
       else if ((x.type === "tnt" || x.def.fast) && a < 0.9 * S) this.planlæg(x, r(0.02, 0.08), true);
+      else if (x.type === "fyrværkeri" && a < 2.5 * S + 0.5) this.planlæg(x, r(0.1, 0.4), true);
     }
     return p;
   }
@@ -251,6 +283,7 @@ export class Sprængstof {
   // Skæreladningen: delen deles i to, hvor ladningen sidder, med en smal spalte
   skær(d, p) {
     const { dele, effekter } = this.ctx;
+    if (d.form !== "kasse") { dele.knus(d, p, 4); return; }
     const { p: c, q } = dele.sted(d, new THREE.Vector3(), new THREE.Quaternion());
     const s = d.str, akse = s.y >= s.x && s.y >= s.z ? "y" : s.x >= s.z ? "x" : "z";
     const lok = p.clone().sub(c).applyQuaternion(q.clone().invert());
@@ -271,8 +304,90 @@ export class Sprængstof {
     for (let i = 0; i < 70; i++) effekter.gnister.nyt(p, new THREE.Vector3(r(-1, 1), r(-0.5, 1), r(-1, 1)).normalize().multiplyScalar(r(6, 22)), r(0.3, 1.2), r(1, 1.8), 1, r(8, 16));
   }
 
+  // Termitten: brænder med et blændende hvidt lys og regn af gnister i nogle sekunder — og så er stålet skåret over
+  startTermit(l) {
+    l.væk = true; l.tændt = true;
+    const p = this.stedFor(l, new THREE.Vector3());
+    this.termitter.push({ l, p, tid: 2.8, t: 0 });
+    this.ctx.lyd.termit(p);
+    this.sprængninger++; if (l.kæde) this.kæde++;
+    this.sidsteBrag = performance.now();
+  }
+  // Noget tændes, hvor en lunte, en raket eller en termit når hen
+  antændNær(p, radius) {
+    for (const x of this.alle) {
+      if (x.væk || x.tændt) continue;
+      if (this.stedFor(x, tmp2).distanceTo(p) > radius + (x.def.str ? x.def.str[0] * 0.5 : 0)) continue;
+      if (x.type === "tønde") this.planlæg(x, r(0.05, 0.2), true);
+      else if (x.type === "gas") this.punktér(x);
+      else if (x.type === "gastank") this.planlæg(x, r(0.3, 0.6), true);
+      else this.planlæg(x, 0.02, true);
+    }
+  }
+  opdaterTermit(dt) {
+    const { effekter, dele } = this.ctx;
+    for (const t of this.termitter) {
+      t.tid -= dt; t.t -= dt;
+      if (t.l.mesh) t.p.copy(t.l.mesh.position);
+      for (let i = 0; i < (mobil ? 3 : 7); i++) effekter.gnister.nyt(t.p, new THREE.Vector3(r(-1, 1), r(-0.3, 1.2), r(-1, 1)).normalize().multiplyScalar(r(2, 7)), r(0.4, 1.4), r(1, 1.8), 1, r(10, 20), [1, 0.92, 0.75]);
+      if (t.t <= 0) {
+        t.t = 0.09;
+        effekter.lysBlink(t.p, 260, 0.14, 0.6).l.color.setRGB(1, 0.95, 0.85);
+        effekter.pust.nyt({ p: t.p, v: new THREE.Vector3(r(-0.3, 0.3), 1.5, r(-0.3, 0.3)), str: 0.3, slut: 1.6, vækst: 1.5, liv: r(2, 3.5), varme: 0.6, køl: 0.15, tæt: 0.5, farve: [0.85, 0.85, 0.85], vind: 1, løft: 1.5, bremse: 1, glød: 1 });
+      }
+      if (t.tid <= 0) {
+        const del = t.l.del && !t.l.del.væk ? t.l.del : null;
+        this.fjernVisning(t.l);
+        if (t.l.del) { t.l.del.ladninger = t.l.del.ladninger.filter(x => x !== t.l); t.l.del = null; }
+        if (del) this.skær(del, t.p);
+        this.antændNær(t.p, 1.2); this.ctx.lunter?.nærPunkt(t.p, 1.2);
+        dele.sværtNær(t.p, 0.8);
+      }
+    }
+    this.termitter = this.termitter.filter(t => t.tid > 0);
+  }
+  // Fyrværkeriet: kassen skyder sine raketter af én ad gangen. Nogle flyver lavt ud til siden og tænder det, de lander ved.
+  opdaterFyrværkeri(dt) {
+    const { effekter, lyd, terræn } = this.ctx;
+    for (const f of this.fyr) {
+      f.t -= dt;
+      if (f.t > 0) continue;
+      if (f.l.væk || !f.l.krop) { f.tilbage = 0; continue; }
+      f.t = r(0.15, 0.32); f.tilbage--;
+      const p = this.stedFor(f.l, new THREE.Vector3()); p.y += 0.35;
+      const lav = Math.random() < 0.3, vinkel = Math.random() * Math.PI * 2;
+      const op = lav ? r(0.35, 0.6) : r(1.8, 4);                          // forholdet mellem op og ud
+      const v = new THREE.Vector3(Math.cos(vinkel), op, Math.sin(vinkel)).normalize().multiplyScalar(lav ? r(14, 20) : r(24, 32));
+      this.skud.push({ p, v, tid: lav ? r(1.6, 2.6) : r(1.1, 1.8), farve: FARVER[Math.floor(Math.random() * FARVER.length)] });
+      lyd.raket(p);
+      effekter.pust.nyt({ p, v: new THREE.Vector3(0, 2, 0), str: 0.4, slut: 1.8, vækst: 2, liv: r(2, 3), varme: 0.5, køl: 0.12, tæt: 0.6, farve: [0.7, 0.7, 0.72], vind: 1, løft: 0.8, bremse: 1.5 });
+      if (f.tilbage <= 0) this.brag(f.l);
+    }
+    this.fyr = this.fyr.filter(f => f.tilbage > 0 && !f.l.væk);
+    for (const s of this.skud) {
+      s.tid -= dt;
+      s.v.y -= 9.8 * dt * 0.55; s.v.multiplyScalar(Math.exp(-0.15 * dt));
+      // rammer raketten et tag, en mur eller en tønde på vejen, springer den dér
+      const l = s.v.length() * dt, træf = l > 0 ? stråle(s.p, tmp2.copy(s.v).divideScalar(s.v.length()), l) : null;
+      if (træf && !træf.jord) { s.p.set(træf.punkt.x, træf.punkt.y, træf.punkt.z); s.ramt = true; }
+      else s.p.addScaledVector(s.v, dt);
+      effekter.gnister.nyt(s.p, s.v.clone().multiplyScalar(-0.08).add(tmp.set(r(-0.5, 0.5), r(-0.5, 0.5), r(-0.5, 0.5))), r(0.25, 0.5), 1.4, 1, 9);
+      const bund = terræn ? terræn.højde(s.p.x, s.p.z) : 0;
+      if (s.ramt || s.p.y < bund + 0.25 || s.tid <= 0) {
+        const nede = s.ramt || s.p.y < bund + 4;
+        effekter.fyrværkeri(s.p, s.farve, nede ? 0.6 : 1);
+        lyd.fyrværkeriBrag(s.p);
+        if (nede) { this.antændNær(s.p, 1.6); this.ctx.lunter?.nærPunkt(s.p, 1.2); }
+        s.tid = -1;
+      }
+    }
+    this.skud = this.skud.filter(s => s.tid > 0);
+  }
+
   // ---------- Hvert billede ----------
   opdater(dt) {
+    if (this.termitter.length) this.opdaterTermit(dt);
+    if (this.fyr.length || this.skud.length) this.opdaterFyrværkeri(dt);
     // ladninger, der venter på deres tur
     if (this.venter.length) {
       const klar = [];
@@ -306,14 +421,15 @@ export class Sprængstof {
   // Ild nær en tønde eller gasflaske antænder den efter et stykke tid
   varme(ilde, dt) {
     for (const l of this.alle) {
-      if (!l.krop || l.tændt || l.væk || l.type === "tnt") continue;
+      if (!l.krop || l.tændt || l.væk || l.type === "tnt" || l.type === "gastank") continue;
       const p = this.stedFor(l, tmp);
       let tæt = false;
       for (const f of ilde) if (f.p.distanceTo(p) < 1.4 * f.styrke + 0.4) { tæt = true; break; }
       l.opvarmet = tæt ? (l.opvarmet || 0) + dt : Math.max(0, (l.opvarmet || 0) - dt);
       if (l.opvarmet > (l.type === "gas" ? 2.5 : 4)) l.type === "gas" ? this.punktér(l) : this.planlæg(l, 0, true);
     }
+    for (const f of ilde) this.ctx.lunter?.nærPunkt(f.p, 1.2 * f.styrke + 0.3);
   }
-  aktiv() { return this.venter.length > 0 || this.raketter.length > 0; }
+  aktiv() { return this.venter.length > 0 || this.raketter.length > 0 || this.termitter.length > 0 || this.fyr.length > 0 || this.skud.length > 0 || !!this.ctx.lunter?.aktiv(); }
   gasStyrke() { return this.raketter.length ? this.stedFor(this.raketter[0]) : null; }
 }

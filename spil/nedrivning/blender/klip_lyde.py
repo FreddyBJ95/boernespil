@@ -30,6 +30,14 @@ KLIP = {  # navn: (freesound-id, start, slut, fade ud)
   "ild": (414767, 20.0, 36.0, 0.0),
   "gas": (615668, 0.0, 7.9, 0.0),
   "horn": (131930, 0.0, 2.6, 0.3),
+  "plask": (442773, 0.0, 2.2, 0.5),
+  "raket": (587173, 0.0, 2.3, 0.4),
+  "floejt": (588199, 0.0, 3.0, 0.6),
+  "fyrvaerkeri": (569846, 0.0, 11.0, 1.0),
+  "lavine": (702903, 0.0, 14.0, 0.0),
+  "sneskred": (162674, 0.6, 6.1, 1.5),
+  "jordskred": (675736, 16.0, 28.0, 2.0),
+  "gnist": (461085, 0.0, 7.9, 0.0),
 }
 ud = os.path.normpath(os.path.join(mappe, "..", "lyde")); os.makedirs(ud, exist_ok=True)
 for navn, (i, a, b, fade) in KLIP.items():

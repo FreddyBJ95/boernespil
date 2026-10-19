@@ -6,8 +6,8 @@
 import * as THREE from "../3d-faelles/three.module.js";
 
 export class Kamera {
-  constructor(kamera, lærred, { vedTryk, vedHover } = {}) {
-    this.k = kamera; this.lærred = lærred; this.vedTryk = vedTryk; this.vedHover = vedHover;
+  constructor(kamera, lærred, { vedTryk, vedHover, vedTegn } = {}) {
+    this.k = kamera; this.lærred = lærred; this.vedTryk = vedTryk; this.vedHover = vedHover; this.vedTegn = vedTegn;
     this.mål = new THREE.Vector3(0, 4, 0); this.yaw = 0.7; this.pitch = 0.42; this.afstand = 42;
     this.vis = { mål: this.mål.clone(), yaw: this.yaw, pitch: this.pitch, afstand: this.afstand };
     this.fingre = new Map(); this.taster = new Set(); this.grænse = 70; this.aktiv = true;
@@ -42,6 +42,9 @@ export class Kamera {
     if (!this.aktiv) return;
     this.lærred.setPointerCapture?.(ev.pointerId);
     this.fingre.set(ev.pointerId, { x: ev.clientX, y: ev.clientY, x0: ev.clientX, y0: ev.clientY, t0: performance.now(), knap: ev.button, skift: ev.shiftKey });
+    // ét finger-/musetræk kan tegne (fx en lunte), hvis spillet vil have det
+    if (this.fingre.size === 1 && ev.button === 0 && this.vedTegn?.("start", ev.clientX, ev.clientY)) this.fingre.get(ev.pointerId).tegner = true;
+    else if (this.fingre.size === 2) for (const f of this.fingre.values()) if (f.tegner) { f.tegner = false; this.vedTegn?.("slut"); }
     if (this.fingre.size === 2) { const [a, b] = [...this.fingre.values()]; this.knib = { d: Math.hypot(a.x - b.x, a.y - b.y), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 }; }
   }
   flyt(ev) {
@@ -49,6 +52,7 @@ export class Kamera {
     if (!f) { if (ev.pointerType === "mouse") this.vedHover?.(ev.clientX, ev.clientY); return; }
     const dx = ev.clientX - f.x, dy = ev.clientY - f.y;
     f.x = ev.clientX; f.y = ev.clientY;
+    if (f.tegner) { this.vedTegn?.("flyt", ev.clientX, ev.clientY); return; }
     if (this.fingre.size === 2 && this.knib) {
       const [a, b] = [...this.fingre.values()];
       const d = Math.hypot(a.x - b.x, a.y - b.y), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
@@ -69,6 +73,7 @@ export class Kamera {
     const f = this.fingre.get(ev.pointerId);
     this.fingre.delete(ev.pointerId);
     if (this.fingre.size < 2) this.knib = null;
+    if (f?.tegner) { this.vedTegn?.("slut"); return; }
     if (!f || afbrudt || f.trukket || this.fingre.size > 0) return;
     if (Math.hypot(ev.clientX - f.x0, ev.clientY - f.y0) < 9 && performance.now() - f.t0 < 600 && f.knap === 0) this.vedTryk?.(ev.clientX, ev.clientY);
   }

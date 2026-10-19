@@ -6,7 +6,7 @@
 import * as RAPIER from "./rapier/rapier.js";
 export { RAPIER };
 
-export const fysik = { verden: null, kø: null, ejere: new Map(), tid: 0 };
+export const fysik = { verden: null, kø: null, ejere: new Map(), terræn: new Set(), tid: 0 };
 const TRIN = 1 / 60;
 let rest = 0;
 
@@ -21,7 +21,7 @@ export function nyVerden() {
   const jord = v.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, -2, 0));
   const k = v.createCollider(RAPIER.ColliderDesc.cuboid(400, 2, 400).setFriction(0.9).setRestitution(0.05), jord);
   fysik.verden = v; fysik.kø = new RAPIER.EventQueue(true); fysik.jordKollider = k.handle;
-  fysik.ejere.clear(); fysik.tid = 0; rest = 0;
+  fysik.ejere.clear(); fysik.terræn.clear(); fysik.tid = 0; rest = 0;
   return v;
 }
 
@@ -45,7 +45,7 @@ export function stråle(fra, retning, maks = 400, udeladKrop = null) {
   if (!træf) return null;
   const t = træf.timeOfImpact;
   return {
-    ejer: fysik.ejere.get(træf.collider.handle) || null, jord: træf.collider.handle === fysik.jordKollider, t,
+    ejer: fysik.ejere.get(træf.collider.handle) || null, jord: træf.collider.handle === fysik.jordKollider || fysik.terræn.has(træf.collider.handle), t,
     punkt: { x: fra.x + retning.x * t, y: fra.y + retning.y * t, z: fra.z + retning.z * t }, normal: træf.normal,
   };
 }

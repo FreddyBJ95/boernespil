@@ -10,7 +10,7 @@ import { RAPIER, fysik } from "./fysik.js";
 import { MATERIALER, lavMateriale } from "./materialer.js";
 import { mobil } from "./enhed.js";
 
-export const MAKS_KROPPE = mobil ? 420 : 1400;
+export const MAKS_KROPPE = mobil ? 420 : 1100;
 const TOL = 0.04;
 const Y = new THREE.Vector3(0, 1, 0);
 const tmpM = new THREE.Matrix4(), tmpQ = new THREE.Quaternion(), tmpQ2 = new THREE.Quaternion(), tmpV = new THREE.Vector3(), tmpV2 = new THREE.Vector3(), tmpS = new THREE.Vector3();
@@ -90,7 +90,7 @@ export class Dele {
   nulstil() {
     for (const p of this.partier.values()) p.tøm();
     this.alle = new Set(); this.levende = new Set(); this.klumper = new Set(); this.bygninger = [];
-    this.kø = { løsn: new Set(), knus: [], split: new Set() };
+    this.kø = { løsn: new Set(), knus: [], split: new Set(), senere: [] };
     this.næsteId = 1; this.knustDetteTrin = 0;
   }
   materiale(navn) { return this.materialer[navn] ??= lavMateriale(navn, this.fotos); }
@@ -124,7 +124,8 @@ export class Dele {
     const mål = [str.x, str.y, str.z].sort((a, b) => a - b);
     const del = {
       id: this.næsteId++, form, mat: spec.mat, str, vol, masse: vol * m.vægt,
-      styrke: Math.max(2e4, (0.7e6 / m.brud) * mål[0] * mål[1]),
+      styrke: m.σ ? Math.max(3000, m.σ * mål[0] * mål[1]) : Math.max(2e4, (0.7e6 / m.brud) * mål[0] * mål[1]),
+      grundFast: !!spec.grund,
       fast: !!spec.fast, bygning: spec.bygning || null, spænd: !!spec.spænd, krav: spec.krav ?? 0.3, ring: spec.ring ?? -1, bærer: !!spec.bærer, brok: !!spec.brok,
       under: [], side: [], grund: false, arealUnder: 0,
       oprPos: pos.clone(), oprQ: q.clone(), parti, i, farve: new THREE.Color(spec.tone ?? 0xffffff),
@@ -135,7 +136,9 @@ export class Dele {
       del.farve.setRGB(l * (0.98 + Math.random() * 0.04), l, l * (0.97 + Math.random() * 0.05));
     }
     this.lavKrop(del, pos, q, del.fast);
-    parti.sæt(i, pos, q, str); parti.farve(i, del.farve);
+    // visSkala: delen tegnes lidt større end fysikken (sneflager og klippeblokke glider så sammen til én flade)
+    if (spec.visSkala) del.vis = str.clone().multiply(new THREE.Vector3(...spec.visSkala));
+    parti.sæt(i, pos, q, del.vis ?? str); parti.farve(i, del.farve);
     this.alle.add(del);
     if (!del.fast) this.levende.add(del);
     if (del.bygning) del.bygning.dele.push(del);
@@ -148,7 +151,8 @@ export class Dele {
     else if (del.form === "kile") cd = RAPIER.ColliderDesc.convexHull(new Float32Array(kilePunkter().map((v, i) => v * [s.x, s.y, s.z][i % 3])));
     else if (del.form.startsWith("brok")) cd = RAPIER.ColliderDesc.cuboid(s.x * 0.43, s.y * 0.43, s.z * 0.43);
     else cd = RAPIER.ColliderDesc.cuboid(s.x / 2, s.y / 2, s.z / 2);
-    cd.setDensity(m.vægt * faktor).setFriction(del.form.startsWith("brok") ? 0.95 : 0.8).setRestitution(0.02);
+    cd.setDensity(m.vægt * faktor).setFriction(m.friktion ?? (del.form.startsWith("brok") ? 0.95 : 0.8)).setRestitution(0.02);
+    if (m.friktion < 0.3) cd.setFrictionCombineRule(RAPIER.CoefficientCombineRule.Min);   // sne glider
     // Små brokker giver ingen besked om stød (der er for mange af dem); store dele gør
     const lyd = del.brok && del.vol < 0.03 ? 0 : Math.min(del.styrke, del.masse * 9.81 * 6);
     if (lyd > 0 || del.fast) cd.setActiveEvents(RAPIER.ActiveEvents.CONTACT_FORCE_EVENTS).setContactForceEventThreshold(del.fast ? del.styrke : Math.max(lyd, 400));
@@ -214,7 +218,7 @@ export class Dele {
         for (let z = Math.floor(b.min.z / celle); z <= Math.floor(b.max.z / celle); z++) {
           const k = x * 10007 + z; if (!gitter.has(k)) gitter.set(k, []); gitter.get(k).push(d);
         }
-      d.grund = b.min.y < TOL;
+      d.grund = d.grundFast || b.min.y < TOL;
     }
     const set = new Set();
     for (const liste of gitter.values()) for (let i = 0; i < liste.length; i++) for (let j = i + 1; j < liste.length; j++) {
@@ -307,7 +311,10 @@ export class Dele {
     // et lille skub ud af balance: løse mursten og søjler bliver ikke stående som tårne af klodser
     const vip = (krop, k) => krop.setAngvel({ x: (Math.random() - 0.5) * k, y: (Math.random() - 0.5) * k * 0.3, z: (Math.random() - 0.5) * k }, true);
     if (!klump) {
-      for (const d of liste) { d.krop.setBodyType(RAPIER.RigidBodyType.Dynamic, true); this.nyTærskel(d); vip(d.krop, 0.9); }
+      for (const d of liste) {
+        d.krop.setBodyType(RAPIER.RigidBodyType.Dynamic, true); this.nyTærskel(d); vip(d.krop, MATERIALER[d.mat].skred ? 0.2 : 0.9);
+        this.skred(d);
+      }
       return liste;
     }
     // find sammenhængende grupper
@@ -328,6 +335,12 @@ export class Dele {
       else if (k) vip(k.krop, 0.12);
     }
     return liste;
+  }
+  // Et skred breder sig: naboerne i sneen eller klippen løsner sig et øjeblik efter
+  skred(d) {
+    const m = MATERIALER[d.mat];
+    if (!m.skred) return;
+    for (const s of d.side) if (s.fast && !s.væk && Math.random() < (m.spredning ?? 0.55)) this.kø.senere.push({ d: s, t: 0.15 + Math.random() * 0.45 });
   }
   ovenpå(d) { return d._over || (d._over = d.bygning ? d.bygning.dele.filter(x => x.under.some(u => u.del === d)) : []); }
   nyTærskel(d) {
@@ -421,6 +434,7 @@ export class Dele {
       if (fra) this.skub(del, fra, skub);
       return [del];
     }
+    this.skred(del);
     const { p, q } = this.sted(del, new THREE.Vector3(), new THREE.Quaternion());
     const v0 = this.fart(del, new THREE.Vector3());
     // hvor mange stykker langs hver side
@@ -490,12 +504,19 @@ export class Dele {
         if (kraft > d.styrke && (!anden || !anden.fast)) { this.kø.løsn.add(d); if (kraft > d.styrke * 3) this.kø.knus.push(d); }
         continue;
       }
-      if (kraft > d.styrke * 2.2 && !d.brok || (d.brok && d.vol > 0.25 && kraft > d.styrke * 4)) this.kø.knus.push(d);
+      // sne og klipper i et skred knuses kun af de hårdeste stød (ellers bliver det til tusindvis af stumper)
+      const skred = MATERIALER[d.mat].skred, grænse = skred ? d.masse * 9.81 * 30 : d.styrke * 2.2;
+      if (kraft > grænse && !d.brok || (d.brok && !skred && d.vol > 0.25 && kraft > d.styrke * 4)) this.kø.knus.push(d);
       this.hændelser.stød?.(d, kraft);
     }
   }
   // Efter hvert fysiktrin: brug køen (fysikken må ikke ændres midt i sine egne beskeder)
   efterTrin() {
+    if (this.kø.senere.length) {
+      const nu = [];
+      this.kø.senere = this.kø.senere.filter(x => (x.t -= 1 / 60) > 0 || (nu.push(x.d), false));
+      if (nu.length) this.løsn(nu.filter(d => d.fast && !d.væk));
+    }
     for (const k of this.klumper) {
       if (k.hængsel) {                                         // hængslet knækker, når tårnet hælder ca. 25° (eller rammer noget hårdt)
         const q = k.krop.rotation();
@@ -525,7 +546,7 @@ export class Dele {
       d.sovet = krop.isSleeping();
       const { p, q } = this.sted(d, tmpV, tmpQ);
       if (p.y < -40) { this.fjernDel(d); continue; }
-      d.parti.sæt(d.i, p, q, d.str);
+      d.parti.sæt(d.i, p, q, d.vis ?? d.str);
       for (const l of d.ladninger) l.flyt?.();
     }
     for (const p of this.partier.values()) p.opdater();

@@ -16,6 +16,8 @@ import { Sprængstof, SPRÆNGSTOF, hentModeller } from "./sprængstof.js";
 import { Verden, TIDER } from "./verden.js";
 import { Kamera } from "./styring.js";
 import { BANER, FRIT, tjek } from "./baner.js";
+import { Terræn, TERRÆN } from "./terraen.js";
+import { Lunter } from "./lunte.js";
 import { mobil } from "./enhed.js";
 
 const $ = id => document.getElementById(id);
@@ -52,7 +54,9 @@ addEventListener("resize", () => {
 
 // ---------- Tilstanden ----------
 let tilstand = "start", bane = null, valgt = null, forsinkelse = 0, lager = {}, slowmo = false, rolig = 0, sprængTid = 0, blink = 0, valgtLadning = null, menuVinkel = 0;
-let verden, ruder, dele, effekter, lyd, sprængstof, kam, zoneMesh = null, markør = null, ikoner = {};
+let verden, ruder, dele, effekter, lyd, sprængstof, kam, terræn, lunter, zoneMesh = null, markør = null, ikoner = {};
+let naturTid = 0, skredStartet = false, skredMasse = 0, lunteLyd = null;              // lavinen og lunten (se natur())
+const skredSted = new THREE.Vector3(), tmpNatur = new THREE.Vector3();
 
 // ---------- Indlæsningen ----------
 const status = t => { $("indlæser").textContent = t; };
@@ -70,7 +74,10 @@ dele = new Dele(scene, fotos, ruder);
 effekter = new Effekter(scene);
 lyd = new Lyd();
 sprængstof = new Sprængstof({ scene, dele, effekter, lyd, ruder, kamera }, modeller);
-kam = new Kamera(kamera, $("verden"), { vedTryk, vedHover });
+terræn = new Terræn(scene, fotos);
+lunter = new Lunter({ scene, effekter, sprængstof });
+sprængstof.ctx.lunter = lunter; sprængstof.ctx.terræn = terræn;
+kam = new Kamera(kamera, $("verden"), { vedTryk, vedHover, vedTegn });
 dele.forbered(Object.keys(MATERIALER));
 kobl();
 lavMarkør();
@@ -86,8 +93,8 @@ visKonto();
 requestAnimationFrame(løkke);
 
 // ---------- Hændelser fra delene, ruderne og fysikken ----------
-const STØV = { beton: [0.5, 0.48, 0.45], råbeton: [0.47, 0.45, 0.42], mursten: [0.5, 0.39, 0.33], puds: [0.56, 0.54, 0.5], træ: [0.4, 0.35, 0.29], rødtræ: [0.4, 0.33, 0.29], klippe: [0.46, 0.44, 0.41] };
-const GRUS = { beton: 0x8e8a84, råbeton: 0x7a7670, mursten: 0x8e4a36, puds: 0xc8c4bc, træ: 0x6a4a30, rødtræ: 0x7a3022, stål: 0x5a5e64, rødstål: 0x7a3a2a, blik: 0x9a9ea2, tag: 0x4a4e54, klippe: 0x8a8680 };
+const STØV = { beton: [0.5, 0.48, 0.45], råbeton: [0.47, 0.45, 0.42], mursten: [0.5, 0.39, 0.33], puds: [0.56, 0.54, 0.5], træ: [0.4, 0.35, 0.29], rødtræ: [0.4, 0.33, 0.29], klippe: [0.46, 0.44, 0.41], sne: [0.9, 0.92, 0.95] };
+const GRUS = { beton: 0x8e8a84, råbeton: 0x7a7670, mursten: 0x8e4a36, puds: 0xc8c4bc, træ: 0x6a4a30, rødtræ: 0x7a3022, stål: 0x5a5e64, rødstål: 0x7a3a2a, blik: 0x9a9ea2, tag: 0x4a4e54, klippe: 0x8a8680, sne: 0xf0f4f8 };
 function kobl() {
   dele.hændelser.knus = (del, p) => {
     const m = MATERIALER[del.mat];
@@ -122,22 +129,25 @@ function vedStød(a, b, kraft) {
 
 // ---------- Byg en opgave ----------
 function bygBane(def, baggrund = false) {
-  sprængstof.tøm();
+  sprængstof.tøm(); lunter.tøm(); terræn.tøm();
   nyVerden();
+  skredStartet = false; skredMasse = 0;
   dele.nulstil(); ruder.tøm(); effekter.tøm();
   lyd.stopLøkker?.();
   if (zoneMesh) { scene.remove(zoneMesh); zoneMesh = null; }
   const tid = verden.sætTid(def.tid);
+  verden.sætUnderlag(def.underlag ?? "sand");
+  terræn.byg(TERRÆN[def.terræn]);
   effekter.lysFra(verden.sol, verden.solRetning, new THREE.Color(tid.himmel), new THREE.Color(tid.tåge), tid.tæthed);
   efter.eksponering = tid.eksponering;
-  def.byg({ dele, ruder, sprængstof });
+  def.byg({ dele, ruder, sprængstof, terræn });
   for (const b of dele.bygninger) for (const d of b.dele) d.original = true;
   if (def.zone) lavZone(def.zone);
   lager = { ...def.værktøj };
   valgt = null; valgtLadning = null; slowmo = false; rolig = 0; sprængTid = 0;
   $("slowmo").setAttribute("aria-pressed", "false");
   if (!baggrund) kam.sæt(def.kamera);
-  renderer.compileAsync?.(scene, kamera).catch(() => {});
+  try { renderer.compile(scene, kamera); } catch (_) { /* skærmkortet bygger resten, når det tegnes */ }
 }
 // Det grønne felt, hvor noget skal lande
 function lavZone([x0, z0, x1, z1]) {
@@ -222,6 +232,9 @@ function vedTryk(x, y) {
     if (a < bedstA) { bedstA = a; bedst = l; }
   }
   if (bedst && (!valgt || bedstA < 18)) { visPop(bedst, x, y); return; }
+  const lun = lunter.tætPå(kamera, x, y, r, valgt ? 14 : 22);
+  if (lun) { visPop({ lunte: lun }, x, y); return; }
+  if (valgt === "lunte") { tip("Træk med fingeren hen over jorden — fra tændingen hen til det, der skal tændes."); return; }
   if (!valgt) { tip("Vælg et sprængstof nederst — og tryk så der, hvor det skal sidde."); return; }
   if (!(lager[valgt] > 0)) { tip("Der er ikke flere af den slags."); return; }
   const { fra, retning } = kam.stråle(x, y), t = stråle(fra, retning, 500);
@@ -244,6 +257,7 @@ function visPop(l, x, y) {
   pop.classList.remove("skjult");
   pop.style.left = `${Math.min(innerWidth - 190, Math.max(10, x - 90))}px`;
   pop.style.top = `${Math.max(70, y - 120)}px`;
+  if (l.lunte) { pop.querySelector("small").textContent = `LUNTE · ${l.lunte.total.toFixed(1).replace(".", ",")} M`; pop.querySelector(".pop-f").style.display = "none"; return; }
   pop.querySelectorAll("[data-f]").forEach(b => b.classList.toggle("valgt", +b.dataset.f === l.forsinkelse));
   pop.querySelector("small").textContent = l.def.fast || l.def.tænder ? `${l.def.navn.toUpperCase()} · FORSINKELSE` : l.def.navn.toUpperCase();
   pop.querySelector(".pop-f").style.display = l.def.fast || l.def.tænder ? "" : "none";
@@ -256,9 +270,28 @@ $("pop").querySelectorAll("[data-f]").forEach(b => b.addEventListener("click", (
 $("popFjern").addEventListener("click", () => {
   if (!valgtLadning) return;
   const l = valgtLadning;
+  if (l.lunte) { lunter.fjern(l.lunte); lager.lunte = (lager.lunte ?? 0) + l.lunte.total; sprængstof.forbrug -= l.lunte.total * SPRÆNGSTOF.lunte.pris; lyd.klik(0.7); lukPop(); visVærktøj(); return; }
   sprængstof.fjern(l); lager[l.type] = (lager[l.type] ?? 0) + 1;
   lyd.klik(0.7); lukPop(); visVærktøj();
 });
+
+// ---------- Lunten: træk med fingeren hen over jorden ----------
+function vedTegn(type, x, y) {
+  const punkt = () => { const { fra, retning } = kam.stråle(x, y), t = stråle(fra, retning, 500); return t ? new THREE.Vector3(t.punkt.x, t.punkt.y, t.punkt.z) : null; };
+  if (type === "start") {
+    if (tilstand !== "placering" || valgt !== "lunte" || !(lager.lunte > 0.5)) return false;
+    const p = punkt(); if (!p) return false;
+    lukPop(); lunter.begynd(p); lyd.start();
+    return true;
+  }
+  if (type === "flyt") { const p = punkt(); if (p) lunter.tilføj(p, lager.lunte); return true; }
+  if (type === "slut") {
+    const l = lunter.afslut();
+    if (l) { lager.lunte = Math.max(0, lager.lunte - l.total); sprængstof.forbrug += l.total * SPRÆNGSTOF.lunte.pris; lyd.klik(); visVærktøj(); }
+    return true;
+  }
+  return false;
+}
 
 // ---------- Værktøjskassen nederst ----------
 function visVærktøj() {
@@ -267,13 +300,13 @@ function visVærktøj() {
     const def = SPRÆNGSTOF[type];
     const b = document.createElement("button");
     b.className = "ting" + (valgt === type ? " valgt" : "");
-    b.innerHTML = `<img src="${ikoner[type]}" alt=""><span><b>${def.navn}</b><small>${def.tekst}</small></span><i>${antal === Infinity ? "∞" : antal}</i>`;
-    b.disabled = !(antal > 0);
+    b.innerHTML = `<img src="${ikoner[type]}" alt=""><span><b>${def.navn}</b><small>${def.tekst}</small></span><i>${antal === Infinity ? "∞" : type === "lunte" ? `${Math.floor(antal)} m` : antal}</i>`;
+    b.disabled = !(antal > (type === "lunte" ? 0.5 : 0));
     b.title = `${def.navn} — ${def.pris} kr`;
-    b.addEventListener("click", () => { lyd.start(); valgt = valgt === type ? null : type; lyd.klik(1.2); visVærktøj(); if (valgt) tip(def.fast ? "Tryk på en søjle eller mur, hvor ladningen skal sidde." : "Tryk på jorden, hvor den skal stå."); });
+    b.addEventListener("click", () => { lyd.start(); valgt = valgt === type ? null : type; lyd.klik(1.2); visVærktøj(); if (valgt) tip(def.lunte ? "Træk med fingeren hen over jorden — lunten tændes, hvor du begynder." : def.fast ? "Tryk på en søjle eller mur, hvor ladningen skal sidde." : "Tryk på jorden, hvor den skal stå."); });
     v.appendChild(b);
   }
-  const klar = sprængstof.alle.some(l => l.spiller && (l.def.fast || l.def.tænder));
+  const klar = sprængstof.alle.some(l => l.spiller && (l.def.fast || l.def.tænder)) || lunter.alle.some(l => l.spiller);
   $("tænd").disabled = !klar || tilstand !== "placering";
   if (!valgt) markør.visible = false;
 }
@@ -287,7 +320,7 @@ $("forsinkelser").querySelectorAll("button").forEach(b => b.addEventListener("cl
 let nedtælling = null;
 function tænd() {
   if (tilstand !== "placering") return;
-  if (!sprængstof.alle.some(l => l.spiller && (l.def.fast || l.def.tænder))) { tip("Sæt mindst én ladning først."); return; }
+  if (!sprængstof.alle.some(l => l.spiller && (l.def.fast || l.def.tænder)) && !lunter.alle.some(l => l.spiller)) { tip("Sæt mindst én ladning eller lunte først."); return; }
   lyd.start(); lukPop(); valgt = null; visVærktøj(); markør.visible = false;
   tilstand = "nedtælling";
   $("tænd").classList.add("trykket"); $("tænd").disabled = true;
@@ -421,10 +454,36 @@ function visEtiketter() {
 
 // ---------- Løkken: fysik, effekter og tegning ----------
 let sidst = performance.now(), kædeVist = 0, støvTæller = 0;
+function natur(dt) {
+  naturTid -= dt; if (naturTid > 0) return; naturTid = 0.1;
+  let masse = 0, n = 0, sne = 0;
+  skredSted.set(0, 0, 0);
+  for (const d of dele.levende) {
+    if (d.væk || (d.mat !== "sne" && d.mat !== "klippe" && !terræn.vand)) continue;
+    const krop = d.klynge ? d.klynge.krop : d.krop;
+    if (!krop || krop.isSleeping() || krop.isFixed()) continue;
+    const v = krop.linvel(), fart = Math.hypot(v.x, v.y, v.z);
+    if ((d.mat === "sne" || d.mat === "klippe") && fart > 1.5) {
+      const { p } = dele.sted(d, tmpNatur);
+      masse += d.masse; skredSted.add(p); n++;
+      if (d.mat === "sne") { sne++; if (Math.random() < (mobil ? 0.12 : 0.25)) effekter.pudder(p, fart); }
+      else if (Math.random() < 0.08) effekter.støv(p, 0.6, STØV.klippe, 2);
+    }
+    if (terræn.vand && !d.plasket && v.y < -2) {
+      const { p } = dele.sted(d, tmpNatur);
+      if (terræn.iVand(p)) { d.plasket = true; effekter.plask(p, d.vol, terræn.vand.y); lyd.plask(p, d.vol); }
+    }
+  }
+  skredMasse = masse;
+  if (n) skredSted.divideScalar(n);
+  if (masse > 30000 && !skredStartet) { skredStartet = true; lyd.skred(skredSted, sne > n / 2); }
+}
 function trin(dt) {
   const dtS = dt * (slowmo ? 0.22 : 1);
   if (tilstand !== "menu" || true) fysikTrin(dtS, vedStød, () => dele.efterTrin());
   dele.synk(); dele.ryd();
+  lunteLyd = lunter.opdater(dt * (slowmo ? 0.22 : 1));
+  if (tilstand === "sprængning" || tilstand === "resultat") natur(dt);
   sprængstof.opdater(dtS);
   sprængstof.varme(effekter.ilde, dtS);
   ruder.opdater(dtS);
@@ -470,6 +529,8 @@ function billede(t) {
     lyd.løkke("ild", nær ? Math.min(1, 0.25 + effekter.ilde.length * 0.1) : 0, nær ? nær.p : null);
     const gas = sprængstof.gasStyrke();
     lyd.løkke("gas", gas ? 0.9 : 0, gas);
+    lyd.løkke("lunte", lunteLyd ? 0.55 : 0, lunteLyd, "gnist", 1.6);
+    lyd.løkke("lavine", Math.min(1, skredMasse / 120000), skredMasse > 0 ? skredSted : null, "lavine");
   }
   verden.følg(kam.vis.mål);
   // et kort hvidt blink i billedet ved meget store, tætte sprængninger
@@ -483,7 +544,7 @@ function billede(t) {
 // ---------- Fejlfinding: ?debug giver window.nd ----------
 if (debug) {
   window.nd = {
-    THREE, dele, sprængstof, effekter, lyd, fysik, kam, scene, renderer, kamera, BANER,
+    THREE, dele, sprængstof, effekter, lyd, fysik, kam, scene, renderer, kamera, BANER, lunter, terræn,
     bane: id => startPlacering(BANER.find(b => b.id === id) || FRIT),
     tænd: () => { tilstand = "sprængning"; sprængTid = 0; rolig = 0; sprængstof.tænd(); },
     spol: (sek, skridt = 1 / 60) => { for (let i = 0; i < sek / skridt; i++) trin(skridt); },
