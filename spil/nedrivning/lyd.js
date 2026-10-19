@@ -3,6 +3,8 @@
 // langt væk bliver den svagere og mere dump, og den kommer senere end glimtet (lyden går 343 m i sekundet).
 // En kompressor til sidst sørger for, at en lang kædereaktion ikke "knækker" i højttalerne.
 
+import { mobil } from "./enhed.js";
+
 const FILER = ["tnt", "bjerg", "mine", "minesprengning", "dynamit", "knald", "fjern", "stor", "kontrolleret", "styrt_kort", "styrt", "traehus",
   "nedrivning", "brokker_stor", "brokker", "stenskred", "beton", "slag", "glas_fald", "glas", "glas2", "metal_fald", "metal", "trae_knaek", "ild", "gas", "horn"];
 // Udsnit af optagelser med flere slag i (start, længde i sekunder)
@@ -19,7 +21,10 @@ export class Lyd {
     if (this.ctx) { if (this.ctx.state !== "running") this.ctx.resume(); return; }
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
-    const c = this.ctx = new AC();
+    // På en tablet: 32 000 prøver i sekundet og mono — lydene fylder så en tredjedel i hukommelsen
+    let c;
+    try { c = mobil ? new AC({ sampleRate: 32000 }) : new AC(); } catch (_) { c = new AC(); }
+    this.ctx = c;
     this.komp = c.createDynamicsCompressor();
     this.komp.threshold.value = -16; this.komp.knee.value = 10; this.komp.ratio.value = 5; this.komp.attack.value = 0.004; this.komp.release.value = 0.3;
     this.hoved = c.createGain(); this.hoved.gain.value = this.slået ? 0 : 0.9;
@@ -28,13 +33,24 @@ export class Lyd {
     this.rum = c.createConvolver(); this.rum.buffer = this.rumklang(2.6);
     this.rumNiveau = c.createGain(); this.rumNiveau.gain.value = 0.35;
     this.rum.connect(this.rumNiveau); this.rumNiveau.connect(this.komp);
-    await Promise.all(FILER.map(async navn => {
+    const hent = async navn => {
       try {
         const data = await fetch(this.mappe + navn + ".mp3").then(s => s.arrayBuffer());
-        this.b[navn] = await new Promise((ok, fejl) => c.decodeAudioData(data, ok, fejl));
+        const b = await new Promise((ok, fejl) => c.decodeAudioData(data, ok, fejl));
+        this.b[navn] = mobil ? this.mono(b) : b;
       } catch (_) { /* lyden mangler: spillet kører videre uden */ }
-    }));
+    };
+    if (mobil) for (const navn of FILER) await hent(navn);           // én ad gangen, så hukommelsen ikke topper
+    else await Promise.all(FILER.map(hent));
     for (const navn of ["ild", "gas"]) if (this.b[navn]) this.b[navn] = this.løkkebar(this.b[navn], 0.6);
+  }
+  // To kanaler bliver til én (stereo fra panoreringen kommer alligevel bagefter)
+  mono(buf) {
+    if (buf.numberOfChannels < 2) return buf;
+    const ud = this.ctx.createBuffer(1, buf.length, buf.sampleRate), d = ud.getChannelData(0);
+    const a = buf.getChannelData(0), b = buf.getChannelData(1);
+    for (let i = 0; i < d.length; i++) d[i] = (a[i] + b[i]) * 0.5;
+    return ud;
   }
   rumklang(sek) {
     const c = this.ctx, n = Math.floor(c.sampleRate * sek), b = c.createBuffer(2, n, c.sampleRate);

@@ -6,8 +6,9 @@
 
 import * as THREE from "../3d-faelles/three.module.js";
 
-const mobil = matchMedia("(pointer:coarse)").matches;
-const MAKS_PUST = mobil ? 900 : 2200, MAKS_GNIST = mobil ? 500 : 1200, MAKS_GRUS = mobil ? 500 : 1100, MAKS_SKÅR = mobil ? 500 : 1000;
+import { mobil } from "./enhed.js";
+
+const MAKS_PUST = mobil ? 560 : 2200, MAKS_GNIST = mobil ? 300 : 1200, MAKS_GRUS = mobil ? 300 : 1100, MAKS_SKÅR = mobil ? 260 : 1000;
 const r = (a, b) => a + Math.random() * (b - a);
 const tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3();
 

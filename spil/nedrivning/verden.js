@@ -5,9 +5,9 @@
 import * as THREE from "../3d-faelles/three.module.js";
 import { lavHimmel, lavMiljø, detaljer } from "../3d-faelles/pynt.js";
 import { GLTFLoader } from "../3d-faelles/GLTFLoader.js";
-import { jordMateriale } from "./materialer.js";
+import { jordMateriale, mindre } from "./materialer.js";
 
-const mobil = matchMedia("(pointer:coarse)").matches;
+import { mobil } from "./enhed.js";
 
 // Tiderne på døgnet: himmel, sol, lys og dis
 export const TIDER = {
@@ -134,8 +134,9 @@ export class Verden {
     this.byVinduer = [];
     for (const [x, z, b, h, d, v] of huse) {
       const mat = new THREE.MeshStandardMaterial({ map: facade, emissiveMap: lys, emissive: 0xffffff, emissiveIntensity: 0, color: new THREE.Color().setHSL(0.08 + r() * 0.05, 0.12, 0.55 + r() * 0.2), roughness: 0.9 });
-      mat.map = facade.clone(); mat.map.repeat.set(b / 10, h / 10); mat.emissiveMap = lys.clone(); mat.emissiveMap.repeat.set(b / 10, h / 10);
-      const hus = new THREE.Mesh(new THREE.BoxGeometry(b, h, d), mat);
+      const geo = new THREE.BoxGeometry(b, h, d), uv = geo.attributes.uv;
+      for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * b / 10, uv.getY(i) * h / 10);
+      const hus = new THREE.Mesh(geo, mat);
       hus.position.set(x, h / 2, z); hus.rotation.y = v; hus.castShadow = false; hus.receiveShadow = true;
       this.scene.add(hus); this.byVinduer.push(hus);
     }
@@ -160,11 +161,12 @@ export class Verden {
   }
   // Skurvognen og gravkoen ved indkørslen (modeller fra Blender)
   async pynt() {
-    const loader = new GLTFLoader();
+    const loader = new GLTFLoader(), hentet = {};
     for (const [fil, x, z, yaw] of [["skurvogn", -41, -38, 0.12], ["skurvogn", -40.5, -34.6, 0.1], ["gravko", 39, 35, -2.5]]) {
       try {
-        const g = (await loader.loadAsync(`modeller/${fil}.glb`)).scene;
-        g.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; if (o.material.transparent) { o.material.transparent = false; o.material.alphaTest = 0.5; o.material.depthWrite = true; o.material.side = THREE.FrontSide; o.castShadow = false; } } });
+        hentet[fil] ??= (await loader.loadAsync(`modeller/${fil}.glb`)).scene;
+        const g = hentet[fil].clone(true);
+        g.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; if (mobil) for (const k of ["map", "metalnessMap", "roughnessMap"]) if (o.material[k]) mindre(o.material[k], 512); if (o.material.transparent) { o.material.transparent = false; o.material.alphaTest = 0.5; o.material.depthWrite = true; o.material.side = THREE.FrontSide; o.castShadow = false; } } });
         g.position.set(x, 0, z); g.rotation.y = yaw;
         this.scene.add(g);
       } catch (_) { /* uden modellen står pladsen bare tom */ }

@@ -5,6 +5,7 @@
 // nuance, så to ens mure ikke ligner hinanden.
 
 import * as THREE from "../3d-faelles/three.module.js";
+import { mobil } from "./enhed.js";
 
 const FOTO = "../sigtekorn/teksturer/", EGNE = "teksturer/";
 
@@ -26,11 +27,28 @@ export const MATERIALER = {
 };
 
 // ---------- Hent fotoene ----------
+// På en tablet gøres billederne mindre (farven højst 768 punkter, buler og ruhed 512): det fylder en
+// sjettedel så meget i hukommelsen, og på en tabletskærm kan man næsten ikke se forskel.
+const formindsket = new WeakMap();                            // samme billede brugt flere steder gøres kun mindre én gang
+export function mindre(t, maks) {
+  const im = t.image;
+  if (!im || Math.max(im.width, im.height) <= maks) return t;
+  let c = formindsket.get(im);
+  if (!c) {
+    const k = maks / Math.max(im.width, im.height);
+    c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(im.width * k)); c.height = Math.max(1, Math.round(im.height * k));
+    c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+    formindsket.set(im, c);
+  }
+  t.image = c; t.needsUpdate = true;
+  return t;
+}
 async function hentFoto(loader, mappe, navn) {
   const hent = (fil, farve) => loader.loadAsync(mappe + fil).then(t => {
     t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8;
     if (farve) t.colorSpace = THREE.SRGBColorSpace;
-    return t;
+    return mobil ? mindre(t, farve ? 768 : 512) : t;
   });
   const [farve, normal, arm] = await Promise.all([hent(`${navn}_farve.webp`, true), hent(`${navn}_normal.webp`), hent(`${navn}_arm.webp`)]);
   return { farve, normal, arm };
@@ -41,7 +59,7 @@ export async function hentFotos(renderer) {
   const info = await fetch(FOTO + "teksturer.json").then(s => s.json());
   let egne = {};
   try { egne = { mursten: await fetch(EGNE + "mursten.json").then(s => s.json()) }; } catch (_) { /* murstenene er ikke lavet endnu */ }
-  const navne = new Set(Object.values(MATERIALER).flatMap(m => [m.foto, m.reserve]).filter(Boolean));
+  const navne = new Set(Object.entries(MATERIALER).filter(([n]) => n !== "klippe").flatMap(([, m]) => [m.foto, !egne[m.foto] && m.reserve]).filter(Boolean));
   navne.add("sand");
   const fotos = {};
   await Promise.all([...navne].map(async navn => {

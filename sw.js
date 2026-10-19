@@ -1,6 +1,6 @@
 // ===== Service Worker — gør spillene installerbare og tilgængelige offline =====
 // Bump dette tal når der ændres filer, så de gamle bliver hentet på ny.
-const CACHE = "boernespil-v78";
+const CACHE = "boernespil-v79";
 
 const SPIL = ["balloner", "byg-burger", "enhjoerning", "vask", "slange", "tegne", "piano", "fisk", "broekraft", "rulle-rasmus", "burgerloeb", "nedrivning", "brudpunkt"];
 const VOKSENSPIL = ["det-sidste-lys", "skrotstorm", "krystaljaegerne"];
@@ -14,7 +14,7 @@ const EKSTRA = [
     "modeller/oerken.glb", "modeller/rotten.glb", "modeller/buggy.glb", "modeller/truck.glb"].map(f => `spil/skrotstorm/${f}`),
   ...["style.css", "spil.js", "styring.js", "verden.js", "eventyr.js", "projektiler.js", "navigation.js", "kort.js", "lagring.js", "kamp.js", "kampfigur.js", "kampstatus.js", "øveplads.js", "fund.js", "fundfigur.js", "fundkort.js", "forside.jpg", "modeller/eventyr.glb", "modeller/detaljer.glb", "modeller/kamp.glb", "modeller/fund.glb"].map(f => `spil/krystaljaegerne/${f}`),
   // Nedrivningsfirmaet: koden, fysikken (Rapier), modellerne, murstenene og de optagede lyde
-  ...["style.css", "spil.js", "fysik.js", "materialer.js", "dele.js", "ruder.js", "effekter.js", "efterbehandling.js", "lyd.js", "sprængstof.js", "verden.js", "styring.js", "baner.js", "bygninger.js", "forside.jpg",
+  ...["style.css", "spil.js", "fysik.js", "materialer.js", "dele.js", "ruder.js", "effekter.js", "efterbehandling.js", "lyd.js", "sprængstof.js", "verden.js", "styring.js", "baner.js", "bygninger.js", "enhed.js", "forside.jpg",
     "rapier/rapier.js", "teksturer/mursten.json", "teksturer/mursten_farve.webp", "teksturer/mursten_normal.webp", "teksturer/mursten_arm.webp",
     ...["tonde", "gasflaske", "gastank", "tntkasse", "skurvogn", "gravko"].map(n => `modeller/${n}.glb`),
     ...["tnt", "bjerg", "mine", "minesprengning", "dynamit", "knald", "fjern", "stor", "kontrolleret", "styrt_kort", "styrt", "traehus", "nedrivning", "brokker_stor", "brokker",

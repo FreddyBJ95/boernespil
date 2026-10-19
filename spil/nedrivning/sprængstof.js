@@ -7,7 +7,8 @@
 import * as THREE from "../3d-faelles/three.module.js";
 import { GLTFLoader } from "../3d-faelles/GLTFLoader.js";
 import { RAPIER, fysik } from "./fysik.js";
-import { MATERIALER } from "./materialer.js";
+import { MATERIALER, mindre } from "./materialer.js";
+import { mobil } from "./enhed.js";
 
 // W: hvor kraftig (kg TNT) · fast: sættes på en del · art: hvordan ilden ser ud · krop: form i fysikken
 export const SPRÆNGSTOF = {
@@ -68,6 +69,7 @@ export async function hentModeller() {
       g.scene.traverse(o => {
         if (!o.isMesh) return;
         o.castShadow = o.receiveShadow = true;
+        if (mobil) for (const k of ["map", "metalnessMap", "roughnessMap", "normalMap"]) if (o.material[k]) mindre(o.material[k], 256);
         if (o.material.transparent) { o.material.transparent = false; o.material.alphaTest = 0.5; o.material.depthWrite = true; o.material.side = THREE.FrontSide; o.castShadow = false; }   // mærkaterne
       });
       ud[def.model] = g.scene;
@@ -112,7 +114,7 @@ export class Sprængstof {
     return l;
   }
   flytFast(l) {
-    if (!l.del || l.del.væk) return;
+    if (!l.mesh || !l.del || l.del.væk) return;                  // sprunget eller faldet af
     const { p, q } = this.ctx.dele.sted(l.del, tmp, tmpQ);
     l.mesh.position.copy(l.lokP).applyQuaternion(q).add(p);
     l.mesh.quaternion.copy(q).multiply(l.lokQ);
@@ -184,6 +186,7 @@ export class Sprængstof {
     // er ladningen faldet af sin del (delen blev knust), mister den det meste af sin virkning på bygningen
     const del = l.del && !l.del.væk ? l.del : null;
     this.fjernVisning(l);
+    if (l.del) { l.del.ladninger = l.del.ladninger.filter(x => x !== l); l.del = null; }   // delen skal ikke længere flytte ladningen
     this.sprængninger++; if (l.kæde) this.kæde++;
     this.sidsteBrag = performance.now();
     // ildkuglen, lyden og trykbølgen

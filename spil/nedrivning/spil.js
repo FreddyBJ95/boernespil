@@ -16,9 +16,9 @@ import { Sprængstof, SPRÆNGSTOF, hentModeller } from "./sprængstof.js";
 import { Verden, TIDER } from "./verden.js";
 import { Kamera } from "./styring.js";
 import { BANER, FRIT, tjek } from "./baner.js";
+import { mobil } from "./enhed.js";
 
 const $ = id => document.getElementById(id);
-const mobil = matchMedia("(pointer:coarse)").matches;
 const debug = new URLSearchParams(location.search).has("debug");
 const NØGLE = "nedrivning-fremgang-v1";
 const kr = n => `${Math.round(n).toLocaleString("da-DK")} kr`;
@@ -36,7 +36,7 @@ try {
   $("indlæser").textContent = "Denne browser kunne ikke åbne 3D. Prøv Safari eller Chrome med 3D slået til.";
   throw new Error("3D kunne ikke åbnes");
 }
-renderer.setPixelRatio(Math.min(devicePixelRatio, mobil ? 1.5 : 2));
+renderer.setPixelRatio(Math.min(devicePixelRatio, mobil ? 1 : 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -442,7 +442,20 @@ function trin(dt) {
     }
   }
 }
+let fejl = [];
 function løkke(t) {
+  requestAnimationFrame(løkke);
+  try { billede(t); } catch (e) { vedFejl(e); }
+}
+// Går noget galt, vises en kort besked, og spillet kører videre. Bliver det ved, kan opgaven bygges op igen.
+function vedFejl(e) {
+  console.error(e);
+  const nu = performance.now();
+  fejl = fejl.filter(t => nu - t < 3000); fejl.push(nu);
+  if (fejl.length === 1) tip(`Ups — der skete en fejl (${e?.message ?? e}). Tryk ↺ eller ☰ for at prøve igen.`, 9000);
+  if (fejl.length > 90 && bane && tilstand !== "menu") { fejl = []; tip("Byggepladsen blev bygget op igen efter en fejl.", 6000); startPlacering(bane); }
+}
+function billede(t) {
   const dt = Math.min(0.05, (t - sidst) / 1000); sidst = t;
   trin(dt);
   // menuen: kameraet glider langsomt rundt om pladsen
@@ -465,7 +478,6 @@ function løkke(t) {
   efter.tegn(scene, kamera, t / 1000);
   if (sprængstof.kæde !== kædeVist) { kædeVist = sprængstof.kæde; const k = $("kæde").querySelector("b"); k.textContent = kædeVist; k.classList.remove("puls"); void k.offsetWidth; k.classList.add("puls"); }
   visEtiketter();
-  requestAnimationFrame(løkke);
 }
 
 // ---------- Fejlfinding: ?debug giver window.nd ----------

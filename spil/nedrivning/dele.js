@@ -8,9 +8,9 @@
 import * as THREE from "../3d-faelles/three.module.js";
 import { RAPIER, fysik } from "./fysik.js";
 import { MATERIALER, lavMateriale } from "./materialer.js";
+import { mobil } from "./enhed.js";
 
-const mobil = matchMedia("(pointer:coarse)").matches;
-export const MAKS_KROPPE = mobil ? 650 : 1400;
+export const MAKS_KROPPE = mobil ? 420 : 1400;
 const TOL = 0.04;
 const Y = new THREE.Vector3(0, 1, 0);
 const tmpM = new THREE.Matrix4(), tmpQ = new THREE.Quaternion(), tmpQ2 = new THREE.Quaternion(), tmpV = new THREE.Vector3(), tmpV2 = new THREE.Vector3(), tmpS = new THREE.Vector3();
@@ -71,6 +71,7 @@ class Parti {
   farve(i, c) { this.mesh.setColorAt(i, c); this.farveÆndret = true; }
   slip(i) { this.mesh.setMatrixAt(i, NUL); this.ledige.push(i); this.ændret = true; }
   opdater() {
+    this.mesh.visible = this.mesh.count > this.ledige.length;
     if (this.ændret) { this.mesh.instanceMatrix.needsUpdate = true; this.ændret = false; }
     if (this.farveÆndret) { this.mesh.instanceColor.needsUpdate = true; this.farveÆndret = false; }
   }
@@ -426,7 +427,7 @@ export class Dele {
     const s = del.str, t = m.brok;
     let n = [s.x, s.y, s.z].map(x => Math.max(1, Math.min(4, Math.round(x / t))));
     if (m.splint) { const lang = [s.x, s.y, s.z].indexOf(Math.max(s.x, s.y, s.z)); n = [1, 1, 1]; n[lang] = Math.max(2, Math.min(4, Math.round(Math.max(s.x, s.y, s.z) / 0.9))); }
-    const loft = this.levende.size > MAKS_KROPPE * 0.6 ? 3 : 8;
+    const loft = this.levende.size > MAKS_KROPPE * 0.6 ? 3 : mobil ? 4 : 8;
     while (n[0] * n[1] * n[2] > loft) { const i = n.indexOf(Math.max(...n)); n[i]--; }
     if (n[0] * n[1] * n[2] === 1) n[[s.x, s.y, s.z].indexOf(Math.max(s.x, s.y, s.z))] = 2;
     this.fjernDel(del, false);
