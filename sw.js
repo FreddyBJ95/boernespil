@@ -1,8 +1,8 @@
 // ===== Service Worker — gør spillene installerbare og tilgængelige offline =====
 // Bump dette tal når der ændres filer, så de gamle bliver hentet på ny.
-const CACHE = "boernespil-v80";
+const CACHE = "boernespil-v81";
 
-const SPIL = ["balloner", "byg-burger", "enhjoerning", "vask", "slange", "tegne", "piano", "fisk", "broekraft", "rulle-rasmus", "burgerloeb", "nedrivning", "brudpunkt"];
+const SPIL = ["balloner", "byg-burger", "enhjoerning", "vask", "slange", "tegne", "piano", "fisk", "broekraft", "rulle-rasmus", "burgerloeb", "nedrivning", "brudpunkt", "kuglebanen"];
 const VOKSENSPIL = ["det-sidste-lys", "skrotstorm", "krystaljaegerne"];
 
 // Spil der består af flere filer end index.html
@@ -33,6 +33,7 @@ const EKSTRA = [
   ...["three.js", "spil.js", "baner.js", "bane.js", "temaer.js", "verden.js", "ting.js", "blob.js", "partikler.js", "teksturer.js", "lyd.js", "modeller.js"].map(f => `spil/rulle-rasmus/${f}`),
   "spil/rulle-rasmus/modeller/rasmus.glb",                              // pynt, frugt og puder fra Blender
   ...["three.js", "spil.js", "figurer.js", "kaemper.js", "bane.js", "lyd.js"].map(f => `spil/burgerloeb/${f}`),
+  ...["three.js", "style.css", "spil.js", "fysik.js", "styring.js", "baner.js", "bygger.js", "former.js", "pynt.js", "figurer.js", "jungle.js", "vaerelse.js", "slik.js", "lyd.js"].map(f => `spil/kuglebanen/${f}`),
   ...["lag", "loeber", "mand", "dino", "monster"].map(f => `spil/burgerloeb/modeller/${f}.glb`),   // modellerne fra Blender
   "spil/glb.js",                                                        // læser modellerne fra Blender
   ...["three.js", "spil.js", "blokke.js", "dyr.js", "verden.js", "verdener.js", "lyd.js", "net.js", "figurer.js", "simulering.js", "vaerktoej.js", "stemmer.js", "stemmesignal.js", "stemmeeffekt.js", "skyd.js", "kampvogn.js", "fyrvaerkeri.js", "brand.js", "atom.js", "tornado.js", "biler.js", "nytaar.js", "uendelig.js", "dagnat.js", "kort.js", "tog.js", "eventyr.js", "sten.js", "smaadyr.js", "enhjoerninger.js"].map(f => `spil/broekraft/${f}`),
@@ -55,7 +56,7 @@ const FILER = [
   ...["ordmaerke", "kasseven-vinker", "kasseven-taenker"].map(n => `billeder/spilkassen/${n}.webp`),
   // billederne fra spillene på forsiden
   ...["fyrvaerkeri", "tornado", "nuke", "brandby", "dino", "hav", "slik", "sky", "pirat", "droner", "pariserhjul",
-    "underverden", "graesoe", "skydebane", "nytaar", "fisk", "svampesky", "rasmus", "slange", "burgerloeb"].map(n => `billeder/${n}.jpg`),
+    "underverden", "graesoe", "skydebane", "nytaar", "fisk", "svampesky", "rasmus", "slange", "burgerloeb", "kuglebanen"].map(n => `billeder/${n}.jpg`),
   ...SPIL.flatMap(s => [`spil/${s}/`, `spil/${s}/index.html`]),
   ...VOKSENSPIL.flatMap(s => [`spil/${s}/`, `spil/${s}/index.html`]),
   ...EKSTRA

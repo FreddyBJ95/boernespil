@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Kuglebanen 🐵</title>
+  <meta name="theme-color" content="#1f74dc">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="scene"></canvas>
+  <div id="fade" class="fade"></div>
+
+  <!-- Under spillet -->
+  <div id="hud" class="hud skjult">
+    <div class="hud-top">
+      <div class="pille tal"><img id="ikon" alt=""><b id="antal">0</b><span class="af">/</span><span id="total">0</span></div>
+      <div class="pille navn" id="hudNavn"><span id="navnTekst"></span><div class="prikker" id="prikker"></div></div>
+      <button class="rund" id="pauseKnap" aria-label="Pause"><span class="pause-ikon"></span></button>
+    </div>
+    <button class="vipmaaler" id="vipMaaler" aria-label="Nulstil vip"><span class="kryds"></span><span class="prik" id="vipPrik"></span></button>
+  </div>
+  <div id="pind" class="pind"><div class="ring"></div><div class="knop"></div></div>
+  <div id="besked" class="besked skjult"></div>
+
+  <!-- Menuen -->
+  <div id="menu" class="menu">
+    <div class="menu-top">
+      <a class="rund" href="../../" aria-label="Tilbage til Spilkassen">🏠</a>
+      <h1 class="titel"><span>K</span><span>u</span><span>g</span><span>l</span><span>e</span><span>b</span><span>a</span><span>n</span><span>e</span><span>n</span></h1>
+      <div class="plads"></div>
+    </div>
+    <div class="henter" id="henter">Henter …</div>
+    <div class="panel">
+      <div class="verdener" id="verdener"></div>
+      <div class="baner" id="baner"></div>
+      <div class="indstillinger">
+        <button class="valg styreKnap" aria-label="Styring"></button>
+        <button class="valg fartKnap" aria-label="Fart"></button>
+        <button class="valg musikKnap" aria-label="Musik"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pause -->
+  <div id="pause" class="overlay skjult">
+    <div class="kort">
+      <h2>Pause</h2>
+      <div class="knaprække">
+        <button class="knap hvid" id="forfra" aria-label="Start forfra">🔁</button>
+        <button class="knap stor" id="fortsaet" aria-label="Fortsæt">▶</button>
+        <button class="knap hvid" id="tilMenu" aria-label="Baner">🗺️</button>
+      </div>
+      <div class="indstillinger">
+        <button class="valg styreKnap" aria-label="Styring"></button>
+        <button class="valg fartKnap" aria-label="Fart"></button>
+        <button class="valg musikKnap" aria-label="Musik"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- I mål -->
+  <div id="maal" class="overlay skjult">
+    <div class="kort">
+      <div class="stjerner" id="stjerner"></div>
+      <h2 id="maalTitel">Godt klaret</h2>
+      <p class="maal-tal" id="maalTal"></p>
+      <div class="knaprække">
+        <button class="knap hvid" id="igen" aria-label="Igen">🔁</button>
+        <button class="knap stor" id="naeste" aria-label="Næste bane">▶</button>
+        <button class="knap hvid" id="tilBaner" aria-label="Baner">🗺️</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../effekter.js"></script>
+  <script>
+    // Hvis 3D-motoren ikke kan hentes (fx ingen internet første gang), så sig det pænt
+    setTimeout(function () {
+      if (window.kuglebanenKlar) return;
+      var h = document.getElementById("henter");
+      h.textContent = "Kunne ikke hente 3D 😕 Tjek at der er internet, og tryk her for at prøve igen.";
+      h.style.pointerEvents = "auto"; h.onclick = function () { location.reload(); };
+    }, 15000);
+  </script>
+  <script type="module" src="spil.js"></script>
+</body>
+</html>
