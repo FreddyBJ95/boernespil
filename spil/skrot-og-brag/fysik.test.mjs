@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { opretFysik } from './fysik.mjs';
-import { STANDARD, normaliser, BANER } from './data.mjs';
+import { STANDARD, DELE, normaliser, BANER, stjerner } from './data.mjs';
 
 function kør(s, antal, input = {}) {
   const hændelser = [];
@@ -12,7 +12,7 @@ function kør(s, antal, input = {}) {
   return hændelser;
 }
 
-test('alle højhuse og last forbliver hele, indtil noget rammer dem', async () => {
+test('alle huse, klodser og last forbliver hele, indtil noget rammer dem', async () => {
   for (let bane = 0; bane < BANER.length; bane++) {
     const s = await opretFysik(STANDARD, bane);
     try {
@@ -26,40 +26,54 @@ test('alle højhuse og last forbliver hele, indtil noget rammer dem', async () =
   }
 });
 
-test('en faktisk køretur starter en forsinket kæde og vælter etager', async () => {
+test('en køretur ind i huset starter en kæde og vælter huset', async () => {
   const s = await opretFysik(STANDARD);
   try {
     kør(s, 90);
     const hændelser = kør(s, 900, { gas: 1 });
     const brag = hændelser.filter(e => e.type === 'brag');
-    assert.ok(brag.length >= 4);
-    assert.ok(brag.some(e => e.dybde > 1));
-    assert.ok(s.status().procent >= BANER[0].mål);
+    assert.ok(hændelser.some(e => e.type === 'bump'));
+    assert.ok(brag.length >= 2);
+    assert.ok(stjerner(0, s.status().procent) >= 1);
     assert.ok(s.baand.some(b => b.brudt && !b.bil));
     assert.equal(new Set(brag.map(e => `${e.p.x}/${e.p.y}`)).size, brag.length);
   } finally { s.luk(); }
 });
 
-test('dominoer overfører bevægelse til naboer uden at bilen kører', async () => {
-  const s = await opretFysik({ ...STANDARD, last: 'tom' });
+test('en bil uden last kan selv skubbe klodsbjerget ned', async () => {
+  const s = await opretFysik({ ...STANDARD, last: 'tom' }, 1);
   try {
-    kør(s, 120);
-    const dominoer = s.dele.filter(d => d.type === 'domino');
-    dominoer[0].krop.applyImpulseAtPoint({ x: 6, y: 0, z: 0 }, { x: 23, y: 3.8, z: 0 }, true);
-    kør(s, 360);
-    assert.ok(dominoer.slice(1, 5).filter(d => Math.abs(d.krop.rotation().z) > .3).length >= 3);
-    assert.ok(Math.abs(s.chassis.krop.translation().x - 3) < .1);
+    kør(s, 90);
+    kør(s, 600, { gas: 1 });
+    assert.equal(s.kæde, 1, 'kun tønden på toppen springer');
+    assert.ok(s.status().procent >= BANER[1].stjerner[0]);
   } finally { s.luk(); }
 });
 
+test('alle bilkombinationer kører roligt frem til målet, også over rampen', async () => {
+  for (const hjul of DELE.hjul) for (const front of DELE.front) for (const boost of [false, true]) {
+    const s = await opretFysik({ ...STANDARD, hjul: hjul.id, front: front.id, motor: 'raket', last: 'tom' }, 4);
+    try {
+      kør(s, 90);
+      let lodret = 0;
+      for (let i = 0; i < 240; i++) {
+        s.trin({ gas: 1, boost });
+        const p = s.chassis.krop.translation(), v = s.chassis.krop.linvel();
+        if (p.x + 4.5 > s.mål.fra - .5 || s.hentHændelser().some(e => e.type === 'bump')) break;
+        lodret = Math.max(lodret, Math.abs(v.y));
+      }
+      assert.ok(lodret < 14, `${hjul.id}/${front.id}${boost ? '/boost' : ''}: ${lodret}`);
+    } finally { s.luk(); }
+  }
+});
+
 test('en fjern celle reagerer ikke på en puls uden for dens rækkevidde', async () => {
-  const s = await opretFysik(STANDARD);
+  const s = await opretFysik(STANDARD, 2);
   try {
     kør(s, 120);
     const celler = s.dele.filter(d => d.type === 'celle' && !d.last);
     const c = celler[0];
     const fjern = s.celle(90, 1, 'gas');
-    c.krop.applyImpulse({ x: 0, y: 0, z: 0 }, true);
     s.antænd(c, 1, .1);
     kør(s, 12);
     assert.ok(c.sprængt);
@@ -84,7 +98,7 @@ test('lilla hvirvel giver et fysisk efterslag, og hver celle sprænger kun én g
 });
 
 test('hjul, last og motorvalg ændrer fysikken, og ugyldige gemninger normaliseres', async () => {
-  assert.deepEqual(normaliser({ hjul: 'ukendt', antal: 200, farve: 'red' }), STANDARD);
+  assert.deepEqual(normaliser({ hjul: 'ukendt', antal: 200, farve: 'red', fører: 'drage' }), STANDARD);
   assert.deepEqual(normaliser(null), STANDARD);
   for (const hjul of ['vej', 'monster', 'hop']) {
     const s = await opretFysik({ ...STANDARD, hjul, last: 'tom' });
@@ -97,4 +111,10 @@ test('hjul, last og motorvalg ændrer fysikken, og ugyldige gemninger normaliser
       assert.ok(s.chassis.krop.translation().x > 4);
     } finally { s.luk(); }
   }
+});
+
+test('stjernerne følger banens grænser', () => {
+  assert.equal(stjerner(0, 0), 0);
+  assert.equal(stjerner(0, BANER[0].stjerner[0]), 1);
+  assert.equal(stjerner(0, 100), 3);
 });

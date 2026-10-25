@@ -125,6 +125,9 @@ export class Lyd {
       if (this.ctx.currentTime - this.slagTid < .045) return;
       this.slagTid = this.ctx.currentTime;
       this.klip(e.materiale, .12 + e.styrke * .35, x, .85 + Math.random() * .3);
+    } else if (e.type === 'bump') {
+      this.klip('metal', .45, x, .9);
+      this.tone(130, 38, .35, .3, x);
     } else if (e.type === 'lunte') {
       this.tone(160, 700, .18, .055, x, 'triangle');
     } else if (e.type === 'brag' || e.type === 'efterslag') {
@@ -144,6 +147,31 @@ export class Lyd {
       }
       if (e.slags === 'benzin') this.klip('brokker', .25, x, .8);
     }
+  }
+
+  // Små glade lyde til knapperne, hornet og stjernerne.
+  klik() {
+    this.start();
+    this.tone(660, 990, .07, .05, this.kameraX, 'triangle');
+  }
+
+  dyt() {
+    if (!this.ctx || !this.tændt) return;
+    for (const [forsinkelse, tone] of [[0, 392], [.2, 330]]) setTimeout(() => {
+      this.tone(tone, tone * .98, .16, .09, this.kameraX, 'square');
+      this.tone(tone * 1.5, tone * 1.47, .16, .04, this.kameraX, 'square');
+    }, forsinkelse * 1000);
+  }
+
+  ding(n) {
+    const tone = [784, 988, 1175][n] || 1175;
+    this.tone(tone, tone, .5, .12, this.kameraX, 'triangle');
+    this.tone(tone * 2, tone * 2, .3, .04, this.kameraX);
+  }
+
+  fanfare(n) {
+    const toner = n ? [523, 659, 784, 1047].slice(0, n + 1) : [392, 330];
+    toner.forEach((tone, i) => setTimeout(() => this.tone(tone, tone, .28, .1, this.kameraX, 'triangle'), i * 150));
   }
 
   kør(fart, gas, boost, aktiv) {

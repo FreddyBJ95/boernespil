@@ -2,86 +2,83 @@
 <html lang="da">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#101c25">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#5aa9ff">
   <link rel="icon" href="../../favicon.png">
   <title>Skrot &amp; Brag · Spilkassen</title>
   <link rel="stylesheet" href="stil.css">
 </head>
 <body>
-  <canvas id="scene" aria-label="Din hjemmebyggede bil og den ødelæggelige bane"></canvas>
-  <header class="top">
-    <a class="hjem" href="../../" aria-label="Tilbage til Spilkassen">←</a>
-    <div class="mærke">S<span>&</span>B<span class="under">SKROT & BRAG</span></div>
-    <div class="top-højre">
-      <button id="rolig" class="diskret" aria-pressed="false">Rolige effekter</button>
-      <button id="lyd" class="diskret" aria-pressed="true">Lyd til</button>
-      <button id="pause" class="diskret" hidden>Ⅱ Pause</button>
-      <button id="overblik" class="diskret" aria-pressed="false" hidden>Overblik</button>
-    </div>
-  </header>
+  <canvas id="scene" aria-label="Din bil og det, du skal køre ind i"></canvas>
+  <div id="bobler" class="bobler" aria-hidden="true"></div>
 
+  <!-- Værkstedet: byg bilen og vælg, hvad den skal køre ind i -->
   <main id="garage" class="garage">
-    <section class="byggepanel">
-      <p class="øjenbryn"><span class="lampe"></span> VÆRKSTEDET ER DIT</p>
-      <h1>Byg vildt.<br><em>Vælt stort.</em></h1>
-      <p class="intro">Din bil. Dit læs. En hel masse, der kan vælte.</p>
-      <div class="faner" role="tablist" aria-label="Bilens dele" id="faner"></div>
-      <div id="dele" class="dele" role="tabpanel" aria-label="Vælg en del"></div>
-      <div class="lastvalg">
-        <span>Last på ladet</span>
-        <div id="antal" class="talvalg" aria-label="Antal tønder"></div>
+    <header class="top">
+      <a class="rund" href="../../" aria-label="Tilbage til Spilkassen">🏠</a>
+      <h1 class="titel" aria-label="Skrot og Brag"><span>S</span><span>k</span><span>r</span><span>o</span><span>t</span><i>&amp;</i><span>B</span><span>r</span><span>a</span><span>g</span></h1>
+      <div class="top-højre">
+        <button class="rund" id="rolig" aria-label="Rolige effekter" aria-pressed="false">🐢</button>
+        <button class="rund" id="lyd" aria-label="Lyd" aria-pressed="true">🔊</button>
       </div>
-      <div class="farvevalg"><span>Lakering</span><div id="farver"></div></div>
-      <p class="gemt" id="gemt">Din bil gemmes på denne enhed.</p>
-    </section>
-
-    <div class="bilnavn" aria-hidden="true"><span>HJEMMEBYGGET / 001</span><b id="bilnavn">MONSTER + BLÅ PULS</b><i>Byg om. Prøv igen. Lav mere ballade.</i></div>
-
-    <section class="banepanel">
-      <p class="øjenbryn">VÆLG DIN LEGEPLADS</p>
-      <div id="baner" class="baner"></div>
-      <div class="mission">
-        <span class="stempel">KÆDEREAKTION</span>
-        <h2 id="banenavn"></h2>
-        <p id="banetekst"></p>
-        <div class="mål"><span>DIT MÅL</span><b id="maaltekst"></b></div>
-        <p class="rekord" id="rekord"></p>
+    </header>
+    <section class="dok" id="dok">
+      <div class="panel byg">
+        <div class="faner" id="faner" role="tablist" aria-label="Bilens dele"></div>
+        <div class="dele" id="dele" role="tabpanel"></div>
       </div>
-      <button class="kør" id="start" disabled>Gør værkstedet klar…</button>
-      <p class="tip">Tip: Lasten springer ved et hårdt sammenstød.</p>
+      <div class="panel baner-panel">
+        <div class="baner" id="baner" role="group" aria-label="Hvad vil du køre ind i?"></div>
+        <button class="kør-knap" id="start" disabled aria-label="Kør">▶</button>
+      </div>
     </section>
-    <div class="garagebund"><span>01 / BYG</span><span>02 / KØR</span><span>03 / SE DET VÆLTE</span></div>
   </main>
 
+  <!-- Under kørslen -->
   <section id="kørsel" class="kørsel" hidden>
-    <div class="instrumenter">
-      <div><span>VÆLTET</span><b><i id="procent">0</i><small>%</small></b></div>
-      <div class="kædefelt"><span>KÆDE</span><b id="kaede">0</b></div>
-      <div><span>FART</span><b><i id="fart">0</i><small>km/t</small></b></div>
+    <div class="hud-top">
+      <button class="rund" id="tilbage" aria-label="Til værkstedet">🔧</button>
+      <div class="måler" role="img" aria-label="Hvor meget der er væltet" id="måler">
+        <span class="mål-ikon" id="målIkon"></span>
+        <div class="bar"><i id="fyld"></i><b id="s1">★</b><b id="s2">★</b><b id="s3">★</b></div>
+      </div>
+      <button class="rund" id="pause" aria-label="Pause"><span class="pause-ikon"></span></button>
     </div>
-    <div id="kædebesked" class="kædebesked" aria-live="polite"></div>
     <div class="styring">
-      <button class="pedal bak" id="bak" aria-label="Bak, hold nede">◀<span>BAK</span></button>
-      <button class="værksted" id="tilbage">↶ Byg om</button>
-      <button class="værksted" id="igen">↻ Nyt forsøg</button>
-      <button class="pedal boost" id="boost" aria-label="Boost, hold nede">ϟ<span>BOOST</span><meter id="tank" min="0" max="1" value="1"></meter></button>
-      <button class="pedal gas" id="gas" aria-label="Kør frem, hold nede">▶<span>KØR</span></button>
+      <div class="side">
+        <button class="pedal bak" id="bak" aria-label="Bak, hold nede">◀</button>
+        <button class="pedal dyt" id="dyt" aria-label="Dyt med hornet">📯</button>
+      </div>
+      <div class="side højre">
+        <span class="tip" id="tip" aria-hidden="true">👇</span>
+        <button class="pedal boost" id="boost" aria-label="Raketfart, hold nede">
+          <svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" class="tank-bund"/><circle cx="50" cy="50" r="46" class="tank" id="tank"/></svg>
+          <span>🚀</span>
+        </button>
+        <button class="pedal gas" id="gas" aria-label="Kør, hold nede">▶</button>
+      </div>
     </div>
-    <p class="tastatur">Hold → eller D for at køre · ← eller A bakker · Mellemrum giver boost · R prøver igen</p>
   </section>
 
+  <!-- Resultat og pause -->
   <div id="dialog" class="overlay" hidden>
-    <section class="resultat" role="dialog" aria-modal="true" aria-labelledby="resultattitel">
-      <p class="øjenbryn" id="resultatunder">FORSØGET ER SLUT</p>
-      <h2 id="resultattitel">Sikke et brag!</h2>
-      <p id="resultattekst"></p>
-      <div class="resultattal" id="resultattal"></div>
-      <button class="kør" id="fortsæt">Kør igen →</button>
-      <button class="sekundær" id="byg-om">Til værkstedet</button>
+    <section class="kort" role="dialog" aria-modal="true" aria-labelledby="dialogTitel">
+      <div class="stjerner" id="stjerner"></div>
+      <h2 id="dialogTitel">Sikke et brag!</h2>
+      <p class="resultat" id="dialogTal"></p>
+      <div class="knaprække">
+        <button class="knap" id="igen" aria-label="Prøv igen">🔁</button>
+        <button class="knap stor" id="fortsæt" aria-label="Næste bane">▶</button>
+        <button class="knap" id="tilVærksted" aria-label="Til værkstedet">🔧</button>
+      </div>
+      <div class="pausevalg" id="pausevalg">
+        <button class="valg" id="lydP" aria-label="Lyd">🔊</button>
+        <button class="valg" id="roligP" aria-label="Rolige effekter">🐢</button>
+      </div>
     </section>
   </div>
-  <div id="status" role="status" class="status">Starter værkstedet…</div>
+  <div id="status" role="status" class="status">Henter værkstedet …</div>
+
   <script type="module">
     import('./spil.mjs').catch(fejl => {
       console.error(fejl);

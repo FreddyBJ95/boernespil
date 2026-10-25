@@ -1,36 +1,268 @@
-/* Et mørkt værksted med store knapper og plads til bilen i midten. */
-:root { color-scheme: dark; font-family: 'Trebuchet MS', Arial, sans-serif; color: #ecf1e9; background: #121f2b; --gul: #f5cc4c; --grøn: #a7e6c0; --kant: #ffffff18; }
+/* ===== Skrot & Brag: et solrigt værksted med store, runde billedknapper ===== */
+:root {
+  --tekst: #1f2340;
+  --kort: rgba(255, 255, 255, .93);
+  --skygge: 0 6px 18px rgba(20, 50, 100, .22);
+  --grøn: #3ecf6e;
+  --grøn-kant: #22994a;
+  --gul: #ffc72c;
+  --blå: #3a86ff;
+}
 * { box-sizing: border-box; }
-body { margin: 0; overflow: hidden; }
-button, a { -webkit-tap-highlight-color: transparent; }
-button { font: inherit; color: inherit; cursor: pointer; }
-button:focus-visible, a:focus-visible { outline: 3px solid var(--gul); outline-offset: 4px; }
-button { touch-action: manipulation; }
+html, body { margin: 0; height: 100%; overflow: hidden; }
+body {
+  font-family: ui-rounded, "SF Pro Rounded", "Baloo 2", "Arial Rounded MT Bold", system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: #bfe3ff; color: var(--tekst);
+  -webkit-user-select: none; user-select: none;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+button { font: inherit; color: inherit; cursor: pointer; border: none; padding: 0; touch-action: manipulation; }
+button:focus-visible, a:focus-visible { outline: 4px solid var(--blå); outline-offset: 3px; }
 [hidden] { display: none !important; }
-#scene { display: block; position: fixed; inset: 0; width: 100%; height: 100%; }
-.top { position: fixed; z-index: 5; top: 0; left: 0; right: 0; height: 87px; display: flex; align-items: center; gap: 18px; padding: max(15px, env(safe-area-inset-top)) 30px 15px; border-bottom: 1px solid var(--kant); background: linear-gradient(#101c25ec,#101c2590); }
-.hjem { width: 42px; height: 42px; border: 1px solid #ffffff25; display: grid; place-items: center; color: #eaf3ef; text-decoration: none; border-radius: 50%; font-size: 23px; }
-.mærke { font-weight: 1000; letter-spacing: -2px; font-size: 32px; line-height: .9; }.mærke>span:first-child { color: var(--gul); font-size: 25px; }.mærke .under { display: block; letter-spacing: 2px; font-size: 8px; margin-top: 7px; }
-.top-højre { margin-left: auto; display: flex; gap: 8px; }.diskret { background: #13252db8; border: 1px solid #ffffff25; border-radius: 8px; padding: 11px 14px; font-size: 12px; min-height: 42px; }.diskret[aria-pressed="true"] { color: var(--grøn); }
-.garage { position: absolute; inset: 87px 0 0; display: grid; grid-template-columns: 300px 1fr 270px; gap: 26px; padding: 32px 34px 60px; background: linear-gradient(90deg,#101c25ee,transparent 38%,transparent 62%,#101c25df); pointer-events: none; }
-.byggepanel, .banepanel { pointer-events: auto; min-width: 0; }.byggepanel { grid-column: 1; }.banepanel { grid-column: 3; padding-top: 9px; }
-.øjenbryn { font-size: 10px; letter-spacing: 2px; color: #9cadb2; font-weight: bold; margin: 0 0 19px; }.lampe { display: inline-block; width: 6px; height: 6px; background: #b1f4b2; border-radius: 50%; box-shadow: 0 0 10px #b1f4b2; margin: 0 7px 1px 0; }
-h1 { font-size: clamp(36px,4.2vw,61px); line-height: .99; letter-spacing: -2.7px; margin: 0 0 17px; font-weight: 1000; }h1 em { font-style: normal; color: var(--gul); }.intro { color: #a4b4b8; font-size: 13px; line-height: 1.6; max-width: 240px; margin-bottom: 24px; }
-.faner { display: flex; border-bottom: 1px solid var(--kant); margin-bottom: 12px; gap: 4px; }.fane { background: none; border: 0; padding: 10px 11px; font-size: 12px; color: #9bacb2; border-bottom: 2px solid transparent; }.fane[aria-selected="true"] { color: var(--gul); border-color: var(--gul); }
-.dele { display: grid; gap: 7px; max-height: 238px; overflow-y: auto; padding: 2px; scrollbar-width: thin; }.del { text-align: left; display: grid; grid-template-columns: 36px 1fr 15px; align-items: center; gap: 9px; width: 100%; padding: 11px; border: 1px solid #ffffff18; border-radius: 9px; background: #192d38dc; min-height: 64px; }.del[aria-pressed="true"] { background: #283b3ce8; border-color: #f5cc4c9c; }.del .symbol { color: var(--delfarve,var(--gul)); font-size: 29px; text-align: center; }.del b { display: block; font-size: 13px; margin-bottom: 4px; }.del small { display: block; font-size: 10px; color: #a7b8bc; }.flue { color: var(--gul); }
-.lastvalg, .farvevalg { display: flex; align-items: center; justify-content: space-between; margin-top: 17px; font-size: 11px; color: #afbec1; gap: 8px; }.talvalg, #farver { display: flex; gap: 7px; }.talvalg button { background: #243941; border: 1px solid #ffffff20; width: 32px; height: 32px; border-radius: 7px; }.talvalg button[aria-pressed="true"] { color: #16272b; background: var(--gul); }.lak { width: 27px; height: 27px; border-radius: 50%; background: var(--lak); border: 3px solid #13252b; outline: 1px solid transparent; }.lak[aria-pressed="true"] { outline-color: #fff; }.gemt { font-size: 9px; color: #708a91; margin-top: 16px; }
-.bilnavn { position: absolute; left: 50%; top: 63%; transform: translateX(-50%); text-align: center; width: 34%; display: grid; gap: 10px; }.bilnavn span { font-size: 9px; letter-spacing: 2px; color: #9ab0b4; }.bilnavn b { font-size: 14px; letter-spacing: 2px; }.bilnavn i { font-style: normal; font-size: 10px; color: #8aa2a8; }
-.baner { display: flex; gap: 8px; margin-bottom: 24px; }.bane { background: #1c303ad9; border: 1px solid #ffffff20; border-radius: 8px; width: 48px; height: 46px; font-weight: bold; color: #a5bac0; }.bane[aria-pressed="true"] { color: #1c2e33; background: var(--grøn); border-color: var(--grøn); }
-.mission { border-top: 1px solid var(--kant); padding-top: 25px; }.stempel { display: inline-block; font-size: 8px; letter-spacing: 1.8px; color: var(--grøn); padding: 6px 8px; background: #a7e6c012; border: 1px solid #a7e6c033; border-radius: 4px; }.mission h2 { font-size: 30px; line-height: 1.08; letter-spacing: -1px; margin: 17px 0 13px; }.mission p { color: #9eb2b8; font-size: 12px; line-height: 1.7; }.mål { margin-top: 24px; border-top: 1px solid var(--kant); padding-top: 15px; display: grid; gap: 8px; }.mål span { font-size: 8px; letter-spacing: 2px; color: #88a0a8; }.mål b { font-size: 12px; font-weight: normal; }.mission .rekord { color: var(--gul); font-size: 10px; min-height: 17px; }
-.kør { border: 0; background: var(--gul); color: #1b2a2c; border-radius: 9px; padding: 18px 16px; font-size: 16px; font-weight: bold; width: 100%; box-shadow: 0 5px 0 #9e7e2c; margin-top: 18px; }.kør:disabled { opacity: .5; cursor: wait; }.kør:active { transform: translateY(2px); box-shadow: 0 3px 0 #9e7e2c; }.tip { color: #8299a1; font-size: 9px; text-align: center; line-height: 1.6; margin-top: 18px; }
-.garagebund { position: absolute; bottom: 19px; left: 34px; right: 34px; border-top: 1px solid var(--kant); padding-top: 14px; display: flex; justify-content: space-between; color: #708a93; font-size: 9px; letter-spacing: 2px; }
-.kørsel { position: fixed; inset: 95px 0 0; pointer-events: none; }.instrumenter { display: flex; gap: 28px; padding: 14px 30px; }.instrumenter>div { padding: 13px 18px; background: #101f2ad9; border: 1px solid #ffffff18; border-radius: 10px; min-width: 105px; }.instrumenter span { font-size: 9px; letter-spacing: 2px; color: #a1b8be; display: block; margin-bottom: 6px; }.instrumenter b { font-size: 32px; font-variant-numeric: tabular-nums; }.instrumenter i { font-style: normal; }.instrumenter small { font-size: 11px; font-weight: normal; margin-left: 5px; }.kædefelt b { color: var(--gul); }
-.kædebesked { position: absolute; right: 30px; top: 20px; font-size: 24px; color: var(--gul); font-weight: bold; text-shadow: 0 2px 15px #000; max-width: 40%; text-align: right; }
-.styring { position: absolute; bottom: max(40px, env(safe-area-inset-bottom)); left: 25px; right: 25px; display: flex; align-items: flex-end; gap: 12px; pointer-events: auto; }.pedal { width: 96px; height: 96px; border: 1px solid #ffffff38; border-radius: 21px; font-size: 29px; background: #172e3be8; user-select: none; -webkit-user-select: none; touch-action: none; box-shadow: 0 5px 0 #09131c99; }.pedal span { display: block; font-size: 10px; letter-spacing: 2px; margin-top: 4px; }.pedal.trykket { transform: translateY(4px); filter: brightness(1.25); }.gas { background: var(--gul); color: #233333; width: 115px; height: 110px; }.boost { margin-left: auto; color: #8fe6ff; background: #204250eb; }.boost meter { display: block; width: 60%; height: 6px; margin: 7px auto 0; accent-color: #85dcf5; }.værksted, .sekundær { min-height: 44px; background: #152935ed; border: 1px solid #ffffff30; border-radius: 8px; padding: 12px; font-size: 12px; }.tastatur { position: absolute; bottom: 6px; width: 100%; text-align: center; font-size: 10px; color: #a7bbc2; }
-.overlay { position: fixed; inset: 0; z-index: 10; background: #0c1921b8; backdrop-filter: blur(9px); display: grid; place-items: center; padding: 22px; }.resultat { width: min(450px,100%); padding: 32px; background: #1b303c; border: 1px solid #ffffff25; border-radius: 18px; box-shadow: 0 25px 100px #0008; }.resultat h2 { font-size: 39px; letter-spacing: -1.5px; margin: 8px 0 15px; }.resultat p { font-size: 13px; line-height: 1.6; color: #a8bec4; }.resultat .øjenbryn { color: var(--grøn); }.resultattal { display: flex; gap: 30px; margin: 24px 0; }.resultattal b { font-size: 36px; color: var(--gul); display: block; }.resultattal span { font-size: 11px; color: #9fb6be; }.resultat .sekundær { width: 100%; margin-top: 16px; }
-.status { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 20; background: #152e3a; border: 1px solid #ffffff30; padding: 15px 22px; border-radius: 10px; font-size: 13px; max-width: 90%; }
-@media (max-height: 760px) and (min-width: 951px) { .garage { padding-top: 20px; }.øjenbryn { margin-bottom: 12px; }h1 { font-size: 43px; }.intro { margin-bottom: 12px; }.dele { max-height: 200px; }.lastvalg,.farvevalg { margin-top: 10px; }.del { padding: 8px; min-height: 57px; }.mission { padding-top: 14px; }.mission h2 { font-size: 27px; }.mål { margin-top: 12px; } }
-@media (max-width: 950px) { body { overflow: auto; }.top { height: 72px; padding: 10px 16px; gap: 12px; }.diskret { font-size: 10px; padding: 8px; }.mærke { font-size: 26px; }.garage { top: 72px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 0 20px 40px; padding-top: min(36vh,310px); overflow-y: auto; background: linear-gradient(transparent 15%,#101c25eb 42%); }.byggepanel { grid-column: 1; }.banepanel { grid-column: 2; }.bilnavn { top: 16px; left: 20px; transform: none; width: auto; text-align: left; }.bilnavn i { display: none; }h1 { font-size: 35px; letter-spacing: -1.5px; }.intro { font-size: 11px; }.øjenbryn { font-size: 8px; letter-spacing: 1px; }.garagebund { display: none; }.mission h2 { font-size: 25px; }.baner { gap: 5px; }.bane { width: 40px; height: 40px; }.fane { padding: 10px 7px; }.instrumenter { padding: 5px 15px; gap: 8px; }.instrumenter>div { padding: 10px; min-width: 80px; }.instrumenter b { font-size: 25px; }.kædebesked { top: 100px; font-size: 20px; }.kørsel { top: 80px; }.tastatur { display: none; }.styring { bottom: max(18px,env(safe-area-inset-bottom)); left: 15px; right: 15px; gap: 8px; }.pedal { width: 75px; height: 80px; border-radius: 16px; }.gas { width: 85px; height: 90px; }.værksted { font-size: 10px; padding: 9px; } }
-@media (max-width: 540px) { .garage { gap: 15px; padding-left: 14px; padding-right: 14px; grid-template-columns: 1.1fr 1fr; }.top-højre { gap: 4px; }.diskret { font-size: 9px; }.hjem { width: 33px; height: 33px; }.mærke { font-size: 23px; }.mærke .under { font-size: 6px; }.top { gap: 9px; }h1 { font-size: 29px; }.intro { font-size: 10px; }.del { grid-template-columns: 23px 1fr 10px; padding: 8px 6px; gap: 5px; }.del .symbol { font-size: 23px; }.del b { font-size: 11px; }.del small { font-size: 9px; }.faner { gap: 0; }.fane { font-size: 10px; padding: 9px 6px; }.bane { width: 32px; height: 37px; font-size: 11px; }.mission h2 { font-size: 22px; }.mission p { font-size: 10px; }.kør { padding: 15px 8px; font-size: 13px; }.lastvalg { flex-wrap: wrap; }.farvevalg { flex-wrap: wrap; }.lak { width: 23px; height: 23px; }.mål b { font-size: 10px; }.værksted { max-width: 65px; padding: 8px; }.pedal { width: 60px; height: 73px; }.gas { width: 70px; height: 83px; }.styring { gap: 6px; left: 10px; right: 10px; }.pedal span { font-size: 9px; }.kædebesked { right: 15px; max-width: 90%; }.bilnavn b { font-size: 11px; } }
-@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
-@media (max-width: 540px) { .top-højre { gap: 3px; }.top-højre .diskret { font-size: 8px; padding: 7px 5px; }#rolig { max-width: 62px; } }
+#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+/* ---------- Runde knapper ---------- */
+.rund {
+  width: 58px; height: 58px; min-width: 58px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 27px; text-decoration: none; background: var(--kort);
+  box-shadow: var(--skygge), inset 0 -3px 0 rgba(0, 0, 0, .08);
+}
+.rund:active, .knap:active, .del:active, .fane:active, .bane:active { transform: scale(.92); }
+.rund[aria-pressed="false"] { opacity: .55; }
+#rolig[aria-pressed="false"] { opacity: .55; }
+.pause-ikon { width: 20px; height: 22px; border-left: 7px solid #2b2b3a; border-right: 7px solid #2b2b3a; border-radius: 2px; }
+
+/* ---------- Værkstedet ---------- */
+.garage { position: fixed; inset: 0; pointer-events: none; }
+.garage > * { pointer-events: auto; }
+.top {
+  position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+  pointer-events: none;
+}
+.top > * { pointer-events: auto; }
+.top-højre { display: flex; gap: 10px; }
+.titel {
+  margin: 0; font-size: clamp(34px, 6.4vw, 64px); line-height: 1; font-weight: 900; letter-spacing: 1px; white-space: nowrap;
+  -webkit-text-stroke: 9px #fff; paint-order: stroke fill; filter: drop-shadow(0 5px 0 rgba(20, 50, 100, .18));
+  pointer-events: none;
+}
+.titel span, .titel i { display: inline-block; font-style: normal; animation: hop 2.8s ease-in-out infinite; }
+.titel span:nth-child(5n+1) { color: #ff4d4d; }
+.titel span:nth-child(5n+2) { color: #ff9f1c; }
+.titel span:nth-child(5n+3) { color: #ffc400; }
+.titel span:nth-child(5n+4) { color: #2fbf4a; }
+.titel span:nth-child(5n) { color: var(--blå); }
+.titel i { color: #9b5de5; margin: 0 .12em; font-size: .8em; }
+.titel :nth-child(2) { animation-delay: .1s; } .titel :nth-child(3) { animation-delay: .2s; } .titel :nth-child(4) { animation-delay: .3s; }
+.titel :nth-child(5) { animation-delay: .4s; } .titel :nth-child(6) { animation-delay: .5s; } .titel :nth-child(7) { animation-delay: .6s; }
+.titel :nth-child(8) { animation-delay: .7s; } .titel :nth-child(9) { animation-delay: .8s; } .titel :nth-child(10) { animation-delay: .9s; }
+@keyframes hop { 0%, 70%, 100% { transform: translateY(0); } 80% { transform: translateY(-7px); } }
+
+.dok {
+  position: absolute; left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom)); display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 12px; align-items: end;
+}
+.panel {
+  background: var(--kort); border-radius: 28px; padding: 12px;
+  box-shadow: 0 10px 30px rgba(20, 50, 100, .25), inset 0 -4px 0 rgba(0, 0, 0, .06);
+}
+.faner { display: flex; gap: 8px; justify-content: center; }
+.fane {
+  width: 56px; height: 56px; border-radius: 18px; display: grid; place-items: center; background: #eef3fb;
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .08); transition: transform .15s, background .15s;
+}
+.fane svg { width: 38px; height: 38px; }
+.fane[aria-selected="true"] { background: #fff1b8; box-shadow: 0 0 0 3px var(--gul), 0 5px 0 rgba(0, 0, 0, .1); transform: translateY(-3px); }
+.dele { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 12px; min-height: 88px; align-content: center; }
+.del {
+  position: relative; width: 86px; height: 86px; border-radius: 24px; display: grid; place-items: center;
+  background: #f3f6fb; box-shadow: inset 0 -4px 0 rgba(0, 0, 0, .07); transition: transform .15s;
+}
+.del svg { width: 62px; height: 62px; }
+.del[aria-pressed="true"] { background: #fff4c7; box-shadow: 0 0 0 4px var(--gul), 0 5px 0 rgba(0, 0, 0, .1); }
+.del[aria-pressed="true"]::after {
+  content: "✓"; position: absolute; top: -8px; right: -8px; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--grøn); color: #fff; font-weight: 900; font-size: 17px; display: grid; place-items: center; box-shadow: 0 2px 0 var(--grøn-kant);
+}
+.del.lille { width: 66px; height: 66px; border-radius: 20px; }
+.del.lille svg { width: 50px; height: 50px; }
+.skiller { flex-basis: 100%; height: 0; }
+
+.baner { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.bane {
+  position: relative; border-radius: 18px; overflow: hidden; background: #bfe3ff; aspect-ratio: 4 / 3.6;
+  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, .1); transition: transform .15s;
+}
+.bane svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.bane .stj { position: absolute; left: 0; right: 0; bottom: 2px; font-size: 13px; letter-spacing: -1px; color: rgba(255, 255, 255, .85); text-shadow: 0 1px 2px rgba(0, 0, 0, .35); }
+.bane .stj b { color: var(--gul); font-weight: normal; }
+.bane[aria-pressed="true"] { box-shadow: 0 0 0 4px var(--blå), 0 6px 0 rgba(0, 0, 0, .12); transform: translateY(-3px); }
+.kør-knap {
+  display: block; width: 100%; height: 78px; margin-top: 12px; border-radius: 26px; font-size: 46px; color: #fff;
+  background: linear-gradient(#5ee774, var(--grøn)); box-shadow: 0 7px 0 var(--grøn-kant), 0 12px 24px rgba(30, 140, 60, .35);
+  text-shadow: 0 3px 0 rgba(0, 0, 0, .15); animation: puls 1.6s ease-in-out infinite;
+}
+.kør-knap:disabled { opacity: .5; animation: none; }
+.kør-knap:active { transform: translateY(5px); box-shadow: 0 2px 0 var(--grøn-kant); }
+@keyframes puls { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.035); } }
+
+/* ---------- Under kørslen ---------- */
+.kørsel { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+.hud-top {
+  position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+}
+.hud-top > * { pointer-events: auto; }
+.måler {
+  flex: 0 1 460px; height: 58px; border-radius: 29px; background: var(--kort); box-shadow: var(--skygge);
+  display: flex; align-items: center; gap: 10px; padding: 0 26px 0 8px;
+}
+.mål-ikon { width: 64px; height: 48px; border-radius: 14px; overflow: hidden; flex: none; }
+.mål-ikon svg { width: 100%; height: 100%; display: block; }
+.bar { position: relative; flex: 1; height: 22px; border-radius: 11px; background: #e3e9f3; box-shadow: inset 0 2px 0 rgba(0, 0, 0, .08); }
+.bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 11px; background: linear-gradient(90deg, #ff924c, #ffc72c); transition: width .3s; }
+.bar b { position: absolute; top: 50%; transform: translate(-50%, -52%); font-size: 34px; line-height: 1; color: #cfd8e6; -webkit-text-stroke: 3px #fff; paint-order: stroke fill; }
+.bar b.tændt { color: var(--gul); animation: pop .5s; }
+@keyframes pop { 0% { transform: translate(-50%, -52%) scale(.4); } 60% { transform: translate(-50%, -52%) scale(1.45); } 100% { transform: translate(-50%, -52%) scale(1); } }
+
+.styring {
+  position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between; align-items: flex-end;
+  padding: 0 max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+}
+.side { position: relative; display: flex; gap: 14px; align-items: flex-end; pointer-events: auto; }
+.pedal {
+  position: relative; width: 100px; height: 100px; border-radius: 50%; display: grid; place-items: center; font-size: 42px;
+  background: var(--kort); box-shadow: 0 7px 0 rgba(20, 50, 100, .2), 0 10px 22px rgba(20, 50, 100, .25);
+  touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; transition: transform .06s;
+}
+.pedal.trykket { transform: translateY(6px) scale(.96); box-shadow: 0 1px 0 rgba(20, 50, 100, .2), 0 4px 12px rgba(20, 50, 100, .25); }
+.bak { color: #5b6478; }
+.dyt { width: 72px; height: 72px; font-size: 32px; }
+.gas { width: 132px; height: 132px; font-size: 62px; color: #fff; background: linear-gradient(#5ee774, var(--grøn)); box-shadow: 0 8px 0 var(--grøn-kant), 0 12px 26px rgba(30, 140, 60, .35); }
+.gas.trykket { box-shadow: 0 2px 0 var(--grøn-kant), 0 5px 14px rgba(30, 140, 60, .35); }
+.boost { background: linear-gradient(#ffb547, #ff8a1f); box-shadow: 0 7px 0 #c9620c, 0 10px 22px rgba(200, 100, 20, .3); }
+.boost.trykket { box-shadow: 0 1px 0 #c9620c; }
+.boost svg { position: absolute; inset: -7px; width: calc(100% + 14px); height: calc(100% + 14px); transform: rotate(-90deg); pointer-events: none; }
+.boost span { position: relative; }
+.tank-bund { fill: none; stroke: rgba(255, 255, 255, .7); stroke-width: 7; }
+.tank { fill: none; stroke: #ffd23f; stroke-width: 7; stroke-linecap: round; stroke-dasharray: 289 289; transition: stroke-dashoffset .15s; }
+.tom-tank { opacity: .55; }
+.tip { position: absolute; right: 38px; bottom: 142px; font-size: 52px; pointer-events: none; animation: peg .8s ease-in-out infinite; filter: drop-shadow(0 3px 2px rgba(0, 0, 0, .25)); }
+@keyframes peg { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(12px); } }
+
+/* ---------- Tegneseriebobler ved braget ---------- */
+.bobler { position: fixed; inset: 0; pointer-events: none; z-index: 8; overflow: hidden; }
+.boble {
+  position: absolute; width: 190px; height: 150px; margin: -75px 0 0 -95px; display: grid; place-items: center;
+  font-weight: 900; font-size: 38px; color: #fff; letter-spacing: 1px; animation: boble 1.15s ease-out forwards;
+}
+.boble::before, .boble::after {
+  content: ""; position: absolute; inset: 0;
+  clip-path: polygon(50% 0%, 58.5% 18.1%, 75% 6.7%, 73.3% 26.7%, 93.3% 25%, 81.9% 41.5%, 100% 50%, 81.9% 58.5%, 93.3% 75%, 73.3% 73.3%, 75% 93.3%, 58.5% 81.9%, 50% 100%, 41.5% 81.9%, 25% 93.3%, 26.7% 73.3%, 6.7% 75%, 18.1% 58.5%, 0% 50%, 18.1% 41.5%, 6.7% 25%, 26.7% 26.7%, 25% 6.7%, 41.5% 18.1%);
+}
+.boble::before { background: #262a33; transform: scale(1.09); }
+.boble::after { background: var(--farve, #ffc72c); }
+.boble span { position: relative; z-index: 1; -webkit-text-stroke: 7px #262a33; paint-order: stroke fill; transform: rotate(var(--drej, -8deg)); }
+@keyframes boble {
+  0% { transform: scale(.2) rotate(-12deg); opacity: 1; }
+  18% { transform: scale(1.15) rotate(3deg); }
+  30% { transform: scale(1) rotate(0); }
+  80% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(.85) translateY(-30px); opacity: 0; }
+}
+.rolig .boble { animation-duration: 1.4s; animation-name: rolig-boble; }
+@keyframes rolig-boble { 0% { opacity: 0; } 15%, 80% { opacity: 1; } 100% { opacity: 0; } }
+
+/* ---------- Resultat og pause ---------- */
+.overlay {
+  position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 16px;
+  background: rgba(40, 80, 140, .32); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+}
+.kort {
+  width: min(430px, 100%); padding: 22px 26px 24px; border-radius: 34px; text-align: center; background: #fff;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, .3), inset 0 -5px 0 rgba(0, 0, 0, .06); animation: ind .35s cubic-bezier(.3, 1.5, .6, 1);
+}
+@keyframes ind { from { transform: scale(.6); opacity: 0; } }
+.stjerner { display: flex; justify-content: center; gap: 6px; min-height: 8px; }
+.stjerner span { font-size: 68px; line-height: 1; color: #dfe6f0; -webkit-text-stroke: 4px #fff; paint-order: stroke fill; filter: drop-shadow(0 4px 0 rgba(0, 0, 0, .08)); }
+.stjerner span:nth-child(2) { transform: translateY(-14px); font-size: 82px; }
+.stjerner span.tændt { color: var(--gul); animation: stjerne .55s backwards; animation-delay: calc(var(--i) * .28s + .2s); }
+@keyframes stjerne { 0% { transform: scale(0) rotate(-90deg); } 70% { transform: scale(1.3) rotate(10deg); } }
+.stjerner span:nth-child(2).tændt { animation-name: stjerne-midt; }
+@keyframes stjerne-midt { 0% { transform: translateY(-14px) scale(0) rotate(-90deg); } 70% { transform: translateY(-14px) scale(1.3); } 100% { transform: translateY(-14px); } }
+.kort h2 { margin: 6px 0 2px; font-size: 38px; font-weight: 900; }
+.resultat { margin: 0 0 6px; font-size: 17px; color: #6b7590; min-height: 1em; }
+.knaprække { display: flex; justify-content: center; align-items: center; gap: 16px; margin-top: 12px; }
+.knap {
+  width: 78px; height: 78px; border-radius: 50%; display: grid; place-items: center; font-size: 34px;
+  background: #eef3fb; box-shadow: 0 5px 0 rgba(20, 50, 100, .15);
+}
+.knap.stor { width: 104px; height: 104px; font-size: 50px; color: #fff; background: linear-gradient(#5ee774, var(--grøn)); box-shadow: 0 7px 0 var(--grøn-kant); }
+.pausevalg { display: flex; justify-content: center; gap: 12px; margin-top: 18px; }
+.valg { width: 58px; height: 58px; border-radius: 18px; font-size: 26px; background: #eef3fb; box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .08); }
+.valg[aria-pressed="false"] { opacity: .5; }
+
+.status {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 40; padding: 14px 22px; max-width: 90%;
+  border-radius: 20px; background: #fff; box-shadow: var(--skygge); font-size: 17px; text-align: center;
+}
+
+/* ---------- Tablet på højkant og telefon ---------- */
+@media (max-width: 820px) {
+  .dok { grid-template-columns: 1fr; gap: 10px; }
+  .titel { font-size: clamp(30px, 8.4vw, 54px); -webkit-text-stroke-width: 7px; }
+}
+@media (max-width: 480px) {
+  .rund { width: 50px; height: 50px; min-width: 50px; font-size: 23px; }
+  .top-højre { gap: 6px; }
+  .panel { border-radius: 24px; padding: 10px; }
+  .faner { gap: 5px; }
+  .fane { width: 48px; height: 48px; border-radius: 15px; }
+  .fane svg { width: 32px; height: 32px; }
+  .dele { gap: 8px; margin-top: 10px; min-height: 76px; }
+  .del { width: 74px; height: 74px; border-radius: 20px; }
+  .del svg { width: 54px; height: 54px; }
+  .del.lille { width: 58px; height: 58px; }
+  .kør-knap { height: 68px; font-size: 40px; }
+  .måler { height: 52px; padding: 0 20px 0 6px; gap: 6px; }
+  .mål-ikon { width: 52px; height: 40px; }
+  .bar b { font-size: 28px; }
+  .pedal { width: 84px; height: 84px; font-size: 36px; }
+  .dyt { width: 60px; height: 60px; font-size: 27px; }
+  .gas { width: 108px; height: 108px; font-size: 50px; }
+  .side { gap: 10px; }
+  .tip { right: 28px; bottom: 116px; font-size: 44px; }
+  .boble { transform-origin: center; font-size: 30px; width: 150px; height: 120px; margin: -60px 0 0 -75px; }
+}
+/* Telefon på tværs: delene i venstre side, banerne i højre, bilen i midten */
+@media (max-height: 540px) and (orientation: landscape) {
+  .titel { font-size: 32px; -webkit-text-stroke-width: 6px; }
+  .rund { width: 48px; height: 48px; min-width: 48px; font-size: 22px; }
+  .top { padding-top: max(8px, env(safe-area-inset-top)); }
+  .dok { top: 66px; grid-template-columns: minmax(0, 300px) 1fr minmax(0, 230px); align-items: start; }
+  .byg { grid-column: 1; max-height: 100%; overflow-y: auto; }
+  .baner-panel { grid-column: 3; }
+  .faner { gap: 6px; }
+  .fane { width: 40px; height: 40px; border-radius: 13px; }
+  .fane svg { width: 28px; height: 28px; }
+  .dele { min-height: 60px; margin-top: 10px; }
+  .del { width: 58px; height: 58px; border-radius: 17px; }
+  .del svg { width: 42px; height: 42px; }
+  .del.lille { width: 48px; height: 48px; }
+  .baner { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .kør-knap { height: 58px; font-size: 34px; }
+  .måler { height: 48px; }
+  .pedal { width: 76px; height: 76px; font-size: 32px; }
+  .gas { width: 96px; height: 96px; font-size: 44px; }
+  .dyt { width: 56px; height: 56px; font-size: 25px; }
+  .tip { bottom: 104px; right: 22px; font-size: 40px; }
+  .stjerner span { font-size: 50px; } .stjerner span:nth-child(2) { font-size: 60px; }
+  .kort { padding: 14px 20px 16px; } .kort h2 { font-size: 30px; }
+  .knap { width: 64px; height: 64px; font-size: 28px; } .knap.stor { width: 84px; height: 84px; font-size: 40px; }
+  .pausevalg { margin-top: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .titel span, .titel i, .kør-knap, .tip { animation: none; }
+}
