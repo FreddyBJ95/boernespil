@@ -1,4 +1,5 @@
 // Kør med NODE_PATH til en installeret Playwright. Prøven starter selv en lille server og lukker den igen.
+// Spillet bruger Nedrivningsfirmaets fysik og grafik, så prøverne kører i en rigtig browser med WebGL.
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
@@ -7,7 +8,7 @@ const path = require('node:path');
 const { chromium } = require('playwright');
 
 const ROD = path.resolve(__dirname, '../..');
-const TYPER = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.mp3': 'audio/mpeg' };
+const TYPER = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.mp3': 'audio/mpeg', '.json': 'application/json', '.glb': 'model/gltf-binary' };
 let server, ADRESSE;
 
 before(async () => {
@@ -23,86 +24,99 @@ before(async () => {
     } catch { res.writeHead(404); res.end('Ikke fundet'); }
   });
   await new Promise(klar => server.listen(0, '127.0.0.1', klar));
-  ADRESSE = `http://127.0.0.1:${server.address().port}/spil/skrot-og-brag/`;
+  ADRESSE = `http://127.0.0.1:${server.address().port}/spil/skrot-og-brag/?prøve`;
 });
 after(() => server.close());
 
 const start = () => chromium.launch({ headless: true, channel: process.env.BROWSER_CHANNEL || 'msedge' });
+const klar = page => page.waitForFunction(() => !document.getElementById('start').disabled, null, { timeout: 60000 });
 const kør = page => page.getByRole('button', { name: 'Kør', exact: true }).click({ force: true });
+const fejlListe = page => {
+  const fejl = [];
+  page.on('pageerror', e => fejl.push(e.message));
+  page.on('console', m => { if (m.type() === 'error') fejl.push(m.text()); });
+  return fejl;
+};
 
-test('browser: værksted, lyd, kørsel, pause, nulstilling og gemning', async () => {
+test('browser: værksted, lyd, kørsel, pause, forfra og gemning', async () => {
   const browser = await start();
   try {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-    const fejl = [], lydfiler = [];
-    page.on('pageerror', e => fejl.push(e.message));
-    page.on('console', m => { if (m.type() === 'error') fejl.push(m.text()); });
+    const fejl = fejlListe(page), lydfiler = [];
     page.on('response', r => { if (r.url().endsWith('.mp3')) lydfiler.push(r.status()); });
-    await page.addInitScript(() => {
-      const Oprindelig = window.AudioContext;
-      window.__lyd = [];
-      window.AudioContext = class extends Oprindelig {
-        constructor(...args) { super(...args); window.__lyd.push(this); }
-      };
-    });
     await page.goto(ADRESSE);
-    await page.waitForFunction(() => !document.getElementById('start').disabled);
+    await klar(page);
     await page.getByRole('tab', { name: 'Last', exact: true }).click();
-    await page.getByRole('button', { name: 'Lilla hvirvel', exact: true }).click();
+    await page.getByRole('button', { name: 'Gasflasker', exact: true }).click();
     await page.getByRole('tab', { name: 'Front', exact: true }).click();
-    await page.getByRole('button', { name: 'Skovl', exact: true }).click();
-    await page.getByRole('button', { name: /^Slottet/ }).click();
-    await page.waitForFunction(() => !document.getElementById('start').disabled);
+    await page.getByRole('button', { name: 'Sneplov', exact: true }).click();
+    await page.getByRole('button', { name: /^Murstenshuset/ }).click();
     await kør(page);
     await page.keyboard.down('ArrowRight');
-    await page.waitForFunction(() => parseFloat(document.getElementById('fyld').style.width) >= 25, null, { timeout: 15000 });
+    await page.waitForFunction(() => sb.bil.bump && sb.procent > 0, null, { timeout: 20000 });
     await page.keyboard.up('ArrowRight');
-    assert.ok(await page.locator('#s1.tændt').count() === 1, 'første stjerne tændes');
-    assert.equal(await page.evaluate(() => window.__lyd[0]?.state), 'running');
-    await page.waitForTimeout(500);
-    assert.ok(lydfiler.length >= 8);
+    assert.equal(await page.evaluate(() => sb.bil.last.length), 0, 'lasten flyver af ladet ved sammenstødet');
+    await page.waitForTimeout(1500);
+    assert.ok(lydfiler.length >= 20, `optagede lyde hentet: ${lydfiler.length}`);
     assert.ok(lydfiler.every(s => s === 200));
     await page.getByRole('button', { name: 'Pause', exact: true }).click();
     await page.getByRole('heading', { name: 'Pause', exact: true }).waitFor();
-    const før = await page.locator('#fyld').getAttribute('style');
+    const før = await page.evaluate(() => sb.bil.sted.y);
     await page.waitForTimeout(400);
-    assert.equal(await page.locator('#fyld').getAttribute('style'), før);
-    assert.equal(await page.evaluate(() => window.__lyd[0].state), 'suspended');
+    assert.equal(await page.evaluate(() => sb.bil.sted.y), før, 'fysikken står stille under pausen');
     await page.getByRole('button', { name: 'Fortsæt', exact: true }).click();
     await page.getByRole('button', { name: 'Pause', exact: true }).click();
     await page.getByRole('button', { name: 'Start forfra', exact: true }).click();
-    await page.waitForFunction(() => document.getElementById('fyld').style.width === '0%');
+    await page.waitForFunction(() => sb.procent === 0 && !sb.bil.bump);
     await page.evaluate(() => window.dispatchEvent(new Event('blur')));
     await page.getByRole('heading', { name: 'Pause', exact: true }).waitFor();
     assert.equal(await page.locator('#kørsel').evaluate(e => e.inert), true, 'knapperne bag pausen kan ikke nås');
     await page.getByRole('dialog').getByRole('button', { name: 'Til værkstedet', exact: true }).click();
     await page.reload();
-    await page.waitForFunction(() => !document.getElementById('start').disabled);
+    await klar(page);
     await page.getByRole('tab', { name: 'Last', exact: true }).click();
-    assert.equal(await page.getByRole('button', { name: 'Lilla hvirvel', exact: true }).getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.getByRole('button', { name: 'Gasflasker', exact: true }).getAttribute('aria-pressed'), 'true');
     await page.getByRole('tab', { name: 'Front', exact: true }).click();
-    assert.equal(await page.getByRole('button', { name: 'Skovl', exact: true }).getAttribute('aria-pressed'), 'true');
-    assert.equal(await page.getByRole('button', { name: /^Slottet/ }).getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.getByRole('button', { name: 'Sneplov', exact: true }).getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.getByRole('button', { name: /^Murstenshuset/ }).getAttribute('aria-pressed'), 'true');
     assert.deepEqual(fejl, []);
   } finally { await browser.close(); }
 });
 
-test('browser: en hel tur ind i huset ender med stjerner', async () => {
+test('browser: alle seks bygninger vælter, når standardbilen kører ind i dem', async () => {
+  const browser = await start();
+  try {
+    for (let bane = 0; bane < 6; bane++) {
+      const page = await browser.newPage({ viewport: { width: 1000, height: 700 } });
+      const fejl = fejlListe(page);
+      await page.addInitScript(nr => localStorage.setItem('skrot-og-brag-v3', JSON.stringify({ bane: nr })), bane);
+      await page.goto(ADRESSE);
+      await klar(page);
+      await kør(page);
+      await page.keyboard.down('ArrowRight');
+      await page.waitForFunction(() => sb.tilstand === 'resultat', null, { timeout: 45000 });
+      const { procent, første, navn } = await page.evaluate(() => ({ procent: sb.procent, første: sb.BANER[sb.bane()].stjerner[0], navn: sb.BANER[sb.bane()].navn }));
+      assert.ok(procent >= første, `${navn}: ${procent} %`);
+      assert.ok(await page.locator('.stjerner span.tændt').count() >= 1);
+      assert.deepEqual(fejl, [], navn);
+      await page.close();
+    }
+  } finally { await browser.close(); }
+});
+
+test('browser: næste bane efter resultatet', async () => {
   const browser = await start();
   try {
     const page = await browser.newPage({ viewport: { width: 1180, height: 820 } });
-    const fejl = [];
-    page.on('pageerror', e => fejl.push(e.message));
+    const fejl = fejlListe(page);
     await page.goto(ADRESSE);
-    await page.waitForFunction(() => !document.getElementById('start').disabled);
+    await klar(page);
     await kør(page);
     await page.keyboard.down('ArrowRight');
-    await page.locator('.boble').first().waitFor({ timeout: 10000 });
-    await page.getByRole('dialog').waitFor({ timeout: 30000 });
+    await page.getByRole('dialog').waitFor({ timeout: 45000 });
     await page.keyboard.up('ArrowRight');
-    assert.ok(await page.locator('.stjerner span.tændt').count() >= 1);
     await page.getByRole('button', { name: 'Næste bane', exact: true }).click();
-    await page.waitForFunction(() => document.getElementById('fyld').style.width === '0%');
+    await page.waitForFunction(() => sb.bane() === 1 && sb.tilstand === 'kør' && sb.procent === 0);
     assert.equal(await page.locator('#kørsel').isVisible(), true);
     assert.deepEqual(fejl, []);
   } finally { await browser.close(); }
@@ -112,10 +126,9 @@ test('touch: to pedaler samtidigt, ingen hængende gas og telefonlayout', async 
   const browser = await start();
   try {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
-    const page = await context.newPage(), fejl = [];
-    page.on('pageerror', e => fejl.push(e.message));
+    const page = await context.newPage(), fejl = fejlListe(page);
     await page.goto(ADRESSE);
-    await page.waitForFunction(() => !document.getElementById('start').disabled);
+    await klar(page);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     await kør(page);
     const cdp = await context.newCDPSession(page);
@@ -124,8 +137,9 @@ test('touch: to pedaler samtidigt, ingen hængende gas og telefonlayout', async 
     assert.ok(boost.x > 0);
     const punkt = (b, id) => ({ x: Math.round(b.x + b.width / 2), y: Math.round(b.y + b.height / 2), id });
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [punkt(gas, 0), punkt(boost, 1)] });
-    await page.waitForTimeout(850);
-    assert.ok(parseFloat(await page.locator('#tank').evaluate(e => e.style.strokeDashoffset)) > 0, 'boost bruger raketbrændstof');
+    await page.waitForTimeout(900);
+    assert.ok(parseFloat(await page.locator('#tank').evaluate(e => e.style.strokeDashoffset)) > 0, 'turboen bruger brændstof');
+    assert.ok(await page.evaluate(() => sb.bil.fart > 2), 'bilen kører');
     assert.equal(await page.locator('#tip').isHidden(), true);
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     assert.equal(await page.locator('.pedal.trykket').count(), 0);
@@ -135,10 +149,10 @@ test('touch: to pedaler samtidigt, ingen hængende gas og telefonlayout', async 
     await page.waitForTimeout(400);
     assert.equal(await page.locator('#tank').evaluate(e => e.style.strokeDashoffset), '0');
     await page.getByRole('button', { name: 'Til værkstedet', exact: true }).click();
-    await page.waitForFunction(() => !document.getElementById('start').disabled);
+    await klar(page);
     await page.getByRole('tab', { name: 'Last', exact: true }).click();
-    await page.getByRole('button', { name: 'Ildtønder', exact: true }).click();
-    assert.equal(await page.getByRole('button', { name: 'Ildtønder', exact: true }).getAttribute('aria-pressed'), 'true');
+    await page.getByRole('button', { name: 'TNT-kasser', exact: true }).click();
+    assert.equal(await page.getByRole('button', { name: 'TNT-kasser', exact: true }).getAttribute('aria-pressed'), 'true');
     assert.deepEqual(fejl, []);
   } finally { await browser.close(); }
 });
