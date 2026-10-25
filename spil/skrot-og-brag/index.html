@@ -2,21 +2,24 @@
 <html lang="da">
 <head>
   <meta charset="utf-8">
+  <!-- Spillet bruger Nedrivningsfirmaets fysik, fotos, modeller og lyde. De henter deres filer med stier
+       fra Nedrivningsfirmaets mappe, så siden får samme udgangspunkt. Vores egne filer hentes med ../skrot-og-brag/ -->
+  <base href="../nedrivning/">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#5aa9ff">
+  <meta name="theme-color" content="#16191c">
+  <meta name="description" content="Skrot & Brag: byg en rigtig lastbil, og kør den ind i skure, huse, haller og skorstene. Et 3D-spil i Spilkassen.">
   <link rel="icon" href="../../favicon.png">
   <title>Skrot &amp; Brag · Spilkassen</title>
-  <link rel="stylesheet" href="stil.css">
+  <link rel="stylesheet" href="../skrot-og-brag/stil.css">
 </head>
 <body>
-  <canvas id="scene" aria-label="Din bil og det, du skal køre ind i"></canvas>
-  <div id="bobler" class="bobler" aria-hidden="true"></div>
+  <canvas id="scene" aria-label="Byggepladsen, din lastbil og bygningen, du skal køre ind i"></canvas>
 
   <!-- Værkstedet: byg bilen og vælg, hvad den skal køre ind i -->
   <main id="garage" class="garage">
     <header class="top">
       <a class="rund" href="../../" aria-label="Tilbage til Spilkassen">🏠</a>
-      <h1 class="titel" aria-label="Skrot og Brag"><span>S</span><span>k</span><span>r</span><span>o</span><span>t</span><i>&amp;</i><span>B</span><span>r</span><span>a</span><span>g</span></h1>
+      <h1 class="titel"><span class="striber" aria-hidden="true"></span>SKROT <i>&amp;</i> BRAG</h1>
       <div class="top-højre">
         <button class="rund" id="rolig" aria-label="Rolige effekter" aria-pressed="false">🐢</button>
         <button class="rund" id="lyd" aria-label="Lyd" aria-pressed="true">🔊</button>
@@ -38,7 +41,7 @@
   <section id="kørsel" class="kørsel" hidden>
     <div class="hud-top">
       <button class="rund" id="tilbage" aria-label="Til værkstedet">🔧</button>
-      <div class="måler" role="img" aria-label="Hvor meget der er væltet" id="måler">
+      <div class="måler" role="img" aria-label="Hvor meget der er væltet">
         <span class="mål-ikon" id="målIkon"></span>
         <div class="bar"><i id="fyld"></i><b id="s1">★</b><b id="s2">★</b><b id="s3">★</b></div>
       </div>
@@ -51,9 +54,9 @@
       </div>
       <div class="side højre">
         <span class="tip" id="tip" aria-hidden="true">👇</span>
-        <button class="pedal boost" id="boost" aria-label="Raketfart, hold nede">
+        <button class="pedal boost" id="boost" aria-label="Turbo, hold nede">
           <svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" class="tank-bund"/><circle cx="50" cy="50" r="46" class="tank" id="tank"/></svg>
-          <span>🚀</span>
+          <span>🔥</span>
         </button>
         <button class="pedal gas" id="gas" aria-label="Kør, hold nede">▶</button>
       </div>
@@ -63,6 +66,7 @@
   <!-- Resultat og pause -->
   <div id="dialog" class="overlay" hidden>
     <section class="kort" role="dialog" aria-modal="true" aria-labelledby="dialogTitel">
+      <span class="striber lang" aria-hidden="true"></span>
       <div class="stjerner" id="stjerner"></div>
       <h2 id="dialogTitel">Sikke et brag!</h2>
       <p class="resultat" id="dialogTal"></p>
@@ -80,7 +84,7 @@
   <div id="status" role="status" class="status">Henter værkstedet …</div>
 
   <script type="module">
-    import('./spil.mjs').catch(fejl => {
+    import('../skrot-og-brag/spil.mjs').catch(fejl => {
       console.error(fejl);
       const status = document.querySelector('#status');
       status.textContent = 'Spillet kunne ikke starte. Prøv at genindlæse siden.';

@@ -1,13 +1,15 @@
 // ===== Service Worker — gør spillene installerbare og tilgængelige offline =====
 // Bump dette tal når der ændres filer, så de gamle bliver hentet på ny.
-const CACHE = "boernespil-v83";
+const CACHE = "boernespil-v84";
 
 const SPIL = ["balloner", "byg-burger", "enhjoerning", "vask", "slange", "tegne", "piano", "fisk", "broekraft", "rulle-rasmus", "burgerloeb", "nedrivning", "brudpunkt", "kuglebanen", "skrot-og-brag"];
 const VOKSENSPIL = ["det-sidste-lys", "skrotstorm", "krystaljaegerne"];
 
 // Spil der består af flere filer end index.html
 const EKSTRA = [
-  ...["stil.css", "spil.mjs", "data.mjs", "fysik.mjs", "grafik.mjs", "modeller.mjs", "ikoner.mjs", "effekter.mjs", "lyd.mjs", "forside.jpg"].map(f => `spil/skrot-og-brag/${f}`),
+  // Skrot & Brag bruger Nedrivningsfirmaets fysik, fotos, modeller og lyde (de ligger længere nede)
+  ...["stil.css", "spil.mjs", "baner.mjs", "bil.mjs", "bilmodel.mjs", "motorlyd.mjs", "ikoner.mjs", "forside.jpg",
+    ...["skur", "murstenshus", "lagerhal", "vandtaarn", "betonblok", "skorsten"].map(n => `baner/${n}.jpg`)].map(f => `spil/skrot-og-brag/${f}`),
   "tilslut/", "tilslut/index.html", "tilslut/tilslut.css", "tilslut/tilslut.js", "tilslut/adresse.js", "tilslut/vendor/jsQR.js",
   ...["three.module.js", "GLTFLoader.js", "BufferGeometryUtils.js", "start.js", "pynt.js", "LICENSE-three.txt"].map(f => `spil/3d-faelles/${f}`),
   ...["style.css", "komfort.css", "spil.js", "styring.js", "verden.js", "logik.js", "lyd.js", "oe.glb", "maage.glb", "forside.jpg"].map(f => `spil/det-sidste-lys/${f}`),
