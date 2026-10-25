@@ -1,107 +1,131 @@
-import { BANER, DELE, STANDARD, del, normaliser } from './data.mjs';
+// ===== Skrot & Brag: byg en bil, kør den ind i et hus, og se det vælte =====
+import { BANER, DELE, FARVER, FARVENAVNE, normaliser, stjerner as stjerneTal } from './data.mjs';
 import { opretFysik, TRIN } from './fysik.mjs';
 import { Grafik } from './grafik.mjs';
 import { Lyd } from './lyd.mjs';
+import { DELIKON, FANEIKON, BANEIKON, antalIkon, farveIkon } from './ikoner.mjs';
+import { LASTFARVER } from './modeller.mjs';
 
 const $ = id => document.getElementById(id);
-const GEMNING = 'skrot-og-brag-v1';
+const GEMNING = 'skrot-og-brag-v2';
+const FANER = [['hjul', 'Hjul'], ['motor', 'Motor'], ['front', 'Front'], ['last', 'Last'], ['fører', 'Fører'], ['farve', 'Farve']];
+const TITLER = ['Prøv igen!', 'Godt kørt!', 'Sikke et brag!', 'KÆMPE BRAG!'];
+const ORD = { bump: ['BAM!', 'KRAS!', 'BONK!'], brag: ['BOM!', 'BRAG!', 'KA-BUM!', 'PANG!', 'BANG!'] };
+const sideLayout = matchMedia('(max-height: 540px) and (orientation: landscape)');
+
+// Den gamle udgaves bil læses med, så barnets bil ikke forsvinder.
 let gemt = {};
-try { gemt = JSON.parse(localStorage.getItem(GEMNING) || '{}') || {}; } catch { /* Privat browsing er også velkommen. */ }
-let bil = normaliser(gemt.bil), bane = 0, fane = 'last';
-let tilstand = 'garage', sim, travl = false, rester = 0, sidsteTid = 0, sidsteBrag = 0, målTid = null;
-let bedste = Array.isArray(gemt.bedste) ? gemt.bedste.slice(0, 4).map(n => Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0) : [];
+try { gemt = JSON.parse(localStorage.getItem(GEMNING) || 'null') || JSON.parse(localStorage.getItem('skrot-og-brag-v1') || '{}') || {}; }
+catch { /* Privat browsing er også velkommen. */ }
+let bil = normaliser(gemt.bil), fane = 'hjul';
+let bane = Number.isInteger(gemt.bane) && gemt.bane >= 0 && gemt.bane < BANER.length ? gemt.bane : 0;
+const bedste = BANER.map((_, i) => [0, 1, 2, 3].includes(gemt.stjerner?.[i]) ? gemt.stjerner[i] : 0);
+
+let tilstand = 'garage', sim, travl = false, rester = 0, sidsteTid = 0, dialog = null;
+let sidsteBrag = 0, sidsteFremgang = 0, bumpTid = null, bedsteProcent = 0, tændte = 0, sidsteBoble = -1;
 const lyd = new Lyd();
 lyd.tændt = gemt.lyd !== false;
 const grafik = new Grafik($('scene'));
 grafik.effekter.rolig = gemt.rolig === true || grafik.effekter.rolig;
 const taster = new Set(), fingre = new Map();
 
-// Gem kun konstruktion, rekorder og komfortvalg; spillet kræver ingen konto.
 function gem() {
-  try { localStorage.setItem(GEMNING, JSON.stringify({ bil, bedste, lyd: lyd.tændt, rolig: grafik.effekter.rolig })); }
-  catch { $('gemt').textContent = 'Bilen kan bruges nu, men kunne ikke gemmes på enheden.'; }
+  try { localStorage.setItem(GEMNING, JSON.stringify({ bil, bane, stjerner: bedste, lyd: lyd.tændt, rolig: grafik.effekter.rolig })); }
+  catch { /* Spillet virker også uden gemning. */ }
 }
 
-function knap(tekst, klasse, valgt, handling) {
+function knap(klasse, valgt, handling) {
   const b = document.createElement('button');
   b.className = klasse;
-  b.textContent = tekst;
   b.setAttribute('aria-pressed', String(valgt));
   b.addEventListener('click', handling);
   return b;
 }
 
-// De fire hylder ændrer rigtige egenskaber i fysikken og på bilmodellen.
+// ---------- Værkstedet ----------
+// Fanerne viser en tegning af hver del; et tryk skifter delen på bilen med det samme.
 function visDele() {
-  $('faner').replaceChildren();
-  for (const [id, navn] of Object.entries({ hjul: 'Hjul', motor: 'Motor', front: 'Front', last: 'Last' })) {
-    const b = knap(navn, 'fane', fane === id, () => { fane = id; visDele(); });
+  $('faner').replaceChildren(...FANER.map(([id, navn]) => {
+    const b = knap('fane', fane === id, () => { fane = id; lyd.klik(); visDele(); });
+    b.removeAttribute('aria-pressed');
     b.setAttribute('role', 'tab');
     b.setAttribute('aria-selected', String(fane === id));
-    $('faner').append(b);
-  }
-  $('dele').replaceChildren();
-  for (const d of DELE[fane]) {
-    const b = knap('', 'del', bil[fane] === d.id, async () => {
-      if (travl) return;
-      bil[fane] = d.id;
-      gem();
-      visDele();
-      await nulstil(true);
-    });
-    b.style.setProperty('--delfarve', d.farve || '#f5cc4c');
-    const symbol = document.createElement('span'), tekst = document.createElement('span'), navn = document.createElement('b'), forklaring = document.createElement('small'), flue = document.createElement('span');
-    symbol.className = 'symbol';
-    symbol.textContent = d.ikon;
-    navn.textContent = d.navn;
-    forklaring.textContent = d.tekst;
-    flue.className = 'flue';
-    flue.textContent = bil[fane] === d.id ? '✓' : '';
-    tekst.append(navn, forklaring);
-    b.append(symbol, tekst, flue);
-    $('dele').append(b);
-  }
-  $('antal').replaceChildren(...[1, 2, 3].map(n => knap(n, '', bil.antal === n, async () => {
-    if (travl) return;
-    bil.antal = n;
-    gem(); visDele(); await nulstil(true);
-  })));
-  $('farver').replaceChildren(...['#f5cc4c', '#62ded7', '#f17d9a', '#a38bfa'].map((farve, i) => {
-    const b = knap('', 'lak', bil.farve === farve, async () => {
-      if (travl) return;
-      bil.farve = farve;
-      gem(); visDele(); await nulstil(true);
-    });
-    b.style.setProperty('--lak', farve);
-    b.setAttribute('aria-label', ['Gul', 'Turkis', 'Rosa', 'Lilla'][i]);
+    b.setAttribute('aria-label', navn);
+    b.innerHTML = FANEIKON[id];
     return b;
   }));
-  $('bilnavn').textContent = `${del('hjul', bil.hjul).navn} + ${del('last', bil.last).navn}`.toUpperCase();
+  const dele = [];
+  const valg = (ikon, navn, valgt, handling, klasse = 'del') => {
+    const b = knap(klasse, valgt, handling);
+    b.setAttribute('aria-label', navn);
+    b.innerHTML = ikon;
+    return b;
+  };
+  if (fane === 'farve') FARVER.forEach((farve, i) => dele.push(valg(farveIkon(farve), FARVENAVNE[i], bil.farve === farve, () => skift('farve', farve))));
+  else for (const d of DELE[fane]) dele.push(valg(DELIKON[fane][d.id], d.navn, bil[fane] === d.id, () => skift(fane, d.id)));
+  if (fane === 'last' && bil.last !== 'tom') {
+    const skiller = document.createElement('span');
+    skiller.className = 'skiller';
+    dele.push(skiller);
+    for (const n of [1, 2, 3]) dele.push(valg(antalIkon(n, LASTFARVER[bil.last]), n === 1 ? 'Én tønde' : `${n} tønder`, bil.antal === n, () => skift('antal', n), 'del lille'));
+  }
+  $('dele').replaceChildren(...dele);
+  requestAnimationFrame(opdaterFri);
 }
 
-function visBane() {
+async function skift(type, værdi) {
+  if (travl || bil[type] === værdi) return;
+  bil = normaliser({ ...bil, [type]: værdi });
+  lyd.klik();
+  gem();
+  visDele();
+  await nulstil(true);
+}
+
+function visBaner() {
   $('baner').replaceChildren(...BANER.map((b, i) => {
-    const k = knap(b.kort, 'bane', bane === i, async () => {
-      if (travl) return;
+    const k = knap('bane', bane === i, async () => {
+      if (travl || bane === i) return;
       bane = i;
-      visBane(); await nulstil(true);
+      lyd.klik();
+      gem();
+      visBaner();
+      await nulstil(true);
     });
-    k.setAttribute('aria-label', b.navn);
+    k.setAttribute('aria-label', `${b.navn}, ${bedste[i]} af 3 stjerner`);
+    k.innerHTML = `${BANEIKON[b.id]}<span class="stj"><b>${'★'.repeat(bedste[i])}</b>${'★'.repeat(3 - bedste[i])}</span>`;
     return k;
   }));
-  $('banenavn').textContent = BANER[bane].navn;
-  $('banetekst').textContent = BANER[bane].tekst;
-  $('maaltekst').textContent = `Vælt mindst ${BANER[bane].mål}% af bygningerne`;
-  $('rekord').textContent = bedste[bane] ? `DIN REKORD / ${bedste[bane]}% væltet` : 'ALLE DELE ER LÅST OP · BARE BYG LØS';
+  $('målIkon').innerHTML = BANEIKON[BANER[bane].id];
+  BANER[bane].stjerner.forEach((grænse, i) => { $(`s${i + 1}`).style.left = `${grænse}%`; });
+}
+
+// Kameraet centrerer bilen i det stykke af skærmen, som knapperne ikke dækker.
+function opdaterFri() {
+  const w = innerWidth, h = innerHeight;
+  if (tilstand === 'garage') {
+    const top = document.querySelector('.top').getBoundingClientRect().bottom;
+    if (sideLayout.matches) {
+      const venstre = document.querySelector('.byg').getBoundingClientRect().right;
+      const højre = document.querySelector('.baner-panel').getBoundingClientRect().left;
+      grafik.fri = { x: (venstre + højre) / 2, y: (top + h) / 2, b: Math.max(160, højre - venstre), h: h - top };
+    } else {
+      const dok = $('dok').getBoundingClientRect().top;
+      grafik.fri = { x: w / 2, y: (top + dok) / 2, b: w, h: Math.max(140, dok - top) };
+    }
+  } else {
+    const top = document.querySelector('.hud-top').getBoundingClientRect().bottom, bund = h - (h < 560 ? 100 : 130);
+    grafik.fri = { x: w / 2, y: (top + bund) / 2, b: w, h: Math.max(140, bund - top) };
+  }
 }
 
 function slip() {
   taster.clear();
   fingre.clear();
-  for (const id of ['gas', 'bak', 'boost']) $(id).classList.remove('trykket');
+  for (const id of ['gas', 'bak', 'boost', 'dyt']) $(id).classList.remove('trykket');
 }
 
-// Opstillinger frigiver deres WASM-hukommelse ved hvert nyt forsøg.
+// Hver ny opstilling frigiver den forrige fysikverden.
 async function nulstil(garage = false) {
   if (travl) return;
   travl = true;
@@ -112,26 +136,13 @@ async function nulstil(garage = false) {
     const ny = await opretFysik(bil, bane);
     sim?.luk();
     sim = ny;
-    // Lad fuger og last falde til ro, før barnet tager over.
+    // Lad husene og lasten falde til ro, før barnet tager over.
     for (let i = 0; i < 90; i++) sim.trin();
     sim.hentHændelser();
     sim.tid = 0;
     grafik.byg(sim);
-    grafik.kameraX = 5;
-    grafik.kameraY = 3;
-    rester = 0;
-    sidsteBrag = 0;
-    målTid = null;
-    tilstand = garage ? 'garage' : 'kør';
-    $('garage').hidden = !garage;
-    $('kørsel').hidden = garage;
-    $('pause').hidden = garage;
-    $('overblik').hidden = garage;
-    $('dialog').hidden = true;
-    $('kædebesked').textContent = garage ? '' : 'Hold KØR nede →';
+    vis(garage ? 'garage' : 'kør');
     $('status').hidden = true;
-    $('start').textContent = 'Ud og lav ballade →';
-    opdaterTal();
   } catch (fejl) {
     console.error(fejl);
     $('status').textContent = 'Værkstedet kunne ikke indlæses. Genindlæs siden for at prøve igen.';
@@ -142,54 +153,111 @@ async function nulstil(garage = false) {
   }
 }
 
+// Skifter mellem værkstedet og kørslen uden at bygge banen om.
+function vis(ny) {
+  tilstand = ny;
+  const garage = ny === 'garage';
+  $('garage').hidden = !garage;
+  $('kørsel').hidden = garage;
+  $('dialog').hidden = true;
+  $('kørsel').inert = false;
+  $('tip').hidden = false;
+  $('bobler').replaceChildren();
+  dialog = null;
+  rester = 0;
+  sidsteBrag = sidsteFremgang = 0;
+  bumpTid = null;
+  bedsteProcent = 0;
+  tændte = 0;
+  sidsteBoble = -1;
+  for (let i = 1; i <= 3; i++) $(`s${i}`).classList.remove('tændt');
+  opdaterTal();
+  opdaterFri();
+}
+
 function opdaterTal() {
   const s = sim.status();
-  $('procent').textContent = s.procent;
-  $('kaede').textContent = s.kæde;
-  $('fart').textContent = s.fart;
-  $('tank').value = s.brændstof;
+  $('fyld').style.width = `${Math.min(100, s.procent)}%`;
+  $('tank').style.strokeDashoffset = String(289 * (1 - s.brændstof));
+  $('boost').classList.toggle('tom-tank', s.brændstof <= 0);
+  const n = stjerneTal(bane, s.procent);
+  while (tændte < n) {
+    $(`s${++tændte}`).classList.add('tændt');
+    lyd.ding(tændte - 1);
+  }
   return s;
 }
 
-// Resultatet kommer efter kædereaktionen, så de sidste etager får tid til at falde.
+// ---------- Resultat og pause ----------
+function visDialog(type, n = 0, procent = 0) {
+  dialog = type;
+  slip();
+  // Knapperne bag dialogen kan ikke nås, mens den er åben.
+  $('kørsel').inert = true;
+  $('dialog').hidden = false;
+  $('pausevalg').hidden = type !== 'pause';
+  $('stjerner').replaceChildren(...(type === 'pause' ? [] : [0, 1, 2].map(i => {
+    const s = document.createElement('span');
+    s.textContent = '★';
+    s.style.setProperty('--i', i);
+    if (i < n) s.classList.add('tændt');
+    return s;
+  })));
+  $('dialogTitel').textContent = type === 'pause' ? 'Pause' : TITLER[n];
+  $('dialogTal').textContent = type === 'pause' ? '' : `${procent} % væltet`;
+  $('fortsæt').setAttribute('aria-label', type === 'pause' ? 'Fortsæt' : 'Næste bane');
+  $('igen').setAttribute('aria-label', type === 'pause' ? 'Start forfra' : 'Prøv igen');
+  $('fortsæt').focus({ preventScroll: true });
+}
+
 function resultat() {
   if (tilstand !== 'kør') return;
-  const s = opdaterTal(), vundet = s.procent >= BANER[bane].mål;
-  bedste[bane] = Math.max(bedste[bane] || 0, s.procent);
+  const s = opdaterTal(), n = stjerneTal(bane, s.procent);
+  bedste[bane] = Math.max(bedste[bane], n);
   gem();
   tilstand = 'resultat';
-  slip();
-  $('dialog').hidden = false;
-  $('resultatunder').textContent = vundet ? 'MISSION KLARET' : 'EN NY IDÉ TIL BILEN?';
-  $('resultattitel').textContent = vundet ? 'Sikke et brag!' : 'Byg. Brag. Prøv igen.';
-  $('resultattekst').textContent = vundet ? 'Din konstruktion satte gang i balladen. Kan en anden last lave en endnu større kæde?' : 'Prøv en tungere front, en anden last eller mere fart før sammenstødet.';
-  $('resultattal').innerHTML = `<div><b>${s.procent}%</b><span>af huset væltet</span></div><div><b>${s.kæde}</b><span>eksplosioner i kæden</span></div>`;
-  $('fortsæt').textContent = 'Samme bil, nyt forsøg →';
-  $('fortsæt').focus();
+  lyd.fanfare(n);
+  visDialog('resultat', n, s.procent);
 }
 
 function pause() {
   if (tilstand === 'pause') {
     tilstand = 'kør';
     $('dialog').hidden = true;
+    $('kørsel').inert = false;
+    dialog = null;
     lyd.pause(false);
     sidsteTid = performance.now();
   } else if (tilstand === 'kør') {
     tilstand = 'pause';
-    slip();
     lyd.pause(true);
-    $('dialog').hidden = false;
-    $('resultatunder').textContent = 'ET LILLE PITSTOP';
-    $('resultattitel').textContent = 'Pause';
-    $('resultattekst').textContent = 'Bilen og kædereaktionen venter på dig.';
-    $('resultattal').replaceChildren();
-    $('fortsæt').textContent = 'Kør videre →';
-    $('fortsæt').focus();
+    visDialog('pause');
   }
 }
 
+// ---------- Tegneseriebobler ----------
+function boble(e) {
+  if (sim.tid - sidsteBoble < .3) return;
+  sidsteBoble = sim.tid;
+  const lag = $('bobler');
+  if (lag.childElementCount >= 4) lag.firstElementChild.remove();
+  const s = grafik.tilSkærm({ x: e.p.x + (e.type === 'bump' ? 3.6 : 0), y: e.p.y + 1.2 });
+  if (!s.synlig) return;
+  const b = document.createElement('div'), ord = document.createElement('span'), liste = ORD[e.type === 'bump' ? 'bump' : 'brag'];
+  b.className = 'boble';
+  b.style.left = `${Math.max(90, Math.min(innerWidth - 90, s.x))}px`;
+  b.style.top = `${Math.max(150, Math.min(innerHeight - 170, s.y))}px`;
+  b.style.setProperty('--farve', e.type === 'bump' ? '#ffd23f' : LASTFARVER[e.slags] || '#ff8a1f');
+  ord.textContent = liste[Math.floor(Math.random() * liste.length)];
+  ord.style.setProperty('--drej', `${Math.round(Math.random() * 20 - 10)}deg`);
+  b.append(ord);
+  b.addEventListener('animationend', () => b.remove());
+  lag.append(b);
+}
+
+// ---------- Styring ----------
 // Pointer capture gør, at en pedal slipper korrekt, selv når fingeren glider væk.
-for (const id of ['gas', 'bak', 'boost']) {
+for (const id of ['gas', 'bak', 'boost', 'dyt']) {
   const b = $(id);
   b.addEventListener('pointerdown', e => {
     if (tilstand !== 'kør') return;
@@ -198,6 +266,7 @@ for (const id of ['gas', 'bak', 'boost']) {
     fingre.set(e.pointerId, id);
     b.classList.add('trykket');
     lyd.start();
+    if (id === 'dyt') lyd.dyt();
   });
   const slut = e => {
     fingre.delete(e.pointerId);
@@ -206,17 +275,20 @@ for (const id of ['gas', 'bak', 'boost']) {
   b.addEventListener('pointerup', slut);
   b.addEventListener('pointercancel', slut);
   b.addEventListener('lostpointercapture', slut);
+  b.addEventListener('contextmenu', e => e.preventDefault());
 }
 
 document.addEventListener('keydown', e => {
-  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
   if (['ArrowRight', 'ArrowLeft', 'KeyD', 'KeyA', 'Space'].includes(e.code) && tilstand === 'kør') {
     e.preventDefault();
     taster.add(e.code);
     lyd.start();
   }
-  if (!e.repeat && e.code === 'KeyR' && tilstand === 'kør') nulstil();
-  if (!e.repeat && (e.code === 'Escape' || e.code === 'KeyP')) pause();
+  if (e.repeat) return;
+  if (e.code === 'KeyH' && tilstand === 'kør') { lyd.start(); lyd.dyt(); }
+  if (e.code === 'KeyR' && (tilstand === 'kør' || tilstand === 'resultat')) nulstil();
+  if (e.code === 'Escape' || e.code === 'KeyP') pause();
+  if (e.code === 'Enter' && tilstand === 'garage' && document.activeElement === document.body) start();
 });
 document.addEventListener('keyup', e => taster.delete(e.code));
 window.addEventListener('blur', () => { slip(); if (tilstand === 'kør') pause(); });
@@ -227,7 +299,7 @@ document.addEventListener('visibilitychange', () => {
     lyd.pause(true);
   } else if (tilstand !== 'pause') lyd.pause(false);
 });
-window.addEventListener('resize', () => grafik.størrelse());
+window.addEventListener('resize', () => { grafik.størrelse(); opdaterFri(); });
 $('scene').addEventListener('webglcontextlost', e => {
   e.preventDefault();
   if (tilstand === 'kør') pause();
@@ -235,36 +307,47 @@ $('scene').addEventListener('webglcontextlost', e => {
   $('status').hidden = false;
 });
 
-$('start').addEventListener('click', () => { lyd.start(); nulstil(); });
-$('igen').addEventListener('click', () => nulstil());
-$('tilbage').addEventListener('click', () => { visBane(); nulstil(true); });
-$('byg-om').addEventListener('click', () => { lyd.pause(false); visBane(); nulstil(true); });
+// Garagens bil er allerede bygget og i ro, så KØR starter med det samme.
+function start() {
+  if (!sim || travl) return;
+  lyd.start();
+  lyd.dyt();
+  vis('kør');
+}
+
+$('start').addEventListener('click', start);
+$('tilbage').addEventListener('click', () => { lyd.klik(); visBaner(); nulstil(true); });
+$('pause').addEventListener('click', pause);
+$('igen').addEventListener('click', () => { lyd.start(); lyd.pause(false); nulstil(); });
+$('tilVærksted').addEventListener('click', () => { lyd.pause(false); visBaner(); nulstil(true); });
 $('fortsæt').addEventListener('click', () => {
   lyd.start();
-  if (tilstand === 'pause') pause();
-  else nulstil();
+  if (dialog === 'pause') return pause();
+  bane = (bane + 1) % BANER.length;
+  gem();
+  visBaner();
+  nulstil();
 });
-$('pause').addEventListener('click', pause);
-$('overblik').addEventListener('click', () => {
-  grafik.overblik = !grafik.overblik;
-  $('overblik').setAttribute('aria-pressed', String(grafik.overblik));
-});
-$('lyd').addEventListener('click', () => {
+for (const id of ['lyd', 'lydP']) $(id).addEventListener('click', () => {
   lyd.start();
   lyd.vælg(!lyd.tændt);
   if (tilstand === 'pause') lyd.pause(true);
   komfort(); gem();
 });
-$('rolig').addEventListener('click', () => {
+for (const id of ['rolig', 'roligP']) $(id).addEventListener('click', () => {
   grafik.effekter.rolig = !grafik.effekter.rolig;
   komfort(); gem();
 });
 function komfort() {
-  $('lyd').textContent = lyd.tændt ? 'Lyd til' : 'Lyd fra';
-  $('lyd').setAttribute('aria-pressed', String(lyd.tændt));
-  $('rolig').setAttribute('aria-pressed', String(grafik.effekter.rolig));
+  for (const id of ['lyd', 'lydP']) {
+    $(id).textContent = lyd.tændt ? '🔊' : '🔇';
+    $(id).setAttribute('aria-pressed', String(lyd.tændt));
+  }
+  for (const id of ['rolig', 'roligP']) $(id).setAttribute('aria-pressed', String(grafik.effekter.rolig));
+  document.body.classList.toggle('rolig', grafik.effekter.rolig);
 }
 
+// ---------- Hovedløkken ----------
 // Fast fysiktrin giver samme køreegenskaber ved 30 og 60 billeder i sekundet.
 function tegn(tid) {
   requestAnimationFrame(tegn);
@@ -277,6 +360,7 @@ function tegn(tid) {
   const gas = Number(frem) - Number(bak);
   const boost = (taster.has('Space') || værdier.includes('boost')) && sim.brændstof > 0;
   if (tilstand === 'kør') {
+    if (gas) $('tip').hidden = true;
     rester = Math.min(rester + dt, TRIN * 5);
     while (rester >= TRIN) {
       sim.trin({ gas, boost });
@@ -285,25 +369,38 @@ function tegn(tid) {
         lyd.hændelse(e);
         if (e.type === 'brag') {
           sidsteBrag = sim.tid;
+          bumpTid ??= sim.tid;
           grafik.bragFokus = { ...e.p, tid: sim.tid };
-          $('kædebesked').textContent = `${e.kæde} BRAG · ${e.dybde > 1 ? 'KÆDEREAKTION!' : 'SÅDAN!'}`;
+          boble(e);
+        } else if (e.type === 'bump') {
+          bumpTid ??= sim.tid;
+          boble(e);
         }
       }
       rester -= TRIN;
     }
     const s = opdaterTal(), p = sim.chassis.krop.translation();
-    if (s.procent >= BANER[bane].mål) målTid ??= sim.tid;
-    if ((målTid !== null && sim.tid - Math.max(målTid, sidsteBrag) > 7) ||
-      (sim.kørt && sim.tid > 5 && (p.y < -12 || p.x > 112 || p.x < -16)) ||
-      (sim.kørt && sim.tid > 55)) resultat();
+    // Kun et tydeligt hop i væltede dele tæller som nyt; små skub i murbrokkerne gør ikke.
+    if (s.procent >= bedsteProcent + 3 || (s.procent === 100 && bedsteProcent < 100)) {
+      bedsteProcent = s.procent;
+      sidsteFremgang = sim.tid;
+      bumpTid ??= sim.tid;
+    }
+    // Resultatet kommer, når alt er faldet til ro, og senest 12 sekunder efter sammenstødet.
+    if (bumpTid !== null) {
+      const ro = sim.tid - Math.max(sidsteBrag, sidsteFremgang, bumpTid), efter = sim.tid - bumpTid;
+      const lunter = sim.dele.some(d => d.type === 'celle' && d.aktivering !== null && !d.sprængt);
+      if ((ro > 3.2 && !lunter) || (efter > 12 && !lunter) || efter > 18) resultat();
+    }
+    if (sim.kørt && sim.tid > 3 && (p.y < -12 || p.x > 112 || p.x < -16)) resultat();
   }
   lyd.kameraX = grafik.kameraX;
   lyd.kør(sim.status().fart, gas, boost, tilstand === 'kør');
-  if (tilstand !== 'pause') grafik.opdater(dt, tilstand === 'garage', boost && tilstand === 'kør');
+  if (tilstand !== 'pause') grafik.opdater(dt, tilstand, { boost: boost && tilstand === 'kør', gas: tilstand === 'kør' ? gas : 0 });
 }
 
 visDele();
-visBane();
+visBaner();
 komfort();
 await nulstil(true);
 requestAnimationFrame(tegn);

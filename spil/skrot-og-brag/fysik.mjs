@@ -6,10 +6,22 @@ const V = (x = 0, y = 0, z = 0) => ({ x, y, z });
 const Q = v => ({ x: 0, y: 0, z: Math.sin(v / 2), w: Math.cos(v / 2) });
 export const TRIN = 1 / 60;
 
+// Tag, rampe og skovl er trekanter i køreplanet. Hjørnerne gives om tyngdepunktet,
+// så grafikken kan tegne præcis den samme form.
+export function trekant(type, slags, b, h) {
+  let p = null;
+  if (type === 'tag') p = [[-b / 2, -h / 2], [b / 2, -h / 2], [0, h / 2]];
+  else if (type === 'rampe') p = [[-b / 2, -h / 2], [b / 2, -h / 2], [b / 2, h / 2]];
+  else if (type === 'front' && slags === 'plov') p = [[-b / 2, -h / 2], [-b / 2, h / 2], [b / 2, -h / 2]];
+  if (!p) return null;
+  const midt = [(p[0][0] + p[1][0] + p[2][0]) / 3, (p[0][1] + p[1][1] + p[2][1]) / 3];
+  return { midt, punkter: p.map(([x, y]) => [x - midt[0], y - midt[1]]) };
+}
+
 export async function opretFysik(bil, bane = 0) {
   klar ??= R.init();
   await klar;
-  return new Forsøg(normaliser(bil), Math.max(0, Math.min(3, bane | 0)));
+  return new Forsøg(normaliser(bil), Math.max(0, Math.min(BANER.length - 1, bane | 0)));
 }
 
 // Banen har rigtig 3D-kollision, men bilen holdes i køreplanet for enkel touchstyring.
@@ -40,24 +52,33 @@ class Forsøg {
   // Få standardformer holder både grafik og fysik billige på tablets.
   blok(x, y, b, h, type, muligheder = {}) {
     const fast = !!muligheder.fast;
+    // Skrå dele er trekanter. Kroppen lægges i trekantens tyngdepunkt, ellers løber fysikken løbsk.
+    const hjørner = trekant(type, muligheder.slags, b, h);
+    if (hjørner) {
+      x += hjørner.midt[0];
+      y += hjørner.midt[1];
+    }
     const beskrivelse = (fast ? R.RigidBodyDesc.fixed() : R.RigidBodyDesc.dynamic())
       .setTranslation(x, y, 0).setRotation(Q(muligheder.vinkel || 0));
-    if (!fast) beskrivelse.enabledTranslations(true, true, false).enabledRotations(false, false, true)
+    if (!fast) beskrivelse.enabledTranslations(true, true, false)
       .setLinearDamping(.08).setAngularDamping(.15).setCcdEnabled(true);
     const krop = this.verden.createRigidBody(beskrivelse);
     let form = muligheder.radius ? R.ColliderDesc.ball(muligheder.radius) : R.ColliderDesc.cuboid(b / 2, h / 2, (muligheder.dybde || 2.2) / 2);
-    if (muligheder.slags === 'plov') form = R.ColliderDesc.convexHull(new Float32Array([
-      -b / 2, -h / 2, -1.25, -b / 2, h / 2, -1.25, b / 2, -h / 2, -1.25,
-      -b / 2, -h / 2, 1.25, -b / 2, h / 2, 1.25, b / 2, -h / 2, 1.25,
-    ]));
-    form.setMass(muligheder.masse || 1).setFriction(muligheder.greb ?? .65)
+    const masse = muligheder.masse || 1;
+    if (hjørner) {
+      const z = (muligheder.dybde || 2.5) / 2;
+      form = R.ColliderDesc.convexHull(new Float32Array(hjørner.punkter.flatMap(([px, py]) => [px, py, -z, px, py, z])));
+      // En skæv trekant får en drejet inerti, som låste akser ikke tåler. Brug en lige kasses inerti.
+      form.setMassProperties(masse, V(), V(masse / 12 * (h * h + 4 * z * z), masse / 12 * (b * b + 4 * z * z), masse / 12 * (b * b + h * h)), { x: 0, y: 0, z: 0, w: 1 });
+    } else form.setMass(masse);
+    form.setFriction(muligheder.greb ?? .65)
       .setRestitution(muligheder.hop || .04)
       .setActiveEvents(R.ActiveEvents.CONTACT_FORCE_EVENTS).setContactForceEventThreshold(35);
     const collider = this.verden.createCollider(form, krop);
-    const d = { id: this.næsteId++, krop, collider, x, y, b, h, type, fast, ...muligheder, ramt: false, aktivering: null, sprængt: false, dybde: 0 };
+    const d = { id: this.næsteId++, krop, collider, x, y, b, h, type, fast, ...muligheder, trekant: hjørner?.punkter, ramt: false, aktivering: null, sprængt: false, dybde: 0 };
     this.dele.push(d);
     this.kort.set(collider.handle, d);
-    if (type === 'mur' || type === 'bjælke') this.totalBygning++;
+    if (d.bygning) this.totalBygning++;
     return d;
   }
 
@@ -71,32 +92,47 @@ class Forsøg {
     return baand;
   }
 
+  // Banen er en lang vej med ét mål for enden. Bilen kører direkte ind i det.
   bygBane() {
     this.blok(48, -1, 125, 2, 'jord', { fast: true, dybde: 16 });
     this.blok(-7, 4, 2, 10, 'jord', { fast: true });
     this.blok(106, 4, 2, 10, 'jord', { fast: true });
-    if (this.bane.rampe) this.blok(18, 1.3, 11, .65, 'rampe', { fast: true, vinkel: .27, dybde: 4 });
-    for (let i = 0; i < this.bane.domino; i++) {
-      this.blok(23 + i * 2.35, 2.1, .55, 4.2, 'domino', { masse: 2.4, farve: i % 2 ? '#61dad4' : '#f5ca51' });
+    const id = this.bane.id;
+    if (id === 'hus') {
+      this.hus(30, 2, { bredde: 6.4, udseende: 'hus', celler: ['benzin'] });
+    } else if (id === 'bunke') {
+      this.bunke(31, 6);
+    } else if (id === 'tårn') {
+      this.hus(32, 12, { bredde: 6, udseende: 'regnbue', celler: ['tnt', null, null, 'gas', null, null, 'benzin', null, null, 'blaa'] });
+    } else if (id === 'slot') {
+      this.hus(29, 5, { bredde: 3.4, udseende: 'slot', celler: ['gas'] });
+      this.murværk(31.1, 7.8, 4);
+      this.hus(40.7, 5, { bredde: 3.4, udseende: 'slot', celler: ['benzin'], husnr: 1 });
+    } else {
+      this.blok(17, 1.4, 10, 2.8, 'rampe', { fast: true, dybde: 4 });
+      this.hus(37, 12, { bredde: 6, udseende: 'hus', celler: ['tnt', null, null, 'gas', null, null, 'lilla'] });
+      this.hus(48, 5, { bredde: 5.2, udseende: 'hus', celler: ['benzin'], husnr: 1 });
     }
-    const slut = 23 + this.bane.domino * 2.35;
-    this.celle(slut, 1, this.bane.type);
-    this.tårn(slut + 5, this.bane.højde);
-    this.celle(slut + 7, 1, 'tnt');
-    this.celle(slut + 10, 1, this.baneNr === 3 ? 'blaa' : 'gas');
-    if (this.baneNr > 0) {
-      this.tårn(slut + 18, Math.max(6, this.bane.højde - 4));
-      this.celle(slut + 17, 4.8, this.baneNr === 3 ? 'lilla' : 'benzin');
-    }
+    // Kameraet bruger målets bredde og højde til at vise hele sammenstyrtningen.
+    const dele = this.dele.filter(d => d.bygning);
+    this.mål = {
+      fra: Math.min(...dele.map(d => d.x - d.b / 2)),
+      til: Math.max(...dele.map(d => d.x + d.b / 2)),
+      højde: Math.max(...dele.map(d => d.y + d.h / 2)),
+    };
   }
 
-  tårn(x, etager) {
-    let forrige = [];
+  // Et hus er etager af to vægge og et gulv, holdt sammen af brudbare fuger, og et tag øverst.
+  hus(x, etager, { bredde = 6, udseende = 'hus', celler = [], husnr = 0 } = {}) {
+    let forrige = [], gulv = null;
+    const kant = bredde / 2 - .31;
+    const materiale = udseende === 'slot' ? 'beton' : 'brokker';
     for (let etage = 0; etage < etager; etage++) {
-      const y = .86 + etage * 1.72;
-      const venstre = this.blok(x - 2.65, y, .62, 1.5, 'mur', { masse: 1.6, etage });
-      const højre = this.blok(x + 2.65, y, .62, 1.5, 'mur', { masse: 1.6, etage });
-      const gulv = this.blok(x, y + .84, 5.9, .18, 'bjælke', { masse: 2.6, etage });
+      const y = .76 + etage * 1.72;
+      const fælles = { masse: 1.6, etage, udseende, husnr, bygning: true, materiale };
+      const venstre = this.blok(x - kant, y, .62, 1.5, 'mur', fælles);
+      const højre = this.blok(x + kant, y, .62, 1.5, 'mur', fælles);
+      gulv = this.blok(x, y + .84, bredde, .18, 'bjælke', { ...fælles, masse: 2.6 });
       this.bind(venstre, gulv, 110);
       this.bind(højre, gulv, 110);
       if (forrige.length) {
@@ -104,7 +140,42 @@ class Forsøg {
         this.bind(forrige[1], højre, 90);
       }
       forrige = [venstre, højre];
-      if (etage > 0 && etage % 3 === 1) this.celle(x, y + .3, ['benzin', 'gas', 'blaa', 'lilla'][etage % 4]);
+      if (celler[etage]) this.celle(x, etage ? y - .05 : .74, celler[etage]);
+    }
+    const højde = udseende === 'slot' ? 3.2 : 2.3;
+    const tag = this.blok(x, gulv.y + .09 + højde / 2, bredde + .7, højde, 'tag',
+      { masse: 2.4, udseende, husnr, etage: etager, bygning: true, materiale });
+    this.bind(gulv, tag, 110);
+  }
+
+  // Klodsbjerget er løse legeklodser i en pyramide med en tønde på toppen.
+  bunke(x, rækker) {
+    const s = 1.45;
+    for (let r = 0; r < rækker; r++) {
+      const antal = rækker - r;
+      for (let i = 0; i < antal; i++) {
+        this.blok(x + (i - (antal - 1) / 2) * (s + .03), s / 2 + .01 + r * (s + .01), s, s, 'klods',
+          { masse: 1.4, udseende: 'klods', farvenr: (r * 3 + i) % 5, bygning: true, materiale: 'trae_knaek' });
+      }
+    }
+    this.celle(x, rækker * (s + .01) + .74, 'gas');
+  }
+
+  // Slotsmuren er løse sten i forbandt, så den kan skubbes og vælte ned i stykker.
+  murværk(fra, bredde, rækker) {
+    const sten = 1.3, højde = .86;
+    for (let r = 0; r < rækker; r++) {
+      const forskudt = r % 2 ? sten / 2 : 0;
+      for (let x = fra - forskudt; x < fra + bredde - .05; x += sten + .02) {
+        const venstre = Math.max(fra, x), højre = Math.min(fra + bredde, x + sten);
+        if (højre - venstre < .3) continue;
+        this.blok((venstre + højre) / 2, højde / 2 + .01 + r * (højde + .01), højre - venstre, højde, 'klods',
+          { masse: 1.2, udseende: 'sten', bygning: true, materiale: 'beton' });
+      }
+    }
+    // Takkerne øverst på muren.
+    for (let x = fra + .45; x < fra + bredde - .3; x += 1.6) {
+      this.blok(x, rækker * (højde + .01) + .36, .75, .7, 'klods', { masse: .6, udseende: 'sten', bygning: true, materiale: 'beton' });
     }
   }
 
@@ -181,7 +252,7 @@ class Forsøg {
       const retning = slags === 'lilla' ? -.65 : 1;
       d.krop.applyImpulse(V(retning * dx / Math.max(afstand, .3) * kraft, (retning * dy / Math.max(afstand, .3) + .6) * kraft), true);
       if (d.type === 'celle') this.antænd(d, dybde + 1, slags === 'benzin' ? .8 : .48 + afstand * .065);
-      if (d.type === 'mur' || d.type === 'bjælke') d.ramt = true;
+      if (d.bygning) d.ramt = true;
     }
   }
 
@@ -194,15 +265,27 @@ class Forsøg {
     let kontakt = false;
     for (const h of this.hjul) this.verden.contactPairsWith(h.collider, () => { kontakt = true; });
     bil.resetForces(true);
+    bil.resetTorques(true);
+    // Motoren trækker nede ved hjulene, så bilen kører fremad i stedet for at stejle.
+    const q = bil.rotation(), p = bil.translation();
+    const vinkel = Math.atan2(Math.sin(2 * Math.atan2(q.z, q.w)), Math.cos(2 * Math.atan2(q.z, q.w)));
+    const ned = this.hjul[0].radius + .92;
+    const hjulpunkt = V(p.x + Math.sin(vinkel) * ned, p.y - Math.cos(vinkel) * ned);
     if (kontakt && (Math.abs(bil.linvel().x) < motor.fart * .72 || gas * bil.linvel().x < 0)) {
-      bil.addForce(V(gas * motor.kraft * 2.8, 0), true);
+      bil.addForceAtPoint(V(gas * motor.kraft * 2.8, 0), hjulpunkt, true);
     }
     if (boost && this.brændstof > 0 && this.kørt) {
       this.brændstof = Math.max(0, this.brændstof - TRIN / 3);
-      const q = bil.rotation(), vinkel = 2 * Math.atan2(q.z, q.w);
-      bil.applyImpulse(V(Math.cos(vinkel) * (this.bil.motor === 'raket' ? 2.5 : 1.6), Math.sin(vinkel) * 1.8 + .16), true);
+      bil.applyImpulseAtPoint(V(Math.cos(vinkel) * (this.bil.motor === 'raket' ? 2.5 : 1.6), Math.sin(vinkel) * 1.8 + .16),
+        V(p.x + Math.sin(vinkel) * .92, p.y - Math.cos(vinkel) * .92), true);
+    }
+    // Som et legetøj retter bilen sig selv op, når den tipper mere end 30 grader.
+    if (!this.chassis.sprængt) {
+      const over = Math.abs(vinkel) > .52 ? vinkel - Math.sign(vinkel) * .52 : 0;
+      bil.addTorque(V(0, 0, (-over * 14 - bil.angvel().z * (over ? 3 : .4)) * 120), true);
     }
     this.verden.step(this.kø);
+    this.iPlanet();
     this.kø.drainContactForceEvents(e => {
       const a = this.kort.get(e.collider1()), b = this.kort.get(e.collider2());
       if (!a || !b || (a.fast && b.fast)) return;
@@ -213,19 +296,22 @@ class Forsøg {
       for (const d of [a, b]) {
         this.knæk(d, anslag);
         if (d.type === 'celle' && (impuls > 8 || fart > 6)) this.antænd(d);
-        if (anslag > 80 && (d.type === 'mur' || d.type === 'bjælke')) d.ramt = true;
+        if (anslag > 80 && d.bygning) d.ramt = true;
       }
-      // Lasten registrerer også chassisets slag mod en bygning eller domino.
+      // Lasten registrerer også chassisets slag mod en bygning eller en tønde.
       const biltyper = ['bil', 'front', 'hjul'];
-      const måltyper = ['mur', 'bjælke', 'domino', 'celle'];
-      if (((biltyper.includes(a.type) && måltyper.includes(b.type)) ||
-        (biltyper.includes(b.type) && måltyper.includes(a.type))) && anslag > 100) {
-        for (const c of this.last) this.antænd(c);
+      const mål = d => d.bygning || d.type === 'celle';
+      const bilRammer = (biltyper.includes(a.type) && mål(b)) || (biltyper.includes(b.type) && mål(a));
+      if (bilRammer && anslag > 100) for (const c of this.last) this.antænd(c);
+      // Første rigtige sammenstød får sit eget lille BAM i grafikken.
+      if (bilRammer && anslag > 40 && !this.bumpet) {
+        this.bumpet = true;
+        this.hændelser.push({ type: 'bump', p: { ...this.chassis.krop.translation() } });
       }
       const nøgle = [a.id, b.id].sort((x, y) => x - y).join('/');
       if (impuls > 3 && this.tid - (this.sidsteSlag.get(nøgle) || 0) > .2) {
         this.sidsteSlag.set(nøgle, this.tid);
-        this.hændelser.push({ type: 'slag', p: { ...a.krop.translation() }, styrke: Math.min(1, impuls / 60), materiale: a.type === 'domino' || b.type === 'domino' ? 'metal' : 'beton' });
+        this.hændelser.push({ type: 'slag', p: { ...a.krop.translation() }, styrke: Math.min(1, impuls / 60), materiale: a.materiale || b.materiale || 'metal' });
       }
     });
     for (const c of this.dele) if (c.aktivering !== null && !c.sprængt && this.tid >= c.aktivering) this.spræng(c);
@@ -236,6 +322,19 @@ class Forsøg {
       if (fart > 48) d.krop.setLinvel(V(v.x * 48 / fart, v.y * 48 / fart), true);
       const a = d.krop.angvel();
       if (Math.abs(a.z) > 14) d.krop.setAngvel(V(0, 0, Math.sign(a.z) * 14), true);
+    }
+  }
+
+  // Kroppene må kun dreje om z-aksen. Rapiers låste drejeakser tåler ikke fuger, så det rettes efter hvert trin.
+  iPlanet() {
+    for (const d of this.dele) {
+      if (d.fast || d.lokal || d.sprængt) continue;
+      const k = d.krop, q = k.rotation(), w = k.angvel();
+      if (Math.abs(q.x) + Math.abs(q.y) > 1e-7) {
+        const n = Math.hypot(q.z, q.w) || 1;
+        k.setRotation({ x: 0, y: 0, z: q.z / n, w: q.w / n }, false);
+      }
+      if (Math.abs(w.x) + Math.abs(w.y) > 1e-7) k.setAngvel({ x: 0, y: 0, z: w.z }, false);
     }
   }
 
@@ -264,7 +363,7 @@ class Forsøg {
 
   status() {
     let væltet = 0;
-    for (const d of this.dele) if (d.type === 'mur' || d.type === 'bjælke') {
+    for (const d of this.dele) if (d.bygning) {
       const p = d.krop.translation(), q = d.krop.rotation();
       if (Math.hypot(p.x - d.x, p.y - d.y) > 1.2 || Math.abs(q.z) > .2) væltet++;
     }
