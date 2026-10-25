@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: '22'
       - name: Afprøv gåder, bilfysik, grotter, kædereaktioner og gemninger
-        run: node --test spil/det-sidste-lys/*.test.mjs spil/skrotstorm/tests.mjs spil/krystaljaegerne/*.test.mjs spil/brudpunkt/*.test.mjs
+        run: node --test spil/det-sidste-lys/*.test.mjs spil/skrotstorm/tests.mjs spil/krystaljaegerne/*.test.mjs spil/brudpunkt/*.test.mjs spil/skrot-og-brag/fysik.test.mjs
       - name: Afprøv generator, protokol og simulering
         working-directory: server
         run: deno task test
