@@ -11,7 +11,7 @@ og husene står, hvor de står i virkeligheden. Gitteret er drejet 21°, så lad
 python3 bygdata.py   # skriver spil/broekraft/morellgaarden-kort.js
 ```
 
-Kræver Python 3 med Pillow. `bygdata.py` gør dette:
+Kræver Python 3 med Pillow. Fælles kode ligger i `kortdata/geo.py` og `kortdata/fliser.py`. `bygdata.py` gør dette:
 
 - **Terræn:** Kartverkets terrænmodel (DTM 1 m), afrundet til hele meter over 34 m.o.h.
 - **Bygninger:** Omridset fra OpenStreetMap. Højden af vægge og tagryg måles i Kartverkets overflademodel (DOM).

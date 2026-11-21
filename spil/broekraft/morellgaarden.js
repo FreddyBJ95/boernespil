@@ -5,26 +5,16 @@
 // Opskriften virker i alle størrelser: en lille verden viser midten af gården, en stor verden får havet rundt om.
 
 import { N, OVERFLADER, HØJDER, OVERFLADE, TRÆER, BYGNINGER } from "./morellgaarden-kort.js";
+import { pakUd, pakHøjderUd } from "./rigtige-steder.js";
 
 const KANT = 14;                                   // så mange blokke skråner landet ned mod stranden ved kanten
 
-// Pak (antal, værdi)-par ud fra base64
-function pakUd(tekst) {
-  const s = atob(tekst), ud = new Uint8Array(N * N);
-  for (let k = 0, i = 0; k < s.length; k += 2) { const n = s.charCodeAt(k); ud.fill(s.charCodeAt(k + 1), i, i + n); i += n; }
-  return ud;
-}
-// Kortet pakkes ud første gang, verdenen laves (højderne er gemt som forskel til feltet til venstre)
+// Kortet pakkes ud første gang, verdenen laves
 let kort = null;
 function hentKort() {
   if (kort) return kort;
-  const forskel = pakUd(HØJDER), højde = new Uint8Array(N * N);
-  let maks = 0;
-  for (let z = 0; z < N; z++) {
-    let h = 0;
-    for (let x = 0; x < N; x++) { h = (h + forskel[x + z * N]) & 255; højde[x + z * N] = h; if (h > maks) maks = h; }
-  }
-  return (kort = { højde, flade: pakUd(OVERFLADE), maks });
+  const { højde, maks } = pakHøjderUd(HØJDER, N);
+  return (kort = { højde, flade: pakUd(OVERFLADE, N * N), maks });
 }
 
 export function bygMorellgården(a) {

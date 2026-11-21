@@ -26,5 +26,5 @@ done
 head -c 1 data/osm.json | grep -q "{" || { echo "Kunne ikke hente OSM-data"; exit 1; }
 
 # Luftfoto (kun til at vælge farver — kommer ikke med i spillet)
-python3 fliser.py 18 data
+python3 ../fliser.py 59.00951335016346 9.905957938512747 330 18 data
 echo "Færdig. Kør nu: python3 bygdata.py"

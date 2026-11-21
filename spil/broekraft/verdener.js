@@ -15,6 +15,7 @@
 //  vand:    "chokolade" = floderne og havet er af chokolade
 //  vulkan:  (BX, BZ) => [x, z] — hvor vulkanen står (den ryger og går af og til i udbrud i spil.js)
 //  atomtårne: (BX, BZ) => [[x, z], …] — køletårne, der damper · atommål: (BX, BZ) => [x, z] — hvor missilerne lander
+//  skorstene: (BX, BZ) => [[x, z], …] — fabriksskorstene, der ryger · startYaw: hvilken vej man kigger, når man starter
 //  tornado: tornadoer drøner rundt af sig selv (tornado.js)
 //  enhjørninger: føl, der er løbet væk, og regnbuespor, når man rider (enhjoerninger.js)
 //  stald:   (BX, BZ) => [x, z] — hvor stalden står, som føllene skal hjem til · sne: "glimmer" = glimmer i luften
@@ -25,6 +26,7 @@
 
 import { lavLand, MIDT } from "./uendelig.js";
 import { bygMorellgården } from "./morellgaarden.js";
+import { bygHerøya, heroeyaSkorstene } from "./heroeya.js";
 
 // Hvor vulkanen i Dinodalen står (bruges både af opskriften og af spil.js)
 const dinoVulkan = (BX, BZ) => [Math.min(BX - 22, BX / 2 + 30), Math.max(22, BZ / 2 - 28)];
@@ -1835,6 +1837,22 @@ export const VERDENER = [
     vis: ["Ladetræ", "Kirsebærblade", "Hvidt træ"],
     hent: ["Henter højdekortet fra Kartverket…", "Maler smien rød…", "Planter kirsebærtræerne…", "Lukker hestene ud på marken…"],
     generer(a) { bygMorellgården(a); },
+  },
+
+  {
+    // Et rigtigt sted: Herøya industripark i Porsgrunn, bygget efter Kartverkets højdekort og overflademodel (heroeya.js)
+    id: "heroeya", navn: "Herøya", ikon: "🏭",
+    tekst: "Den store industripark i Porsgrunn med fabrikshaller, tanke, kajer, skibe og en skorsten på 101 meter — bygget efter rigtige kort. Kan du finde den store hvide kugle?",
+    himmel: ["#6aa6e0", "#e6eef5"], tåge: [44, 120], hav: "#3a74b0", sol: "#fff6b0", skyer: "#ffffff", skyHøjde: 66,
+    lys: ["#ffffff", "#7a7a72", 2.2, 1.4], stemning: "glad", tyngde: 28,
+    størrelse: [384, 64, 384],                                   // 1 blok = 4,5 meter vandret og 2 meter lodret
+    startYaw: -0.15,                                             // man starter med skorstenen og den hvide kugle forude
+    skorstene: heroeyaSkorstene,                                 // røg fra skorstenen (spil.js)
+    dyr: ["robot", "robot", "and", "kat"], antal: 10,
+    hotbar: ["Beton", "Stålplade", "Mursten", "Glas", "Asfalt", "Skinner", "Advarselsstriber", "v:vand", "æg:robot"],
+    vis: ["Stålplade", "Beton", "Advarselsstriber"],
+    hent: ["Henter højdekortet fra Kartverket…", "Bygger fabrikshallerne…", "Fylder tankene…", "Tænder skorstenen…"],
+    generer(a) { bygHerøya(a); },
   },
 
   {
