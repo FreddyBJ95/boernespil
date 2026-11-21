@@ -10,6 +10,9 @@ Broekraft Server lader 1–8 børn bygge i samme Broekraft-verden på familiens 
   og den første spiller vælger banen. Når værten går, overtager den, der kom ind som den næste.
 - Spillerummene sender positioner, skud og træf videre mellem deltagere i samme spil og rum.
   Rummene findes kun, mens nogen er tilsluttet; personnavne og spilbeskeder gemmes ikke på disken.
+- 🍒 Ny Brøkraft-verden: **Morellgården** — gården i Brunlanes, bygget efter Kartverkets højdekort og OpenStreetMaps huse
+  med den røde smie, den lange lade, kirsebærtræer i rækker og en fold til hestene. Kan oprettes i alle fire størrelser.
+- Hvidt træ og grus kan bruges, når I spiller sammen.
 - Brøkrafts verdener og gemninger virker som før. De to spilkanaler deler serverens loft på 128 forbindelser.
 
 **Nyt i 0.5.7**
