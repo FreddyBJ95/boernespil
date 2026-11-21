@@ -3,6 +3,7 @@ import { Simulering } from "../spil/broekraft/simulering.js";
 import { EMOJIER, pakKlump, send } from "./protokol.js";
 import { rensSignal } from "../spil/broekraft/stemmesignal.js";
 import { sendEffekt } from "./effekt.js";
+import { sendTing, sendAlleTing, sendPuf } from "./ting.js";
 
 // Kun navngivne bombetyper kan ændre serverens faste sprængningsradius.
 export const BRAGRADIER = Object.freeze({ mini: 5, atom: 9, kæmpe: 13 });
@@ -61,11 +62,12 @@ export class Rum {
     // Forlad først det gamle rum, når det nye faktisk har en plads klar.
     s.rum?.ud(s);
     const { x, y, z } = this.startsted();
-    Object.assign(s, { rum: this, x: x + 0.5, y, z: z + 0.5, yaw: 0, pitch: 0, rid: null, r: s.r || 6, klumper: new Set() });
+    Object.assign(s, { rum: this, x: x + 0.5, y, z: z + 0.5, yaw: 0, pitch: 0, rid: null, r: s.r || 6, klumper: new Set(), ting: [] });
     this.spillere.set(s.id, s);
     const { id, navn, type, bredde, dybde, højde, frø, ildBreder } = this.meta;
     send(s, { t: "velkommen", dig: s.id, verden: { id, navn, type, bredde, dybde, højde, frø, ildBreder, stemmer: this.meta.stemmer === true, uendelig: this.meta.type === "uendelig" && this.meta.version === "0.2.0" }, spillere: [...this.spillere.values()].map(p => this.spillerInfo(p)) });
     this.alle({ t: "ind", id: s.id, figur: s.figur, version: s.version }, s);
+    sendAlleTing(this, s);                                  // de andres dyr og biler (ting.js)
     this.strøm(s);
     return true;
   }
@@ -143,6 +145,8 @@ export class Rum {
   // Alle ændringer og positioner valideres på serveren.
   besked(s, b, nu = performance.now()) {
     if (b.t === "effekt") { sendEffekt(this, s, b, nu); return; }
+    if (b.t === "ting") { sendTing(this, s, b, nu); return; }                     // dyr fra æg og biler (ting.js)
+    if (b.t === "puf") { sendPuf(this, s, b, nu); return; }
     if (["brag", "fyrværkeri", "fyrkasse"].includes(b.t)) return this.effektBesked(s, b, nu);
     if (b.t === "rtc" || b.t === "taler") { this.stemmeBesked(s, b, nu); return; }
     if (b.t === "udsyn" && Number.isInteger(b.r)) s.r = Math.max(1, Math.min(8, b.r));

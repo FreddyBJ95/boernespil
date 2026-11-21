@@ -50,7 +50,7 @@ Et verdensskift nulstiller ridedyret. Feltet gælder både endelige og uendelige
 | fejl | besked |
 
 Maksimum gælder pr. verden. Afvist verdensskift bevarer den gamle tilslutning.
-Der er ingen navne eller chat i protokollen. Dyrene simuleres lokalt på hver tablet.
+Der er ingen navne eller chat i protokollen. Dyrene simuleres lokalt på hver tablet; dyr fra æg og biler deles som *fælles ting* (se nedenfor).
 `rid` medtages kun, når det er sat. Tabletterne tegner et lokalt ridedyr under spilleren og viser
 kun dyr med `ride: true`; ukendte dyr ignoreres. Gamle 0.1.0-klienter og klienter uden `rid`
 kan fortsat spille som før; protokolversionen ændres ikke.
@@ -136,6 +136,31 @@ siden opstart, ikke en garanti for HTTPS, lyd eller gennemført verdensvalg. Dat
 via det eksisterende loopback-beskyttede kontrol-API.
 
 Kilde til Windows-profiltjek: [Microsofts Get-NetConnectionProfile](https://learn.microsoft.com/en-us/powershell/module/netconnection/get-netconnectionprofile).
+
+## Fælles ting: dyr fra æg og biler (server 0.6.0)
+
+Dyr, et barn klækker af et æg, og biler, det sætter eller kører i, ejes af barnets tablet. Den styrer dem og sender hele
+sin liste et par gange i sekundet; serveren renser listen og sender den til de andre 0.2.0-spillere i samme verden.
+Afsenderen får den ikke tilbage. Udvidelsen ændrer ingen eksisterende beskeder, og protokollen er fortsat 0.2.0.
+
+| Retning | Besked | Betydning |
+|---|---|---|
+| klient → server | `{t:"ting",liste:[{n,s,id,x,y,z,yaw,k?,lys?}]}` | Hele listen over mine fælles ting; en tom liste rydder |
+| server → klient | `{t:"ting",fra,liste}` | En anden spillers liste (renset). Sendes også til en ny spiller lige efter `velkommen` |
+| klient → server | `{t:"puf",til,n}` | Tryk på en andens dyr (fx en zombie, der bliver til konfetti) |
+| server → klient | `{t:"puf",fra,n}` | Kun til ejeren, som selv fjerner dyret, så det forsvinder fra listen hos alle |
+
+Hver ting: `n` heltal 0–65535 (unikt i listen) · `s` er `dyr` eller `bil` · `id` er dyrets eller bilens id som 2–24 små
+ASCII-bogstaver (`zombie`, `brandbil` …) · `x,y,z,yaw` endelige tal, x/z inden for verdenen, y=−8…højde+64, højst 256 blokke
+fra ejeren · `k` kun for biler: fælles nøgle med `a–z`, `0–9`, `:` og `-` (højst 64 tegn) · `lys: true` når sirenen er tændt.
+Ugyldige ting springes over; ekstra felter fjernes. Højst 16 ting pr. liste (ellers afvises listen), højst seks lister pr.
+rullende sekund pr. spiller, og puf højst fire pr. sekund og kun for et dyr, ejeren har i sin seneste liste.
+Serveren gemmer kun den seneste liste i hukommelsen, mens spilleren er i verdenen; intet skrives på disken.
+
+Ved `ud` fjerner tabletterne spillerens ting. Byens egne biler (Brandmandsbyen) har nøglen `v0`, `v1` … på alle tablets;
+andre biler har `<spiller>:<nr>`. Kun én tablet ejer en nøgle ad gangen: trykker et barn på en andens bil, laver dets
+tablet bilen med samme nøgle og kører den, og den gamle ejer fjerner sin egen, når den nye liste kommer. Forlader ejeren
+verdenen, bliver byens biler stående, hvor de var. Gamle klienter ignorerer de nye beskeder.
 
 ## Binære klumper
 

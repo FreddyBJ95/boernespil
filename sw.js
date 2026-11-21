@@ -1,6 +1,6 @@
 // ===== Service Worker — gør spillene installerbare og tilgængelige offline =====
 // Bump dette tal når der ændres filer, så de gamle bliver hentet på ny.
-const CACHE = "boernespil-v85";
+const CACHE = "boernespil-v87";
 
 const SPIL = ["balloner", "byg-burger", "enhjoerning", "vask", "slange", "tegne", "piano", "fisk", "broekraft", "rulle-rasmus", "burgerloeb", "nedrivning", "brudpunkt", "kuglebanen", "skrot-og-brag"];
 const VOKSENSPIL = ["det-sidste-lys", "skrotstorm", "krystaljaegerne"];
@@ -40,6 +40,7 @@ const EKSTRA = [
   ...["lag", "loeber", "mand", "dino", "monster"].map(f => `spil/burgerloeb/modeller/${f}.glb`),   // modellerne fra Blender
   "spil/glb.js",                                                        // læser modellerne fra Blender
   ...["three.js", "spil.js", "blokke.js", "dyr.js", "verden.js", "verdener.js", "lyd.js", "net.js", "figurer.js", "simulering.js", "vaerktoej.js", "stemmer.js", "stemmesignal.js", "stemmeeffekt.js", "skyd.js", "kampvogn.js", "fyrvaerkeri.js", "brand.js", "atom.js", "tornado.js", "biler.js", "nytaar.js", "uendelig.js", "dagnat.js", "kort.js", "tog.js", "eventyr.js", "sten.js", "smaadyr.js", "enhjoerninger.js", "morellgaarden.js", "morellgaarden-kort.js"].map(f => `spil/broekraft/${f}`),
+  "spil/broekraft/faelles.js",                                          // de andres dyr og biler, når man spiller sammen
   "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",   // 3D-motoren (se spil/fisk/three.js)
 ];
 

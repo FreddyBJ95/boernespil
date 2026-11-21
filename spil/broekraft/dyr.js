@@ -904,8 +904,24 @@ export class Dyr {
       else this.målYaw += Math.PI * (0.5 + Math.random());
     }
 
-    // bevægelser
-    const vandret = Math.hypot(this.vel.x, this.vel.z), luft = !this.jord;
+    this.tegn(dt, Math.hypot(this.vel.x, this.vel.z), tilX, tilZ, afst);
+  }
+
+  // Et dyr, som en anden spiller ejer (online): det glider derhen, hvor ejerens tablet siger, og bevæger benene undervejs
+  følgNet(dt, mål, målYaw, spiller) {
+    const førX = this.pos.x, førZ = this.pos.z, k = Math.min(1, dt * 8);
+    if (this.pos.distanceToSquared(mål) > 64) this.pos.copy(mål); else this.pos.lerp(mål, k);   // langt væk: spring derhen
+    let dy = målYaw - this.yaw;
+    dy = ((dy + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+    this.yaw += dy * k;
+    this.t += dt; this.jord = true; this.danser = false;
+    const tilX = spiller.x - this.pos.x, tilZ = spiller.z - this.pos.z;
+    this.tegn(dt, Math.hypot(this.pos.x - førX, this.pos.z - førZ) / Math.max(dt, 1e-4), tilX, tilZ, Math.hypot(tilX, tilZ));
+  }
+
+  // Tegn kroppen: ben, vinger, hale, arme og hoved, hoppet efter et klap og lyden (vandret = fart hen over jorden)
+  tegn(dt, vandret, tilX, tilZ, afst) {
+    const d = this.def, u = this.model.userData, luft = !this.jord;
     this.fase += vandret * dt * 5;
     for (const b of u.ben) b.rotation.x = Math.sin(this.fase + b.userData.fase) * 0.7 * Math.min(1, vandret);
     for (const w of u.vinge) w.rotation.z = w.userData.side * ((this.flyv > 0 || luft ? Math.sin(this.t * 20) * 0.7 : Math.sin(this.t * 3) * 0.1) - 0.1);
