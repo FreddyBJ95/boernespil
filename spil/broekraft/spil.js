@@ -14,6 +14,7 @@ import { Verden, BX, BY, BZ, HAV, rng, lavStøj } from "./verden.js";
 import { lavLand, MIDT, STØRRELSE as LANDSTØRRELSE, ÅRSTIDSDYR, HJEMSTED, BANER, BANELÆNGDE, STATION_HVER } from "./uendelig.js";
 import { DagNat } from "./dagnat.js";
 import { Kort } from "./kort.js";
+import { FællesTing } from "./faelles.js";
 import { Tog, Ballon, vælg } from "./tog.js";
 import { Eventyr, sig, VARER } from "./eventyr.js";
 import { Smådyr } from "./smaadyr.js";
@@ -607,8 +608,11 @@ function tryk(x, y, somHammer = false) {
     return;
   }
   const kv = skyd.kampvognVed(ray.ray, RÆKKE + 4);                           // tryk på en grøn kampvogn eller en bil = stig ind
+  const fremmedBil = fælles?.bilVed(ray.ray, RÆKKE + 4);                  // en andens bil: overtag den (faelles.js)
+  if (fremmedBil && (!hit || fremmedBil.afst < hit.t) && (!kv || fremmedBil.afst < kv.afst)) { overtagBil(fremmedBil.ting); return; }
   if (kv && (!hit || kv.afst < hit.t)) {
     skyd.stigInd(kv.kv); Lyd.vælg();
+    if (kv.kv.bil) del(kv.kv);                                               // online: de andre ser bilen køre
     const b = kv.kv, kør = mus ? "Kør med WASD" : "Kør med joysticket", ud = mus ? " · shift = stig ud" : "";
     besked(!b.bil ? `Du sidder i kampvognen! ${kør}, og ${mus ? "klik" : "tryk"} for at skyde 🎯${ud}`
       : b.vand ? `${b.ikon} Du kører ${b.navn}! ${kør} · ${mus ? "klik" : "tryk"} for at sprøjte vand · ⬆ = sirene${ud}`
@@ -627,6 +631,8 @@ function tryk(x, y, somHammer = false) {
     const h = ray.intersectObject(d.model, true)[0];
     if (h && h.distance < RÆKKE && (!bedst || h.distance < bedst.afst)) bedst = { d, afst: h.distance };
   }
+  const fremmedDyr = fælles?.dyrVed(ray, RÆKKE);
+  if (fremmedDyr && (!hit || fremmedDyr.afst < hit.t) && (!bedst || fremmedDyr.afst < bedst.afst)) { trykFremmedDyr(fremmedDyr.ting); return; }
   if (bedst && (!hit || bedst.afst < hit.t)) {
     if (bedst.d.def.klap === "puf") { if (!slag(bedst.d)) puf(bedst.d); return; }
     eventyr?.hændelse("klap:" + bedst.d.def.id);
@@ -699,7 +705,7 @@ function lavDyr(s, x, y, z) {
   if (x < 0 || x >= verden.BX || z < 0 || z >= verden.BZ || y >= verden.BY) return;
   const def = s.æg === "?" ? DYR[Math.floor(Math.random() * DYR.length)] : dyrDef(s.æg);
   const d = nytDyr(def, x + 0.5, y + 0.01, z + 0.5);
-  d.klapTid = 0.5;
+  d.klapTid = 0.5; del(d);                                         // online: de andre ser også dyret
   Lyd.æg(); sving = 1;
   setTimeout(() => Lyd.dyrLyd(def.lyd), 350);
   const p = tilSkærm(d.pos, 0.5);
@@ -896,7 +902,7 @@ function tornadoSlør(til, ild = 0) {
 // ---------- Dinodalen: dino-æg, der klækkes, og en vulkan, der ryger og af og til går i udbrud (kun pynt) ----------
 function klækÆg({ x, y, z }) {
   const d = nytDyr(dyrDef("dinounge"), x + 0.5, y + 0.01, z + 0.5);
-  d.klapTid = 0.5; d.vel.y = 5;
+  d.klapTid = 0.5; d.vel.y = 5; del(d);
   Lyd.æg(); setTimeout(() => Lyd.dyrLyd("pip"), 350);
   nyePoint(2);
   const p = tilSkærm({ x: x + 0.5, y: y + 0.8, z: z + 0.5 }); E.konfetti(p.x, p.y, { antal: 36 });
@@ -1422,12 +1428,12 @@ const atom = new Atom({
 });
 // Biler (biler.js): i Brandmandsbyen holder brandbilerne, ambulancen og politibilen klar (cfg.biler).
 // Med 🚒-værktøjerne kan man selv sætte biler, i alle verdener (højst fire ad gangen).
-const bilSteder = cfg.biler ? cfg.biler(VX, VZ) : [], mineBiler = [];
+const bilSteder = (cfg.biler ? cfg.biler(VX, VZ) : []).map((b, i) => ({ ...b, nøgle: "v" + i })), mineBiler = [];   // nøgle: den samme på alle tablets
 function lavBiler() {                                             // (når jorden under dem er hentet)
   for (let i = bilSteder.length - 1; i >= 0; i--) {
     const b = bilSteder[i];
     if (!verden.hentet(Math.floor(b.x), Math.floor(b.z))) continue;
-    skyd.nyBil(b.slags, b.x, b.y, b.z, b.yaw); bilSteder.splice(i, 1);
+    skyd.nyBil(b.slags, b.x, b.y, b.z, b.yaw).nøgle = b.nøgle; bilSteder.splice(i, 1);
   }
 }
 function sætBil(slags, hit) {
@@ -1437,7 +1443,7 @@ function sætBil(slags, hit) {
   if (!verden.inde(Math.floor(x), 0, Math.floor(z))) return;
   if (mineBiler.length >= 4) skyd.fjernBil(mineBiler.shift());
   const bil = skyd.nyBil(slags, x, verden.topY(Math.floor(x), Math.floor(z)) + 1, z, sp.yaw + Math.PI);
-  mineBiler.push(bil);
+  mineBiler.push(bil); bil.nøgle = `${minId || "mig"}:${tingNr}`; del(bil);
   Lyd.motor(); sving = 1;
   for (let i = 0; i < 24; i++) partikel(x, bil.pos.y + 1, z, KONFETTI[i % KONFETTI.length], (Math.random() - 0.5) * 6, 2 + Math.random() * 4, (Math.random() - 0.5) * 6, 1, 0.4, 0.8);
   besked(`${bil.ikon} Tryk på ${bil.navn} for at køre i den`, 2600);
@@ -1446,6 +1452,7 @@ function sætBil(slags, hit) {
 function rid(d) {
   eventyr?.hændelse("rid:" + d.def.id);
   const kv = skyd.nyRidedyr(d.def, d.pos.x, d.pos.y, d.pos.z, d.yaw);
+  kv.netNr = d.netNr;                                              // (et delt dyr er det samme, når man stiger af)
   d.fjern(); dyr.splice(dyr.indexOf(d), 1);
   skyd.stigInd(kv); Lyd.dyrLyd(d.def.lyd);
   besked(`🐾 Du rider på ${d.def.navn}! ${mus ? "Styr med WASD · shift = stig af" : "Styr med joysticket"} · ${kv.vinger ? "hold ⬆ = flyv" : "⬆ = hop"}`, 4000);
@@ -1453,9 +1460,69 @@ function rid(d) {
 function stegAf(kv) {
   skyd.egne.splice(skyd.egne.indexOf(kv), 1); kv.fjern();
   const d = nytDyr(kv.dyrDef, kv.pos.x, kv.pos.y + 0.05, kv.pos.z);
-  d.yaw = d.målYaw = kv.yaw; d.klapTid = 0.5;
+  d.yaw = d.målYaw = kv.yaw; d.klapTid = 0.5; d.netNr = kv.netNr;
   eventyr?.stegAf(d);                                             // var det ens kæledyr? Så følger det med igen
 }
+// ---------- Fælles ting online (faelles.js og server/ting.js) ----------
+// Dyr, man klækker af æg, og biler, man sætter eller kører i, deles med de andre i verdenen: min tablet styrer dem og
+// sender dem et par gange i sekundet, og de andres ting tegnes af faelles.js. Alene sker der ingenting.
+let tingNr = 0, tingT = 0, sidsteTing = "", stilleT = 0;
+function del(ting) {                                             // marker et dyr eller en bil som fælles
+  if (!ONLINE || ting.netNr != null) return;
+  ting.netNr = tingNr; tingNr = (tingNr + 1) % 65536;
+  if (ting.bil) ting.delt = true;
+}
+const findMinBil = nøgle => skyd.egne.find(b => b.bil && b.nøgle === nøgle);
+const fælles = ONLINE ? new FællesTing({
+  scene, verden, dyrDef: id => DYR.find(d => d.id === id) || null,
+  mine: nøgle => { const b = findMinBil(nøgle); return b ? (skyd.kører === b ? "kører" : "står") : bilSteder.some(s => s.nøgle === nøgle) ? "står" : null; },
+  slipBil: nøgle => {                                             // en anden har taget bilen: den forsvinder her
+    const b = findMinBil(nøgle), i = bilSteder.findIndex(s => s.nøgle === nøgle);
+    if (i >= 0) bilSteder.splice(i, 1);
+    if (!b) return;
+    skyd.fjernBil(b);
+    if (mineBiler.includes(b)) mineBiler.splice(mineBiler.indexOf(b), 1);
+  },
+  efterladt: t => {                                               // en af byens biler bliver stående, hvor den anden forlod den
+    if (findMinBil(t.nøgle) || !verden.inde(Math.floor(t.x), 0, Math.floor(t.z))) return;
+    skyd.nyBil(t.slags, t.x, t.y, t.z, t.yaw).nøgle = t.nøgle;
+  },
+}) : null;
+// Send mine fælles ting højst fem gange i sekundet — og kun når noget har flyttet sig (ellers hvert andet sekund)
+function sendTing(dt) {
+  if ((tingT -= dt) > 0) return;
+  tingT = 0.2;
+  const r = v => Math.round(v * 100) / 100, liste = [];
+  for (const d of dyr) if (d.netNr != null && liste.length < 16) liste.push({ n: d.netNr, s: "dyr", id: d.def.id, x: r(d.pos.x), y: r(d.pos.y), z: r(d.pos.z), yaw: r(d.yaw) });
+  for (const b of skyd.egne) if (b.bil && b.delt && liste.length < 16) {
+    liste.push({ n: b.netNr, s: "bil", id: b.slags, x: r(b.pos.x), y: r(b.pos.y), z: r(b.pos.z), yaw: r(b.yaw), k: b.nøgle, ...(b.sirene ? { lys: true } : {}) });
+  }
+  const tekst = JSON.stringify(liste);
+  if (tekst === sidsteTing && (stilleT += 0.2) < 2) return;
+  stilleT = 0; sidsteTing = tekst;
+  net.ting(liste);
+}
+// Tryk på en andens bil: nu er det min, og jeg kører den (den forsvinder hos den anden)
+function overtagBil(ting) {
+  const t = fælles.overtag(ting), bil = skyd.nyBil(t.slags, t.x, t.y, t.z, t.yaw);
+  bil.nøgle = t.nøgle; del(bil);
+  if (t.sirene) bil.skiftSirene();
+  skyd.stigInd(bil); Lyd.vælg();
+  const kør = mus ? "Kør med WASD" : "Kør med joysticket";
+  besked(`${bil.ikon} Du kører ${bil.navn}! ${kør} · ⬆ = sirene${bil.vand ? ` · ${mus ? "klik" : "tryk"} for at sprøjte vand` : ""}`, 4500);
+}
+// Tryk på en andens dyr: zombier og spøgelser bliver til konfetti hos alle, de andre dyr hopper og får et hjerte
+function trykFremmedDyr(ting) {
+  const d = ting.dyr, p = tilSkærm(d.pos, d.h * 0.6);
+  if (d.def.klap === "puf") {
+    E.konfetti(p.x, p.y, { antal: 40 }); Lyd.puf();
+    net?.puf(ting.fra, ting.n); fælles.fjernDyr(ting);
+    return;
+  }
+  Lyd.dyrLyd(d.def.lyd); d.klapTid = 0.5;
+  E.tekstPop(p.x, p.y, "❤️", { s: 50 });
+}
+
 // Sirenerne hyler, mens de er tændt
 function opdaterSirener(dt) {
   for (const kv of skyd.egne) if (kv.sirene && (kv.sireneT -= dt) <= 0) {
@@ -2373,6 +2440,7 @@ async function forbindOnline() {
   net.addEventListener("ud", e => {
     const f = andre.get(e.detail.id);
     if (f) { besked(`${figurIkon(f.figur)} er gået 👋`); f.fjern(); andre.delete(e.detail.id); opdaterStatus(); }
+    fælles.fjernSpiller(e.detail.id);                                // hans dyr forsvinder; byens biler bliver stående
   });
   net.addEventListener("pos", e => {
     for (const p of e.detail.liste) if (p.id !== minId) { const f = andre.get(p.id) || nyFigur(p); f.sæt(p.x, p.y, p.z, p.yaw); f.sætRid(p.rid); }
@@ -2381,6 +2449,8 @@ async function forbindOnline() {
   net.addEventListener("emoji", e => visEmoji(e.detail.id, e.detail.e));
   net.addEventListener("fyrværkeri", e => fyr.raket(e.detail.x, e.detail.y, e.detail.z, e.detail));
   net.addEventListener("effekt", e => fremmedEffekt(e.detail));
+  net.addEventListener("ting", e => { if (e.detail.fra !== minId) fælles.modtag(e.detail.fra, e.detail.liste); });
+  net.addEventListener("puf", e => { const d = dyr.find(d => d.netNr === e.detail.n); if (d) puf(d); });   // en anden trykkede på mit dyr
   net.addEventListener("lukket", e => status(e.detail.genforbinder ? "🟡 Forbinder igen…" : "🔴 Afbrudt"));
   net.addEventListener("fejl", e => besked(`⚠️ ${e.detail.besked}`, 3000));
   net.udsyn(UDSYN[udsynNr].r);
@@ -2403,6 +2473,7 @@ function velkommen(v) {
   verden.rydAlt();
   for (const f of andre.values()) f.fjern();
   andre.clear();
+  fælles?.ryd(); sidsteTing = "";                                  // serveren sender de andres ting igen
   for (const p of v.spillere) {
     if (p.id !== minId) { nyFigur(p); continue; }
     if (førsteVelkommen) { sp.pos.set(p.x, p.y, p.z); sp.vel.set(0, 0, 0); ventPåJord = false; }
@@ -2437,8 +2508,10 @@ function visEmoji(id, e) {
 }
 function opdaterOnline(dt) {
   for (const f of andre.values()) f.opdater(dt);
+  fælles?.opdater(dt, sp.pos);
   if (!iGang || !net) return;
   net.pos(sp.pos.x, sp.pos.y, sp.pos.z, sp.yaw, sp.pitch, skyd.kører?.dyrDef?.ride ? skyd.kører.dyrDef.id : null);   // rid: de andre ser dyret
+  sendTing(dt);
   sendKø(dt);
   if (!dyrLavet && verden.hentet(Math.floor(sp.pos.x), Math.floor(sp.pos.z)) && !ventPåJord) { dyrLavet = true; lavStartDyr(sp.pos.x, sp.pos.z); }
 }

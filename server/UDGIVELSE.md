@@ -15,6 +15,8 @@ Broekraft Server lader 1–8 børn bygge i samme Broekraft-verden på familiens 
 - 🏭 Ny Brøkraft-verden: **Herøya** — industriparken i Porsgrunn med fabrikshaller, tanke, kajer, skinner,
   den store hvide ammoniakkugle og en skorsten på 101 meter, der ryger. Bygget efter Kartverkets overflademodel.
 - Hvidt træ og grus kan bruges, når I spiller sammen.
+- 🧟🚒 Når I spiller Brøkraft sammen, kan alle nu se de dyr, I klækker af æg, og de biler, I sætter og kører i.
+  Tryk på en andens bil for at køre den, og på en andens zombie for at gøre den til konfetti.
 - Brøkrafts verdener og gemninger virker som før. De to spilkanaler deler serverens loft på 128 forbindelser.
 
 **Nyt i 0.5.7**

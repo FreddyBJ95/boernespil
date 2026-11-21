@@ -129,6 +129,8 @@ class Forbindelse extends EventTarget {
   brag(x, y, z, slags) { if (this.klar) this.send({ t: "brag", x, y, z, slags }); }
   // Flyvning og nedtælling deles med de andre; serveren bestemmer stadig alle blokændringer.
   effekt(slags, data) { if (this.klar && this.version === "0.2.0") this.send({ ...data, t: "effekt", slags }); }
+  ting(liste) { if (this.klar && this.version === "0.2.0") this.send({ t: "ting", liste }); }          // mine dyr fra æg og mine biler
+  puf(til, n) { if (this.klar && this.version === "0.2.0") this.send({ t: "puf", til, n }); }           // tryk på en andens dyr
   fyrværkeri(x, y, z, mønster) { if (this.klar) this.send({ t: "fyrværkeri", x, y, z, mønster }); }
   tændFyrkasse(x, y, z) { if (this.klar) this.send({ t: "fyrkasse", x, y, z }); }
   emoji(e) { if (this.klar) this.send({ t: "emoji", e }); }
