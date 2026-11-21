@@ -1,0 +1,117 @@
+/* ===== Våbensimulator ===== */
+:root {
+  --glas: rgba(20, 16, 34, 0.55);
+  --glas-kant: rgba(255, 255, 255, 0.14);
+  --tekst: #f4efe6;
+  --messing: #e0b45c;
+  --accent: #ffb347;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #140f22; color: var(--tekst); }
+body {
+  font-family: ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: none;
+}
+#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+button { font: inherit; color: inherit; cursor: pointer; border: none; background: none; padding: 0; }
+[hidden] { display: none !important; }
+
+/* ---------- Toppen: hjem og lyd ---------- */
+.top {
+  position: fixed; left: 0; right: 0; top: 0; z-index: 10; display: flex; justify-content: space-between; pointer-events: none;
+  padding: max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+}
+.top > * { pointer-events: auto; }
+.rund {
+  width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; font-size: 25px; text-decoration: none;
+  background: var(--glas); border: 1px solid var(--glas-kant); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); transition: transform 0.12s;
+}
+.rund:active { transform: scale(0.9); }
+
+/* ---------- Knapper over våbenlinjen ---------- */
+.hud { position: fixed; inset: 0; pointer-events: none; z-index: 8; }
+.knapper {
+  position: absolute; right: max(16px, env(safe-area-inset-right)); bottom: calc(var(--bar, 104px) + max(12px, env(safe-area-inset-bottom)) + 10px);
+  display: flex; align-items: flex-end; gap: 14px; pointer-events: none;
+}
+.knapper > * { pointer-events: auto; }
+body[data-tilstand="sværd"] .våben-knapper, body[data-tilstand="våben"] .sværd-knapper { display: none; }
+.stor-knap {
+  width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; color: #fff;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 60%), var(--glas);
+  border: 1px solid var(--glas-kant); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  transition: transform 0.12s, background 0.2s;
+}
+.stor-knap svg { width: 40px; height: 40px; }
+.stor-knap:active { transform: scale(0.9); }
+/* Ladeknappen pulserer orange, når magasinet er tomt */
+.lad.tom { background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0) 60%), #e8742a; animation: puls 0.9s ease-in-out infinite; }
+@keyframes puls { 50% { transform: scale(1.12); box-shadow: 0 0 0 12px rgba(255, 140, 50, 0.25), 0 8px 22px rgba(0, 0, 0, 0.4); } }
+#tændKnap.slukket { color: #ff8b6b; }
+
+/* Farverne til sværdet */
+.farver { position: fixed; top: max(14px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: calc(100vw - 150px); padding: 10px 12px; border-radius: 40px; background: var(--glas); border: 1px solid var(--glas-kant); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.farve { width: 44px; height: 44px; border-radius: 50%; background: var(--f); box-shadow: 0 0 14px var(--f), inset 0 -3px 0 rgba(0, 0, 0, 0.25); border: 3px solid rgba(255, 255, 255, 0.25); transition: transform 0.12s; }
+.farve.valgt { border-color: #fff; transform: scale(1.12); }
+.farve:active { transform: scale(0.9); }
+
+/* Patronerne der er tilbage */
+.ammo {
+  position: absolute; left: 50%; transform: translateX(-50%); top: max(16px, env(safe-area-inset-top));
+  display: flex; flex-wrap: wrap-reverse; gap: 4px; max-width: min(46vw, 330px); padding: 10px 14px; border-radius: 18px;
+  background: var(--glas); border: 1px solid var(--glas-kant); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+.patron { width: 11px; height: 34px; border-radius: 6px 6px 2px 2px; background: linear-gradient(90deg, #8a5a1c, #f2cf7a 40%, #b9822f); position: relative; transition: opacity 0.15s, transform 0.15s; }
+.patron::before { content: ""; position: absolute; left: 1px; right: 1px; top: -9px; height: 12px; border-radius: 50% 50% 2px 2px; background: linear-gradient(90deg, #8d4a28, #e59a6a 40%, #a35a33); }
+.patron.lille { width: 7px; height: 24px; margin-top: 7px; }
+.patron.lille::before { top: -7px; height: 9px; }
+.patron.hagl { width: 15px; height: 36px; border-radius: 3px; background: linear-gradient(90deg, #7a0d12, #e0333a 40%, #9a1418); }
+.patron.hagl::before { top: auto; bottom: 0; height: 9px; border-radius: 1px; background: linear-gradient(90deg, #8a5a1c, #f2cf7a 40%, #b9822f); }
+.patron.brugt { opacity: 0.18; transform: translateY(3px); filter: grayscale(1); }
+
+/* ---------- Våbenlinjen ---------- */
+.våbenbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 9; display: flex; gap: 10px; overflow-x: auto; overscroll-behavior: contain;
+  padding: 10px max(14px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  background: linear-gradient(to top, rgba(10, 7, 18, 0.85), rgba(10, 7, 18, 0)); scrollbar-width: none; touch-action: pan-x; justify-content: safe center;
+}
+.våbenbar::-webkit-scrollbar { display: none; }
+.våben-knap {
+  flex: 0 0 auto; width: 116px; height: 84px; border-radius: 18px; position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03)), var(--glas); border: 1px solid var(--glas-kant);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35); transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.våben-knap img { width: 108px; height: 54px; object-fit: contain; filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.5)); pointer-events: none; }
+.våben-knap span { font-size: 13px; font-weight: 700; letter-spacing: 0.02em; opacity: 0.85; margin-top: 2px; white-space: nowrap; }
+.våben-knap:active { transform: scale(0.94); }
+.våben-knap.valgt { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent), 0 0 24px rgba(255, 170, 70, 0.45), 0 6px 18px rgba(0, 0, 0, 0.35); background: linear-gradient(160deg, rgba(255, 190, 110, 0.28), rgba(255, 255, 255, 0.04)), var(--glas); }
+
+/* ---------- Kikkerten ---------- */
+.kikkert { position: fixed; inset: 0; z-index: 5; pointer-events: none; opacity: 0; display: grid; place-items: center;
+  background: radial-gradient(circle at 50% 50%, transparent 0, transparent 37vmin, rgba(0, 0, 0, 0.6) 38vmin, #000 40vmin); }
+.kikkert svg { width: 80vmin; height: 80vmin; }
+
+/* ---------- Tip: en hånd, der viser hvad man gør ---------- */
+.tip { position: fixed; left: 50%; top: 46%; z-index: 7; font-size: 64px; pointer-events: none; opacity: 0; transition: opacity 0.4s; transform: translate(-50%, -50%); filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.5)); }
+.tip.vis { opacity: 1; }
+.tip span { display: block; }
+body[data-tilstand="våben"] .tip.vis span { animation: tryk 1.2s ease-in-out infinite; }
+body[data-tilstand="sværd"] .tip.vis span { animation: sving 1.6s ease-in-out infinite; }
+@keyframes tryk { 0%, 100% { transform: translateY(0) scale(1); } 45% { transform: translateY(14px) scale(0.88); } }
+@keyframes sving { 0%, 100% { transform: translate(-120px, 30px) rotate(-20deg); } 50% { transform: translate(120px, -30px) rotate(20deg); } }
+
+.henter { position: fixed; inset: 0; display: grid; place-items: center; z-index: 20; background: #140f22; font-size: 20px; letter-spacing: 0.04em; }
+
+/* Små skærme (telefon på tværs) */
+@media (max-height: 520px) {
+  .våben-knap { width: 104px; height: 74px; }
+  .våben-knap img { width: 96px; height: 46px; }
+  .våben-knap span { font-size: 11px; }
+  .stor-knap { width: 62px; height: 62px; }
+  .knapper, .ammo { bottom: calc(92px + max(8px, env(safe-area-inset-bottom))); }
+}
+/* Forsidebilledet: kun selve 3D-billedet */
+body.forside .top, body.forside .hud, body.forside .våbenbar, body.forside .tip, body.forside .henter { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) { .lad.tom, .tip.vis span { animation: none !important; } }
