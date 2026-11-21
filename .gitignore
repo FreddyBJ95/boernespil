@@ -9,3 +9,7 @@ _test.html
 blender/proever/
 blender/__pycache__/
 *.blend1
+
+# Hentede kortdata (kan hentes igen med kortdata/*/hent.sh)
+kortdata/*/data/
+kortdata/*/__pycache__/

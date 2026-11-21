@@ -2,7 +2,7 @@
 // Tilføj en ny verden: kopiér en blok i VERDENER og skriv en ny opskrift (generer).
 //  himmel:  [farve foroven, farve ved horisonten] · tåge: [start, slut] i blokke · hav: farve eller null
 //  sol:     farve på den firkantede sol/måne (null = ingen) · solStr: størrelse · stjerner: true/false
-//  jordklode: true viser Jorden på himlen · skyer: farve eller null
+//  jordklode: true viser Jorden på himlen · skyer: farve eller null · skyHøjde: hvor højt skyerne svæver (ellers 44)
 //  lys:     [himmellys, jordlys, styrke, sollys-styrke] (bruges på dyrene)
 //  stemning: musikken — "rolig" | "uhyggelig" | "glad" | "rum" · tyngde: 28 er normalt (lavere = hop højere)
 //  dyr:     hvilke dyr der bor der · antal: hvor mange · genfød: nye dyr dukker op når nogle forsvinder
@@ -24,6 +24,7 @@
 //  generer: opskriften på terrænet — får værktøjer fra verden.js (terræn, pynt, sæt, hent, R, støj …)
 
 import { lavLand, MIDT } from "./uendelig.js";
+import { bygMorellgården } from "./morellgaarden.js";
 
 // Hvor vulkanen i Dinodalen står (bruges både af opskriften og af spil.js)
 const dinoVulkan = (BX, BZ) => [Math.min(BX - 22, BX / 2 + 30), Math.max(22, BZ / 2 - 28)];
@@ -1820,6 +1821,20 @@ export const VERDENER = [
       a.pynt(a.antal(150), () => BLOMSTER[Math.floor(R() * BLOMSTER.length)], [GRÆS]);
       a.pynt(a.antal(80), ID["Højt græs"], [GRÆS]);
     },
+  },
+
+  {
+    // Et rigtigt sted: gården ved Brunlanesveien 855, bygget efter Kartverkets højdekort og OpenStreetMaps huse (morellgaarden.js)
+    id: "morell", navn: "Morellgården", ikon: "🍒",
+    tekst: "Den røde smie, den lange lade og kirsebærtræerne i Brunlanes — bygget efter rigtige kort og højdekort. Gå op på bakken i skoven, og hils på hestene i folden!",
+    himmel: ["#5aa8f0", "#e2f2ff"], tåge: [40, 104], hav: "#3f8fe0", sol: "#fff6b0", skyer: "#ffffff", skyHøjde: 64,
+    lys: ["#ffffff", "#7a9a5a", 2.2, 1.4], stemning: "rolig", tyngde: 28,
+    størrelse: [288, 64, 288],                                   // 1 blok = 1 meter
+    dyr: ["hest", "hest", "hone", "hone", "kat", "kanin"], antal: 12,
+    hotbar: ["Ladetræ", "Hvidt træ", "Glas", "Grus", "Høballe", "Hegn", "Kirsebærblade", "v:vand", "æg:hest"],
+    vis: ["Ladetræ", "Kirsebærblade", "Hvidt træ"],
+    hent: ["Henter højdekortet fra Kartverket…", "Maler smien rød…", "Planter kirsebærtræerne…", "Lukker hestene ud på marken…"],
+    generer(a) { bygMorellgården(a); },
   },
 
   {

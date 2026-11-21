@@ -230,6 +230,9 @@ export const BLOKKE = [
   { navn: "Mintblade", tekstur: "løv:#9fe8c8", lyd: "græs" },
   { navn: "Regnbueblomst", tekstur: "regnbueblomst", kryds: true, lyd: "græs" },
   { navn: "Perlemor", tekstur: "perlemor", lyd: "glas" },
+  // --- Morellgården: hvidmalet træpanel til husene og grus til gårdspladsen og grusvejene ---
+  { navn: "Hvidt træ", tekstur: "hvidtTræ", lyd: "træ" },
+  { navn: "Grus", tekstur: "grus", lyd: "sand" },
 ];
 
 export const ID = {};
@@ -713,6 +716,10 @@ const MØNSTRE = {
     const f = ["#fff0f8", "#f0e8ff", "#e8f8ff", "#f0fff4", "#fff8e8"][Math.floor((Math.sin(x * 0.7 + y * 0.4) + Math.sin(y * 0.9 - x * 0.3) + 2) * 1.25) % 5];
     set(x, y, lys(hex(f), 1 + (r() - 0.5) * 0.06));
   }),
+  // Hvidt træ: stående hvidmalede brædder med en lille skygge i hver samling (som på de norske huse)
+  hvidtTræ: (set, r) => alle((x, y) => set(x, y, lys(hex(x % 4 === 3 ? "#c4c6c2" : x % 4 === 0 ? "#fbfbf8" : "#eeeeea"), (y % 8 === 0 ? 0.96 : 1) * (1 + (r() - 0.5) * 0.05)))),
+  // Grus: lysegrå og beige småsten
+  grus: (set, r) => { fyld(set, r, "#b8b0a0", 0.16); prik(set, r, ["#8e877a", "#d6cfc0", "#a39a88", "#7a7468", "#e2dccf"], 70); },
   // En is i vaffel: to kugler (jordbær og vanilje) på en sprød vaffel
   isvaffel: set => {
     alle((x, y) => set(x, y, [0, 0, 0], 0));
