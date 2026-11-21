@@ -395,7 +395,7 @@ if (sim) {
 }
 
 // ---------- Spilleren ----------
-const sp = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), yaw: 0.6, pitch: -0.25, jord: false, flyver: false };
+const sp = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), yaw: cfg.startYaw ?? 0.6, pitch: -0.25, jord: false, flyver: false };
 let ventPåJord = false;                          // online: jorden under en er ikke hentet endnu
 function startSted() {
   const x = Math.floor(verden.BX / 2), z = Math.floor(verden.BZ / 2);
@@ -839,17 +839,20 @@ function opdaterHimmelGlød(dt) {
   scene.fog.color.copy(TÅGEFARVE).lerp(GLØDFARVE, k * 0.35);
   glødVist = k > 0;
 }
-// Damp fra atomkraftværkets køletårne (cfg.atomtårne)
+// Damp fra atomkraftværkets køletårne (cfg.atomtårne) og røg fra fabriksskorstene (cfg.skorstene)
 const DAMPHVID = new THREE.Color("#f4f4f2");
-const køletårne = cfg.atomtårne ? cfg.atomtårne(VX, VZ).map(([x, z]) => ({ x, z, y: null, t: 0 })) : [];
+const køletårne = [
+  ...(cfg.atomtårne ? cfg.atomtårne(VX, VZ).map(([x, z]) => ({ x, z, y: null, t: 0, dx: 5, r: 3.5, str: 5 })) : []),   // toppen af tårnet er 5 til siden
+  ...(cfg.skorstene ? cfg.skorstene(VX, VZ).map(([x, z]) => ({ x, z, y: null, t: 0, dx: 0, r: 0.6, str: 2.5 })) : []),   // en smal skorsten
+];
 function opdaterDamp(dt) {
   for (const k of køletårne) {
     if (Math.abs(k.x - sp.pos.x) > 110 || Math.abs(k.z - sp.pos.z) > 110 || !verden.hentet(k.x, k.z) || (k.t -= dt) > 0) continue;
     k.t = 0.16;
-    if (k.y === null || Math.random() < 0.02) k.y = verden.topY(k.x + 5, k.z) + 1;   // toppen af tårnet
-    const v = Math.random() * Math.PI * 2, r = Math.random() * 3.5;
+    if (k.y === null || Math.random() < 0.02) k.y = verden.topY(k.x + k.dx, k.z) + 1;   // toppen af tårnet
+    const v = Math.random() * Math.PI * 2, r = Math.random() * k.r;
     partikel(k.x + 0.5 + Math.cos(v) * r, k.y, k.z + 0.5 + Math.sin(v) * r, DAMPHVID, (Math.random() - 0.5) * 0.6, 1.4 + Math.random() * 0.8,
-      (Math.random() - 0.5) * 0.6 + 0.3, 5 + Math.random() * 2, -0.02, 14 + Math.random() * 10);
+      (Math.random() - 0.5) * 0.6 + 0.3, k.str + Math.random() * 2, -0.02, 14 + Math.random() * 10);
   }
 }
 // Store tal midt på skærmen, når en bombe eller den røde knap tæller ned
