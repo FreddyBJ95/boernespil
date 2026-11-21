@@ -48,6 +48,14 @@
     <div class="helt-prikker" id="heltPrikker"></div>
   </section>
 
+  <!-- Spilkarrusellen: alle spillene på skift, lidt ad gangen (spil/karrusel/). Ikonerne fyldes ind nederst i scriptet. -->
+  <a class="karrusel-knap" href="spil/karrusel/">
+    <span class="kk-hest" aria-hidden="true">🎠</span>
+    <span class="kk-tekst"><b>Spilkarrusellen</b><small>Alle spillene på skift</small></span>
+    <span class="kk-ikoner" aria-hidden="true"><span class="kk-baand" id="kkBaand"></span></span>
+    <span class="kk-spil" aria-hidden="true">▶</span>
+  </a>
+
   <!-- Faner: vælg hvilken slags spil der vises. Appen husker den sidste fane. -->
   <nav class="faner" aria-label="Kategorier">
     <button class="fane" data-vis="alle"><span class="fane-ikon">⭐</span><span class="fane-navn">Alle</span></button>
@@ -190,6 +198,10 @@
       k.style.setProperty("--forsinkelse", `${-(i * 0.37) % 3}s`);           // ikke alle hopper på samme tid
       k.style.setProperty("--glimt", `${(i * 1.3) % 7}s`);                    // lysglimtet kommer forskudt
     });
+
+    // ----- Spilkarrusellen: ikonerne fra alle kortene kører forbi på knappen -----
+    const kkIkoner = [...document.querySelectorAll("main .spil-kort:not([data-karrusel='nej']) .ikon")].map(i => i.textContent);
+    document.getElementById("kkBaand").textContent = [...kkIkoner, ...kkIkoner].map(i => i + " ").join("");   // to gange, så båndet kan køre i ring
 
     // ----- Billedvæggen: fire rækker, der ruller hver sin vej -----
     const BILLEDER = ["fyrvaerkeri", "tornado", "nuke", "brandby", "dino", "hav", "slik", "sky", "pirat", "droner",
