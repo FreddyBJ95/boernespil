@@ -21,7 +21,7 @@ Første gang skal der være internet. Bagefter virker spillene også offline.
 Forsiden har faner, så man kan vælge kategori (appen husker den sidste):
 
 - 🧊 **3D:** ⛏️ Broekraft (byggespil i Minecraft-stil med mange verdener), 🎣 Mærkelige fisk, 🏁 Rulle Rasmus (styr en blob gennem fem baner ved at vippe iPad'en eller trykke),
-  🍔 Burgerløbet (saml ingredienser på vejen, og send burgeren ind i munden på kæmpen)
+  🍔 Burgerløbet (saml ingredienser på vejen, og send burgeren ind i munden på kæmpen), ⚔️ Våbensimulator (lyssværd, ildsværd og rigtige våben på en skydebane)
 - 🎮 **2D:** 🎈 Pop ballonerne (stryg over ballonerne som i Fruit Ninja), 🍔 Byg en burger (byg en burger og giv den til den sultne mand),
   🦄 Min enhjørning (lav din egen enhjørning, giv den sadel og pynt på, vask og fodr den), 🚜 Vaskehallen, 🐍 Fjollet Slange
 - 🎨 **Tegn & musik:** 🎨 Tegn! (hold to fingre nede, så kommer der en streg imellem dem), 🎹 Dyre-piano
@@ -110,3 +110,21 @@ Stjerner på banen låser hatte op, trampoliner sender burgeren op efter stjerne
 | `lyd.js` | Lydene (Web Audio, ingen lydfiler) |
 
 `spil/burgerloeb/?niveau=3` starter på en bestemt bane, og `?debug` giver adgang til spillet i konsollen (`bl`).
+
+## Våbensimulator
+3D-spillet ligger i `spil/vaabensimulator/`. Lyssværd og ildsværd svinges ved at trække med fingeren (frugt og dåser
+kastes op, så man kan skære dem over). Pistol, revolver, haglgevær, stormgevær og snigskyttegevær er bygget i deres
+rigtige mål med bevægelige dele: man trykker på det, man vil ramme, og ⟳ lader våbnet igen. Alt tegnes og lyder med kode;
+kun glas, plask og ild låner Nedrivningsfirmaets optagelser.
+
+| Fil | Indhold |
+|---|---|
+| `vaaben.js` | De fem våben (profiler, rør og drejede dele), patroner og hylstre, og `VÅBEN` = magasin, kadence, rekyl og ladning |
+| `svaerd.js` | Lyssværdet (krom, glød og lysspor) og ildsværdet (glødende stål og flammer) |
+| `maal.js` | Dåser, flasker, frugt, balloner og stålgonger — og at skære frugt over med sværdet |
+| `bane.js` | Skydebanen i skumringen: himmel, bakker, hegn, kuglefang, lyskæder og lys |
+| `effekter.js` | Mundingsglimt, krudtrøg, skudhuller, splinter og gnister |
+| `lyd.js` | Skud i lag, mekanik, hylstre, træffere, lyssværdets brummen og ilden |
+| `teksturer.js`, `materialer.js`, `former.js`, `partikler.js`, `efterbehandling.js` | Teksturer, stål/træ/plast, byggeklodser, partikler og glød |
+
+`spil/vaabensimulator/?prøve` giver adgang til spillet i konsollen (`spil`), og `?forside` viser forsidebilledet.
