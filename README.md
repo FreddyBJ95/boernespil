@@ -26,6 +26,11 @@ Forsiden har faner, så man kan vælge kategori (appen husker den sidste):
   🦄 Min enhjørning (lav din egen enhjørning, giv den sadel og pynt på, vask og fodr den), 🚜 Vaskehallen, 🐍 Fjollet Slange
 - 🎨 **Tegn & musik:** 🎨 Tegn! (hold to fingre nede, så kommer der en streg imellem dem), 🎹 Dyre-piano
 
+🎠 **Spilkarrusellen** (knappen under banneret) kører alle spillene på skift — 20 sekunder, 1 minut eller 2 minutter hver,
+ligesom de små spil, der dukker op som reklamer på en tablet. Karrusellen drejer og stopper ved det næste spil, uret i højre side
+tæller ned, og de sidste fem sekunder vises store tal. ⏭ springer videre, og 🏠 i spillet fører hjem til forsiden.
+Nye spil kommer automatisk med (karrusellen læser kortene på forsiden); `data-karrusel="nej"` på et kort holder det ude.
+
 Nederst på forsiden ligger "For voksne" med 📷 Spil sammen (forbind tabletten til Broekraft Server).
 
 ## Kør lokalt

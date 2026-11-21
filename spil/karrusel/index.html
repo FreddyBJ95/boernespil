@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Spilkarrusellen 🎠</title>
+  <link rel="stylesheet" href="karrusel.css">
+  <link rel="icon" href="../../favicon.png">
+  <meta name="theme-color" content="#120b2e">
+</head>
+<body>
+  <!-- Karrusellen: ses ved start og mellem spillene. Den drejer rundt og stopper ved det næste spil. -->
+  <section class="scene" id="scene">
+    <div class="lysstraaler" aria-hidden="true"></div>
+
+    <div class="top">
+      <a class="rund" id="hjem" href="../../" aria-label="Til forsiden">🏠</a>
+      <div class="stjerner" id="stjerner" aria-label="Spil du har spillet" hidden><span>⭐</span><b id="antal">0</b></div>
+    </div>
+
+    <h1 class="titel"><span class="titel-hest">🎠</span>Spilkarrusellen</h1>
+    <p class="besked" id="besked">Alle spillene på skift — lidt ad gangen</p>
+
+    <!-- Selve karrusellen: et stribet tag, kortene i en ring og en gylden bund -->
+    <div class="karrusel" id="karrusel" aria-hidden="true">
+      <div class="karrusel-skala">
+        <div class="stang"></div>
+        <div class="bund"></div>
+        <div class="ring-rum"><div class="ring" id="ring"></div></div>
+        <div class="tag"><div class="tag-kant"></div></div>
+        <div class="viser">▼</div>
+      </div>
+    </div>
+
+    <!-- Start: hvor længe skal hvert spil vare? -->
+    <div class="valg" id="valg">
+      <button class="tid" data-tid="20"><span class="tid-dyr">🐇</span><b>20 sek</b><small>Kort</small></button>
+      <button class="tid" data-tid="60"><span class="tid-dyr">🐶</span><b>1 min</b><small>Mellem</small></button>
+      <button class="tid" data-tid="120"><span class="tid-dyr">🐢</span><b>2 min</b><small>Lang</small></button>
+    </div>
+
+    <!-- Når karrusellen er stoppet: navnet på spillet og en stor Spil-knap -->
+    <div class="naeste" id="naeste" hidden>
+      <h2 class="naeste-navn" id="naesteNavn"></h2>
+      <button class="spil-knap" id="spilKnap"><span class="spil-fyld" id="spilFyld"></span><span class="spil-tekst">▶ Spil!</span></button>
+    </div>
+  </section>
+
+  <!-- Spillet vises her i hele skærmen -->
+  <div class="spilplads" id="spilplads" hidden></div>
+
+  <!-- Uret i højre side, mens man spiller: ringen bliver mindre, og ⏭ springer til næste spil -->
+  <div class="ur" id="ur" hidden>
+    <div class="ur-ring" role="timer" aria-label="Tid tilbage">
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <circle class="ur-spor" cx="24" cy="24" r="20"/>
+        <circle class="ur-fyld" id="urFyld" cx="24" cy="24" r="20"/>
+      </svg>
+      <span class="ur-tal" id="urTal"></span>
+    </div>
+    <button class="ur-spring" id="spring" aria-label="Næste spil">⏭</button>
+  </div>
+
+  <!-- De sidste fem sekunder: store tal midt på skærmen (man kan stadig spille igennem dem) -->
+  <div class="nedtaelling" id="nedtaelling" aria-hidden="true"></div>
+
+  <script src="../../effekter.js"></script>
+  <script type="module" src="karrusel.js"></script>
+</body>
+</html>
