@@ -294,7 +294,7 @@ if (cfg.skyer) {
   const skyR = rng(gemt.frø + 7), skyMat = new THREE.MeshBasicMaterial({ color: cfg.skyer, transparent: true, opacity: 0.85, fog: false });
   for (let i = 0; i < 16; i++) {
     const s = new THREE.Mesh(new THREE.BoxGeometry(6 + skyR() * 14, 1.5, 4 + skyR() * 10), skyMat);
-    s.position.set(VX / 2 - 92 + skyR() * 184, (cfg.uendelig ? 62 : 44) + skyR() * 4, VZ / 2 - 92 + skyR() * 184);   // over bjergene i Den uendelige verden
+    s.position.set(VX / 2 - 92 + skyR() * 184, (cfg.skyHøjde || (cfg.uendelig ? 62 : 44)) + skyR() * 4, VZ / 2 - 92 + skyR() * 184);   // over bjergene i Den uendelige verden
     scene.add(s); skyer.push(s);
   }
 }
