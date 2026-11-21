@@ -2,7 +2,8 @@
 # Kilder: Kartverket (DTM/DOM 1 m), NIBIO AR5 (arealtype og treslag), OpenStreetMap (bygninger, veje, marker).
 # Luftfotoet bruges kun til at vælge farver (afgrøden på markerne, grus, buske og tagenes farve) og til frugthavens
 # rækker — ingen billeder kommer med i spillet. Kør fra denne mappe efter ./hent.sh:  python3 bygdata.py
-import sys, math, json, base64, statistics, random
+import sys, os, math, json, base64, statistics, random
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from geo import *
 from PIL import Image
 
@@ -22,18 +23,14 @@ def fra_m(e, n):               # meter → kontinuerte blok-koordinater
     u = de * RIGHT[0] + dn * RIGHT[1]; v = -(de * FWD[0] + dn * FWD[1])
     return u + N / 2, v + N / 2
 
-class Farvekort:               # AR5-kortene (600×600 px, 1 m, UTM32 omkring adressen)
-    def __init__(self, sti, X=552034, Y=6541464, R=300):
-        self.im = Image.open(sti).convert("RGB"); self.px = self.im.load(); self.x0 = X - R; self.y1 = Y + R
-    def __call__(self, lat, lon):
-        x, y = utm32(lat, lon); return self.px[min(599, max(0, int(x - self.x0))), min(599, max(0, int(self.y1 - y)))]
-def nærmest(c, tabel):
-    return min(tabel, key=lambda k: sum((a - b) ** 2 for a, b in zip(c, tabel[k])))
+sted = Sted(59.00951335016346, 9.905957938512747)   # adressepunktet Brunlanesveien 855
+til_latlon, fra_latlon = sted.til_latlon, sted.fra_latlon
+UTM = (552034, 6541464, 300)                         # kortenes firkant i UTM32: midte og halv side
 AREAL = {"dyrket": (255, 209, 110), "skog": (158, 204, 115), "bebygd": (252, 219, 214), "åben": (217, 217, 217), "vej": (179, 120, 76), "beite": (255, 255, 170)}
 TRESLAG = {"ingen": (255, 255, 255), "bar": (125, 191, 110), "løv": (128, 255, 8), "ikke": (207, 204, 145), "bland": (158, 204, 115)}
 
-dtm = Raster("data/dtm.tif"); dom = Raster("data/dom.tif"); foto = Foto("data/fliser_z18.png", "data/fliser_z18.txt")
-ar5 = Farvekort("data/ar5_Arealtype.png"); treslag = Farvekort("data/ar5_Treslag.png")
+dtm = Raster("data/dtm.tif", *UTM); dom = Raster("data/dom.tif", *UTM); foto = Foto("data/fliser_z18.png", "data/fliser_z18.txt")
+ar5 = Farvekort("data/ar5_Arealtype.png", *UTM); treslag = Farvekort("data/ar5_Treslag.png", *UTM)
 ll = [[til_latlon(*til_m(x, z)) for x in range(N)] for z in range(N)]
 H = [[dtm(*ll[z][x]) for x in range(N)] for z in range(N)]
 D = [[dom(*ll[z][x]) for x in range(N)] for z in range(N)]
@@ -43,7 +40,7 @@ T = [[nærmest(treslag(*ll[z][x]), TRESLAG) for x in range(N)] for z in range(N)
 print("højder", round(min(map(min, H)), 1), round(max(map(max, H)), 1))
 
 # ---------- OSM til gitteret ----------
-veje = osm("data/osm.json")
+veje = osm("data/osm.json", sted)
 def polygon_celler(dele):      # scanline med lige/ulige-reglen: alle celler hvis midte ligger i polygonen
     dele = [[fra_m(*p) for p in d] for d in dele]; ud = set()
     zs = [p[1] for d in dele for p in d]
@@ -71,7 +68,7 @@ def linje_celler(pts, bredde):  # celler tæt på en linje → afstand til midte
     return ud
 
 marker = {}                    # celle → OSM-fladens id (kun dyrket jord)
-for k, fid, dele in osm_flader("data/osm.json"):
+for k, fid, dele in osm_flader("data/osm.json", sted):
     if k in ("farmland", "meadow", "orchard"):
         for c in polygon_celler(dele): marker[c] = fid
 FRUGTHAVE = marker.get((115, 240))
