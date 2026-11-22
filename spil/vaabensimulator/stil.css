@@ -5,6 +5,7 @@
   --tekst: #f4efe6;
   --messing: #e0b45c;
   --accent: #ffb347;
+  --bar: 122px;          /* våbenlinjens højde (knapperne ovenover sidder lige over den) */
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: #140f22; color: var(--tekst); }
@@ -77,15 +78,20 @@ body[data-tilstand="sværd"] .våben-knapper, body[data-tilstand="våben"] .svæ
   background: linear-gradient(to top, rgba(10, 7, 18, 0.85), rgba(10, 7, 18, 0)); scrollbar-width: none; touch-action: pan-x; justify-content: safe center;
 }
 .våbenbar::-webkit-scrollbar { display: none; }
+/* Hver knap er et lille "udstillingsskab": våbnet fotograferet foran en lys baggrund, navnet nederst */
 .våben-knap {
-  flex: 0 0 auto; width: 116px; height: 84px; border-radius: 18px; position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03)), var(--glas); border: 1px solid var(--glas-kant);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35); transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+  flex: 0 0 auto; width: 132px; height: 96px; border-radius: 18px; position: relative; overflow: hidden; display: block;
+  background: #2c2a44; border: 2px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4); transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
-.våben-knap img { width: 108px; height: 54px; object-fit: contain; filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.5)); pointer-events: none; }
-.våben-knap span { font-size: 13px; font-weight: 700; letter-spacing: 0.02em; opacity: 0.85; margin-top: 2px; white-space: nowrap; }
+.våben-knap img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.våben-knap span {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 4px 5px; font-size: 13px; font-weight: 800; letter-spacing: 0.02em; white-space: nowrap;
+  background: linear-gradient(to top, rgba(14, 10, 26, 0.88), rgba(14, 10, 26, 0)); text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
 .våben-knap:active { transform: scale(0.94); }
-.våben-knap.valgt { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent), 0 0 24px rgba(255, 170, 70, 0.45), 0 6px 18px rgba(0, 0, 0, 0.35); background: linear-gradient(160deg, rgba(255, 190, 110, 0.28), rgba(255, 255, 255, 0.04)), var(--glas); }
+.våben-knap.valgt { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent), 0 0 26px rgba(255, 170, 70, 0.55), 0 6px 18px rgba(0, 0, 0, 0.4); transform: translateY(-3px); }
+.våben-knap.valgt:active { transform: translateY(-3px) scale(0.94); }
 
 /* ---------- Kikkerten ---------- */
 .kikkert { position: fixed; inset: 0; z-index: 5; pointer-events: none; opacity: 0; display: grid; place-items: center;
@@ -105,11 +111,10 @@ body[data-tilstand="sværd"] .tip.vis span { animation: sving 1.6s ease-in-out i
 
 /* Små skærme (telefon på tværs) */
 @media (max-height: 520px) {
-  .våben-knap { width: 104px; height: 74px; }
-  .våben-knap img { width: 96px; height: 46px; }
+  :root { --bar: 96px; }
+  .våben-knap { width: 108px; height: 78px; }
   .våben-knap span { font-size: 11px; }
   .stor-knap { width: 62px; height: 62px; }
-  .knapper, .ammo { bottom: calc(92px + max(8px, env(safe-area-inset-bottom))); }
 }
 /* Forsidebilledet: kun selve 3D-billedet */
 body.forside .top, body.forside .hud, body.forside .våbenbar, body.forside .tip, body.forside .henter { display: none !important; }

@@ -91,9 +91,15 @@ export class Efterbehandling {
     this.trin.forEach((t, i) => t.setSize(Math.max(1, w >> (i + 1)), Math.max(1, hh >> (i + 1))));
   }
   pas(mat, mål) { this.flade.material = mat; this.r.setRenderTarget(mål); this.r.render(this.scene, this.kamera); }
-  tegn(scene, kamera, tid) {
+  // forgrund = { scene, kamera }: tegnes ovenpå bagefter (våbnet i hånden, med sit eget lys og synsfelt)
+  tegn(scene, kamera, tid, forgrund = null) {
     const r = this.r;
     r.setRenderTarget(this.billede); r.render(scene, kamera);
+    if (forgrund) {
+      const ak = r.autoClear; r.autoClear = false;
+      r.clearDepth(); r.render(forgrund.scene, forgrund.kamera);
+      r.autoClear = ak;
+    }
     let kilde = this.billede.texture, b = this.billede.width, h = this.billede.height;
     for (let i = 0; i < this.trin.length; i++) {
       this.ned.uniforms.tKilde.value = kilde; this.ned.uniforms.uTexel.value.set(1 / b, 1 / h); this.ned.uniforms.uFoerste.value = i === 0 ? 1 : 0;

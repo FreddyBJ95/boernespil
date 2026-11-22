@@ -147,6 +147,35 @@ export function lavMiljøkort(renderer) {
   return kort;
 }
 
+// ---------- Våbnenes eget miljøkort: et roligt, mørkt fotostudie ----------
+// Våbnene i hånden ses næsten langs løbet, og så spejler oversiden det, der er lige foran — i skumringen er det
+// en lys, lyserød horisont og den lave sol, og så ligner sort stål pludselig lyst træ. Her er horisonten mørk,
+// og lyset kommer fra en blød lampe ovenover og to smalle lysstriber, så stålet ser mørkt og blankt ud.
+export function lavVåbenMiljø(renderer) {
+  const s = new THREE.Scene();
+  s.add(new THREE.Mesh(new THREE.SphereGeometry(10, 32, 16), new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    vertexShader: `varying vec3 vP; void main() { vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `varying vec3 vP; void main() { float y = vP.y;
+      vec3 c = mix(vec3(0.02, 0.02, 0.025), vec3(0.07, 0.07, 0.085), smoothstep(-0.4, 0.1, y));
+      c = mix(c, vec3(0.16, 0.16, 0.2), smoothstep(0.1, 0.8, y));
+      gl_FragColor = vec4(c, 1.0); }`,
+  })));
+  const felt = (b, h, farve, styrke, pos) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(b, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(farve).multiplyScalar(styrke), side: THREE.DoubleSide }));
+    m.position.copy(pos); m.lookAt(0, 0, 0); s.add(m);
+  };
+  felt(5, 3, 0xfff4ea, 3.2, new THREE.Vector3(0.5, 7, 2));      // blød lampe ovenover, lidt bagved
+  felt(0.7, 6, 0xdfe8ff, 2.6, new THREE.Vector3(6, 2, 1));       // smal lysstribe til højre
+  felt(0.6, 5, 0xffd2a8, 1.6, new THREE.Vector3(-6, 2.5, 2.5));  // varm stribe til venstre bagved
+  felt(3, 0.4, 0xffffff, 1.2, new THREE.Vector3(0, 4, -6));      // svag stribe forude (giver en tynd kant på oversiden)
+  const pm = new THREE.PMREMGenerator(renderer);
+  const kort = pm.fromScene(s, 0.02).texture;
+  pm.dispose();
+  s.traverse(o => { o.geometry?.dispose(); o.material?.dispose(); });
+  return kort;
+}
+
 // ---------- Hele banen ----------
 export function lavBane(scene) {
   const skydbare = [];                       // det man kan ramme med en kugle (med "slags" til lyd og effekter)
@@ -228,7 +257,7 @@ export function lavBane(scene) {
     const glød = new THREE.Mesh(new THREE.CircleGeometry(0.12, 24), new THREE.MeshBasicMaterial({ color: new THREE.Color(6, 5, 3.8) }));
     glød.position.copy(top).addScaledVector(mål.clone().sub(top).normalize(), 0.11); glød.lookAt(mål); scene.add(glød);
     const p = new THREE.SpotLight(0xffe2b8, 160, 0, 0.42, 0.55, 2); p.position.copy(top); p.target.position.copy(mål);
-    if (s === 1) { p.castShadow = true; p.shadow.mapSize.set(1024, 1024); p.shadow.bias = -0.0003; p.shadow.camera.near = 2; p.shadow.camera.far = 14; }
+    if (s === 1) { p.castShadow = true; p.shadow.mapSize.set(512, 512); p.shadow.bias = -0.0003; p.shadow.camera.near = 2; p.shadow.camera.far = 14; }
     scene.add(p, p.target, lyskegle(top, mål, 0.42, 0xffe2b8));
   }
 
@@ -249,7 +278,8 @@ export function lavBane(scene) {
   scene.add(pæreMesh);
   const lp = []; for (let i = 0; i < ledning.length - 1; i++) if (ledning[i] && ledning[i + 1]) lp.push(ledning[i], ledning[i + 1]);
   scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(lp), new THREE.LineBasicMaterial({ color: 0x111111 })));
-  for (const z of [-3.2, -7.4]) { const l = new THREE.PointLight(0xffb070, 3, 9, 2); l.position.set(0, 2.7, z); scene.add(l); }
+  // Ét varmt fyldlys midt under lyskæderne (hvert lys koster regnekraft på hvert punkt på skærmen)
+  { const l = new THREE.PointLight(0xffb070, 5, 12, 2); l.position.set(0, 2.7, -5.3); scene.add(l); }
 
   const ildfluer = lavIldfluer(); scene.add(ildfluer);
 

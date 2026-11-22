@@ -48,14 +48,15 @@ function hentOptagelser() {
     fetch(`../nedrivning/lyde/${n}.mp3`).then(r => r.arrayBuffer()).then(a => ctx.decodeAudioData(a)).then(buf => { optagelser[n] = n === "ild" ? sløjfe(buf) : buf; }).catch(() => {});
   }
 }
-// Gør en optagelse til en sløjfe uden klik: slutningen blandes ind over starten
+// Gør en optagelse til en sløjfe uden klik: slutningen blandes ind over starten.
+// Sløjfen gemmes i mono (halvt så meget hukommelse — ilden lyder alligevel midt foran en).
 function sløjfe(buf) {
-  const over = Math.floor(buf.sampleRate * 0.6), n = buf.length - over;
-  const ny = ctx.createBuffer(buf.numberOfChannels, n, buf.sampleRate);
-  for (let c = 0; c < buf.numberOfChannels; c++) {
-    const a = buf.getChannelData(c), b = ny.getChannelData(c);
-    for (let i = 0; i < n; i++) b[i] = a[i];
-    for (let i = 0; i < over; i++) { const t = i / over; b[i] = a[i] * t + a[n + i] * (1 - t); }
+  const over = Math.floor(buf.sampleRate * 0.6), n = buf.length - over, k = buf.numberOfChannels;
+  const ny = ctx.createBuffer(1, n, buf.sampleRate), b = ny.getChannelData(0);
+  for (let c = 0; c < k; c++) {
+    const a = buf.getChannelData(c);
+    for (let i = 0; i < n; i++) b[i] += a[i] / k;
+    for (let i = 0; i < over; i++) { const t = i / over; b[i] += (a[n + i] * (1 - t) - a[i] * (1 - t)) / k; }
   }
   return ny;
 }
