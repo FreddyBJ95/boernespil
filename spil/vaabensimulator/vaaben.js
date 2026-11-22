@@ -6,7 +6,8 @@
 
 import * as THREE from "../3d-faelles/three.module.js";
 import { side, langs, drejet, rør, kasse, rilleCirkel, del, led, række } from "./former.js";
-import { mat } from "./materialer.js";
+// Våbnene bruger deres eget sæt materialer (de tegnes med eget lys); patroner ude i verden bruger verdens
+import { våbenMat as mat, mat as verdensMat } from "./materialer.js";
 
 // ---------- Små hjælpere til bevægelser ----------
 const klem = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
@@ -54,11 +55,14 @@ const PATRONER = {
 };
 const patronGeo = new Map();
 // Et hylster eller en hel patron (med kugle), der ligger langs x med bunden i 0
-export function patron(slags, medKugle = false) {
+export function patron(slags, medKugle = false, m = verdensMat) {
   const g = new THREE.Group();
   if (slags === "hagl") {
-    const hoved = del(drejet([[0, 0], [0, 0.0118], [0.0016, 0.0118], [0.0018, 0.0108], [0.012, 0.0108], [0.012, 0.0001]], 24), mat.messing);
-    const hylster = del(drejet([[0.0118, 0.0001], [0.0118, 0.0104], [0.066, 0.0104], [0.0700, 0.0095], [0.0702, 0.004], [0.0700, 0.0001]], 24), mat.rødPlast);
+    if (!patronGeo.has("hagl")) patronGeo.set("hagl", {
+      hoved: drejet([[0, 0], [0, 0.0118], [0.0016, 0.0118], [0.0018, 0.0108], [0.012, 0.0108], [0.012, 0.0001]], 24),
+      hylster: drejet([[0.0118, 0.0001], [0.0118, 0.0104], [0.066, 0.0104], [0.0700, 0.0095], [0.0702, 0.004], [0.0700, 0.0001]], 24),
+    });
+    const geo = patronGeo.get("hagl"), hoved = del(geo.hoved, m.messing), hylster = del(geo.hylster, m.rødPlast);
     g.add(hoved, hylster);
     return g;
   }
@@ -68,8 +72,8 @@ export function patron(slags, medKugle = false) {
     patronGeo.set(nøgle, { hyl, kugle: medKugle ? drejet(kugleProfil(s.L, s.kugle[0], s.kugle[1], s.kugle[2]), 18) : null });
   }
   const geo = patronGeo.get(nøgle);
-  g.add(del(geo.hyl, mat.messing));
-  if (geo.kugle) g.add(del(geo.kugle, slags === "357" ? mat.kobber : mat.kobber));
+  g.add(del(geo.hyl, m.messing));
+  if (geo.kugle) g.add(del(geo.kugle, m.kobber));
   return g;
 }
 
@@ -155,7 +159,7 @@ function lavPistol() {
     del(side([[-0.0155, -0.020], [-0.046, -0.099], [-0.084, -0.099], [-0.0535, -0.020]], 0.0225, { fas: 0.001 }), mat.polymer),
     del(side([[-0.0425, -0.1005, 0.001], [-0.0442, -0.1068, 0.002], [-0.0905, -0.1048, 0.002], [-0.0885, -0.0995, 0.001]], 0.031, { fas: 0.0015 }), mat.polymer),
   );
-  const top = patron("9mm", true); top.position.set(-0.044, -0.0215, 0.002); top.rotation.y = 0; top.rotation.z = -0.05; magasin.add(top);
+  const top = patron("9mm", true, mat); top.position.set(-0.044, -0.0215, 0.002); top.rotation.y = 0; top.rotation.z = -0.05; magasin.add(top);
   våben.add(magasin);
 
   return {
@@ -311,7 +315,7 @@ function lavHagl() {
   for (let i = 0; i < 5; i++) våben.add(del(new THREE.BoxGeometry(0.0015, 0.0008, 0.044), mat.hul, -0.4405 + 0.0004 * i, -0.04 - i * 0.022, 0));
 
   // En patron i porten (ses, når bundstykket er tilbage)
-  const iPort = patron("hagl"); iPort.position.set(0.012, -0.002, -0.001); iPort.scale.setScalar(0.98); iPort.visible = false;
+  const iPort = patron("hagl", false, mat); iPort.position.set(0.012, -0.002, -0.001); iPort.scale.setScalar(0.98); iPort.visible = false;
   våben.add(iPort);
 
   return {
@@ -412,7 +416,7 @@ function lavStormgevær() {
     del(side(magasinKurve(), 0.0225, { fas: 0.002, uv: 20 }), mat.tan),
     del(side([[0.020, -0.190, 0.003], [0.093, -0.181, 0.003], [0.095, -0.193, 0.003], [0.022, -0.202, 0.003]], 0.026, { fas: 0.002 }), mat.tan));
   for (let i = 0; i < 4; i++) magasin.add(del(new THREE.BoxGeometry(0.06, 0.0025, 0.0232), mat.tan, 0.054 + i * 0.0045, -0.150 - i * 0.008, 0).rotateZ(0.13));
-  for (let i = 0; i < 2; i++) { const p = patron("556", true); p.position.set(-0.004, -0.0105 - i * 0.004, (i ? -1 : 1) * 0.0035); magasin.add(p); }
+  for (let i = 0; i < 2; i++) { const p = patron("556", true, mat); p.position.set(-0.004, -0.0105 - i * 0.004, (i ? -1 : 1) * 0.0035); magasin.add(p); }
   våben.add(magasin);
 
   return {
@@ -481,7 +485,7 @@ function lavSnig() {
   const aftrækker = led(-0.020, -0.059, 0, del(side([[0.002, 0], [0.003, -0.008, 0.004], [-0.001, -0.0135, 0.002], [-0.0035, -0.0135], [-0.0015, -0.008, 0.004], [-0.002, 0]], 0.0058, { fas: 0.001 }), mat.blank));
   våben.add(aftrækker);
   const magasin = led(0, 0, 0, del(kasse(0.004, -0.086, 0.050, -0.040, 0.026, 0.002, 0.0015), mat.mørkStål), del(kasse(0.002, -0.090, 0.052, -0.084, 0.030, 0.002, 0.0015), mat.polymer));
-  const mp = patron("308", true); mp.position.set(-0.002, -0.042, 0); mp.scale.setScalar(0.95); magasin.add(mp);
+  const mp = patron("308", true, mat); mp.position.set(-0.002, -0.042, 0); mp.scale.setScalar(0.95); magasin.add(mp);
   våben.add(magasin);
   // Tobensstøtte, foldet frem under forskæftet
   våben.add(del(kasse(0.292, -0.062, 0.322, -0.049, 0.03, 0.003), mat.mørkStål));
@@ -533,31 +537,34 @@ function lavSnig() {
 }
 
 // ---------- Våbenlisten ----------
-// plads = hvor våbnet holdes foran kameraet (x, y, z i kameraets rum) · rekyl = hvor meget det sparker
+// plads = hvor våbnet holdes foran kameraet (x, y, z i kameraets rum). Løbet peger altid præcis mod målet;
+// kant = hvor meget våbnet vippes om løbets akse (så siden ses) · vedØjet = hvor geværet sidder, når man
+// kigger gennem kikkerten (okularet lige foran kameraet) · ikonVip = hvor skråt det står på knappen ·
+// rekyl = hvor meget det sparker
 export const VÅBEN = [
   {
     id: "pistol", navn: "Pistol", lav: lavPistol, patron: "9mm", magasin: 17, kadence: 0.1, auto: false,
-    plads: [-0.07, -0.055, -0.3], vinkel: -0.35, skala: 1, rekyl: { løft: 0.22, tilbage: 0.03, rul: 0.04 }, lyd: "pistol", ladTid: 1.35,
+    plads: [-0.1, -0.08, -0.3], kant: 0.2, skala: 1, rekyl: { løft: 0.22, tilbage: 0.03, rul: 0.04 }, lyd: "pistol", ladTid: 1.35,
     hændelser: [[0.12, "magUd"], [0.42, "magFald"], [0.9, "magInd"], [1.15, "slædeFrem"]],
   },
   {
     id: "revolver", navn: "Revolver", lav: lavRevolver, patron: "357", magasin: 6, kadence: 0.3, auto: false,
-    plads: [-0.075, -0.06, -0.36], vinkel: -0.4, skala: 1, rekyl: { løft: 0.5, tilbage: 0.035, rul: 0.06 }, lyd: "revolver", ladTid: 1.9,
+    plads: [-0.1, -0.085, -0.34], kant: 0.2, skala: 1, rekyl: { løft: 0.5, tilbage: 0.035, rul: 0.06 }, lyd: "revolver", ladTid: 1.9,
     hændelser: [[0.24, "tromleUd"], [0.55, "hylstreUd"], [0.95, "patronerInd"], [1.42, "tromleInd"]],
   },
   {
     id: "hagl", navn: "Haglgevær", lav: lavHagl, patron: "hagl", magasin: 6, kadence: 0.62, auto: false, hagl: 9, spredning: 0.045,
-    plads: [-0.07, -0.075, -0.42], vinkel: -0.3, skala: 1, rekyl: { løft: 0.42, tilbage: 0.07, rul: 0.05 }, lyd: "hagl", ladTid: null,
+    plads: [-0.12, -0.1, -0.33], kant: 0.3, ikonVip: 0.3, skala: 1, rekyl: { løft: 0.42, tilbage: 0.07, rul: 0.05 }, lyd: "hagl", ladTid: null,
     hændelser: [],
   },
   {
     id: "stormgevær", navn: "Stormgevær", lav: lavStormgevær, patron: "556", magasin: 30, kadence: 0.075, auto: true, spredning: 0.006,
-    plads: [-0.07, -0.072, -0.38], vinkel: -0.32, skala: 1, rekyl: { løft: 0.07, tilbage: 0.018, rul: 0.012 }, lyd: "stormgevær", ladTid: 1.9,
+    plads: [-0.12, -0.098, -0.33], kant: 0.28, ikonVip: 0.26, skala: 1, rekyl: { løft: 0.07, tilbage: 0.018, rul: 0.012 }, lyd: "stormgevær", ladTid: 1.9,
     hændelser: [[0.15, "magUd"], [0.45, "magFald"], [0.98, "magInd"], [1.3, "ladegreb"], [1.5, "ladegrebSlip"]],
   },
   {
     id: "snig", navn: "Snigskyttegevær", lav: lavSnig, patron: "308", magasin: 5, kadence: 1.25, auto: false, kikkert: true,
-    plads: [-0.065, -0.08, -0.46], vinkel: -0.3, skala: 1, rekyl: { løft: 0.3, tilbage: 0.06, rul: 0.03 }, lyd: "snig", ladTid: 1.9,
+    plads: [-0.115, -0.105, -0.38], kant: 0.24, ikonVip: 0.3, vedØjet: [0, -0.064, -0.25], skala: 1, rekyl: { løft: 0.3, tilbage: 0.06, rul: 0.03 }, lyd: "snig", ladTid: 1.9,
     hændelser: [[0.15, "magUd"], [0.45, "magFald"], [0.98, "magInd"], [1.08, "boltOp"], [1.2, "boltTilbage"], [1.33, "boltFrem"], [1.45, "boltNed"]],
   },
 ];

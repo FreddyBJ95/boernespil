@@ -5,28 +5,33 @@
 
 import * as THREE from "../3d-faelles/three.module.js";
 import { Efterbehandling } from "./efterbehandling.js";
-import { lavBane, lavMiljøkort, HYLDE } from "./bane.js";
+import { lavBane, lavMiljøkort, lavVåbenMiljø, HYLDE } from "./bane.js";
 import { Partikler, Stumper } from "./partikler.js";
 import { Effekter } from "./effekter.js";
 import { VÅBEN, patron } from "./vaaben.js";
 import { Lyssværd, Ildsværd, SVÆRDFARVER, ILDFARVER } from "./svaerd.js";
 import { Mål } from "./maal.js";
+import { mat } from "./materialer.js";
 import * as lyd from "./lyd.js";
 
 const $ = id => document.getElementById(id);
 const tilf = (a, b) => a + Math.random() * (b - a);
 const v3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const klem = (x, a, b) => Math.min(b, Math.max(a, x));
+const blød = x => x * x * (3 - 2 * x);
 const PRØVE = new URLSearchParams(location.search).has("prøve");
 
 // ---------- Tegneren, kameraet og scenen ----------
+// Spar på hukommelsen: lærredet selv behøver hverken gennemsigtighed eller dybde (alt tegnes først i et
+// billede for sig og lægges på til sidst), og på tablets tegnes der med lidt færre punkter (1,3 i stedet for 2).
 const lærred = $("scene");
-const renderer = new THREE.WebGLRenderer({ canvas: lærred, antialias: false, alpha: true, powerPreference: "high-performance" });
+const renderer = new THREE.WebGLRenderer({ canvas: lærred, antialias: false, alpha: false, depth: false, stencil: false, powerPreference: "high-performance" });
 renderer.toneMapping = THREE.NoToneMapping;
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = false;   // skyggerne tegnes kun hvert andet billede (se trin)
 renderer.localClippingEnabled = true;
 const mobil = /iPad|iPhone|Android|Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1;
-let pr = Math.min(window.devicePixelRatio || 1, mobil ? 1.6 : 2);
+let pr = Math.min(window.devicePixelRatio || 1, mobil ? 1.3 : 1.75);
 renderer.setPixelRatio(pr);
 
 const scene = new THREE.Scene();
@@ -36,7 +41,20 @@ kamera.position.copy(KAMERA_POS); kamera.lookAt(KIG);
 scene.add(kamera);
 scene.environment = lavMiljøkort(renderer);
 const bane = lavBane(scene);
-const efter = new Efterbehandling(renderer, { samples: 4 });
+const efter = new Efterbehandling(renderer, { samples: mobil ? 2 : 4 });
+
+// Våbnet i hånden tegnes for sig selv ovenpå verden: med sit eget synsfelt (så kikkertens zoom ikke forvrænger
+// det), sit eget lys (ét hovedlys, ét kantlys og himmelskær i stedet for alle banens lamper) og sit eget, roligere
+// miljøkort (så sort stål ikke spejler den lyserøde aftenhimmel og ligner træ).
+const våbenScene = new THREE.Scene();
+våbenScene.environment = lavVåbenMiljø(renderer);
+const våbenKamera = new THREE.PerspectiveCamera(50, 1, 0.01, 20);
+våbenScene.add(våbenKamera, new THREE.HemisphereLight(0x9ea2d6, 0x3a2e26, 0.8));
+const hovedlys = new THREE.DirectionalLight(0xfff0e2, 2.4), kantlys = new THREE.DirectionalLight(0xa9c2ff, 1.5);
+hovedlys.position.set(0.7, 1.6, 0.9); kantlys.position.set(-1.2, 0.8, -1.4);
+for (const l of [hovedlys, kantlys]) { våbenKamera.add(l, l.target); l.target.position.set(0, 0, -0.4); }
+const våbenGlimt = new THREE.PointLight(0xffb060, 0, 3, 2); våbenScene.add(våbenGlimt);   // mundingsglimtet lyser også på våbnet
+const forgrund = { scene: våbenScene, kamera: våbenKamera };
 
 // Partikler: en slags der lyser (lægges sammen) og en der dækker (røg, saft, konfetti)
 const glød = new Partikler(scene, { maks: 2500, lægSammen: true });
@@ -47,8 +65,9 @@ const mål = new Mål({ scene, kamera, effekter, glød, røg, stumper, gulv: ban
 
 // ---------- Våbnene i hånden ----------
 // kamera → hånd (stedet foran kameraet) → sigte (drejer mod målet) → rekyl (sparket) → lade (vip ved ladning) → våbnet
+// (våbenKameraet følger kameraet præcist, så "foran kameraet" er det samme sted i begge scener)
 const hånd = new THREE.Group(), sigte = new THREE.Group(), rekyl = new THREE.Group(), lade = new THREE.Group();
-kamera.add(hånd); hånd.add(sigte); sigte.add(rekyl); rekyl.add(lade);
+våbenKamera.add(hånd); hånd.add(sigte); sigte.add(rekyl); rekyl.add(lade);
 const våben = VÅBEN.map(spec => {
   const model = spec.lav();
   // Modellerne er tegnet med højre side mod −z: spejl dem, så udkastet sidder til højre, og drej løbet frem (−z)
@@ -72,34 +91,51 @@ const VALG = [
 let valgt = null, skift = 1;           // skift: 0 = våbnet er lige taget frem, 1 = på plads
 
 // ---------- Ikonerne i våbenlinjen (tegnet af de rigtige 3D-modeller) ----------
+// Hvert våben fotograferes fra siden foran en blød, lys baggrund (som i et udstillingsskab), så selv de sorte
+// våben står tydeligt frem. Billedet tegnes i et lille billede for sig og læses tilbage som et almindeligt billede.
 function lavIkoner() {
-  const W = 320, H = 160, s = new THREE.Scene(), kam = new THREE.OrthographicCamera(-1, 1, 0.5, -0.5, 0.01, 10);
-  s.environment = scene.environment;
-  s.add(new THREE.HemisphereLight(0xffffff, 0x404050, 1.2));
-  const l = new THREE.DirectionalLight(0xffffff, 2.2); l.position.set(-1, 2, 3); s.add(l);
-  const st = renderer.getSize(new THREE.Vector2()), gammelTone = renderer.toneMapping;
-  renderer.setRenderTarget(null); renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.15;
-  renderer.setClearColor(0x000000, 0);
+  const B = 264, H = 192, forhold = B / H;
+  const mål = new THREE.WebGLRenderTarget(B, H, { samples: 4, colorSpace: THREE.SRGBColorSpace });
+  const s = new THREE.Scene(), kam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 10);
+  // Baggrunden: et lyst skær bag våbnet, mørkere ud mod kanterne
+  const bg = document.createElement("canvas"); bg.width = B; bg.height = H;
+  const g = bg.getContext("2d"), grad = g.createRadialGradient(B * 0.5, H * 0.36, 8, B * 0.5, H * 0.42, B * 0.62);
+  grad.addColorStop(0, "#b9bfd6"); grad.addColorStop(0.45, "#7d84a3"); grad.addColorStop(1, "#2c2a44");
+  g.fillStyle = grad; g.fillRect(0, 0, B, H);
+  s.background = new THREE.CanvasTexture(bg); s.background.colorSpace = THREE.SRGBColorSpace;
+  s.environment = våbenScene.environment;
+  s.add(new THREE.HemisphereLight(0xffffff, 0x4a4660, 1.4));
+  const nøgle = new THREE.DirectionalLight(0xfff6ec, 2.6); nøgle.position.set(-1, 2, 3);
+  const kant = new THREE.DirectionalLight(0xdce6ff, 2.2); kant.position.set(1.5, 1.2, -2);
+  s.add(nøgle, kant);
+  const px = new Uint8Array(B * H * 4);
   for (const v of VALG) {
     const obj = v.sværd ? v.sværd.gruppe : v.våben.model.gruppe, forælder = obj.parent;
     const gem = { p: obj.position.clone(), q: obj.quaternion.clone(), vis: obj.visible };
     s.add(obj); obj.visible = true; obj.position.set(0, 0, 0);
-    if (v.sværd) { obj.quaternion.setFromEuler(new THREE.Euler(0.5, 0, -1.2)); v.sværd.ude = 0.42; v.sværd.mål = 0.42; v.sværd.opdater(0.016, 1); }
-    else obj.quaternion.identity();
+    if (v.sværd) { obj.quaternion.setFromEuler(new THREE.Euler(0.5, 0, -1.25)); v.sværd.ude = 0.5; v.sværd.mål = 0.5; v.sværd.opdater(0.016, 1); }
+    else obj.quaternion.setFromEuler(new THREE.Euler(0.16, -0.22, v.våben.spec.ikonVip ?? 0.1));   // lange geværer vippes, så de fylder mere
     obj.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(obj), c = box.getCenter(v3()), str = box.getSize(v3());
-    const b = Math.max(str.x / 2, str.y) * 1.08;
-    kam.left = c.x - b; kam.right = c.x + b; kam.top = c.y + b / 2; kam.bottom = c.y - b / 2;
+    // Kameraet rammer våbnet ind i den øverste del (navnet står nederst). Sværdets glød tæller ikke med.
+    const box = new THREE.Box3();
+    obj.traverse(o => { if (o.isMesh && o.frustumCulled && o.visible) box.expandByObject(o); });
+    const c = box.getCenter(v3()), str = box.getSize(v3());
+    const halvH = Math.max(str.y / 1.42, str.x / 1.84 / forhold), halvB = halvH * forhold;
+    kam.left = -halvB; kam.right = halvB; kam.top = halvH * 0.86; kam.bottom = -halvH * 1.14;   // (målt fra kameraet)
     kam.position.set(c.x, c.y, 3); kam.lookAt(c.x, c.y, 0); kam.updateProjectionMatrix();
-    renderer.setViewport(0, 0, W / pr, H / pr); renderer.setScissor(0, 0, W / pr, H / pr); renderer.setScissorTest(true);
-    renderer.clear(); renderer.render(s, kam);
-    const c2 = document.createElement("canvas"); c2.width = W; c2.height = H;
-    c2.getContext("2d").drawImage(lærred, 0, lærred.height - H, W, H, 0, 0, W, H);
-    v.ikon = c2.toDataURL("image/png");
+    renderer.setRenderTarget(mål); renderer.render(s, kam);
+    renderer.readRenderTargetPixels(mål, 0, 0, B, H, px);
+    // Billedet læses nedefra og op — vend det, og gem det som et almindeligt billede til knappen
+    const c2 = document.createElement("canvas"); c2.width = B; c2.height = H;
+    const g2 = c2.getContext("2d"), billede = g2.createImageData(B, H);
+    for (let y = 0; y < H; y++) billede.data.set(px.subarray((H - 1 - y) * B * 4, (H - y) * B * 4), y * B * 4);
+    g2.putImageData(billede, 0, 0);
+    v.ikon = c2.toDataURL("image/jpeg", 0.9);
     forælder.add(obj); obj.position.copy(gem.p); obj.quaternion.copy(gem.q); obj.visible = gem.vis;
     if (v.sværd) { v.sværd.ude = 0; v.sværd.mål = 0; }
   }
-  renderer.setScissorTest(false); renderer.setViewport(0, 0, st.x, st.y); renderer.toneMapping = gammelTone; renderer.setClearColor(0x000000, 1);
+  renderer.setRenderTarget(null);
+  mål.dispose(); s.background.dispose();
 }
 
 // ---------- Brugerfladen ----------
@@ -153,12 +189,15 @@ function vælg(v) {
   for (const x of VALG) x.knap?.classList.toggle("valgt", x === v);
   for (const w of våben) w.model.gruppe.visible = w === v.våben;
   lyssværd.gruppe.visible = v.sværd === lyssværd; ildsværd.gruppe.visible = v.sværd === ildsværd;
+  // Mundingsglimtets lys bruges kun med våben (sværdene har deres eget) — så er der lige mange lys hele tiden,
+  // og spillet skal ikke bygge sine lysberegninger om, hver gang man skifter
+  effekter.glimtLys.visible = !!v.våben;
   document.body.dataset.tilstand = v.sværd ? "sværd" : "våben";
   document.body.dataset.våben = v.id;
   if (v.våben) {
     const p = v.våben.spec.plads; hånd.position.set(...p);
     lyd.mekanik("vælg");
-    sigte.quaternion.copy(målRetning(sigtePunkt));
+    sigtNu(v.våben);
   }
   if (v.sværd) { v.sværd.ude = 0; setTimeout(() => { if (valgt === v) tændSværd(true); }, 260); }
   lavFarver(); visAmmo();
@@ -173,11 +212,15 @@ function tændSværd(på) {
 // ---------- Sigte og skud ----------
 const stråle = new THREE.Raycaster();
 let sigtePunkt = v3(0, 1.2, HYLDE.z);
-// Rotationen, der får løbet til at pege mod et punkt i verden
-function målRetning(punkt) {
-  const p = kamera.worldToLocal(punkt.clone()), d = p.sub(hånd.position).normalize();
-  return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(v3(), d, v3(0, 1, 0)));
+// Rotationen, der får løbet til at pege præcis mod et punkt i verden (løbet ligger langs sigtets −z).
+// "kant" vipper våbnet en anelse om løbets egen akse, så man ser mere af siden — uden at det sigter skævt.
+function målRetning(punkt, kant = 0) {
+  const p = våbenKamera.worldToLocal(punkt.clone()), d = p.sub(hånd.position).normalize();
+  const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(v3(), d, v3(0, 1, 0)));
+  return q.multiply(new THREE.Quaternion().setFromAxisAngle(v3(0, 0, 1), kant));
 }
+// Drej våbnet helt ind på sigtepunktet med det samme (lige før et skud, så kuglen går ud af løbet)
+function sigtNu(v) { sigte.quaternion.copy(målRetning(sigtePunkt, v.spec.kant)); }
 // Hvad rammer man, hvis man trykker her? (med hjælp: tæt nok på et mål tæller som et træf)
 function find(x, y, spredning = 0) {
   const W = innerWidth, H = innerHeight, ndc = new THREE.Vector2(x / W * 2 - 1, -(y / H) * 2 + 1);
@@ -205,12 +248,13 @@ function skyd(v, x, y) {
   v.ammo--; v.sidenSkud = 0; v.tom = v.ammo === 0; v.nytSkud = true; v.harPumpet = false; v.harRepeteret = false; v.hylsterUde = false;
   lyd.skud(spec.lyd, -0.3);
   const munding = v.model.munding, str = { pistol: 0.11, revolver: 0.17, hagl: 0.22, stormgevær: 0.13, snig: 0.2 }[spec.id];
-  effekter.mundingsild(munding, str, { side: spec.id === "snig", røg: spec.id === "hagl" ? 1.6 : 1 });
+  // Gennem kikkerten ses geværet ikke — så kun et kort lysglimt i stedet for ild foran linsen
+  if (!kikkert) effekter.mundingsild(munding, str, { side: spec.id === "snig", røg: spec.id === "hagl" ? 1.6 : 1 });
   // Sparket: våbnet hopper op og tilbage, og kameraet ryster en smule
   const r = spec.rekyl;
   rekylFart.løft += r.løft * 14 * tilf(0.85, 1.15); rekylFart.tilbage += r.tilbage * 14; rekylFart.rul += r.rul * 14 * tilf(-1, 1); rekylFart.sving += r.rul * 6 * tilf(-1, 1);
   rystelse = Math.min(1, rystelse + r.løft * 1.4 + r.tilbage * 3);
-  efter.blink = 0.02 + r.løft * 0.06;
+  efter.blink = kikkert ? 0.18 : 0.02 + r.løft * 0.06;
   // Kuglerne (haglgeværet skyder 9 hagl på én gang)
   const fra = munding.getWorldPosition(v3());
   const antal = spec.hagl || 1, ramte = new Set();
@@ -258,6 +302,7 @@ function tabMagasin(v) {
   const m = v.model.magasinDel; if (!m) return;
   const kopi = m.clone(true); m.updateWorldMatrix(true, true);
   kopi.matrixWorld.decompose(kopi.position, kopi.quaternion, kopi.scale);
+  kopi.traverse(o => { if (o.isMesh && mat[o.material.name]) o.material = mat[o.material.name]; });   // nu er det en del af verden
   kopi.userData.skala = 1;
   const s = kopi.scale.clone();
   kopi.userData.væk = () => {};
@@ -333,15 +378,15 @@ function tryk(v, x, y) {
     return;
   }
   if (v.spec.kikkert) { startKikkert(v, x, y, t); return; }
-  if (kanSkyde(v)) skyd(v, x, y);
+  if (kanSkyde(v)) { sigtNu(v); skyd(v, x, y); }
 }
 const kanSkyde = v => !v.lader && v.ammo > 0 && v.sidenSkud >= v.spec.kadence && skift > 0.6 && !kikkert;
 
-// Snigskytten: kameraet zoomer ind gennem kikkerten, skyder, og zoomer ud igen
+// Snigskytten: geværet løftes op til øjet, kameraet zoomer ind gennem kikkerten, skyder og zoomer ud igen
 function startKikkert(v, x, y, t) {
   if (!kanSkyde(v)) return;
   kikkert = { v, x, y, punkt: t.punkt.clone(), t: 0, skudt: false };
-  $("kikkert").hidden = false;
+  $("kikkert").hidden = false; $("kikkert").style.opacity = "0";
 }
 
 // ---------- Knapperne ----------
@@ -386,13 +431,14 @@ function tilpas() {
   kamera.fov = klem(2 * Math.atan(Math.tan(31 * Math.PI / 180) / kamera.aspect) * 180 / Math.PI, 50, 78);
   basisFov = kamera.fov;
   kamera.updateProjectionMatrix();
+  våbenKamera.aspect = kamera.aspect; våbenKamera.fov = basisFov; våbenKamera.updateProjectionMatrix();
 }
 let basisFov = 50;
 addEventListener("resize", tilpas);
 
 // ---------- Hvert billede ----------
-let sidst = performance.now(), tid = 0, næsteKast = 2, målingT = 0, målingN = 0;
-const _q = new THREE.Quaternion(), _qv = new THREE.Quaternion(), _op = v3(0, 1, 0);
+let sidst = performance.now(), tid = 0, næsteKast = 2, målingT = 0, målingN = 0, billedNr = 0;
+const _q = new THREE.Quaternion(), _øje = v3(), _fremad = v3();
 function løkke(nu) {
   requestAnimationFrame(løkke);
   trin(nu);
@@ -402,21 +448,27 @@ function trin(nu) {
   let dt = (nu - sidst) / 1000; if (!(dt > 0)) dt = 0; dt = Math.min(dt, 0.05); sidst = nu; tid += dt;
   // Kameraet: ånder lidt og ryster ved skud. Snigskyttens kikkert zoomer ind på målet
   rystelse *= Math.exp(-dt * 9);
-  let kig = KIG.clone(), fov = basisFov;
+  let kig = KIG.clone(), fov = basisFov, løftTilØjet = 0;
   if (kikkert) {
+    // 1) geværet løftes op, til kikkerten sidder foran øjet  2) mørket lukker sig om linsen
+    // 3) zoom ind (geværet skjules — man kigger jo gennem det)  4) skud midt i trådkorset  5) samme vej ud igen
     const k = kikkert; k.t += dt;
-    const ind = Math.min(1, k.t / 0.24), ud = k.t > 1.15 ? Math.min(1, (k.t - 1.15) / 0.35) : 0, z = ind * (1 - ud);
-    const e = z * z * (3 - 2 * z);
-    kig.lerp(k.punkt, e); fov = basisFov + (6.5 - basisFov) * e;
-    $("kikkert").style.opacity = String(klem((e - 0.55) * 2.6, 0, 1));
-    if (!k.skudt && k.t > 0.32) { k.skudt = true; skyd(k.v, k.x, k.y); }
-    if (k.t > 1.5) { kikkert = null; $("kikkert").hidden = true; }
+    const fra = (a, b) => blød(klem((k.t - a) / (b - a), 0, 1));
+    løftTilØjet = fra(0, 0.2) * (1 - fra(1.3, 1.5));
+    const mørke = fra(0.13, 0.22) * (1 - fra(1.24, 1.32));
+    const zoom = fra(0.22, 0.36) * (1 - fra(1.1, 1.24));
+    kig.lerp(k.punkt, løftTilØjet); fov = basisFov + (6.5 - basisFov) * zoom;
+    $("kikkert").style.opacity = mørke.toFixed(3);
+    k.v.model.gruppe.visible = zoom < 0.001;
+    if (!k.skudt && k.t > 0.52) { k.skudt = true; skyd(k.v, innerWidth / 2, innerHeight / 2); }
+    if (k.t > 1.5) { kikkert = null; $("kikkert").hidden = true; k.v.model.gruppe.visible = valgt?.våben === k.v; }
   }
   kamera.position.copy(KAMERA_POS).add(v3(Math.sin(tid * 0.6) * 0.004, Math.sin(tid * 0.9) * 0.003, 0));
   kamera.lookAt(kig);
   kamera.rotateX((Math.random() - 0.5) * rystelse * 0.02 + rystelse * 0.012); kamera.rotateY((Math.random() - 0.5) * rystelse * 0.016);
   if (Math.abs(kamera.fov - fov) > 0.01) { kamera.fov = fov; kamera.updateProjectionMatrix(); }
   kamera.updateMatrixWorld();
+  våbenKamera.position.copy(kamera.position); våbenKamera.quaternion.copy(kamera.quaternion); våbenKamera.updateMatrixWorld(true);
 
   // Skift våben: det nye kommer op nedefra
   skift = Math.min(1, skift + dt * 2.8);
@@ -424,7 +476,7 @@ function trin(nu) {
   const v = valgt?.våben;
   if (v) {
     v.sidenSkud += dt;
-    if (v.spec.auto && finger !== null && kanSkyde(v)) { const t = find(fingerPos.x, fingerPos.y); sigtePunkt.copy(t.punkt); skyd(v, fingerPos.x, fingerPos.y); }
+    if (v.spec.auto && finger !== null && kanSkyde(v)) { const t = find(fingerPos.x, fingerPos.y); sigtePunkt.copy(t.punkt); sigtNu(v); skyd(v, fingerPos.x, fingerPos.y); }
     else if (v.spec.auto && finger !== null) sigtePunkt.copy(find(fingerPos.x, fingerPos.y).punkt);
     // Pumpen og repeteringen: hylsteret ryger ud, når pumpen/bundstykket er helt tilbage
     if (v.spec.id === "hagl" && !v.harPumpet) {
@@ -459,11 +511,15 @@ function trin(nu) {
     rekyl.position.set(0, rekylPos.løft * 0.04, rekylPos.tilbage);
     rekyl.rotation.set(rekylPos.løft, rekylPos.sving, rekylPos.rul);
     lade.rotation.set(ekstra.løft || 0, 0, ekstra.rul || 0);
-    // Sigte mod punktet (blødt), og ånde lidt
-    _q.copy(målRetning(sigtePunkt)).multiply(_qv.setFromAxisAngle(_op, v.spec.vinkel || 0)); sigte.quaternion.slerp(_q, 1 - Math.exp(-dt * 16));
-    const p = v.spec.plads, smal = klem(kamera.aspect / 1.4, 0.55, 1);
-    hånd.position.set(p[0] * smal + Math.sin(tid * 1.1) * 0.0015, p[1] + Math.sin(tid * 1.7) * 0.0012 - (1 - op) * 0.32, p[2]);
+    // Hånden: ånder lidt, og ved snigskyttens kikkert løftes geværet op foran øjet
+    // (smal skærm: våbnet rykkes ind mod midten · bred, lav skærm som en telefon: lidt op over våbenlinjen)
+    const p = v.spec.plads, smal = klem(kamera.aspect / 1.4, 0.55, 1), op2 = klem((kamera.aspect - 1.5) * 0.04, 0, 0.026);
+    hånd.position.set(p[0] * smal + Math.sin(tid * 1.1) * 0.0015, p[1] + op2 + Math.sin(tid * 1.7) * 0.0012 - (1 - op) * 0.32, p[2]);
+    if (løftTilØjet > 0 && v.spec.vedØjet) hånd.position.lerp(_øje.set(...v.spec.vedØjet), løftTilØjet);
     hånd.rotation.set(-(1 - op) * 0.6, 0, (1 - op) * 0.3);
+    // Løbet peger mod punktet, man trykkede på (blødt, men hurtigt — og helt præcist ved hvert skud)
+    // (når geværet er oppe ved øjet, følger det kameraet helt uden forsinkelse, så kikkerten sidder lige foran øjet)
+    _q.copy(målRetning(sigtePunkt, v.spec.kant * (1 - løftTilØjet))); sigte.quaternion.slerp(_q, Math.max(1 - Math.exp(-dt * 22), løftTilØjet));
   }
   // Sværdet: klingen følger fingeren som noget tungt (fjeder), og frugt kastes op
   const sv = valgt?.sværd;
@@ -489,7 +545,12 @@ function trin(nu) {
   lyd.natur();
   efter.blink = Math.max(0, (efter.slut.uniforms.uBlink.value) * Math.exp(-dt * 30));
   efter.farvekant = Math.min(0.45, rystelse * 0.5);
-  efter.tegn(scene, kamera, tid);
+  // Mundingsglimtet lyser også på våbnet (lidt foran mundingen, så våbnet ikke bliver hvidt)
+  våbenGlimt.intensity = effekter.glimtLys.intensity * 0.35;
+  if (våbenGlimt.intensity > 0.01) våbenGlimt.position.copy(effekter.glimtLys.position).addScaledVector(kamera.getWorldDirection(_fremad), 0.12);
+  // Skyggerne ændrer sig kun lidt fra billede til billede: tegn dem hvert andet billede
+  renderer.shadowMap.needsUpdate = billedNr++ % 2 === 0;
+  efter.tegn(scene, kamera, tid, forgrund);
   // Tip efter et stykke tid uden tryk
   tipTimer += dt;
   if (tipTimer > 7 && !$("tip").classList.contains("vis")) $("tip").classList.add("vis");
@@ -525,4 +586,4 @@ if (new URLSearchParams(location.search).has("forside")) {
 }
 
 // Til prøverne: ?prøve giver adgang til spillets tilstand
-if (PRØVE) window.spil = { VALG, vælg, våben, mål, kamera, scene, find, tryk, genlad, lyssværd, ildsværd, sværdStyr, fingerPos, renderer, efter, hånd, sigte, sigtePunkt, effekter, trin: (n = 1, dt = 1 / 60) => { for (let i = 0; i < n; i++) trin(sidst + dt * 1000); }, get valgt() { return valgt; } };
+if (PRØVE) window.spil = { VALG, vælg, våben, mål, kamera, scene, våbenScene, våbenKamera, find, tryk, genlad, lyssværd, ildsværd, sværdStyr, fingerPos, renderer, efter, hånd, sigte, sigtePunkt, effekter, trin: (n = 1, dt = 1 / 60) => { for (let i = 0; i < n; i++) trin(sidst + dt * 1000); }, get valgt() { return valgt; } };

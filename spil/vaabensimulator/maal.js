@@ -24,18 +24,33 @@ const FRUGT = {
   kokos: { r: [0.075, 0.08, 0.075], ru: 0.95, saft: [0.95, 0.95, 0.92], kød: 0xf7f3ea, skræl: 0x5a3a22 },
 };
 const kugleGeo = new THREE.SphereGeometry(1, 40, 28);
+// Former og materialer laves kun én gang og deles af alle mål af samme slags. Ellers bliver der lavet nye
+// hver gang en frugt eller dåse dukker op, og de fylder i hukommelsen, længe efter at tingen er skudt i stykker.
+const delt = new Map();
+function én(navn, lav) { if (!delt.has(navn)) delt.set(navn, lav()); return delt.get(navn); }
+const GEO = {
+  æbleStilk: new THREE.CylinderGeometry(0.003, 0.004, 0.03, 8),
+  blad: new THREE.SphereGeometry(1, 12, 8),
+  græskarStilk: new THREE.CylinderGeometry(0.012, 0.02, 0.05, 10),
+  dåse: new THREE.CylinderGeometry(0.045, 0.045, 0.13, 36, 1),
+  dåseKant: new THREE.TorusGeometry(0.043, 0.0028, 8, 36).rotateX(Math.PI / 2),
+  flig: new THREE.BoxGeometry(0.018, 0.002, 0.01),
+  kapsel: new THREE.CylinderGeometry(0.0165, 0.0165, 0.009, 20),
+  knude: new THREE.ConeGeometry(0.012, 0.022, 10),
+  snit: new THREE.CircleGeometry(0.985, 48),
+};
 // Ruheden som afstanden fra "rigtige" materialer — skal er lidt blank, kokos er mat og håret
 function frugt(slags) {
   const s = FRUGT[slags], obj = new THREE.Group(), skal = new THREE.Group();
   skal.scale.set(...s.r); obj.add(skal);
-  const m = new THREE.MeshPhysicalMaterial({ map: frugtSkal(slags), bumpMap: frugtBuler(slags), bumpScale: 2, roughness: s.ru, clearcoat: slags === "æble" ? 0.6 : 0.15, clearcoatRoughness: 0.4 });
+  const m = én("skal-" + slags, () => new THREE.MeshPhysicalMaterial({ map: frugtSkal(slags), bumpMap: frugtBuler(slags), bumpScale: 2, roughness: s.ru, clearcoat: slags === "æble" ? 0.6 : 0.15, clearcoatRoughness: 0.4 }));
   const k = new THREE.Mesh(kugleGeo, m); k.castShadow = k.receiveShadow = true; skal.add(k);
   if (slags === "æble") {
-    const stilk = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.004, 0.03, 8), new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.8 })); stilk.position.y = 0.068; stilk.rotation.z = 0.2; obj.add(stilk);
-    const blad = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), new THREE.MeshStandardMaterial({ color: 0x3f8a2a, roughness: 0.6 })); blad.scale.set(0.025, 0.003, 0.012); blad.position.set(0.016, 0.075, 0); blad.rotation.z = 0.5; obj.add(blad);
+    const stilk = new THREE.Mesh(GEO.æbleStilk, én("æbleStilk", () => new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.8 }))); stilk.position.y = 0.068; stilk.rotation.z = 0.2; obj.add(stilk);
+    const blad = new THREE.Mesh(GEO.blad, én("blad", () => new THREE.MeshStandardMaterial({ color: 0x3f8a2a, roughness: 0.6 }))); blad.scale.set(0.025, 0.003, 0.012); blad.position.set(0.016, 0.075, 0); blad.rotation.z = 0.5; obj.add(blad);
   }
   if (slags === "græskar") {
-    const stilk = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.02, 0.05, 10), new THREE.MeshStandardMaterial({ color: 0x5f6a2a, roughness: 0.9 })); stilk.position.y = 0.125; stilk.rotation.z = -0.25; obj.add(stilk);
+    const stilk = new THREE.Mesh(GEO.græskarStilk, én("græskarStilk", () => new THREE.MeshStandardMaterial({ color: 0x5f6a2a, roughness: 0.9 }))); stilk.position.y = 0.125; stilk.rotation.z = -0.25; obj.add(stilk);
   }
   return { obj, skal, radius: Math.max(...s.r), slags, inde: s.kød };
 }
@@ -43,10 +58,11 @@ function frugt(slags) {
 function dåse() {
   const obj = new THREE.Group();
   const låg = mat.rustfri;
-  const m = [new THREE.MeshPhysicalMaterial({ map: dåseEtiket(Math.random() * 6 | 0), metalness: 0.65, roughness: 0.32, clearcoat: 0.5 }), låg, låg];
-  const krop = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.13, 36, 1), m); krop.castShadow = krop.receiveShadow = true; obj.add(krop);
-  for (const y of [-0.066, 0.066]) obj.add(new THREE.Mesh(new THREE.TorusGeometry(0.043, 0.0028, 8, 36).rotateX(Math.PI / 2), låg)).position.y = y;
-  const flig = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.002, 0.01), låg); flig.position.set(0.012, 0.0665, 0); obj.add(flig);
+  const nr = Math.random() * 6 | 0;
+  const m = [én("dåse" + nr, () => new THREE.MeshPhysicalMaterial({ map: dåseEtiket(nr), metalness: 0.65, roughness: 0.32, clearcoat: 0.5 })), låg, låg];
+  const krop = new THREE.Mesh(GEO.dåse, m); krop.castShadow = krop.receiveShadow = true; obj.add(krop);
+  for (const y of [-0.066, 0.066]) obj.add(new THREE.Mesh(GEO.dåseKant, låg)).position.y = y;
+  const flig = new THREE.Mesh(GEO.flig, låg); flig.position.set(0.012, 0.0665, 0); obj.add(flig);
   return { obj, radius: 0.07, slags: "dåse", inde: 0x9da2a8, hul: true };
 }
 // En glasflaske (grøn, brun eller blå) med papiretiket og kapsel
@@ -55,19 +71,20 @@ const etiketGeo = new THREE.CylinderGeometry(0.0386, 0.0386, 0.085, 32, 1, true)
 function flaske() {
   const farve = vælg([0x2f8a3e, 0x7a4012, 0x2a5ab0, 0x2f8a3e]);
   const obj = new THREE.Group();
-  const glas = new THREE.MeshPhysicalMaterial({ color: farve, roughness: 0.03, metalness: 0, transparent: true, opacity: 0.6, clearcoat: 1, envMapIntensity: 2, side: THREE.DoubleSide, depthWrite: false });
+  const glas = én("glas" + farve, () => new THREE.MeshPhysicalMaterial({ color: farve, roughness: 0.03, metalness: 0, transparent: true, opacity: 0.6, clearcoat: 1, envMapIntensity: 2, side: THREE.DoubleSide, depthWrite: false }));
   const f = new THREE.Mesh(flaskeGeo, glas); f.position.y = -0.156; f.castShadow = true; obj.add(f);
-  const e = new THREE.Mesh(etiketGeo, new THREE.MeshStandardMaterial({ color: vælg([0xf1e6c8, 0xffffff, 0xf7d36a]), roughness: 0.85 })); e.position.y = -0.156 + 0.11; obj.add(e);
-  const kapsel = new THREE.Mesh(new THREE.CylinderGeometry(0.0165, 0.0165, 0.009, 20), mat.guld); kapsel.position.y = -0.156 + 0.308; obj.add(kapsel);
+  const papir = vælg([0xf1e6c8, 0xffffff, 0xf7d36a]);
+  const e = new THREE.Mesh(etiketGeo, én("etiket" + papir, () => new THREE.MeshStandardMaterial({ color: papir, roughness: 0.85 }))); e.position.y = -0.156 + 0.11; obj.add(e);
+  const kapsel = new THREE.Mesh(GEO.kapsel, mat.guld); kapsel.position.y = -0.156 + 0.308; obj.add(kapsel);
   return { obj, radius: 0.16, slags: "flaske", glas, farve };
 }
 // En ballon på en snor, der vipper i vinden
 function ballon() {
   const farve = vælg([0xe51b2b, 0xffc21a, 0x1f6fe5, 0x22b04a, 0xff4fb0, 0xff7a10, 0x8a3ce0]);
   const obj = new THREE.Group();
-  const m = new THREE.MeshPhysicalMaterial({ color: farve, roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.08, sheen: 0.5, sheenColor: new THREE.Color(farve) });
+  const m = én("ballon" + farve, () => new THREE.MeshPhysicalMaterial({ color: farve, roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.08, sheen: 0.5, sheenColor: new THREE.Color(farve) }));
   const k = new THREE.Mesh(kugleGeo, m); k.scale.set(0.135, 0.165, 0.135); k.castShadow = true; obj.add(k);
-  const knude = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.022, 10), m); knude.position.y = -0.172; obj.add(knude);
+  const knude = new THREE.Mesh(GEO.knude, m); knude.position.y = -0.172; obj.add(knude);
   return { obj, radius: 0.17, slags: "ballon", farve };
 }
 
@@ -81,6 +98,9 @@ const skårGeo = Array.from({ length: 6 }, () => {
   const g = new THREE.BufferGeometry(), a = tilf(0.4, 1), b = tilf(0.4, 1);
   g.setAttribute("position", new THREE.Float32BufferAttribute([0, 0, 0, a, tilf(-0.3, 0.3), 0, tilf(0, a), b, tilf(-0.1, 0.1)], 3)); g.computeVertexNormals(); return g;
 });
+
+// En overskåret halvdel har sine egne kopier af materialerne (med hver sin klippeflade) — de smides ud bagefter
+function smid(obj) { obj.traverse(o => { if (o.isMesh) for (const x of [].concat(o.material)) x.dispose(); }); }
 
 // Bagsiden af en klippet flade får frugtkødets farve (så en halv dåse ser hul ud indeni)
 // Mærk en del med det mål, den hører til (skjult for kopiering, ellers peger kopien i ring)
@@ -199,7 +219,7 @@ export class Mål {
   spræng(m, p, retning, kraft = 1) {
     const s = FRUGT[m.slags], c = m.obj.getWorldPosition(v3());
     lyd.træf("melon", 1, Math.max(-1, Math.min(1, c.x / 4)), c.distanceTo(this.kamera.position));
-    const r = m.radius, kødMat = new THREE.MeshStandardMaterial({ color: s.kød, roughness: 0.45 }), skrælMat = new THREE.MeshStandardMaterial({ color: s.skræl, roughness: 0.6 });
+    const r = m.radius, kødMat = én("kød-" + m.slags, () => new THREE.MeshStandardMaterial({ color: s.kød, roughness: 0.45 })), skrælMat = én("skræl-" + m.slags, () => new THREE.MeshStandardMaterial({ color: s.skræl, roughness: 0.6 }));
     const antal = r > 0.1 ? 14 : 8;
     for (let i = 0; i < antal; i++) {
       const skræl = i % 3 === 0, k = new THREE.Mesh(vælg(klumpGeo), skræl ? skrælMat : kødMat), st = r * tilf(0.18, 0.32);
@@ -218,7 +238,7 @@ export class Mål {
   knus(m, p, retning) {
     const c = m.obj.getWorldPosition(v3());
     lyd.træf("glas", 1, Math.max(-1, Math.min(1, c.x / 4)), c.distanceTo(this.kamera.position));
-    const skårMat = new THREE.MeshPhysicalMaterial({ color: m.farve, roughness: 0.02, metalness: 0.1, transparent: true, opacity: 0.75, side: THREE.DoubleSide, clearcoat: 1, envMapIntensity: 2.5 });
+    const skårMat = én("skår" + m.farve, () => new THREE.MeshPhysicalMaterial({ color: m.farve, roughness: 0.02, metalness: 0.1, transparent: true, opacity: 0.75, side: THREE.DoubleSide, clearcoat: 1, envMapIntensity: 2.5 }));
     for (let i = 0; i < 22; i++) {
       const k = new THREE.Mesh(vælg(skårGeo), skårMat), st = tilf(0.015, 0.045);
       k.scale.setScalar(st); k.userData.skala = st; k.position.copy(c).add(v3(tilf(-0.03, 0.03), tilf(-0.14, 0.14), tilf(-0.03, 0.03))); k.rotation.set(Math.random() * 6, Math.random() * 6, 0);
@@ -236,7 +256,7 @@ export class Mål {
     const gummi = new THREE.Color(m.farve);
     for (let i = 0; i < 10; i++) this.røg.udsend({ pos: c.clone().add(rnd(0.1)), fart: rnd(3), liv: 1.2, str: 0.03, farve: gummi, billede: 3, tyngde: 5, luft: 1.5, spin: tilf(-8, 8) });
     this.glød.udsend({ pos: c, liv: 0.08, str: 0.5, farve: new THREE.Color(1.5, 1.5, 1.5), ind: 0.001 });
-    if (m.snor) m.snor.removeFromParent();
+    if (m.snor) { m.snor.removeFromParent(); m.snor.geometry.dispose(); }
     this.fjern(m);
   }
 
@@ -283,7 +303,7 @@ export class Mål {
       const skal = m.skal ? halv.children[m.obj.children.indexOf(m.skal)] : null;
       if (skal) {
         const nl = nn.clone().applyMatrix3(new THREE.Matrix3().setFromMatrix4(skal.matrixWorld).transpose()).normalize();
-        låg = new THREE.Mesh(new THREE.CircleGeometry(0.985, 48), new THREE.MeshStandardMaterial({ map: snitFlade(m.slags), roughness: 0.4, emissive: glødFarve, emissiveIntensity: 2.5, side: THREE.DoubleSide }));
+        låg = new THREE.Mesh(GEO.snit, new THREE.MeshStandardMaterial({ map: snitFlade(m.slags), roughness: 0.4, emissive: glødFarve, emissiveIntensity: 2.5, side: THREE.DoubleSide }));
         låg.quaternion.setFromUnitVectors(v3(0, 0, 1), nl.clone().negate()); låg.position.copy(nl).multiplyScalar(0.004);
         skal.add(låg);
       }
@@ -323,7 +343,9 @@ export class Mål {
         b.vent -= dt;
         if (b.vent <= 0) {
           const m = this.nytMål("ballon"); this.tilføj(m, v3(b.x, b.y, HYLDE.z - 0.15)); m.tilstand = "svæver"; m.vokser = 0.001; m.obj.scale.setScalar(0.001); m.fase = Math.random() * 6; m.plads = b;
-          const snor = new THREE.Line(new THREE.BufferGeometry().setFromPoints([v3(), v3()]), new THREE.LineBasicMaterial({ color: 0xdddddd })); this.scene.add(snor); m.snor = snor;
+          // Snoren: tre punkter, der flyttes hvert billede (samme buffer genbruges — en ny hver gang ville fylde op)
+          const snor = new THREE.Line(new THREE.BufferGeometry().setFromPoints([v3(), v3(), v3()]), én("snor", () => new THREE.LineBasicMaterial({ color: 0xdddddd })));
+          snor.frustumCulled = false; this.scene.add(snor); m.snor = snor;
           b.mål = m; b.vent = tilf(2.5, 3.5);
         }
       }
@@ -335,7 +357,8 @@ export class Mål {
         const b = m.plads, w = Math.sin(t * 1.3 + m.fase) * 0.06, w2 = Math.cos(t * 0.9 + m.fase) * 0.04;
         m.obj.position.set(b.x + w, b.y + Math.sin(t * 1.7 + m.fase) * 0.03, HYLDE.z - 0.15 + w2); m.obj.rotation.z = -w * 1.5;
         const knude = m.obj.position.clone().add(v3(0, -0.18, 0)), pæl = v3(b.x > 0 ? b.x + 0.1 : b.x - 0.1, HYLDE.y + 0.02, HYLDE.z + 0.12);
-        m.snor.geometry.setFromPoints([knude, knude.clone().lerp(pæl, 0.5).add(v3(w * 0.5, 0, 0)), pæl]);
+        const sp = m.snor.geometry.attributes.position, midt = knude.clone().lerp(pæl, 0.5).add(v3(w * 0.5, 0, 0));
+        sp.setXYZ(0, knude.x, knude.y, knude.z); sp.setXYZ(1, midt.x, midt.y, midt.z); sp.setXYZ(2, pæl.x, pæl.y, pæl.z); sp.needsUpdate = true;
       }
       if (m.tilstand === "flyver" || m.tilstand === "kastet") {
         m.tid += dt;
@@ -367,7 +390,7 @@ export class Mål {
       h.glød = Math.max(0, h.glød - dt * (h.ild ? 0.5 : 0.9));
       if (h.låg) h.låg.material.emissiveIntensity = h.glød * h.glød * 2.5;
       if (h.ild && Math.random() < dt * 30 * h.glød) this.glød.udsend({ pos: h.obj.position.clone().add(rnd(0.08)), fart: v3(0, 0.5, 0).add(rnd(0.2)), liv: 0.4, str: 0.04, strSlut: 0.07, farve: new THREE.Color(3, 2, 0.8), farveSlut: new THREE.Color(1.5, 0.3, 0.05), billede: 2, rot: 0, ind: 0.2 });
-      if (h.liv <= 0 || h.obj.position.y < 0.3) { h.obj.removeFromParent(); this.halvdele.splice(this.halvdele.indexOf(h), 1); }
+      if (h.liv <= 0 || h.obj.position.y < 0.3) { h.obj.removeFromParent(); this.halvdele.splice(this.halvdele.indexOf(h), 1); smid(h.obj); }
     }
   }
 }
