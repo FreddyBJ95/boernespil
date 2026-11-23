@@ -1,11 +1,11 @@
 // ===== Service Worker — gør spillene installerbare og tilgængelige offline =====
 // Bump dette tal når der ændres filer. Tabletten henter så kun de filer, der faktisk er ændret (se fyldCache).
-const CACHE = "boernespil-v91";
+const CACHE = "boernespil-v92";
 
 // Listen over alle filer på GitHub med git's fingeraftryk — så kan vi se, hvilke filer der er ændret.
 const GIT_FILER = "https://api.github.com/repos/FreddyBJ95/boernespil/git/trees/main?recursive=1";
 
-const SPIL = ["balloner", "byg-burger", "enhjoerning", "vask", "slange", "tegne", "piano", "fisk", "broekraft", "rulle-rasmus", "burgerloeb", "nedrivning", "brudpunkt", "kuglebanen", "skrot-og-brag", "vaabensimulator", "karrusel"];
+const SPIL = ["balloner", "byg-burger", "enhjoerning", "vask", "slange", "tegne", "piano", "fisk", "broekraft", "rulle-rasmus", "burgerloeb", "nedrivning", "brudpunkt", "kuglebanen", "skrot-og-brag", "vaabensimulator", "vaabenvaeg", "karrusel"];
 const VOKSENSPIL = ["det-sidste-lys", "skrotstorm", "krystaljaegerne"];
 
 // Spil der består af flere filer end index.html
@@ -48,6 +48,10 @@ const EKSTRA = [
   // Våbensimulator: alt tegnes og lyder med kode (glas, plask og ild låner Nedrivningsfirmaets optagelser ovenfor)
   ...["stil.css", "spil.js", "teksturer.js", "former.js", "materialer.js", "vaaben.js", "svaerd.js", "efterbehandling.js", "partikler.js", "effekter.js",
     "bane.js", "maal.js", "lyd.js", "forside.jpg"].map(f => `spil/vaabensimulator/${f}`),
+  // Våbenvæggen: 2D, våbnene er udklippede fotos (sci-fi-våbnene, lasergeværet og lysværdet tegnes eller pyntes med kode)
+  ...["stil.css", "spil.js", "vaaben.js", "effekter.js", "lyd.js", "scifi.js", "svaerd.js",
+    ...["glock", "m9", "deagle", "mp5", "m4", "m4_magasin", "ak47", "m249", "gravitation", "straale", "hagl", "krabbe"].map(n => `billeder/${n}.webp`)]
+    .map(f => `spil/vaabenvaeg/${f}`),
   "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",   // 3D-motoren (se spil/fisk/three.js)
 ];
 

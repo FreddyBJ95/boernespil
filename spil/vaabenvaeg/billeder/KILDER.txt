@@ -1,0 +1,48 @@
+Billeder i Våbenvæggen
+======================
+Alle fotos er udklippet (baggrunden fjernet). Nogle er spejlvendt, så mundingen peger mod højre,
+og spejlvendt tekst på dem er vendt tilbage. Slæder og magasiner skilles fra i spillet med omrids.
+
+m4.webp og m4_magasin.webp
+  "PEO M4 Carbine RAS.jpg" — Photo Courtesy of PEO Soldier (U.S. Army)
+  https://commons.wikimedia.org/wiki/File:PEO_M4_Carbine_RAS.jpg
+  Licens: offentlig ejendom (værk fra den amerikanske forbundsregering)
+
+m249.webp
+  "PEO M249 Para ACOG.jpg" — Photo Courtesy of PEO Soldier (U.S. Army)
+  https://commons.wikimedia.org/wiki/File:PEO_M249_Para_ACOG.jpg
+  Licens: offentlig ejendom (værk fra den amerikanske forbundsregering)
+
+glock.webp
+  "Glock 17 (transparent background).jpg" — U.S. Bureau of Alcohol, Tobacco, Firearms and Explosives
+  https://commons.wikimedia.org/wiki/File:Glock_17_(transparent_background).jpg
+  Licens: offentlig ejendom (værk fra den amerikanske forbundsregering)
+
+m9.webp
+  "M9 Pistol (7414627354).jpg" — US Air Force
+  https://commons.wikimedia.org/wiki/File:M9_Pistol_(7414627354).jpg
+  Licens: offentlig ejendom (værk fra den amerikanske forbundsregering)
+
+ak47.webp
+  "AK-47 type II Part DM-ST-89-01131.jpg" — U.S. Department of Defense
+  https://commons.wikimedia.org/wiki/File:AK-47_type_II_Part_DM-ST-89-01131.jpg
+  Licens: offentlig ejendom
+
+deagle.webp
+  "Desert-Eagle-chrome-p1030142.jpg" — Rama
+  https://commons.wikimedia.org/wiki/File:Desert-Eagle-chrome-p1030142.jpg
+  Licens: CC BY-SA 2.0 fr (https://creativecommons.org/licenses/by-sa/2.0/fr/)
+  Udklippet, drejet og spejlvendt. Det udklippede billede deles på samme licens.
+
+mp5.webp
+  "Heckler & Koch MP5 b.jpg" — Samuli Silvennoinen (afledt værk: Hic et nunc)
+  https://commons.wikimedia.org/wiki/File:Heckler_%26_Koch_MP5_b.jpg
+  Licens: CC BY-SA 3.0 (https://creativecommons.org/licenses/by-sa/3.0/)
+  Udklippet, drejet og spejlvendt. Det udklippede billede deles på samme licens.
+
+gravitation.webp, straale.webp, hagl.webp og krabbe.webp
+  Sci-fi-våben lavet med ChatGPT til spillet (billederne kom fra ejeren, november 2026).
+  Spejlvendt, så mundingen peger mod højre. Lys, bobler, kløer og pumpe er lagt på med kode (spil.js).
+
+Lasergeværet (scifi.js) og lysværdet (svaerd.js) er tegnet med kode og bruger ingen billeder.
+Lyddæmperen, pistolmagasinernes krop, løb og fjedre tegnes også med kode (spil.js).

@@ -23,7 +23,8 @@ Forsiden har faner, så man kan vælge kategori (appen husker den sidste):
 - 🧊 **3D:** ⛏️ Broekraft (byggespil i Minecraft-stil med mange verdener), 🎣 Mærkelige fisk, 🏁 Rulle Rasmus (styr en blob gennem fem baner ved at vippe iPad'en eller trykke),
   🍔 Burgerløbet (saml ingredienser på vejen, og send burgeren ind i munden på kæmpen), ⚔️ Våbensimulator (lyssværd, ildsværd og rigtige våben på en skydebane)
 - 🎮 **2D:** 🎈 Pop ballonerne (stryg over ballonerne som i Fruit Ninja), 🍔 Byg en burger (byg en burger og giv den til den sultne mand),
-  🦄 Min enhjørning (lav din egen enhjørning, giv den sadel og pynt på, vask og fodr den), 🚜 Vaskehallen, 🐍 Fjollet Slange
+  🦄 Min enhjørning (lav din egen enhjørning, giv den sadel og pynt på, vask og fodr den), 🚜 Vaskehallen, 🐍 Fjollet Slange,
+  🔫 Våbenvæggen (et våben set fra siden på et bord: hold fingeren nede og skyd — med sci-fi-våben og et lysværd)
 - 🎨 **Tegn & musik:** 🎨 Tegn! (hold to fingre nede, så kommer der en streg imellem dem), 🎹 Dyre-piano
 
 🎠 **Spilkarrusellen** (knappen under banneret) kører alle spillene på skift — 20 sekunder, 1 minut eller 2 minutter hver,
@@ -128,3 +129,22 @@ kun glas, plask og ild låner Nedrivningsfirmaets optagelser.
 | `teksturer.js`, `materialer.js`, `former.js`, `partikler.js`, `efterbehandling.js` | Teksturer, stål/træ/plast, byggeklodser, partikler og glød |
 
 `spil/vaabensimulator/?prøve` giver adgang til spillet i konsollen (`spil`), og `?forside` viser forsidebilledet.
+
+## Våbenvæggen
+2D-spillet ligger i `spil/vaabenvaeg/` og bruger meget lidt hukommelse: kun det valgte våbens foto er hentet.
+Våbnet ses fra siden på et værkstedsbord. Hold fingeren nede for at skyde: mundingsild, røg, rekyl og hylstre, der
+klirrer på bordet. Slæder, ladegreb, pumper og magasiner er skåret ud af fotoet med omrids og bevæger sig rigtigt,
+og pistoler og maskinpistoler kan få lyddæmper på. Sci-fi-våbnene (billeder fra ChatGPT) skyder energikugler, ringe,
+energihagl og slim med lyn, eksplosioner og kamerastød. Lysværdet tændes med første tryk og hugger ned i bordet
+(gnister og brændemærker); ⟳ giver klingen en ny farve.
+
+| Fil | Indhold |
+|---|---|
+| `vaaben.js` | Alle våbnene: fotoets mål, greb, munding, slæde, magasin, kadence, rekyl og sci-fi-skud |
+| `spil.js` | Skud, ladning, lyddæmper, lysværdet og tegningen af det hele |
+| `effekter.js` | Mundingsild, røg, gnister, sporlys, energikugler, lyn, hylstre og bordet, de lander på |
+| `lyd.js` | Skud i lag, sci-fi-brag, mekanik, hylstre og lysværdets brummen (Web Audio, ingen lydfiler) |
+| `scifi.js`, `svaerd.js` | Lasergeværet og lysværdet, tegnet med kode |
+| `billeder/` | De udklippede fotos — kilder og licenser står i `billeder/KILDER.txt` |
+
+`spil/vaabenvaeg/?prøve` giver adgang til spillet i konsollen (`spil`).
