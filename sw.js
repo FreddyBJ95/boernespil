@@ -1,6 +1,9 @@
 // ===== Service Worker — gør spillene installerbare og tilgængelige offline =====
-// Bump dette tal når der ændres filer, så de gamle bliver hentet på ny.
-const CACHE = "boernespil-v90";
+// Bump dette tal når der ændres filer. Tabletten henter så kun de filer, der faktisk er ændret (se fyldCache).
+const CACHE = "boernespil-v91";
+
+// Listen over alle filer på GitHub med git's fingeraftryk — så kan vi se, hvilke filer der er ændret.
+const GIT_FILER = "https://api.github.com/repos/FreddyBJ95/boernespil/git/trees/main?recursive=1";
 
 const SPIL = ["balloner", "byg-burger", "enhjoerning", "vask", "slange", "tegne", "piano", "fisk", "broekraft", "rulle-rasmus", "burgerloeb", "nedrivning", "brudpunkt", "kuglebanen", "skrot-og-brag", "vaabensimulator", "karrusel"];
 const VOKSENSPIL = ["det-sidste-lys", "skrotstorm", "krystaljaegerne"];
@@ -70,15 +73,105 @@ const FILER = [
   ...EKSTRA
 ];
 
-// Gem alt ved installation
+// ---------- Hent kun det, der er ændret ----------
+// Hver fil på GitHub har et fingeraftryk (git's SHA-1). Har vi allerede en kopi med samme fingeraftryk,
+// genbruges den. Så henter en opdatering måske 200 kB i stedet for alle ~60 MB, og den når at blive færdig,
+// selv om barnet lukker appen kort efter.
+
+// Hvilken fil i git en adresse svarer til: "./" og "spil/x/" er index.html. Adresser uden for sitet: null.
+function gitSti(fil) {
+  if (/^https?:/.test(fil)) return null;
+  const sti = fil.replace(/^\.\//, "");
+  return (sti === "" || sti.endsWith("/") ? sti + "index.html" : sti).normalize("NFC");
+}
+
+// Git's fingeraftryk af en fil: SHA-1 af "blob <længde>\0" efterfulgt af indholdet
+async function fingeraftryk(svar) {
+  const data = new Uint8Array(await svar.clone().arrayBuffer());
+  const hoved = new TextEncoder().encode(`blob ${data.length}\0`), alt = new Uint8Array(hoved.length + data.length);
+  alt.set(hoved); alt.set(data, hoved.length);
+  return [...new Uint8Array(await crypto.subtle.digest("SHA-1", alt))].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Fingeraftrykkene på GitHub lige nu, som sti → aftryk. null uden net, eller hvis GitHub ikke svarer.
+async function hentGitAftryk() {
+  try {
+    const svar = await fetch(GIT_FILER, { cache: "no-store" });
+    if (!svar.ok) return null;
+    const { tree } = await svar.json();
+    return new Map(tree.filter(t => t.type === "blob").map(t => [t.path.normalize("NFC"), t.sha]));
+  } catch (_) { return null; }
+}
+
+// Fortæl de åbne sider, hvor langt vi er (Opdater-knappen på forsiden viser det som en ring)
+function meldFremgang(ialt) {
+  let sidst = 0;
+  return færdig => {
+    if (færdig < ialt && Date.now() - sidst < 200) return;
+    sidst = Date.now();
+    self.clients.matchAll({ includeUncontrolled: true, type: "window" })
+      .then(sider => sider.forEach(s => s.postMessage({ t: "opdatering", færdig, ialt }))).catch(() => {});
+  };
+}
+
+// Kør opgave(fil) for alle filerne, højst `samtidig` ad gangen
+async function iKø(liste, samtidig, opgave) {
+  let i = 0;
+  const arbejd = async () => { while (i < liste.length) { const fil = liste[i++]; try { await opgave(fil); } catch (_) {} } };
+  await Promise.all(Array.from({ length: samtidig }, arbejd));
+}
+
+// Fyld cachen `nyNavn` med alle FILER. Uændrede filer kopieres fra `gammelNavn` (kan være den samme cache).
+// Kan en fil ikke hentes (intet net), beholdes den gamle kopi, så spillet stadig virker offline.
+// Giver antallet af filer, der blev hentet på ny.
+async function fyldCache(nyNavn, gammelNavn, git) {
+  const ny = await caches.open(nyNavn), gammel = gammelNavn && await caches.open(gammelNavn), samme = nyNavn === gammelNavn;
+  const fremgang = meldFremgang(FILER.length);
+  let færdig = 0, hentet = 0;
+  await iKø(FILER, 6, async fil => {
+    const sti = gitSti(fil), ønsket = sti && git?.get(sti), gemt = gammel && await gammel.match(fil);
+    // three.js fra CDN'et er en fast udgave og ændrer sig aldrig; andre filer genbruges kun med samme fingeraftryk
+    const uændret = gemt && (sti === null || (ønsket && await fingeraftryk(gemt) === ønsket));
+    if (uændret) { if (!samme) await ny.put(fil, gemt); }
+    else {
+      try {
+        // cache: "reload" = hent altid den nye fil fra nettet, ikke en gammel kopi fra browserens egen cache
+        const svar = await fetch(new Request(fil, { cache: "reload" }));
+        if (!svar.ok) throw new Error(svar.status);
+        await ny.put(fil, svar); hentet++;
+      } catch (_) { if (gemt && !samme) await ny.put(fil, gemt); }
+    }
+    fremgang(++færdig);
+  });
+  return hentet;
+}
+
+// Den nyeste af Spilkassens tidligere cacher (eller null første gang)
+async function forrigeCache() {
+  const nr = navn => parseInt(navn.slice("boernespil-v".length), 10) || 0;
+  const navne = (await caches.keys()).filter(n => n.startsWith("boernespil-v") && n !== CACHE).sort((a, b) => nr(b) - nr(a));
+  return navne[0] || null;
+}
+
+// Gem alt ved installation — men hent kun det, der er ændret siden sidste udgave
 self.addEventListener("install", e => {
-  e.waitUntil(
-    caches.open(CACHE)
-      // ignorér enkeltfiler der evt. fejler, så install ikke knækker
-      // (cache: "reload" = hent altid den nye fil fra nettet, ikke en gammel kopi fra browserens egen cache)
-      .then(c => Promise.allSettled(FILER.map(f => c.add(new Request(f, { cache: "reload" })))))
-      .then(() => self.skipWaiting())
-  );
+  e.waitUntil((async () => {
+    const gammel = (await forrigeCache()) || ((await caches.has(CACHE)) ? CACHE : null);
+    await fyldCache(CACHE, gammel, await hentGitAftryk());
+    await self.skipWaiting();
+  })());
+});
+
+// Beskeder fra forsiden: hvilken udgave kører vi, og "opfrisk" (Opdater-knappen, når der ikke er en ny udgave —
+// fx hvis nogen har glemt at tælle CACHE op: så hentes de filer, der er ændret på GitHub, alligevel).
+self.addEventListener("message", e => {
+  const svar = e.ports[0];
+  if (e.data?.t === "version") svar?.postMessage({ version: CACHE });
+  if (e.data?.t === "opfrisk") {
+    const arbejde = hentGitAftryk().then(git => fyldCache(CACHE, CACHE, git))
+      .then(hentet => svar?.postMessage({ hentet }), () => svar?.postMessage({ fejl: true }));
+    e.waitUntil?.(arbejde);
+  }
 });
 
 // Ryd kun Spilkassens gamle cacher; andre projekter på samme origin beholder deres offline-filer.
