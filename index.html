@@ -27,6 +27,18 @@
   <div class="vaeg-skygge" aria-hidden="true"></div>
 
   <header>
+    <!-- Opdater: hent den nyeste udgave af spillene efter en udgivelse. Ringen viser, hvor meget der er hentet,
+         og knappen lyser op af sig selv, når tabletten har fundet en ny udgave. Styres nederst i scriptet. -->
+    <button class="opdater" id="opdater" aria-label="Opdater spillene">
+      <svg class="opd-ikon" viewBox="0 0 32 32" aria-hidden="true">
+        <circle class="opd-spor" cx="16" cy="16" r="14"/>
+        <circle class="opd-ring" id="opdRing" cx="16" cy="16" r="14"/>
+        <g class="opd-pil"><path d="M22.1 11.6a7 7 0 1 0 .9 5.4"/><path d="M22.6 7.2v4.9h-4.9"/></g>
+        <path class="opd-flueben" d="M10.6 16.4l3.6 3.6 7.3-7.6"/>
+        <path class="opd-advarsel" d="M16 9.5v8M16 22.2v.3"/>
+      </svg>
+      <span class="opd-tekst"><b id="opdNavn">Opdater</b><small id="opdVersion"></small></span>
+    </button>
     <!-- Logoet: Kassevennen vinker, og navnet står ved siden af (billederne er lavet af Codex, se billeder/spilkassen/) -->
     <h1 class="logo">
       <img class="logo-ven" src="billeder/spilkassen/kasseven-vinker.webp" alt="" width="511" height="560">
@@ -299,10 +311,102 @@
     addEventListener("keydown", e => { if (e.key === "Escape" && !rum.hidden) luk(); });
   </script>
 
-  <!-- Registrér service worker (offline + installerbar) -->
+  <!-- Registrér service worker (offline + installerbar) og styr Opdater-knappen -->
   <script>
     if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+      window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").then(følgOpdateringer).catch(() => {}));
+    }
+
+    // ---------- Opdater-knappen ----------
+    // Tabletten viser spillene fra sin egen kopi, så de virker uden net. Knappen spørger GitHub, om der er
+    // udgivet noget nyt, henter kun de filer der er ændret, og genstarter så siden.
+    const opdKnap = document.getElementById("opdater"), opdNavn = document.getElementById("opdNavn");
+    const opdVersion = document.getElementById("opdVersion"), opdRing = document.getElementById("opdRing");
+    const ståendeTekst = { klar: "Opdater", ny: "Ny udgave!" };
+    let opdTilstand = "klar", iGang = false, vagt = 0;
+
+    // Vis en tilstand: klar, tjekker, henter, faerdig, fejl eller ny. del = hvor meget af ringen der er fyldt (0–1).
+    function visOpdatering(tilstand, tekst = ståendeTekst[tilstand], del = 0) {
+      opdTilstand = tilstand; opdKnap.dataset.tilstand = tilstand; opdNavn.textContent = tekst;
+      opdRing.style.strokeDashoffset = 88 * (1 - del);
+    }
+
+    // Send en besked til service workeren og vent på svaret
+    function spørgSW(sw, besked) {
+      return new Promise((ok, fejl) => {
+        const kanal = new MessageChannel();
+        kanal.port1.onmessage = e => ok(e.data);
+        sw.postMessage(besked, [kanal.port2]);
+        setTimeout(() => fejl(new Error("Ingen svar")), 10 * 60 * 1000);
+      });
+    }
+
+    // Vent til en ny service worker har gemt alle filerne og har overtaget
+    function blivAktiv(sw) {
+      return new Promise((ok, fejl) => {
+        const tjek = () => {
+          if (sw.state === "activated") ok();
+          else if (sw.state === "redundant") fejl(new Error("Opdateringen fejlede"));
+        };
+        sw.addEventListener("statechange", tjek); tjek();
+      });
+    }
+
+    // Vis hvilken udgave der kører (lille tal under "Opdater", fx v91) — rart for de voksne at kunne se
+    async function visUdgave() {
+      const sw = navigator.serviceWorker.controller;
+      if (!sw) return;
+      try { opdVersion.textContent = (await spørgSW(sw, { t: "version" })).version.replace("boernespil-", ""); } catch (_) {}
+    }
+
+    // Tryk på knappen: find ny udgave → hent det ændrede → genstart siden
+    async function opdater() {
+      if (opdTilstand === "ny") { location.reload(); return; }      // den nye udgave er allerede hentet
+      if (iGang) return;
+      const fejl = tekst => { visOpdatering("fejl", tekst); setTimeout(() => { if (opdTilstand === "fejl") visOpdatering("klar"); }, 4000); };
+      if (!navigator.onLine) { fejl("Ingen net"); return; }
+      iGang = true;
+      try {
+        const reg = "serviceWorker" in navigator && await navigator.serviceWorker.getRegistration();
+        if (!reg?.active) { location.reload(); return; }
+        if (opdTilstand !== "henter") visOpdatering("tjekker", "Kigger …");
+        if (!reg.installing && !reg.waiting) await reg.update();     // henter sw.js på ny
+        const ny = reg.installing || reg.waiting;
+        if (ny) await blivAktiv(ny);                                 // en ny udgave: den henter selv de ændrede filer
+        else if ((await spørgSW(reg.active, { t: "opfrisk" })).fejl) throw new Error("Opfrisk fejlede");
+        visOpdatering("faerdig", "Klar!", 1);
+        setTimeout(() => location.reload(), 700);
+      } catch (_) { iGang = false; fejl("Prøv igen"); }
+    }
+    opdKnap.addEventListener("click", opdater);
+
+    // Ringen fyldes op, mens service workeren henter filerne (også når den gør det af sig selv i baggrunden).
+    // Går den i stå (fx hvis iPad'en lukker service workeren), bliver knappen klar igen efter lidt tid.
+    if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message", e => {
+      if (e.data?.t !== "opdatering" || ["faerdig", "ny", "fejl"].includes(opdTilstand)) return;
+      const { færdig, ialt } = e.data;
+      visOpdatering("henter", `Henter ${Math.floor(100 * færdig / ialt)} %`, færdig / ialt);
+      clearTimeout(vagt);
+      vagt = setTimeout(() => { if (!iGang && opdTilstand === "henter") visOpdatering("klar"); }, færdig >= ialt ? 5000 : 30000);
+    });
+
+    // Kig efter nyt, når appen åbnes igen (på iPad bliver den ofte bare vækket, ikke startet på ny).
+    // Findes der en ny udgave, hentes den i baggrunden, og knappen lyser op, når den er klar.
+    function følgOpdateringer(reg) {
+      let havdeSW = !!navigator.serviceWorker.controller;
+      visUdgave();
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        visUdgave();
+        if (!havdeSW) {                                              // allerførste gang: intet at genstarte
+          havdeSW = true;
+          if (!iGang && opdTilstand === "henter") visOpdatering("klar");
+          return;
+        }
+        if (!iGang) visOpdatering("ny");
+      });
+      const tjek = () => { if (document.visibilityState === "visible" && navigator.onLine) reg.update().catch(() => {}); };
+      document.addEventListener("visibilitychange", tjek);
+      setInterval(tjek, 30 * 60 * 1000);
     }
     // Installér som app på computeren: knappen vises kun, når browseren tilbyder det (Chrome og Edge)
     let installering = null;
